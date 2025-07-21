@@ -2,17 +2,95 @@ version: "3.8"
 
 services:
   nginx:
-    image: nginx:alpine
-    container-name: nginx_server
+    image: nginx:latest
+    container_name: nginx_server
     ports:
-      - "80:80"
-      - "443:443"
+      - "${NGINX_HTTP_PORT}:80"
+      - "${NGINX_HTTPS_PORT}:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/html:/usr/share/nginx/html
     restart: unless-stopped
+    environment:
+      - TZ=Asia/Seoul
     networks:
       - app-network
+
+  client-app:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: client_app
+    ports:
+      - "${CLIENT_PORT}:3000"
+    depends_on:
+      - server-app
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://loaclhost/api
+      - TZ=Asia/Seoul
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  server-app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: server_app
+    ports:
+      - "${SERVER_PORT}:8080"
+    environment:
+      - TZ=Asia/Seoul
+      - MYSQL_DRIVER=com.mysql.cj.jdbc.driver
+      - MYSQL_URL=mysql:3306
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    depends_on:
+      my-db:
+        condition: service_healthy
+      my-cache-server:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      - TZ=Asia/Seoul
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql_data_volume:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
+    ports:
+      - "${MYSQL_PORT}:3306"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${MYSQL_ROOT_PASSWORD}",
+        ]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+
+volumes:
+  mysql_data_volume:
 
 networks:
   app-network:
