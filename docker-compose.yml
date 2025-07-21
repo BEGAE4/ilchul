@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   nginx:
     image: nginx:latest
@@ -27,7 +25,7 @@ services:
       - server-app
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://loaclhost/api
+      - NEXT_PUBLIC_API_URL=http://localhost/api
       - TZ=Asia/Seoul
     restart: unless-stopped
     networks:
@@ -48,15 +46,14 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     depends_on:
-      my-db:
-        condition: service_healthy
-      my-cache-server:
+      mysql:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - app-network
 
   mysql:
+    container_name: mysql_db
     image: mysql:8.0
     environment:
       - TZ=Asia/Seoul
@@ -86,6 +83,7 @@ services:
       timeout: 30s
       retries: 5
       start_period: 30s
+    restart: unless-stopped
     networks:
       - app-network
 
