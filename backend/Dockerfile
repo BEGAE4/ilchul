@@ -8,13 +8,20 @@ COPY gradle gradle
 COPY build.gradle .
 COPY settings.gradle .
 
+RUN chmod +x ./gradlew
+
 RUN ./gradlew dependencies --no-daemon
 
 COPY src ./src
 
-RUN ./gradlew build -X test --no-daemon
+RUN ./gradlew build -x test --no-daemon
 
 FROM eclipse-temurin:17-jdk-alpine 
+
+# wget 설치 (헬스체크용)
+RUN apk add --no-cache wget tzdata && \
+    ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime && \
+    echo "Asia/Seoul" > /etc/timezone
 
 RUN addgroup -g 1001 -S spring && \
     adduser -S spring -u 1001
