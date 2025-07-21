@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM eclipse-temurin:21-jdk-alpine AS builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY src ./src
 
 RUN ./gradlew build -x test --no-daemon
 
-FROM eclipse-temurin:17-jdk-alpine 
+FROM eclipse-temurin:21-jdk-alpine 
 
 # wget 설치 (헬스체크용)
 RUN apk add --no-cache wget tzdata && \
