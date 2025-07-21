@@ -14,7 +14,7 @@ COPY src ./src
 
 RUN ./gradlew build -X test --no-daemon
 
-FROM openjdk:17-jre-alpine
+FROM eclipse-temurin:17-jdk-alpine 
 
 RUN addgroup -g 1001 -S spring && \
     adduser -S spring -u 1001
