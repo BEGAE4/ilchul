@@ -6,7 +6,7 @@ WORKDIR /app
 # Dependancy install을 위해 package.json, yarn.lock 복사
 COPY package.json yarn.lock* ./
 # Dependancy 설치
-RUN yarn --frozen-lockfile
+RUN yarn --frozen-lockfile --network-timeout 600000
 
 # next.js 빌드
 FROM base AS builder
