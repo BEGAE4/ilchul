@@ -11,14 +11,21 @@ spring:
       max-request-size: 100MB
 
   # MySQL
-  datasource:
-    driver-class-name: ${MYSQL_DRIVER}
-    url: jdbc:mysql://${MYSQL_URL}/${MYSQL_DATABASE}?serverTimezone=Asia/Seoul
-    username: ${MYSQL_USER}
-    password: ${MYSQL_PASSWORD}
-    hikari:
-      maximum-pool-size: 10
+#  datasource:
+#    driver-class-name: ${MYSQL_DRIVER}
+#    url: jdbc:mysql://${MYSQL_URL}/${MYSQL_DATABASE}?serverTimezone=Asia/Seoul
+#    username: ${MYSQL_USER}
+#    password: ${MYSQL_PASSWORD}
+#    hikari:
+#      maximum-pool-size: 10
 
+  # H2 데이터베이스 설정
+  datasource:
+    url: jdbc:h2:mem:testdb  # 메모리 DB (재시작시 데이터 삭제)
+    # url: jdbc:h2:file:./data/testdb  # 파일 DB (데이터 유지)
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
   jpa:
     hibernate:
       ddl-auto: create
