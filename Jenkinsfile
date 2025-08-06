@@ -16,7 +16,7 @@ pipeline {
         stage('Environment Setup') {
             steps {
                 script {
-                    writeFile file: '.env', text: """
+                    writeFile file: '/home/ubuntu/jenkins/.env', text: """
                         SERVER_PORT=8080
                         MYSQL_DATABASE=ilchul_db
                         MYSQL_USER=ilchul_user
@@ -38,8 +38,8 @@ pipeline {
                         if [ -f docker compose.yml ]; then
                             docker run --rm \
                             -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v "${WORKSPACE}":"${WORKSPACE}" \
-                            -w "${WORKSPACE}" \
+                            -v /home/ubuntu/jenkins:/workspace \
+                            -w /workspace \
                             docker/compose:latest down || true
                         fi
                     '''
@@ -51,18 +51,19 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        echo "Using EC2 directory: /home/ubuntu/jenkins"
                         docker run --rm \
                             -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v "${WORKSPACE}":"${WORKSPACE}" \
-                            -w "${WORKSPACE}" \
+                            -v /home/ubuntu/jenkins:/workspace \
+                            -w /workspace \
                             docker/compose:latest up --build -d
 
                         sllep 30
                         
                         docker run --rm \
                             -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v "${WORKSPACE}":"${WORKSPACE}" \
-                            -w "${WORKSPACE}" \
+                            -v /home/ubuntu/jenkins:/workspace \
+                            -w /workspace \
                             docker/compose:latest ps
                     '''
                 }
@@ -101,8 +102,8 @@ pipeline {
             sh '''
                 docker run --rm \
                     -v /var/run/docker.sock:/var/run/docker.sock \
-                    -v "${WORKSPACE}":"${WORKSPACE}" \
-                    -w "${WORKSPACE}" \
+                    -v /home/ubuntu/jenkins:/workspace \
+                    -w /workspace \
                     docker/compose:latest down
 
             '''
