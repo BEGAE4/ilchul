@@ -40,7 +40,7 @@ pipeline {
                             -v /var/run/docker.sock:/var/run/docker.sock \
                             -v /home/ubuntu/ilchul:/workspace \
                             -w /workspace \
-                            docker/compose:latest down || true
+                            docker/compose:v2.20.0 down || true
                         fi
                     '''
                 }
@@ -55,7 +55,7 @@ pipeline {
                             -v /var/run/docker.sock:/var/run/docker.sock \
                             -v /home/ubuntu/ilchul:/workspace \
                             -w /workspace \
-                            docker/compose:latest up --build -d
+                            docker/compose:v2.20.0 up --build -d
 
                         sllep 30
                         
@@ -63,7 +63,7 @@ pipeline {
                             -v /var/run/docker.sock:/var/run/docker.sock \
                             -v /home/ubuntu/ilchul:/workspace \
                             -w /workspace \
-                            docker/compose:latest ps
+                            docker/compose:v2.20.0 ps
                     '''
                 }
             }
@@ -103,7 +103,7 @@ pipeline {
                     -v /var/run/docker.sock:/var/run/docker.sock \
                     -v /home/ubuntu/ilchul:/workspace \
                     -w /workspace \
-                    docker/compose:latest down
+                    docker/compose:v2.20.0 down
 
             '''
         }
