@@ -36,7 +36,11 @@ pipeline {
                 script {
                     sh '''
                         if [ -f docker compose.yml ]; then
-                            docker compose down || true
+                            docker run --rm \
+                            -v /var/run/docker.sock:/var/run/docker.sock \
+                            -v ${pwd}:${pwd} \
+                            -w ${pwd} \
+                            docker/compose:latest down || true
                         fi
                     '''
                 }
@@ -47,9 +51,19 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        docker compose up --build -d
-                        sleep 30
-                        docker-compose ps
+                        docker run --rm \
+                            -v /var/run/docker.sock:/var/run/docker.sock \
+                            -v ${pwd}:${pwd} \
+                            -w ${pwd} \
+                            docker/compose:latest up --build -d
+
+                        sllep 30
+                        
+                        docker run --rm \
+                            -v /var/run/docker.sock:/var/run/docker.sock \
+                            -v ${pwd}:${pwd} \
+                            -w ${pwd} \
+                            docker/compose:latest ps
                     '''
                 }
             }
@@ -84,7 +98,14 @@ pipeline {
         }
         failure {
             echo 'Deployment failed!'
-            sh 'docker compose down'
+            sh '''
+                docker run --rm \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    -v ${pwd}:${pwd} \
+                    -w ${pwd} \
+                    docker/compose:latest down
+
+            '''
         }
     }
 }
