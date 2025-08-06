@@ -35,8 +35,8 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        if [ -f docker-compose.yml ]; then
-                            docker-compose down || true
+                        if [ -f docker compose.yml ]; then
+                            docker compose down || true
                         fi
                     '''
                 }
@@ -47,7 +47,7 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        docker-compose up --build -d
+                        docker compose up --build -d
                         sleep 30
                         docker-compose ps
                     '''
@@ -84,7 +84,7 @@ pipeline {
         }
         failure {
             echo 'Deployment failed!'
-            sh 'docker-compose down'
+            sh 'docker compose down'
         }
     }
 }
