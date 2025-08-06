@@ -36,10 +36,11 @@ pipeline {
                 script {
                     sh '''
                         if [ -f docker compose.yml ]; then
+                            WORK_DIR=${pwd}
                             docker run --rm \
                             -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v ${pwd}:${pwd} \
-                            -w ${pwd} \
+                            -v $WORK_DIR:$WORK_DIR \
+                            -w $WORK_DIR \
                             docker/compose:latest down || true
                         fi
                     '''
@@ -51,18 +52,19 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        WORK_DIR=${pwd}
                         docker run --rm \
                             -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v ${pwd}:${pwd} \
-                            -w ${pwd} \
+                            -v $WORK_DIR:$WORK_DIR \
+                            -w $WORK_DIR \
                             docker/compose:latest up --build -d
 
                         sllep 30
                         
                         docker run --rm \
                             -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v ${pwd}:${pwd} \
-                            -w ${pwd} \
+                            -v $WORK_DIR:$WORK_DIR \
+                            -w $WORK_DIR \
                             docker/compose:latest ps
                     '''
                 }
@@ -99,10 +101,11 @@ pipeline {
         failure {
             echo 'Deployment failed!'
             sh '''
+                WORK_DIR=${pwd}
                 docker run --rm \
                     -v /var/run/docker.sock:/var/run/docker.sock \
-                    -v ${pwd}:${pwd} \
-                    -w ${pwd} \
+                    -v $WORK_DIR:$WORK_DIR \
+                    -w $WORK_DIR \
                     docker/compose:latest down
 
             '''
