@@ -38,9 +38,9 @@ pipeline {
                         if [ -f docker compose.yml ]; then
                             docker run --rm \
                             -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v /home/ubuntu/ilchul:/workspace \
+                            -v /home/ubuntu/jenkins:/workspace \
                             -w /workspace \
-                            docker/compose:v2.20.0 down || true
+                            docker/compose:latest down || true
                         fi
                     '''
                 }
@@ -51,19 +51,34 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        docker run --rm \
-                            -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v /home/ubuntu/ilchul:/workspace \
-                            -w /workspace \
-                            docker/compose:v2.20.0 up --build -d
-
-                        sllep 30
+                        echo "=== Checking Docker Compose availability ==="
+                        which docker-compose || echo "docker-compose not found"
+                        which docker || echo "docker not found"
                         
-                        docker run --rm \
-                            -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v /home/ubuntu/ilchul:/workspace \
-                            -w /workspace \
-                            docker/compose:v2.20.0 ps
+                        echo "=== Trying different methods ==="
+                        
+                        # 방법 1: Jenkins 컨테이너 내부의 docker-compose
+                        if command -v docker-compose &> /dev/null; then
+                            echo "Method 1: Using container's docker-compose"
+                            cd /home/ubuntu/ilchul && docker-compose up --build -d
+                        # 방법 2: Docker Compose V2 plugin
+                        elif docker compose version &> /dev/null; then
+                            echo "Method 2: Using docker compose (V2)"
+                            cd /home/ubuntu/ilchul && docker compose up --build -d
+                        # 방법 3: Docker/compose 이미지 with specific version
+                        else
+                            echo "Method 3: Using docker/compose:v2.20.0 image"
+                            docker run --rm \
+                              -v /var/run/docker.sock:/var/run/docker.sock \
+                              -v /home/ubuntu/ilchul:/workspace \
+                              -w /workspace \
+                              docker/compose:v2.20.0 up --build -d
+                        fi
+                        
+                        sleep 30
+                        
+                        echo "=== Checking running containers ==="
+                        docker ps | grep -E "(nginx|client|server|mysql)" || echo "No application containers found"
                     '''
                 }
             }
@@ -99,12 +114,8 @@ pipeline {
         failure {
             echo 'Deployment failed!'
             sh '''
-                docker run --rm \
-                    -v /var/run/docker.sock:/var/run/docker.sock \
-                    -v /home/ubuntu/ilchul:/workspace \
-                    -w /workspace \
-                    docker/compose:v2.20.0 down
-
+                cd /home/ubuntu/ilchul
+                docker-compose down || true
             '''
         }
     }
