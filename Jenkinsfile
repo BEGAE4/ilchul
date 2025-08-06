@@ -38,7 +38,7 @@ pipeline {
                         if [ -f docker compose.yml ]; then
                             docker run --rm \
                             -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v /home/ubuntu/jenkins:/workspace \
+                            -v /home/ubuntu/ilchul:/workspace \
                             -w /workspace \
                             docker/compose:latest down || true
                         fi
@@ -115,7 +115,7 @@ pipeline {
             echo 'Deployment failed!'
             sh '''
                 cd /home/ubuntu/ilchul
-                docker-compose down || true
+                /usr/local/bin/docker-compose -f /home/ubuntu/ilchul/docker-compose.yml down || true
             '''
         }
     }
