@@ -16,7 +16,7 @@ pipeline {
         stage('Environment Setup') {
             steps {
                 script {
-                    writeFile file: '/home/ubuntu/jenkins/.env', text: """
+                    writeFile file: 'temp.env', text: """
                         SERVER_PORT=8080
                         MYSQL_DATABASE=ilchul_db
                         MYSQL_USER=ilchul_user
@@ -27,6 +27,18 @@ pipeline {
                         NGINX_HTTPS_PORT=443
                         CLIENT_PORT=3000
                     """
+
+                    sh '''
+                        docker run --rm \
+                          -v "${WORKSPACE}":/source \
+                          -v /home/ubuntu/ilchul:/target \
+                          busybox cp /source/temp.env /target/.env
+                        
+                        # 권한 설정
+                        docker run --rm \
+                          -v /home/ubuntu/ilchul:/workspace \
+                          busybox chmod 644 /workspace/.env
+                    '''
                 }
             }
         }
@@ -51,34 +63,24 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        echo "=== Checking Docker Compose availability ==="
-                        which docker-compose || echo "docker-compose not found"
-                        which docker || echo "docker not found"
+                        echo "=== Starting deployment with docker/compose image ==="
+                        docker run --rm \
+                          -v /var/run/docker.sock:/var/run/docker.sock \
+                          -v /home/ubuntu/ilchul:/workspace \
+                          -w /workspace \
+                          docker/compose:v2.20.0 up --build -d
                         
-                        echo "=== Trying different methods ==="
-                        
-                        # 방법 1: Jenkins 컨테이너 내부의 docker-compose
-                        if command -v docker-compose &> /dev/null; then
-                            echo "Method 1: Using container's docker-compose"
-                            cd /home/ubuntu/ilchul && docker-compose up --build -d
-                        # 방법 2: Docker Compose V2 plugin
-                        elif docker compose version &> /dev/null; then
-                            echo "Method 2: Using docker compose (V2)"
-                            cd /home/ubuntu/ilchul && docker compose up --build -d
-                        # 방법 3: Docker/compose 이미지 with specific version
-                        else
-                            echo "Method 3: Using docker/compose:v2.20.0 image"
-                            docker run --rm \
-                              -v /var/run/docker.sock:/var/run/docker.sock \
-                              -v /home/ubuntu/ilchul:/workspace \
-                              -w /workspace \
-                              docker/compose:v2.20.0 up --build -d
-                        fi
-                        
-                        sleep 30
+                        echo "=== Waiting for containers to start ==="
+                        sleep 60
                         
                         echo "=== Checking running containers ==="
-                        docker ps | grep -E "(nginx|client|server|mysql)" || echo "No application containers found"
+                        docker ps
+                        
+                        echo "=== Checking application containers ==="
+                        docker logs nginx_server 2>&1 | tail -10 || echo "nginx not running"
+                        docker logs client_app 2>&1 | tail -10 || echo "client not running" 
+                        docker logs server_app 2>&1 | tail -10 || echo "server not running"
+                        docker logs mysql_db 2>&1 | tail -10 || echo "mysql not running"
                     '''
                 }
             }
@@ -96,6 +98,8 @@ pipeline {
                             echo "Waiting for application to start..."
                             sleep 10
                         done
+                        echo "=== Health check failed, showing container status ==="
+                        docker ps
                         echo "Health check failed"
                         exit 1
                     '''
@@ -114,8 +118,11 @@ pipeline {
         failure {
             echo 'Deployment failed!'
             sh '''
-                cd /home/ubuntu/ilchul
-                /usr/local/bin/docker-compose -f /home/ubuntu/ilchul/docker-compose.yml down || true
+                docker run --rm \
+                  -v /var/run/docker.sock:/var/run/docker.sock \
+                  -v /home/ubuntu/ilchul:/workspace \
+                  -w /workspace \
+                  docker/compose:v2.20.0 down || true
             '''
         }
     }
