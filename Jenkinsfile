@@ -38,7 +38,7 @@ pipeline {
                         if [ -f docker compose.yml ]; then
                             docker run --rm \
                             -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v /home/ubuntu/jenkins:/workspace \
+                            -v /home/ubuntu/ilchul:/workspace \
                             -w /workspace \
                             docker/compose:latest down || true
                         fi
@@ -51,10 +51,9 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        echo "Using EC2 directory: /home/ubuntu/jenkins"
                         docker run --rm \
                             -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v /home/ubuntu/jenkins:/workspace \
+                            -v /home/ubuntu/ilchul:/workspace \
                             -w /workspace \
                             docker/compose:latest up --build -d
 
@@ -62,7 +61,7 @@ pipeline {
                         
                         docker run --rm \
                             -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v /home/ubuntu/jenkins:/workspace \
+                            -v /home/ubuntu/ilchul:/workspace \
                             -w /workspace \
                             docker/compose:latest ps
                     '''
@@ -102,7 +101,7 @@ pipeline {
             sh '''
                 docker run --rm \
                     -v /var/run/docker.sock:/var/run/docker.sock \
-                    -v /home/ubuntu/jenkins:/workspace \
+                    -v /home/ubuntu/ilchul:/workspace \
                     -w /workspace \
                     docker/compose:latest down
 
