@@ -82,7 +82,7 @@ pipeline {
                 script {
                     sh '''
                         echo "=== Building Server ==="
-                        cd /home/ubuntu/ilchul/server
+                        cd /home/ubuntu/ilchul/backend
                         docker build -t server_app .
                         
                         echo "=== Starting Server ==="
@@ -109,7 +109,7 @@ pipeline {
                 script {
                     sh '''
                         echo "=== Building Client ==="
-                        cd /home/ubuntu/ilchul/client
+                        cd /home/ubuntu/ilchul/frontend
                         docker build -t client_app .
                         
                         echo "=== Starting Client ==="
