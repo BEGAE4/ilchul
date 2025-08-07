@@ -16,29 +16,28 @@ pipeline {
         stage('Environment Setup') {
             steps {
                 script {
-                    writeFile file: 'temp.env', text: """
-                        SERVER_PORT=8080
-                        MYSQL_DATABASE=ilchul_db
-                        MYSQL_USER=ilchul_user
-                        MYSQL_PASSWORD=${MYSQL_PASSWORD}
-                        MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-                        MYSQL_PORT=3306
-                        NGINX_HTTP_PORT=80
-                        NGINX_HTTPS_PORT=443
-                        CLIENT_PORT=3000
-                    """
-
                     sh '''
-                        docker run --rm \
-                          -v "${WORKSPACE}":/source \
-                          -v /home/ubuntu/ilchul:/target \
-                          busybox cp /source/temp.env /target/.env
-                        
-                        # 권한 설정
-                        docker run --rm \
-                          -v /home/ubuntu/ilchul:/workspace \
-                          busybox chmod 644 /workspace/.env
-                    '''
+                cat > /tmp/app.env << EOF
+SERVER_PORT=8080
+MYSQL_DATABASE=ilchul_db
+MYSQL_USER=ilchul_user
+MYSQL_PASSWORD=${MYSQL_PASSWORD}
+MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+MYSQL_PORT=3306
+NGINX_HTTP_PORT=80
+NGINX_HTTPS_PORT=443
+CLIENT_PORT=3000
+EOF
+                
+                # .env 파일을 프로젝트 디렉토리로 복사
+                docker run --rm \
+                  -v /tmp:/source \
+                  -v /home/ubuntu/ilchul:/target \
+                  busybox cp /source/app.env /target/.env
+                
+                # 임시 파일 삭제
+                rm -f /tmp/app.env
+            '''
                 }
             }
         }
@@ -68,7 +67,7 @@ pipeline {
                           -v /var/run/docker.sock:/var/run/docker.sock \
                           -v /home/ubuntu/ilchul:/workspace \
                           -w /workspace \
-                          docker/compose:v2.20.0 up --build -d
+                          docker/compose:latest up --build -d
                         
                         echo "=== Waiting for containers to start ==="
                         sleep 60
@@ -122,7 +121,7 @@ pipeline {
                   -v /var/run/docker.sock:/var/run/docker.sock \
                   -v /home/ubuntu/ilchul:/workspace \
                   -w /workspace \
-                  docker/compose:v2.20.0 down || true
+                  docker/compose:latest down || true
             '''
         }
     }
