@@ -17,19 +17,16 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        echo "=== Checking Docker version ==="
-                        docker --version
+                        echo "=== Installing Docker Compose in Jenkins container ==="
                         
-                        echo "=== Installing Docker Compose standalone ==="
-                        # Docker Compose standalone 설치
-                        sudo curl -L "https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-                        sudo chmod +x /usr/local/bin/docker-compose
+                        # Jenkins 컨테이너 내부이므로 sudo 없이 설치
+                        if [ ! -f /tmp/docker-compose ]; then
+                            curl -L "https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-Linux-x86_64" -o /tmp/docker-compose
+                            chmod +x /tmp/docker-compose
+                        fi
                         
-                        # 심볼릭 링크 생성 (docker compose 명령어로도 사용 가능하도록)
-                        sudo ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
-                        
-                        echo "=== Docker Compose version ==="
-                        docker-compose --version || echo "docker-compose not found"
+                        # 설치 확인
+                        /tmp/docker-compose version || echo "docker-compose installation failed"
                     '''
                 }
             }
