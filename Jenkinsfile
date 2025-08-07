@@ -16,28 +16,20 @@ pipeline {
         stage('Environment Setup') {
             steps {
                 script {
-                    sh '''
-                cat > /tmp/app.env << EOF
-SERVER_PORT=8080
-MYSQL_DATABASE=ilchul_db
-MYSQL_USER=ilchul_user
-MYSQL_PASSWORD=${MYSQL_PASSWORD}
-MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-MYSQL_PORT=3306
-NGINX_HTTP_PORT=80
-NGINX_HTTPS_PORT=443
-CLIENT_PORT=3000
-EOF
-                
-                # .env 파일을 프로젝트 디렉토리로 복사
-                docker run --rm \
-                  -v /tmp:/source \
-                  -v /home/ubuntu/ilchul:/target \
-                  busybox cp /source/app.env /target/.env
-                
-                # 임시 파일 삭제
-                rm -f /tmp/app.env
-            '''
+                    sh """
+                        echo 'SERVER_PORT=8080' > /home/ubuntu/ilchul/.env
+                        echo 'MYSQL_DATABASE=ilchul_db' >> /home/ubuntu/ilchul/.env
+                        echo 'MYSQL_USER=ilchul_user' >> /home/ubuntu/ilchul/.env
+                        echo 'MYSQL_PASSWORD=${MYSQL_PASSWORD}' >> /home/ubuntu/ilchul/.env
+                        echo 'MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}' >> /home/ubuntu/ilchul/.env
+                        echo 'MYSQL_PORT=3306' >> /home/ubuntu/ilchul/.env
+                        echo 'NGINX_HTTP_PORT=80' >> /home/ubuntu/ilchul/.env
+                        echo 'NGINX_HTTPS_PORT=443' >> /home/ubuntu/ilchul/.env
+                        echo 'CLIENT_PORT=3000' >> /home/ubuntu/ilchul/.env
+                        
+                        echo "=== .env file created ==="
+                        cat /home/ubuntu/ilchul/.env || echo "Cannot read .env file"
+                    """
                 }
             }
         }
