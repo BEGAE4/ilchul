@@ -38,13 +38,12 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        if [ -f docker compose.yml ]; then
-                            docker run --rm \
-                            -v /var/run/docker.sock:/var/run/docker.sock \
-                            -v /home/ubuntu/ilchul:/workspace \
-                            -w /workspace \
-                            docker/compose:latest down || true
-                        fi
+                        cd /home/ubuntu/ilchul
+                        # Docker Compose V2 사용 (하이픈 없음)
+                        docker compose down || true
+                        
+                        # 기존 컨테이너 정리
+                        docker container prune -f
                     '''
                 }
             }
@@ -54,24 +53,20 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        echo "=== Starting deployment with docker/compose image ==="
-                        docker run --rm \
-                          -v /var/run/docker.sock:/var/run/docker.sock \
-                          -v /home/ubuntu/ilchul:/workspace \
-                          -w /workspace \
-                          docker/compose:latest up --build -d
+                        echo "=== Starting deployment with Docker Compose V2 ==="
+                        cd /home/ubuntu/ilchul
+                        
+                        # Docker Compose V2 명령어 사용
+                        docker compose up --build -d
                         
                         echo "=== Waiting for containers to start ==="
-                        sleep 60
+                        sleep 30
                         
                         echo "=== Checking running containers ==="
-                        docker ps
+                        docker compose ps
                         
-                        echo "=== Checking application containers ==="
-                        docker logs nginx_server 2>&1 | tail -10 || echo "nginx not running"
-                        docker logs client_app 2>&1 | tail -10 || echo "client not running" 
-                        docker logs server_app 2>&1 | tail -10 || echo "server not running"
-                        docker logs mysql_db 2>&1 | tail -10 || echo "mysql not running"
+                        echo "=== Checking application logs ==="
+                        docker compose logs --tail=20
                     '''
                 }
             }
@@ -81,17 +76,35 @@ pipeline {
             steps {
                 script {
                     sh '''
+                        cd /home/ubuntu/ilchul
+                        
+                        # 컨테이너 상태 확인
+                        docker compose ps
+                        
+                        # 서비스 헬스체크
+                        echo "=== Checking service health ==="
                         for i in {1..30}; do
-                            if curl -f http://localhost:80; then
-                                echo "Application is healthy"
+                            if curl -f http://localhost:80 2>/dev/null; then
+                                echo "✓ Nginx is healthy"
+                                
+                                if curl -f http://localhost:3000 2>/dev/null; then
+                                    echo "✓ Client is healthy"
+                                fi
+                                
+                                if curl -f http://localhost:8080/health 2>/dev/null; then
+                                    echo "✓ Server is healthy"
+                                fi
+                                
+                                echo "Application is running successfully!"
                                 exit 0
                             fi
-                            echo "Waiting for application to start..."
+                            echo "Attempt $i/30: Waiting for application to start..."
                             sleep 10
                         done
-                        echo "=== Health check failed, showing container status ==="
-                        docker ps
-                        echo "Health check failed"
+                        
+                        echo "=== Health check failed, showing detailed status ==="
+                        docker compose ps
+                        docker compose logs --tail=50
                         exit 1
                     '''
                 }
@@ -101,20 +114,28 @@ pipeline {
 
     post {
         always {
-            sh 'docker system prune -f'
+            script {
+                sh '''
+                    echo "=== Cleanup ==="
+                    docker system prune -f
+                '''
+            }
         }
         success {
-            echo 'Deployment successful!'
+            echo '✅ Deployment successful!'
         }
         failure {
-            echo 'Deployment failed!'
-            sh '''
-                docker run --rm \
-                  -v /var/run/docker.sock:/var/run/docker.sock \
-                  -v /home/ubuntu/ilchul:/workspace \
-                  -w /workspace \
-                  docker/compose:latest down || true
-            '''
+            echo '❌ Deployment failed!'
+            script {
+                sh '''
+                    cd /home/ubuntu/ilchul
+                    echo "=== Showing error logs ==="
+                    docker compose logs --tail=100
+                    
+                    echo "=== Stopping containers ==="
+                    docker compose down || true
+                '''
+            }
         }
     }
 }
