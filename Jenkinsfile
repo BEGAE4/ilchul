@@ -133,7 +133,6 @@ pipeline {
                     sh '''
                         echo "=== Starting Nginx ==="
                         
-                        # nginx.conf 파일이 있다면 volume mount, 없으면 기본 설정 사용
                         if [ -f /home/ubuntu/ilchul/nginx/nginx.conf ]; then
                             docker run -d \
                                 --name nginx_server \
@@ -141,6 +140,8 @@ pipeline {
                                 -p 80:80 \
                                 -p 443:443 \
                                 -v /home/ubuntu/ilchul/nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
+                                -v /home/ubuntu/ssl/certificate.crt:/etc/ssl/certs/certificate.crt:ro \
+                                -v /home/ubuntu/ssl/private.key:/etc/ssl/certs/private.key:ro \
                                 --restart unless-stopped \
                                 nginx:alpine
                         else
