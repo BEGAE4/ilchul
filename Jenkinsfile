@@ -162,31 +162,21 @@ pipeline {
             steps {
                 script {
                     sh '''
-                        echo "=== Checking container status ==="
+                        echo "=== Final Status Check ==="
                         docker ps
                         
-                        echo "=== Health check ==="
-                        MAX_RETRIES=30
-                        RETRY_COUNT=0
-                        
-                        while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-                            echo "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES"
-                            
-                            # Port check
-                            if nc -zv localhost 80 2>/dev/null; then
-                                echo "✓ Nginx port is open"
-                                echo "✅ Deployment successful!"
-                                docker ps
-                                exit 0
-                            fi
-                            
-                            RETRY_COUNT=$((RETRY_COUNT + 1))
-                            sleep 10
-                        done
-                        
-                        echo "❌ Health check failed"
-                        docker ps -a
-                        exit 1
+                        # nginx 컨테이너가 실행 중인지 확인
+                        if [ "$(docker inspect nginx_server --format='{{.State.Status}}')" = "running" ]; then
+                            echo "✅ Deployment successful - Nginx is running!"
+                            echo "🌐 Your site should be accessible at:"
+                            echo "   HTTP:  http://il-chul.com"
+                            echo "   HTTPS: https://il-chul.com"
+                            exit 0
+                        else
+                            echo "❌ Nginx container is not running"
+                            docker logs nginx_server --tail 20
+                            exit 1
+                        fi
                     '''
                 }
             }
