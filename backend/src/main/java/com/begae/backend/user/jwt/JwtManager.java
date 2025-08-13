@@ -2,7 +2,7 @@ package com.begae.backend.user.jwt;
 
 import com.begae.backend.redis.domain.RefreshToken;
 import com.begae.backend.redis.repository.RefreshTokenRedisRepository;
-import com.begae.backend.user.auth.KakaoUserDetails;
+import com.begae.backend.user.auth.OauthUserDetails;
 import com.begae.backend.user.dto.JwtDto;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.SecretKey;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Component
 public class JwtManager {
@@ -122,7 +121,7 @@ public class JwtManager {
                 .map(auth -> new SimpleGrantedAuthority(auth))
                 .toList();
 
-        KakaoUserDetails principal = new KakaoUserDetails(
+        OauthUserDetails principal = new OauthUserDetails(
                 (String) claims.get(AUTH_EMAIL), simpleGrantedAuthorities, Map.of()
         );
 
