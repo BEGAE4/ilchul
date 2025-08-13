@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 @RequiredArgsConstructor
-public class KakaoUserDetails implements OAuth2User {
+public class OauthUserDetails implements OAuth2User {
 
     private final String email;
     private final List<? extends GrantedAuthority> authorities;

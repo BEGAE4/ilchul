@@ -4,7 +4,7 @@ import com.begae.backend.user.filter.JwtFilter;
 import com.begae.backend.user.handler.JwtAccessDeniedHandler;
 import com.begae.backend.user.handler.JwtAuthenticationFailEntryPoint;
 import com.begae.backend.user.oauth2.CustomOauth2SuccessHandler;
-import com.begae.backend.user.service.KakaoUserDetailsService;
+import com.begae.backend.user.service.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,7 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final KakaoUserDetailsService kakaoUserDetailsService;
+    private final CustomUserDetailsService kakaoUserDetailsService;
     private final CustomOauth2SuccessHandler customOauth2SuccessHandler;
     private final JwtFilter jwtFilter;
     private final JwtAuthenticationFailEntryPoint jwtAuthenticationFailEntryPoint;

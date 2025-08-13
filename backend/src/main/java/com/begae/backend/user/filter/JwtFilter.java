@@ -59,7 +59,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private boolean isRequestPassURI(HttpServletRequest req, HttpServletResponse res, FilterChain chain) {
         String path = req.getRequestURI();
-        return path.startsWith("/api/sign/login") || path.startsWith("/api/exception");
+        return path.startsWith("/api/sign/login") || path.startsWith("/api/exception") || path.startsWith("/login/oauth2");
     }
 
     private String getCookieValue(HttpServletRequest request, String name) {

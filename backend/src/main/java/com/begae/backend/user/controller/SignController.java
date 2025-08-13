@@ -15,7 +15,17 @@ public class SignController {
 
     @GetMapping("/login/kakao")
     public ResponseEntity<String> loginKakao() {
-        return new ResponseEntity<>("로그인 성공", HttpStatus.OK);
+        return new ResponseEntity<>("카카오 로그인 성공", HttpStatus.OK);
+    }
+
+    @GetMapping("/login/google")
+    public ResponseEntity<String> loginGoogle() {
+        return new ResponseEntity<>("구글 로그인 성공", HttpStatus.OK);
+    }
+
+    @GetMapping("/login/naver")
+    public ResponseEntity<String> loginNaver() {
+        return new ResponseEntity<>("네이버 로그인 성공", HttpStatus.OK);
     }
 
     @GetMapping("/reissue")
