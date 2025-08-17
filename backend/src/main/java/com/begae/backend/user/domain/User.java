@@ -1,5 +1,6 @@
 package com.begae.backend.user.domain;
 
+import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.user.common.SocialType;
 import com.begae.backend.user.common.UserRole;
 import com.begae.backend.user.common.UserStatus;
@@ -9,17 +10,21 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @EntityListeners(AuditingEntityListener.class)
+@Table(name = "users")
 public class User {
 
     @Id
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_id")
     int userId;
 
     private String userEmail;
@@ -36,6 +41,9 @@ public class User {
 
     private String username;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List<Plan> plans = new ArrayList<>();
+
     @CreatedDate
     private LocalDateTime createAt;
 
@@ -46,6 +54,10 @@ public class User {
         this.userNickname = userNickname;
         this.userRole = userRole;
         this.userStatus = userStatus;
+    }
+
+    public void updateUserNickname(String userNickname) {
+        this.userNickname = userNickname;
     }
 }
 
