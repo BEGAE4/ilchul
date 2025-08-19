@@ -28,7 +28,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CustomOauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    private static final String REDIRECT_URI = "http://localhost:8080/api/sign/login/";
+    private static final String REDIRECT_URI = "http://localhost:5173/login/success";
 
     private final JwtManager jwtManager;
     private final UserRepository userRepository;
@@ -77,8 +77,7 @@ public class CustomOauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
         response.addHeader("Set-Cookie", accessToken.toString());
         response.addHeader("Set-Cookie", refreshToken.toString());
 
-        getRedirectStrategy().sendRedirect(request, response,
-                REDIRECT_URI + oauth2Token.getAuthorizedClientRegistrationId());
+        getRedirectStrategy().sendRedirect(request, response, REDIRECT_URI);
     }
 
     private void saveRefreshTokenOnRedis(User user, JwtDto jwtDto) {
