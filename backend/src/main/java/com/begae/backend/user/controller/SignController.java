@@ -33,7 +33,6 @@ public class SignController {
         if(oauthUserDetails == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        log.info(oauthUserDetails.getName());
         return ResponseEntity.ok(Map.of(
                 "email", oauthUserDetails.getName(),
                 "role", oauthUserDetails.getAuthorities()
