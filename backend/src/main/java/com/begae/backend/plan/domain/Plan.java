@@ -1,5 +1,6 @@
 package com.begae.backend.plan.domain;
 
+import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,10 +13,10 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "plan")
-public class Plan {
+public class Plan extends BaseEntity {
 
     @Id
     @EqualsAndHashCode.Include
@@ -46,10 +47,6 @@ public class Plan {
 
     @Column(name = "departure_point")
     private String departurePoint;
-
-    @CreatedDate
-    @Column(name = "create_at")
-    private LocalDateTime createAt;
 
     @Column(name = "trip_date")
     private LocalDateTime tripDate;
