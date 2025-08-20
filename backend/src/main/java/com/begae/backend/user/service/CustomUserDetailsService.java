@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.Map;
 
 
 @Service
@@ -46,17 +47,19 @@ public class CustomUserDetailsService extends DefaultOAuth2UserService {
                 account = "response";
                 break;
         }
-        OauthUserInfo oauthUserInfo = new OauthUserInfo(oAuth2User.getAttributes(), account); // 사용자 정보 객체 담기
+        OauthUserInfo oauthUserInfo = new OauthUserInfo(oAuth2User.getAttributes(), account,
+                userRequest.getClientRegistration().getRegistrationId()); // 사용자 정보 객체 담기
         // attributes는 Map<String, Map<String, String>> 의 형태
         // UserInfo 클래스를 통해 변환하여 email을 꺼내옴
         SocialType type = socialType;
-        User user = userRepository.findByUserEmail(oauthUserInfo.getEmail())
+        Map<String, String> userInfo = oauthUserInfo.getUserInfo();
+        User user = userRepository.findByUserEmailAndSocialType(userInfo.get("email"), type)
                 .orElseGet(() ->
                         userRepository.save(
                                 User.builder()
-                                        .userEmail(oauthUserInfo.getEmail())
+                                        .userEmail(userInfo.get("email"))
                                         .socialType(type)
-                                        .userNickname("")
+                                        .userNickname(userInfo.get("nickname"))
                                         .userRole(UserRole.ROLE_USER)
                                         .userStatus(UserStatus.STATUS_AVAILABLE)
                                         .build()
