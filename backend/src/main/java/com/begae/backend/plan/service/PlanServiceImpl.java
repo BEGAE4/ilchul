@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class PlanServiceImpl {
+public class PlanServiceImpl implements PlanService{
 
     private final PlanRepository planRepository;
 }
