@@ -1,0 +1,64 @@
+package com.begae.backend.plan.domain;
+
+import com.begae.backend.user.domain.User;
+import jakarta.persistence.*;
+import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+
+@Entity
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@EntityListeners(AuditingEntityListener.class)
+@Table(name = "plan")
+public class Plan {
+
+    @Id
+    @EqualsAndHashCode.Include
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "plan_id")
+    private int planId;
+
+    @Column(name = "plan_title")
+    private String planTitle;
+
+    @Column(name = "is_verified")
+    private Boolean isVerified;
+
+    @Column(name = "is_plan_visible")
+    private Boolean isPlanVisible;
+
+    @Column(name = "plan_description")
+    private String planDescription;
+
+    @Column(name = "required_time")
+    private Duration requiredTime;
+
+    @Column(name = "total_budget")
+    private int totalBudget;
+
+    @Column(name = "total_distance")
+    private int totalDistance;
+
+    @Column(name = "departure_point")
+    private String departurePoint;
+
+    @CreatedDate
+    @Column(name = "create_at")
+    private LocalDateTime createAt;
+
+    @Column(name = "trip_date")
+    private LocalDateTime tripDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    public void updateIsPlanVisibility() {
+        this.isPlanVisible = !this.isPlanVisible;
+    }
+}
