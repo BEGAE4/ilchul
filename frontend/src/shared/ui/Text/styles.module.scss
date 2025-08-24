@@ -1,0 +1,99 @@
+.text {
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+  transition: all 0.2s ease;
+
+  // 크기별 스타일
+  &.size10 {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  &.size12 {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  &.size14 {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  &.size16 {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  &.size18 {
+    font-size: 18px;
+    line-height: 1.6;
+  }
+
+  &.size24 {
+    font-size: 24px;
+    line-height: 1.4;
+  }
+
+  &.size26 {
+    font-size: 26px;
+    line-height: 1.3;
+  }
+
+  // 굵기별 스타일
+  &.weightNormal {
+    font-weight: 400;
+  }
+
+  &.weightMedium {
+    font-weight: 500;
+  }
+
+  &.weightSemibold {
+    font-weight: 600;
+  }
+
+  &.weightBold {
+    font-weight: 700;
+  }
+
+  // 정렬별 스타일
+  &.alignLeft {
+    text-align: left;
+  }
+
+  &.alignCenter {
+    text-align: center;
+  }
+
+  &.alignRight {
+    text-align: right;
+  }
+
+  // 클릭 가능한 텍스트
+  &.clickable {
+    cursor: pointer;
+    user-select: none;
+
+    &:hover {
+      opacity: 0.8;
+    }
+
+    &:active {
+      opacity: 0.6;
+    }
+  }
+
+  &.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  // 텍스트 자르기
+  &.truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
