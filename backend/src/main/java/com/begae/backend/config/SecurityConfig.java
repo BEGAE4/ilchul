@@ -35,6 +35,9 @@ public class SecurityConfig {
                                 userInfoEndpointConfig.userService(kakaoUserDetailsService))
                         .successHandler(customOauth2SuccessHandler))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/sign/userinfo", "/api/sign/reissue", "/api/exception", "/login/oauth2").permitAll()
+                        .anyRequest().authenticated())
                 .exceptionHandling(handling -> {
                     handling.authenticationEntryPoint(jwtAuthenticationFailEntryPoint);
                     handling.accessDeniedHandler(jwtAccessDeniedHandler);

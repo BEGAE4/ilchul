@@ -1,5 +1,6 @@
 package com.begae.backend.user.repository;
 
+import com.begae.backend.user.common.SocialType;
 import com.begae.backend.user.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -10,6 +11,5 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Integer> {
-    User findByUsername(String username);
-    Optional<User> findByUserEmail(String userEmail);
+    Optional<User> findByUserEmailAndSocialType(String userEmail, SocialType socialType);
 }

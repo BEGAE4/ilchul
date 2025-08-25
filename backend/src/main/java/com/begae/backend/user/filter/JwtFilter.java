@@ -1,5 +1,6 @@
 package com.begae.backend.user.filter;
 
+import com.begae.backend.user.common.TokenStatus;
 import com.begae.backend.user.dto.JwtDto;
 import com.begae.backend.user.jwt.JwtManager;
 import jakarta.servlet.FilterChain;
@@ -38,13 +39,13 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String accessToken = getCookieValue(request, ACCESS_COOKIE);
 
-        if(jwtManager.validateToken(accessToken) && jwtManager.validateExpired(accessToken)) {
+        if(jwtManager.validateToken(accessToken) == TokenStatus.VALID) {
             SecurityContextHolder.getContext().setAuthentication(jwtManager.getAuthentication(accessToken));
         }
 
-        if(!jwtManager.validateExpired(accessToken) && jwtManager.validateToken(accessToken)) {
+        if(jwtManager.validateToken(accessToken) == TokenStatus.EXPIRED) {
             String refreshToken = getCookieValue(request, REFRESH_COOKIE);
-            if (jwtManager.validateToken(refreshToken) && jwtManager.validateExpired(refreshToken)) {
+            if (jwtManager.validateToken(refreshToken) == TokenStatus.VALID) {
                 JwtDto jwtDto = jwtManager.reissueAccessToken(refreshToken);
                 SecurityContextHolder.getContext()
                         .setAuthentication(jwtManager.getAuthentication(jwtDto.getAccessToken()));
@@ -59,7 +60,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private boolean isRequestPassURI(HttpServletRequest req, HttpServletResponse res, FilterChain chain) {
         String path = req.getRequestURI();
-        return path.startsWith("/api/sign/login") || path.startsWith("/api/exception") || path.startsWith("/login/oauth2");
+        return path.startsWith("/api/sign") || path.startsWith("/api/exception") || path.startsWith("/login/oauth2");
     }
 
     private String getCookieValue(HttpServletRequest request, String name) {
@@ -94,6 +95,6 @@ public class JwtFilter extends OncePerRequestFilter {
         response.addHeader("Set-Cookie", accessToken.toString());
         response.addHeader("Set-Cookie", refreshToken.toString());
 
-        response.sendRedirect("/api/sign/reissue");
+        response.sendRedirect("http://localhost:5173/login/reissue");
     }
 }

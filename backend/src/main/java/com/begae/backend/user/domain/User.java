@@ -1,5 +1,6 @@
 package com.begae.backend.user.domain;
 
+import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.user.common.SocialType;
 import com.begae.backend.user.common.UserRole;
@@ -16,10 +17,10 @@ import java.util.List;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "users")
-public class User {
+public class User extends BaseEntity {
 
     @Id
     @EqualsAndHashCode.Include
@@ -27,25 +28,23 @@ public class User {
     @Column(name = "user_id")
     int userId;
 
+    @Column(name = "user_email")
     private String userEmail;
 
+    @Column(name = "social_type")
     private SocialType socialType;
 
+    @Column(name = "user_role")
     private UserRole userRole;
 
-    private String userPropensity;
-
+    @Column(name = "user_status")
     private UserStatus userStatus;
 
+    @Column(name = "user_nickname")
     private String userNickname;
-
-    private String username;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<Plan> plans = new ArrayList<>();
-
-    @CreatedDate
-    private LocalDateTime createAt;
 
     @Builder
     public User(String userEmail, SocialType socialType, String userNickname, UserRole userRole, UserStatus userStatus) {
