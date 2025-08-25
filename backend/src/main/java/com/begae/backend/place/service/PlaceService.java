@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -37,60 +38,67 @@ public class PlaceService {
                 .bodyToMono(KakaoPlaceResponseDto.class)
                 .timeout(Duration.ofMinutes(5))
                 .block();
-
-        List<PlaceSummaryDto> places = new ArrayList<>();
-
-        List<KakaoPlaceResponseDto.Document> documents = kakaoResponse.getDocuments() != null
-                ? kakaoResponse.getDocuments() : List.of();
-
-        for(KakaoPlaceResponseDto.Document document : documents) {
-            String textQuery = document.getRoadAddressName() + ", " + document.getPlaceName();
-            GooglePlaceResponseDto googleResponse = googleWebClient.post()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/v1/places:searchText")
-                            .build())
-                    .header("X-Goog-FieldMask", GOOGLE_FIELDMASK)
-                    .bodyValue(Map.of("textQuery", textQuery, "languageCode", "ko"))
-                    .retrieve()
-                    .bodyToMono(GooglePlaceResponseDto.class)
-                    .timeout(Duration.ofMinutes(5))
-                    .block();
-
-
-            String photoName;
-            if(googleResponse != null && googleResponse.getPlaces() != null && !googleResponse.getPlaces().isEmpty()) {
-                List<GooglePlaceResponseDto.Photo> photos = googleResponse.getPlaces().getFirst().getPhotos();
-                if(photos != null && !photos.isEmpty()) photoName = photos.getFirst().getName();
-                else photoName = "";
-            } else photoName = "";
-
-            GooglePlaceImageResponseDto imageResponse = googleWebClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("v1/" + photoName + "/media")
-                            .queryParam("maxHeightPx", 300)
-                            .queryParam("maxWidthPx", 300)
-                            .queryParam("skipHttpRedirect", true)
-                            .build())
-                    .retrieve()
-                    .onStatus(HttpStatusCode::is4xxClientError, response
-                            -> response.bodyToMono(String.class).then(Mono.empty()))
-                    .bodyToMono(GooglePlaceImageResponseDto.class)
-                    .onErrorResume(exception -> Mono.empty())
-                    .timeout(Duration.ofMinutes(5))
-                    .block();
-
-            String photoUri = imageResponse == null ? "" : imageResponse.getPhotoUri();
-
-            String[] split = document.getCategoryName().split(">");
-            places.add(PlaceSummaryDto.builder()
-                    .categoryName(split[0] + "· " + split[1].trim())
-                    .placeName(document.getPlaceName())
-                    .placeImage(photoUri)
-                    .build());
+        List<KakaoPlaceResponseDto.Document> documents = List.of();
+        if(kakaoResponse != null) {
+            documents = kakaoResponse.getDocuments() != null
+                    ? kakaoResponse.getDocuments() : List.of();
         }
 
+        return Flux.fromIterable(documents)
+                .flatMap(document -> toPlaceSummary(document), 8)
+                .collectList()
+                .block(Duration.ofSeconds(20));
+    }
 
+    private Mono<PlaceSummaryDto> toPlaceSummary(KakaoPlaceResponseDto.Document document) {
+        String textQuery = document.getRoadAddressName() + ", " + document.getPlaceName();
 
-        return places;
+        Mono<GooglePlaceResponseDto> googleResponse = googleWebClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v1/places:searchText")
+                        .build())
+                .header("X-Goog-FieldMask", GOOGLE_FIELDMASK)
+                .bodyValue(Map.of("textQuery", textQuery, "languageCode", "ko"))
+                .retrieve()
+                .bodyToMono(GooglePlaceResponseDto.class)
+                .timeout(Duration.ofSeconds(10));
+
+        Mono<PlaceSummaryDto> placeSummary = googleResponse.flatMap(response -> {
+            String photoName;
+            if(response != null && response.getPlaces() != null && !response.getPlaces().isEmpty()) {
+                List<GooglePlaceResponseDto.Photo> photos = response.getPlaces().getFirst().getPhotos();
+                if(photos != null && !photos.isEmpty()) photoName = photos.getFirst().getName();
+                else photoName = null;
+            } else photoName = null;
+
+            if(photoName == null) {
+                return Mono.just(buildDto(document, null));
+            }
+
+           return googleWebClient.get()
+                  .uri(uriBuilder -> uriBuilder
+                          .path("v1/" + photoName + "/media")
+                          .queryParam("maxHeightPx", 300)
+                          .queryParam("maxWidthPx", 300)
+                          .queryParam("skipHttpRedirect", true)
+                          .build())
+                  .retrieve()
+                  .bodyToMono(GooglePlaceImageResponseDto.class)
+
+                  .timeout(Duration.ofSeconds(10))
+                  .map(image -> buildDto(document, image.getPhotoUri()));
+
+        }).onErrorResume(exception -> Mono.just(buildDto(document, null)));
+
+        return placeSummary;
+    }
+
+    private PlaceSummaryDto buildDto(KakaoPlaceResponseDto.Document document, String photoUri) {
+        String[] split = document.getCategoryName().split(">");
+         return PlaceSummaryDto.builder()
+                .categoryName(split[0] + "· " + split[1].trim())
+                .placeName(document.getPlaceName())
+                .placeImageUrl(photoUri)
+                .build();
     }
 }
