@@ -1,5 +1,6 @@
 package com.begae.backend.plan.domain;
 
+import com.begae.backend.plan_place.domain.PlanPlace;
 import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
@@ -9,6 +10,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -53,6 +56,9 @@ public class Plan extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+
+    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PlanPlace> planPlaces = new ArrayList<>();
 
     public void updateIsPlanVisibility() {
         this.isPlanVisible = !this.isPlanVisible;
