@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-@EntityListeners(AuditingEntityListener.class)
 @Table(name = "plan")
 public class Plan extends BaseEntity {
 
