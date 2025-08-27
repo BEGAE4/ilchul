@@ -1,5 +1,6 @@
 package com.begae.backend.plan.domain;
 
+import com.begae.backend.like.domain.Like;
 import com.begae.backend.plan_place.domain.PlanPlace;
 import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.user.domain.User;
@@ -53,12 +54,18 @@ public class Plan extends BaseEntity {
     @Column(name = "trip_date")
     private LocalDateTime tripDate;
 
+    @Column(name = "like_count")
+    private Integer likeCount;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanPlace> planPlaces = new ArrayList<>();
+
+    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Like> likes = new ArrayList<>();
 
     public void updateIsPlanVisibility() {
         this.isPlanVisible = !this.isPlanVisible;

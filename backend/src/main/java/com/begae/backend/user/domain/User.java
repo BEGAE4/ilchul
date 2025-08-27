@@ -1,6 +1,9 @@
 package com.begae.backend.user.domain;
 
 import com.begae.backend.global.domain.BaseEntity;
+import com.begae.backend.like.domain.Like;
+import com.begae.backend.global.domain.BaseEntity;
+import com.begae.backend.like.domain.Like;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.user.common.SocialType;
 import com.begae.backend.user.common.UserRole;
@@ -43,8 +46,16 @@ public class User extends BaseEntity {
     @Column(name = "user_nickname")
     private String userNickname;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private String username;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Plan> plans = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Like> likes = new ArrayList<>();
+
+    @CreatedDate
+    private LocalDateTime createAt;
 
     @Builder
     public User(String userEmail, SocialType socialType, String userNickname, UserRole userRole, UserStatus userStatus) {
