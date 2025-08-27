@@ -89,7 +89,8 @@ pipeline {
                         docker run -d \
                             --name server_app \
                             --network app-network \
-                            -e MYSQL_HOST=mysql_db \
+                            -e MYSQL_DRIVER=com.mysql.cj.jdbc.Driver \
+                            -e MYSQL_URL=mysql_db \
                             -e MYSQL_PORT=3306 \
                             -e MYSQL_DATABASE=ilchul_db \
                             -e MYSQL_USER=ilchul_user \

@@ -9,4 +9,9 @@ import org.springframework.stereotype.Service;
 public class PlanServiceImpl implements PlanService{
 
     private final PlanRepository planRepository;
+
+    @Override
+    public void findPlanByLikeCount() {
+
+    }
 }
