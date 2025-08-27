@@ -22,7 +22,7 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService kakaoUserDetailsService;
     private final CustomOauth2SuccessHandler customOauth2SuccessHandler;
-    private final JwtFilter jwtFilter;
+//    private final JwtFilter jwtFilter;
     private final JwtAuthenticationFailEntryPoint jwtAuthenticationFailEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
@@ -30,11 +30,12 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain (HttpSecurity http) throws Exception {
         return http
                 .csrf((auth) -> auth.disable())
+                .authorizeHttpRequests((auth) -> auth.anyRequest().permitAll())
                 .oauth2Login((oauth2) -> oauth2
                         .userInfoEndpoint(userInfoEndpointConfig ->
                                 userInfoEndpointConfig.userService(kakaoUserDetailsService))
                         .successHandler(customOauth2SuccessHandler))
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+//                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(handling -> {
                     handling.authenticationEntryPoint(jwtAuthenticationFailEntryPoint);
                     handling.accessDeniedHandler(jwtAccessDeniedHandler);

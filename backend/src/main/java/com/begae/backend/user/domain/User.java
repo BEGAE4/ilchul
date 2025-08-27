@@ -1,5 +1,7 @@
 package com.begae.backend.user.domain;
 
+import com.begae.backend.global.domain.BaseEntity;
+import com.begae.backend.like.domain.Like;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.user.common.SocialType;
 import com.begae.backend.user.common.UserRole;
@@ -16,10 +18,10 @@ import java.util.List;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "users")
-public class User {
+public class User extends BaseEntity {
 
     @Id
     @EqualsAndHashCode.Include
@@ -27,22 +29,28 @@ public class User {
     @Column(name = "user_id")
     int userId;
 
+    @Column(name = "user_email")
     private String userEmail;
 
+    @Column(name = "social_type")
     private SocialType socialType;
 
+    @Column(name = "user_role")
     private UserRole userRole;
 
-    private String userPropensity;
-
+    @Column(name = "user_status")
     private UserStatus userStatus;
 
+    @Column(name = "user_nickname")
     private String userNickname;
 
     private String username;
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Plan> plans = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Like> likes = new ArrayList<>();
 
     @CreatedDate
     private LocalDateTime createAt;

@@ -2,6 +2,7 @@ package com.begae.backend.user.oauth2;
 
 import com.begae.backend.redis.domain.RefreshToken;
 import com.begae.backend.redis.repository.RefreshTokenRedisRepository;
+import com.begae.backend.user.common.SocialType;
 import com.begae.backend.user.domain.User;
 import com.begae.backend.user.dto.JwtDto;
 import com.begae.backend.user.exception.UserNotFoundException;
@@ -23,12 +24,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
 public class CustomOauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    private static final String REDIRECT_URI = "http://localhost:8080/api/sign/login/";
+    private static final String REDIRECT_URI = "http://localhost:5173/login/success";
 
     private final JwtManager jwtManager;
     private final UserRepository userRepository;
@@ -41,17 +43,23 @@ public class CustomOauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         OAuth2AuthenticationToken oauth2Token = (OAuth2AuthenticationToken) authentication;
         String account = "";
+        SocialType socialType = SocialType.SOCIAL_GOOGLE;
         switch (oauth2Token.getAuthorizedClientRegistrationId()) {
             case "kakao":
                 account = "kakao_account";
+                socialType = SocialType.SOCIAL_KAKAO;
                 break;
             case "naver":
                 account = "response";
+                socialType = SocialType.SOCIAL_NAVER;
                 break;
         };
-        OauthUserInfo oauthUserInfo = new OauthUserInfo(oAuth2User.getAttributes(), account);
+        OauthUserInfo oauthUserInfo = new OauthUserInfo(oAuth2User.getAttributes(), account,
+                oauth2Token.getAuthorizedClientRegistrationId());
 
-        User user = userRepository.findByUserEmail(oauthUserInfo.getEmail())
+        Map<String, String> userInfo = oauthUserInfo.getUserInfo();
+
+        User user = userRepository.findByUserEmailAndSocialType(userInfo.get("email"), socialType)
                 .orElseThrow(UserNotFoundException::new);
 
         JwtDto jwtDto = jwtManager.createToken(user.getUserEmail(), user.getUserRole().name());
@@ -77,8 +85,7 @@ public class CustomOauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
         response.addHeader("Set-Cookie", accessToken.toString());
         response.addHeader("Set-Cookie", refreshToken.toString());
 
-        getRedirectStrategy().sendRedirect(request, response,
-                REDIRECT_URI + oauth2Token.getAuthorizedClientRegistrationId());
+        getRedirectStrategy().sendRedirect(request, response, REDIRECT_URI);
     }
 
     private void saveRefreshTokenOnRedis(User user, JwtDto jwtDto) {

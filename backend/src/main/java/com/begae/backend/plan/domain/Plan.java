@@ -1,6 +1,8 @@
 package com.begae.backend.plan.domain;
 
+import com.begae.backend.like.domain.Like;
 import com.begae.backend.plan_place.domain.PlanPlace;
+import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -15,10 +17,9 @@ import java.util.List;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@EntityListeners(AuditingEntityListener.class)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Table(name = "plan")
-public class Plan {
+public class Plan extends BaseEntity {
 
     @Id
     @EqualsAndHashCode.Include
@@ -50,12 +51,11 @@ public class Plan {
     @Column(name = "departure_point")
     private String departurePoint;
 
-    @CreatedDate
-    @Column(name = "create_at")
-    private LocalDateTime createAt;
-
     @Column(name = "trip_date")
     private LocalDateTime tripDate;
+
+    @Column(name = "like_count")
+    private Integer likeCount;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -63,6 +63,9 @@ public class Plan {
 
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanPlace> planPlaces = new ArrayList<>();
+
+    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Like> likes = new ArrayList<>();
 
     public void updateIsPlanVisibility() {
         this.isPlanVisible = !this.isPlanVisible;

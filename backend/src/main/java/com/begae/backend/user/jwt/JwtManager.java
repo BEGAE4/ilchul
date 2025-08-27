@@ -3,14 +3,18 @@ package com.begae.backend.user.jwt;
 import com.begae.backend.redis.domain.RefreshToken;
 import com.begae.backend.redis.repository.RefreshTokenRedisRepository;
 import com.begae.backend.user.auth.OauthUserDetails;
+import com.begae.backend.user.common.TokenStatus;
 import com.begae.backend.user.dto.JwtDto;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SecurityException;
 import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.lang.Nullable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -82,29 +86,19 @@ public class JwtManager {
                 .build();
     } // 토큰 생성 메서드
 
-    public boolean validateToken(String token) {
+    public TokenStatus validateToken(String token) {
         try {
             Jwts.parser()
                     .verifyWith(secretKey)
                     .build()
                     .parseSignedClaims(token);
-            return true;
-        } catch (SecurityException | MalformedJwtException | IllegalArgumentException | UnsupportedJwtException e) {
-            return false;
-        }
-    } // 토큰 유효 검사
-
-    public boolean validateExpired(String token) {
-        try {
-            Jwts.parser()
-                    .verifyWith(secretKey)
-                    .build()
-                    .parseSignedClaims(token);
-            return true;
+            return TokenStatus.VALID;
         } catch (ExpiredJwtException e) {
-            return false;
+          return TokenStatus.EXPIRED;
+        } catch (SecurityException | MalformedJwtException | IllegalArgumentException | UnsupportedJwtException e) {
+            return TokenStatus.INVALID;
         }
-    } // 토큰 만료 검사
+    } // 토큰 유효, 만료 검사
 
     public Authentication getAuthentication(String token) {
         Claims claims = Jwts.parser()
@@ -143,4 +137,23 @@ public class JwtManager {
 
     } // 리프레시 토큰을 검사하고 토큰을 새로 재발급
 
+    @Transactional
+    public void deleteRefreshToken(HttpServletRequest request, String refreshToken) {
+        String cookieValue = getCookieValue(request, refreshToken);
+        if(cookieValue != null) {
+            refreshTokenRedisRepository.deleteByRefreshToken(cookieValue);
+        }
+    }
+
+    @Nullable
+    private String getCookieValue(HttpServletRequest request, String name) {
+        Cookie[] cookies = request.getCookies(); // null 일 수 있음!
+        if (cookies == null) return null;
+        for (Cookie c : cookies) {
+            if (name.equals(c.getName())) {
+                return c.getValue();
+            }
+        }
+        return null;
+    }
 }
