@@ -18,7 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Slf4j
-@Component
+//@Component
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
     private static final String ACCESS_COOKIE = "AccessToken";

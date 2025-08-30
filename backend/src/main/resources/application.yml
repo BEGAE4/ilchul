@@ -30,7 +30,7 @@ spring:
   # JPA
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
     defer-datasource-initialization: true
 
   # Redis
@@ -101,6 +101,7 @@ spring:
 # Logging
 logging:
   level:
+    root: INFO
     org.springframework.cache: trace
 
 server:
