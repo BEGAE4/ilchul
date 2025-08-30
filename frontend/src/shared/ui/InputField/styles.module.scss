@@ -1,0 +1,71 @@
+// InputField 컨테이너
+.container {
+  margin-bottom: 1.5rem;
+}
+
+.label {
+  display: block;
+  font-weight: 700;
+  font-size: 18px;
+  margin-bottom: 0.5rem;
+  color: #888;
+}
+
+// Input 기본 스타일
+.input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid;
+  background-color: transparent;
+  padding: 1rem;
+  font-size: 18px;
+  outline: none;
+  transition: border-color 0.2s ease;
+  
+  &:focus {
+    outline: none;
+  }
+}
+
+// Status 기반 스타일
+.default {
+  border-color: #dedede;
+  
+  &:focus {
+    border-color: #5188f1;
+  }
+}
+
+.success {
+  border-color: #5188f1;
+  
+  &:focus {
+    border-color: #5188f1;
+  }
+}
+
+.error {
+  border-color: #e65978;
+  
+  &:focus {
+    border-color: #e65978;
+  }
+}
+
+// Status 메시지
+.statusMessage {
+  margin-top: 0.5rem;
+  font-size: 16px;
+  
+  &.defaultText {
+    color: #dedede;
+  }
+  
+  &.successText {
+    color: #5188f1;
+  }
+  
+  &.errorText {
+    color: #e65978;
+  }
+}
