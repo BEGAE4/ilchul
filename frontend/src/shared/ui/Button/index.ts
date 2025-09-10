@@ -1,2 +1,2 @@
-export { default } from "./Button";
+export { default } from "./component";
 export * from "./types";

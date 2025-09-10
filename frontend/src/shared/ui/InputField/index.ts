@@ -1,2 +1,2 @@
-export { default } from "./InputField";
+export { default } from "./component";
 export * from "./types";

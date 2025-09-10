@@ -1,4 +1,4 @@
-import { IconBox } from "@/shared/ui/IconBox/component";
+import IconBox from "@/shared/ui/IconBox/component";
 import Image from "next/image";
 
 export default function Home() {

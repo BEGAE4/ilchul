@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X } from "lucide-react";
-import { BottomMenuProps } from "./types";
-import styles from "./style.module.scss";
+import IconBox from "../IconBox";
+import { BottomMenuProps, MenuItem } from "./types";
+import styles from "./styles.module.scss";
 
 const BottomMenu: React.FC<BottomMenuProps> = ({
   items,
@@ -95,7 +95,7 @@ const BottomMenu: React.FC<BottomMenuProps> = ({
                 className={styles.closeButton}
                 aria-label="닫기"
               >
-                <X className="w-5 h-5" />
+                <IconBox name="close" size={20} />
               </button>
             )}
           </div>

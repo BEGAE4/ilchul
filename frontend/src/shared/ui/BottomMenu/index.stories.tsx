@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import BottomMenu from "./BottomMenu";
+import BottomMenu from "./component";
 import { type MenuItem } from "./types";
-import { Share2, Trash2, Edit } from "lucide-react";
+import IconBox from "../IconBox";
 import React, { useState } from "react";
 
 const Template = () => {
 	const [open, setOpen] = useState(true);
 	const items: MenuItem[] = [
-		{ id: "share", label: "공유", icon: <Share2 className="w-6 h-6" />, onClick: () => console.log("share") },
-		{ id: "edit", label: "수정", icon: <Edit className="w-6 h-6" />, onClick: () => console.log("edit") },
-		{ id: "delete", label: "삭제", icon: <Trash2 className="w-6 h-6" />, onClick: () => console.log("delete") },
+		{ id: "share", label: "공유", icon: <IconBox name="share" size={24} />, onClick: () => console.log("share") },
+		{ id: "edit", label: "수정", icon: <IconBox name="heart" size={24} />, onClick: () => console.log("edit") },
+		{ id: "delete", label: "삭제", icon: <IconBox name="heart-fill" size={24} />, onClick: () => console.log("delete") },
 	];
 
 	return (
@@ -39,5 +39,3 @@ type Story = StoryObj<typeof BottomMenu>;
 export const Default: Story = {
 	render: () => <Template />,
 };
-
-

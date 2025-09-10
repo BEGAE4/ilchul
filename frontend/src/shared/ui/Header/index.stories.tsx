@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import Header from "./Header";
-import { Bell, ArrowLeft, MoreVertical } from "lucide-react";
+import Header from "./component";
+import IconBox from "../IconBox";
 
 const meta: Meta<typeof Header> = {
 	title: "Components/Header",
@@ -21,14 +21,14 @@ export const Default: Story = {};
 
 export const WithIcons: Story = {
 	args: {
-		leftIcon: <ArrowLeft size={24} strokeWidth={2.2} className="text-gray-700" />,
-		rightIcon: <MoreVertical size={24} strokeWidth={2.2} className="text-gray-700" />,
+		leftIcon: <IconBox name="arrow-left" size={24} className="text-gray-700" />,
+		rightIcon: <IconBox name="more-vertical" size={24} className="text-gray-700" />,
 	},
 };
 
 export const WithCustomRightIcon: Story = {
 	args: {
-		rightIcon: <Bell size={22} className="text-gray-700" />,
+		rightIcon: <IconBox name="heart" size={22} className="text-gray-700" />,
 	},
 };
 

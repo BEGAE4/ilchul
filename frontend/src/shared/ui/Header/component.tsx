@@ -1,13 +1,13 @@
 import React from "react";
-import { ArrowLeft, MoreVertical } from "lucide-react";
+import IconBox from "../IconBox";
 import { HeaderProps } from "./types";
-import styles from "./style.module.scss";
+import styles from "./styles.module.scss";
 
 const DefaultLeftIcon = () => (
-  <ArrowLeft size={24} strokeWidth={2.2} style={{ color: 'rgb(55, 65, 81)' }} />
+  <IconBox name="arrow-left" size={24} color="rgb(55, 65, 81)" />
 );
 const DefaultRightIcon = () => (
-  <MoreVertical size={24} strokeWidth={2.2} style={{ color: 'rgb(55, 65, 81)' }} />
+  <IconBox name="more-vertical" size={24} color="rgb(55, 65, 81)" />
 );
 
 const Header: React.FC<HeaderProps> = ({
