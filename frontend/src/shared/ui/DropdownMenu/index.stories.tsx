@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import DropdownMenu from "./DropdownMenu";
+import DropdownMenu from "./component";
 import { type MenuItem } from "./types";
-import { Settings, LogOut, User } from "lucide-react";
+import IconBox from "../IconBox";
 
 const items: MenuItem[] = [
-	{ id: "profile", label: "프로필", icon: <User className="w-4 h-4" /> },
-	{ id: "settings", label: "설정", icon: <Settings className="w-4 h-4" /> },
+	{ id: "profile", label: "프로필", icon: <IconBox name="user-plus" size={16} /> },
+	{ id: "settings", label: "설정", icon: <IconBox name="search" size={16} /> },
 	{ id: "divider-1", label: "", divider: true },
-	{ id: "logout", label: "로그아웃", icon: <LogOut className="w-4 h-4" /> },
+	{ id: "logout", label: "로그아웃", icon: <IconBox name="heart" size={16} /> },
 ];
 
 const meta: Meta<typeof DropdownMenu> = {

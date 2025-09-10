@@ -1,6 +1,6 @@
 import React from "react";
 import { InputFieldProps } from "./types";
-import styles from "./style.module.scss";
+import styles from "./styles.module.scss";
 
 const InputField: React.FC<InputFieldProps> = ({
   label,

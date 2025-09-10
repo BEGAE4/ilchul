@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, ChevronUp, MoreVertical } from "lucide-react";
-import { DropdownMenuProps } from "./types";
-import styles from "./style.module.scss";
+import IconBox from "../IconBox";
+import { DropdownMenuProps, MenuItem } from "./types";
+import styles from "./styles.module.scss";
 
 const DropdownMenu: React.FC<DropdownMenuProps> = ({
   items,
@@ -74,11 +74,10 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
             <span className={styles.selectText}>
               {selectedItem?.label || "선택하세요"}
             </span>
-            {isOpen ? (
-              <ChevronUp className={styles.selectIcon} />
-            ) : (
-              <ChevronDown className={styles.selectIcon} />
-            )}
+            <IconBox 
+              name="chevron-right" 
+              className={`${styles.selectIcon} ${isOpen ? styles.rotated : ''}`} 
+            />
           </div>
         );
       case "custom":
@@ -86,7 +85,7 @@ const DropdownMenu: React.FC<DropdownMenuProps> = ({
       default:
         return (
           <button className={styles.buttonTrigger}>
-            <MoreVertical className={styles.buttonIcon} />
+            <IconBox name="more-vertical" className={styles.buttonIcon} />
           </button>
         );
     }

@@ -1,16 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import { Map, Search, Hexagon, Smile, Circle } from "lucide-react";
+import IconBox from "../IconBox";
 import { TabBarProps } from "./types";
-import styles from "./style.module.scss";
+import { IconName } from "../IconBox/types";
+import styles from "./styles.module.scss";
 
-const defaultItems = [
-  { icon: Map, label: "지도" },
-  { icon: Search, label: "검색" },
-  { icon: Hexagon, label: "육각형" },
-  { icon: Smile, label: "스마일" },
-  { icon: Circle, label: "원형" },
+const defaultItems: { icon: IconName; label: string }[] = [
+  { icon: "map", label: "지도" },
+  { icon: "search", label: "검색" },
+  { icon: "heart", label: "육각형" },
+  { icon: "smile", label: "스마일" },
+  { icon: "circle-check", label: "원형" },
 ];
 
 const TabBar: React.FC<TabBarProps> = ({
@@ -32,7 +33,7 @@ const TabBar: React.FC<TabBarProps> = ({
 
   return (
     <nav className={`${styles.nav} ${className}`}>
-      {items.map(({ icon: Icon, label }, idx) => (
+      {items.map(({ icon, label }, idx) => (
         <button
           key={label}
           className={styles.tab}
@@ -40,9 +41,9 @@ const TabBar: React.FC<TabBarProps> = ({
           type="button"
           onClick={() => handleTabClick(idx)}
         >
-          <Icon
+          <IconBox
+            name={icon}
             size={28}
-            strokeWidth={2}
             className={`${styles.icon} ${
               idx === activeIndex ? styles.active : styles.inactive
             }`}

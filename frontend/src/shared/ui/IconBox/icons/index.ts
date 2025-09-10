@@ -13,6 +13,7 @@ import MoreVerticalIcon from '@/shared/assets/icons/icon-more-vertical.svg';
 import SearchIcon from '@/shared/assets/icons/icon-search.svg';
 import ChevronRightIcon from '@/shared/assets/icons/icon-chevron-right.svg';
 import CircleCheckIcon from '@/shared/assets/icons/icon-circle-check.svg';
+import CloseIcon from '@/shared/assets/icons/icon-close.svg';
 
 export const icons = {
   chat: ChatIcon,
@@ -29,4 +30,5 @@ export const icons = {
   search: SearchIcon,
   'chevron-right': ChevronRightIcon,
   'circle-check': CircleCheckIcon,
+  close: CloseIcon,
 } as const;

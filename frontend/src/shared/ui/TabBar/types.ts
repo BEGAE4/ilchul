@@ -1,7 +1,7 @@
-import React from "react";
+import { IconName } from "../IconBox/types";
 
 export interface TabItem {
-  icon: React.ComponentType<any>;
+  icon: IconName;
   label: string;
 }
 
