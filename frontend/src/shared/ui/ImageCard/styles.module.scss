@@ -1,0 +1,221 @@
+.card {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: white;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+  
+  &:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+  }
+}
+
+.imageContainer {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  background-color: #999;
+}
+
+.image {
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.imageOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.1) 0%,
+    rgba(0, 0, 0, 0.3) 70%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+  pointer-events: none;
+}
+
+.content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px;
+  color: white;
+  z-index: 2;
+}
+
+.titleSection {
+  margin-bottom: 12px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0 0 4px 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.subtitle {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  margin: 0;
+  opacity: 0.9;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.description {
+  font-size: 14px;
+  line-height: 1.4;
+  margin: 0 0 16px 0;
+  opacity: 0.8;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.actionSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.actionButton {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-shadow: none;
+  
+  &.service {
+    background: linear-gradient(135deg, #ff6b6b, #ff8e8e);
+    color: white;
+    
+    &:hover {
+      background: linear-gradient(135deg, #ff5252, #ff7979);
+      transform: translateY(-1px);
+    }
+  }
+  
+  &.experience {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+  }
+  
+  &.product {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: white;
+    
+    &:hover {
+      background: linear-gradient(135deg, #4338ca, #6d28d9);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+.priceInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.priceLabel {
+  font-size: 12px;
+  opacity: 0.8;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.priceValue {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ff6b6b;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.discount {
+  font-size: 14px;
+  margin-right: 4px;
+  color: #ff6b6b;
+}
+
+.infoText {
+  font-size: 14px;
+  opacity: 0.9;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+// Variant별 특별 스타일
+.service {
+  .imageContainer {
+    height: 220px;
+  }
+}
+
+.experience {
+  .imageContainer {
+    height: 240px;
+  }
+  
+  .content {
+    padding: 24px;
+  }
+}
+
+.product {
+  .imageContainer {
+    height: 200px;
+  }
+  
+  .content {
+    padding: 20px;
+  }
+}
+
+// 반응형 디자인
+@media (max-width: 768px) {
+  .card {
+    border-radius: 12px;
+  }
+  
+  .imageContainer {
+    height: 180px;
+  }
+  
+  .content {
+    padding: 16px;
+  }
+  
+  .title {
+    font-size: 16px;
+  }
+  
+  .subtitle {
+    font-size: 13px;
+  }
+  
+  .actionButton {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
