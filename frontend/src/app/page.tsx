@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <div>
       <div>
-        <ImageCard title={"title"} subtitle={"subtitle"} description={"description"}   />
+        <ImageCard title={"title"} subtitle={"subtitle"} description={"description"} />
       </div>
     </div>
   );
