@@ -1,0 +1,514 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.headerTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.content {
+  flex: 1;
+  padding: 0 20px;
+  padding-top: 3.5rem; /* 헤더 높이만큼 상단 패딩 추가 */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.pageTitle {
+  font-size: 30px;
+  font-weight: 700;
+  color: #374151;
+  margin: 20px 0 0 0;
+  text-align: left;
+}
+
+.planList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 0;
+}
+
+.planCard {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.cardImage {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.cardOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.1) 50%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 16px;
+}
+
+.planInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.planTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.planDate {
+  font-size: 14px;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  opacity: 0.9;
+}
+
+.moreButton {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  color: #ffffff;
+  backdrop-filter: blur(4px);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  &:active {
+    background: rgba(255, 255, 255, 0.4);
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .content {
+    padding: 0 16px;
+    padding-top: 3.5rem;
+  }
+
+  .pageTitle {
+    font-size: 18px;
+    margin-bottom: 20px;
+  }
+
+  .planList {
+    gap: 12px;
+    padding: 16px 0;
+  }
+
+  .cardImage {
+    height: 180px;
+  }
+
+  .cardOverlay {
+    padding: 12px;
+  }
+
+  .planTitle {
+    font-size: 16px;
+  }
+
+  .planDate {
+    font-size: 13px;
+  }
+
+  .moreButton {
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .pageTitle {
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+
+  .cardImage {
+    height: 160px;
+  }
+
+  .planTitle {
+    font-size: 15px;
+  }
+
+  .planDate {
+    font-size: 12px;
+  }
+}
+
+/* 모달 스타일 */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  min-width: 200px;
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modalOption {
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  background: none;
+  font-size: 16px;
+  color: #374151;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid #f3f4f6;
+
+  &:hover {
+    background-color: #f9fafb;
+  }
+
+  &:active {
+    background-color: #f3f4f6;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.modalOptionDelete {
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  background: none;
+  font-size: 16px;
+  color: #ef4444;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: #fef2f2;
+  }
+
+  &:active {
+    background-color: #fee2e2;
+  }
+}
+
+/* 반응형 모달 */
+@media (max-width: 768px) {
+  .modal {
+    min-width: 180px;
+    margin: 0 20px;
+  }
+
+  .modalOption,
+  .modalOptionDelete {
+    padding: 14px 18px;
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal {
+    min-width: 160px;
+    margin: 0 16px;
+  }
+
+  .modalOption,
+  .modalOptionDelete {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+}
+
+/* 이름 수정 모달 */
+.editModal {
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  padding: 24px;
+  min-width: 300px;
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+.modalTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.nameInput {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 16px;
+  color: #374151;
+  background-color: #ffffff;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  &::placeholder {
+    color: #9ca3af;
+  }
+}
+
+/* 공개/비공개 모달 */
+.privacyModal {
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  padding: 24px;
+  min-width: 320px;
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+.toggleContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.toggleSwitch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 28px;
+}
+
+.toggleInput {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleLabel {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #d1d5db;
+  transition: 0.3s;
+  border-radius: 28px;
+
+  &:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+}
+
+.toggleInput:checked + .toggleLabel {
+  background-color: #3b82f6;
+}
+
+.toggleInput:checked + .toggleLabel:before {
+  transform: translateX(22px);
+}
+
+.toggleText {
+  font-size: 16px;
+  color: #374151;
+  font-weight: 500;
+}
+
+.privacyInfo {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0 0 20px 0;
+  line-height: 1.4;
+}
+
+.closeButton {
+  width: 100%;
+  padding: 12px 20px;
+  border: 1px solid #3b82f6;
+  background-color: #ffffff;
+  color: #3b82f6;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: #f8fafc;
+  }
+
+  &:active {
+    background-color: #f1f5f9;
+  }
+}
+
+/* 반응형 모달 */
+@media (max-width: 768px) {
+  .editModal,
+  .privacyModal {
+    min-width: 280px;
+    margin: 0 20px;
+    padding: 20px;
+  }
+
+  .modalTitle {
+    font-size: 16px;
+  }
+
+  .nameInput {
+    font-size: 15px;
+  }
+
+  .toggleText {
+    font-size: 15px;
+  }
+
+  .privacyInfo {
+    font-size: 13px;
+  }
+
+  .closeButton {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .editModal,
+  .privacyModal {
+    min-width: 260px;
+    margin: 0 16px;
+    padding: 18px;
+  }
+
+  .modalTitle {
+    font-size: 15px;
+  }
+
+  .nameInput {
+    font-size: 14px;
+    padding: 10px 14px;
+  }
+
+  .toggleText {
+    font-size: 14px;
+  }
+
+  .privacyInfo {
+    font-size: 12px;
+  }
+
+  .closeButton {
+    font-size: 14px;
+    padding: 10px 18px;
+  }
+}

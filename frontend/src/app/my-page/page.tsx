@@ -20,7 +20,12 @@ const MenuItem: React.FC<MenuItemProps> = ({ label, onClick }) => (
 const MyPage: React.FC = () => {
   const handleBackClick = () => {
     // 뒤로가기 처리
-    console.log('Back clicked');
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      // 히스토리가 없으면 홈으로 이동
+      window.location.href = '/';
+    }
   };
 
   const handleProfileClick = () => {
@@ -62,7 +67,7 @@ const MyPage: React.FC = () => {
           <div className={styles.menuList}>
             <MenuItem 
               label="나의 플랜 리스트" 
-              onClick={() => console.log('플랜 리스트 클릭')} 
+              onClick={() => window.location.href = '/my-page/course-plan'} 
             />
             <MenuItem 
               label="좋아요한 장소" 
