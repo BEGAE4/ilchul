@@ -40,7 +40,7 @@ export default function Home() {
             <h4>굳어진 몸의 이완</h4>
           </div>
           <div className={styles.aromaImage}>
-            <ImageCard title="" subtitle="" description="" variant="aroma" />
+            <ImageCard title="" subtitle="" description="" variant="default" />
           </div>
         </div>
       </section>
@@ -55,13 +55,13 @@ export default function Home() {
           <ImageCard
             title="시원한 프라이빗 풀에서"
             subtitle="즐기는 나만의 여유"
-            variant="plan"
+            variant="default"
             className={styles.planCard}
           />
           <ImageCard
             title="피톤치드오"
             subtitle="당일 치기"
-            variant="plan"
+            variant="default"
             className={styles.planCard}
           />
         </div>
@@ -130,10 +130,6 @@ export default function Home() {
           <div className={styles.navIcon}>👤</div>
         </div>
       </nav>
-    <div>
-      <div>
-        <ImageCard title={"title"} subtitle={"subtitle"} description={"description"} />
-      </div>
     </div>
   );
 }
