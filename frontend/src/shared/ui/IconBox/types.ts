@@ -21,4 +21,6 @@ export type IconName =
   | 'heart-fill' 
   | 'more-vertical' 
   | 'search' 
-  | 'chevron-right';
+  | 'chevron-right'
+  | 'circle-check'
+  | 'close';
