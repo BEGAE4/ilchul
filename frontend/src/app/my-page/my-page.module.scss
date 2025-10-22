@@ -1,8 +1,9 @@
 .container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
   background-color: #ffffff;
+  overflow: hidden;
 }
 
 .headerTitle {
@@ -14,6 +15,10 @@
 .content {
   flex: 1;
   padding: 0 20px;
+  padding-top: 3.5rem; /* 헤더 높이만큼 상단 패딩 추가 */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 프로필 섹션 */
@@ -94,7 +99,10 @@
 
 /* 메뉴 섹션 */
 .menuSection {
-  padding: 32px 0 100px;
+  flex: 1;
+  padding: 32px 0 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .sectionTitle {
@@ -108,6 +116,7 @@
 .menuList {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .menuItem {
@@ -147,6 +156,7 @@
 @media (max-width: 768px) {
   .content {
     padding: 0 16px;
+    padding-top: 3.5rem; /* 헤더 높이만큼 상단 패딩 추가 */
   }
   
   .profileSection {
@@ -154,7 +164,7 @@
   }
   
   .menuSection {
-    padding: 24px 0 100px;
+    padding: 24px 0 20px;
   }
   
   .avatar {
