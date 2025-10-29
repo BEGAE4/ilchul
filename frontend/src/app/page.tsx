@@ -130,10 +130,6 @@ export default function Home() {
           <div className={styles.navIcon}>👤</div>
         </div>
       </nav>
-    <div>
-      <div>
-        <ImageCard title={"title"} subtitle={"subtitle"} description={"description"} />
-      </div>
     </div>
     </div>
   );
