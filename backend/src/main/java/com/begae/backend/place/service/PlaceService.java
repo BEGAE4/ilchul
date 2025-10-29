@@ -1,31 +1,36 @@
 package com.begae.backend.place.service;
 
+import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.dto.GooglePlaceImageResponseDto;
 import com.begae.backend.place.dto.GooglePlaceResponseDto;
 import com.begae.backend.place.dto.KakaoPlaceResponseDto;
 import com.begae.backend.place.dto.PlaceSummaryDto;
+import com.begae.backend.place.repository.PlaceRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class PlaceService {
 
     private final String GOOGLE_FIELDMASK = "places.displayName,places.formattedAddress,places.photos.name";
 
     private final WebClient kakaoWebClient;
     private final WebClient googleWebClient;
+    private final PlaceRepository placeRepository;
 
     public List<PlaceSummaryDto> searchPlace(String keyword) {
 
@@ -90,7 +95,10 @@ public class PlaceService {
 
         }).onErrorResume(exception -> Mono.just(buildDto(document, null)));
 
-        return placeSummary;
+        return placeSummary.flatMap(placeSummaryDto ->
+                Mono.fromRunnable(() -> upsertPlaceFrom(document, placeSummaryDto))
+                        .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
+                        .thenReturn(placeSummaryDto));
     }
 
     private PlaceSummaryDto buildDto(KakaoPlaceResponseDto.Document document, String photoUri) {
@@ -100,5 +108,49 @@ public class PlaceService {
                 .placeName(document.getPlaceName())
                 .placeImageUrl(photoUri)
                 .build();
+    }
+
+    public void upsertPlaceFrom(KakaoPlaceResponseDto.Document document, PlaceSummaryDto dto) {
+        final String sourceId = document.getId();
+        LocalDateTime now = LocalDateTime.now();
+
+        Optional<Place> existing = placeRepository.findPlaceBySourceId(sourceId);
+
+        if (existing.isEmpty()) {
+            // 신규 데이터 바로 저장
+            Place newPlace = Place.builder()
+                    .sourceId(sourceId)
+                    .addressName(document.getAddressName())
+                    .roadAddressName(document.getRoadAddressName())
+                    .categoryName(document.getCategoryName())
+                    .phone(document.getPhone())
+                    .placeName(document.getPlaceName())
+                    .placeUrl(document.getPlaceUrl())
+                    .placeImageUrl(dto != null ? dto.getPlaceImageUrl() : null)
+                    .x(document.getX())
+                    .y(document.getY())
+                    .lastFetchedAt(now)
+                    .lastSeenAt(now)
+                    .build();
+            placeRepository.save(newPlace);
+            return;
+        }
+
+        Place place = existing.get();
+
+        if (place.getLastSeenAt() == null || place.getLastSeenAt().isBefore(now.minusHours(6))) {
+            place.markSeen();
+        }
+
+        // 이미 갱신된 데이터는 건너뛰기
+        boolean stale = place.getLastFetchedAt() == null ||
+                place.getLastFetchedAt().isBefore(now.minusDays(7));
+
+        if (!stale) { // 갱신된 데이터라면 DB 쓰기 생략
+            return;
+        }
+
+        place.mergeFrom(document, dto);
+        placeRepository.save(place);
     }
 }

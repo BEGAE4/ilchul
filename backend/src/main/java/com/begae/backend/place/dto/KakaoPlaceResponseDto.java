@@ -15,6 +15,8 @@ public class KakaoPlaceResponseDto {
     @Data
     public static class Document {
 
+        private String id;
+
         @JsonProperty("address_name")
         private String addressName;
 
@@ -23,6 +25,8 @@ public class KakaoPlaceResponseDto {
 
         @JsonProperty("category_name")
         private String categoryName;
+
+        private String distance;
 
         private String phone;
 
@@ -35,8 +39,8 @@ public class KakaoPlaceResponseDto {
         @JsonProperty("road_address_name")
         private String roadAddressName;
 
-        private Double x;
-        private Double y;
+        private String x;
+        private String y;
 
     }
 }
