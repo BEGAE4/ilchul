@@ -35,7 +35,9 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
       </head>
       <body className="mobile-optimized">
-        {children}
+        <div className="web-app-container">
+          {children}
+        </div>
       </body>
     </html>
   );
