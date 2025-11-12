@@ -1,0 +1,223 @@
+// DropdownMenu 컨테이너
+.container {
+  position: relative;
+  display: inline-block;
+}
+
+.trigger {
+  cursor: pointer;
+}
+
+// 드롭다운 메뉴
+.dropdown {
+  position: absolute;
+  z-index: 50;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  animation: fadeIn 200ms ease-out, scaleIn 200ms ease-out;
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes scaleIn {
+    from { transform: scale(0.95); }
+    to { transform: scale(1); }
+  }
+}
+
+// Placement 스타일
+.top {
+  bottom: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.bottom {
+  top: 100%;
+  margin-top: 0.5rem;
+}
+
+.left {
+  right: 100%;
+  margin-right: 0.5rem;
+}
+
+.right {
+  left: 100%;
+  margin-left: 0.5rem;
+}
+
+// Width 스타일
+.auto {
+  width: auto;
+}
+
+.sm {
+  width: 12rem; // 192px
+}
+
+.md {
+  width: 14rem; // 224px
+}
+
+.lg {
+  width: 16rem; // 256px
+}
+
+.full {
+  width: 100%;
+}
+
+// Variant 스타일
+.default {
+  background-color: white;
+  border: 1px solid rgb(229, 231, 235);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(8px);
+}
+
+.minimal {
+  background-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(8px);
+}
+
+.card {
+  background-color: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgb(229, 231, 235);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border-radius: 0.75rem;
+  backdrop-filter: blur(8px);
+}
+
+// 트리거 스타일
+.selectTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  background-color: white;
+  border: 1px solid rgb(209, 213, 219);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 200ms ease;
+  
+  &:hover {
+    background-color: rgb(249, 250, 251);
+  }
+  
+  &:focus {
+    outline: none;
+    ring: 2px;
+    ring-color: rgb(59, 130, 246);
+    border-color: rgb(59, 130, 246);
+  }
+}
+
+.selectText {
+  font-size: 0.875rem;
+  color: rgb(55, 65, 81);
+}
+
+.selectIcon {
+  width: 1rem;
+  height: 1rem;
+  color: rgb(107, 114, 128);
+  transition: transform 200ms ease;
+}
+
+.buttonTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  background-color: white;
+  border: 1px solid rgb(209, 213, 219);
+  border-radius: 0.5rem;
+  transition: all 200ms ease;
+  cursor: pointer;
+  
+  &:hover {
+    background-color: rgb(249, 250, 251);
+    border-color: rgb(156, 163, 175);
+  }
+  
+  &:focus {
+    outline: none;
+    ring: 2px;
+    ring-color: rgb(59, 130, 246);
+    border-color: rgb(59, 130, 246);
+  }
+}
+
+.buttonIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: rgb(75, 85, 99);
+}
+
+// 메뉴 아이템 컨테이너
+.itemsContainer {
+  padding: 0.25rem 0;
+}
+
+// 메뉴 아이템
+.item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 150ms ease;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  
+  &:hover {
+    background-color: rgb(243, 244, 246);
+  }
+  
+  &:active {
+    background-color: rgb(229, 231, 235);
+  }
+  
+  &:focus {
+    background-color: rgb(243, 244, 246);
+    outline: none;
+  }
+  
+  &.disabled {
+    color: rgb(156, 163, 175);
+    cursor: not-allowed;
+    
+    &:hover,
+    &:active,
+    &:focus {
+      background-color: transparent;
+    }
+  }
+  
+  &.enabled {
+    color: rgb(55, 65, 81);
+  }
+}
+
+.itemIcon {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0.75rem;
+}
+
+.itemLabel {
+  flex: 1;
+}
+
+.divider {
+  border-top: 1px solid rgb(229, 231, 235);
+  margin: 0.25rem 0;
+}

@@ -1,103 +1,179 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import { ImageCard } from '@/shared/ui/ImageCard/component';
+import styles from './page.module.scss';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [selectedTheme, setSelectedTheme] = useState('아로마 테라피');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
+  const healingThemes = [
+    {
+      id: 'aroma',
+      label: '아로마 테라피',
+      isActive: selectedTheme === '아로마 테라피',
+    },
+    { id: 'walk', label: '산책', isActive: selectedTheme === '산책' },
+    {
+      id: 'spa',
+      label: '스파와 온천',
+      isActive: selectedTheme === '스파와 온천',
+    },
+  ];
+
+  const popularPlans = [
+    {
+      id: 1,
+      title: '시원한 프라이빗 풀에서 즐기는 나만의 여유',
+      image: '/images/private-pool.jpg',
+      type: 'experience',
+    },
+    {
+      id: 2,
+      title: '피톤치드오 당일 치기',
+      image: '/images/forest.jpg',
+      type: 'experience',
+    },
+  ];
+
+  const nearbyPlaces = [
+    {
+      id: 1,
+      title: '아로마 테라피 둔산점',
+      image: '/images/aroma-dunsan.jpg',
+      action: { type: 'button' as const, text: '예약 가능', onClick: () => {} },
+      price: { label: '예상 예산', value: '54,000원', discount: '75%' },
+    },
+    {
+      id: 2,
+      title: '아로마 테라피 둔산점',
+      image: '/images/aroma-dunsan2.jpg',
+      action: { type: 'button' as const, text: '예약 가능', onClick: () => {} },
+      price: { label: '예상 예산', value: '54,000원', discount: '75%' },
+    },
+    {
+      id: 3,
+      title: '아로마 테라피 둔산점',
+      image: '/images/aroma-dunsan3.jpg',
+      action: { type: 'button' as const, text: '예약 가능', onClick: () => {} },
+      price: { label: '예상 예산', value: '54,000원', discount: '75%' },
+    },
+  ];
+
+  return (
+    <div className={styles.homePage}>
+      {/* 힐링 숲 히어로 섹션 */}
+      <section className={styles.heroSection}>
+        <div className={styles.heroBackground}>
+          <ImageCard
+            title="당신을 위한"
+            subtitle="피톤치드 가득 힐링 숲"
+            description="조용한 숲속 트래킹으로 내 몸과 마음에 휴식을"
+            image="/images/mock/forest-heel.png"
+            variant="service"
+            className={styles.heroCard}
+          />
+        </div>
+      </section>
+
+      {/* 힐링 여행 테마 섹션 */}
+      <section className={styles.themesSection}>
+        <div className={styles.sectionHeader}>
+          <h2>일단 출발하는 나만의 힐링 여행 테마</h2>
+        </div>
+
+        <div className={styles.themeButtons}>
+          {healingThemes.map(theme => (
+            <button
+              key={theme.id}
+              className={`${styles.themeButton} ${theme.isActive ? styles.active : ''}`}
+              onClick={() => setSelectedTheme(theme.label)}
+            >
+              {theme.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* 아로마 테라피 카드 섹션 */}
+      <section className={styles.aromaSection}>
+        <ImageCard
+          title="고요함 속 좋은 향기와 굳어진 몸의 이완"
+          image="/images/aroma-therapy.jpg"
+          variant="service"
+          className={styles.aromaCard}
+        />
+      </section>
+
+      {/* 가장 많이 찾는 플랜 섹션 */}
+      <section className={styles.popularPlansSection}>
+        <div className={styles.sectionHeader}>
+          <h2>가장 많이 찾는 플랜</h2>
+          <a href="/courses" className={styles.moreLink}>
+            더보기
           </a>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        <div className={styles.plansGrid}>
+          {popularPlans.map(plan => (
+            <ImageCard
+              key={plan.id}
+              title={plan.title}
+              image={plan.image}
+              variant="experience"
+              className={styles.planCard}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* 실시간 주변 인기 장소 섹션 */}
+      <section className={styles.nearbyPlacesSection}>
+        <div className={styles.sectionHeader}>
+          <h2>실시간 주변 인기 장소</h2>
+          <a href="/courses" className={styles.moreLink}>
+            더보기
+          </a>
+        </div>
+
+        <div className={styles.placesGrid}>
+          {nearbyPlaces.map(place => (
+            <ImageCard
+              key={place.id}
+              title={place.title}
+              image={place.image}
+              action={place.action}
+              price={place.price}
+              variant="service"
+              className={styles.placeCard}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* 하단 네비게이션 */}
+      <nav className={styles.bottomNavigation}>
+        <div className={styles.navItem}>
+          <span className={styles.navIcon}>🗺️</span>
+          <span className={styles.navLabel}>지도</span>
+        </div>
+        <div className={styles.navItem}>
+          <span className={styles.navIcon}>🔍</span>
+          <span className={styles.navLabel}>검색</span>
+        </div>
+        <div className={styles.navItem}>
+          <span className={styles.navIcon}>💎</span>
+          <span className={styles.navLabel}>추천</span>
+        </div>
+        <div className={`${styles.navItem} ${styles.active}`}>
+          <span className={styles.navIcon}>😊</span>
+          <span className={styles.navLabel}>힐링</span>
+        </div>
+        <div className={styles.navItem}>
+          <span className={styles.navIcon}>👤</span>
+          <span className={styles.navLabel}>마이</span>
+        </div>
+      </nav>
     </div>
   );
 }

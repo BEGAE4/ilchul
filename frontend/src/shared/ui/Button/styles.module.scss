@@ -1,0 +1,78 @@
+// Button 기본 스타일
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  outline: none;
+  
+  &:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+  
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+// Variant 스타일
+.primary {
+  background: linear-gradient(to right, #8e8dfa, #4bb4f7);
+  color: white;
+  border: none;
+  
+  &:hover:not(:disabled) {
+    background: linear-gradient(to right, #7c7bf5, #3aa5f3);
+  }
+  
+  &:active:not(:disabled) {
+    background: linear-gradient(to right, #6a69f0, #2896ef);
+  }
+}
+
+.outlined {
+  background-color: transparent;
+  color: #5188f1;
+  border: 1px solid #5188f1;
+  
+  &:hover:not(:disabled) {
+    background-color: rgba(81, 136, 241, 0.1);
+  }
+  
+  &:active:not(:disabled) {
+    background-color: rgba(81, 136, 241, 0.2);
+  }
+}
+
+.secondary {
+  background-color: #5188f1;
+  color: white;
+  border: none;
+  
+  &:hover:not(:disabled) {
+    background-color: #4176e8;
+  }
+  
+  &:active:not(:disabled) {
+    background-color: #3764df;
+  }
+}
+
+// Size 스타일
+.large {
+  min-width: 320px;
+  height: 54px;
+  font-size: 18px;
+}
+
+.small {
+  min-width: 120px;
+  height: 36px;
+  font-size: 15px;
+}
