@@ -7,7 +7,7 @@ import lombok.Data;
 @Builder
 public class PlaceSummaryDto {
 
-    private String placeImage;
+    private String placeImageUrl;
 
     private String categoryName;
 
