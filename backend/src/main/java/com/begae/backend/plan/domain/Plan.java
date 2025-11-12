@@ -1,13 +1,10 @@
 package com.begae.backend.plan.domain;
 
-import com.begae.backend.like.domain.Like;
 import com.begae.backend.plan_place.domain.PlanPlace;
 import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -64,8 +61,8 @@ public class Plan extends BaseEntity {
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanPlace> planPlaces = new ArrayList<>();
 
-    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Like> likes = new ArrayList<>();
+//    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+//    private List<Like> likes = new ArrayList<>();
 
     public void updateIsPlanVisibility() {
         this.isPlanVisible = !this.isPlanVisible;

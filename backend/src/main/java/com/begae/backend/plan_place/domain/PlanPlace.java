@@ -1,5 +1,6 @@
 package com.begae.backend.plan_place.domain;
 
+import com.begae.backend.place.domain.Place;
 import com.begae.backend.plan.domain.Plan;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -24,8 +25,9 @@ public class PlanPlace {
     @Column(name = "plan_place_id")
     private int planPlaceId;
 
-    @Column(name = "place_id")
-    private int placeId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "place_id")
+    private Place place;
 
     @Column(name = "order_index")
     private int orderIndex;
