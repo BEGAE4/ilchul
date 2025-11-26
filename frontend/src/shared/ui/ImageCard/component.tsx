@@ -29,7 +29,7 @@ export function ImageCard({
     switch (action.type) {
       case 'button':
         return (
-          <button 
+          <button
             className={`${styles.actionButton} ${styles[variant]}`}
             onClick={action.onClick}
           >
@@ -49,28 +49,28 @@ export function ImageCard({
           </div>
         );
       case 'info':
-        return (
-          <div className={styles.infoText}>
-            {action.text}
-          </div>
-        );
+        return <div className={styles.infoText}>{action.text}</div>;
       default:
         return null;
     }
   };
 
   return (
-    <div 
+    <div
       className={`${styles.card} ${styles[variant]} ${className}`}
       onClick={handleClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handleClick();
-        }
-      } : undefined}
+      onKeyDown={
+        onClick
+          ? e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleClick();
+              }
+            }
+          : undefined
+      }
       {...props}
     >
       {/* 배경 이미지 */}
@@ -87,26 +87,19 @@ export function ImageCard({
             <div className={styles.imageOverlay} />
           </>
         )}
-      </div>
+        {/* 콘텐츠 영역 */}
+        <div className={styles.content}>
+          {/* 제목 영역 */}
+          <div className={styles.titleSection}>
+            <h3 className={styles.title}>{title}</h3>
+            {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
+          </div>
 
-      {/* 콘텐츠 영역 */}
-      <div className={styles.content}>
-        {/* 제목 영역 */}
-        <div className={styles.titleSection}>
-          <h3 className={styles.title}>{title}</h3>
-          {subtitle && (
-            <p className={styles.subtitle}>{subtitle}</p>
-          )}
-        </div>
+          {/* 설명 영역 */}
+          {description && <p className={styles.description}>{description}</p>}
 
-        {/* 설명 영역 */}
-        {description && (
-          <p className={styles.description}>{description}</p>
-        )}
-
-        {/* 액션 영역 */}
-        <div className={styles.actionSection}>
-          {renderAction()}
+          {/* 액션 영역 */}
+          <div className={styles.actionSection}>{renderAction()}</div>
         </div>
       </div>
     </div>

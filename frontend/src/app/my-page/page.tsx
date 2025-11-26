@@ -36,11 +36,13 @@ const MyPage: React.FC = () => {
   return (
     <div className={styles.container}>
       <Header
-        leftIcon={<IconBox name="arrow-left" size={24} color="rgb(55, 65, 81)" />}
+        leftIcon={
+          <IconBox name="arrow-left" size={24} color="rgb(55, 65, 81)" />
+        }
         center={<span className={styles.headerTitle}>마이페이지</span>}
         onLeftClick={handleBackClick}
       />
-      
+
       <div className={styles.content}>
         {/* 프로필 섹션 */}
         <div className={styles.profileSection}>
@@ -63,27 +65,27 @@ const MyPage: React.FC = () => {
         {/* 메뉴 섹션 */}
         <div className={styles.menuSection}>
           <h2 className={styles.sectionTitle}>나의 메뉴</h2>
-          
+
           <div className={styles.menuList}>
-            <MenuItem 
-              label="나의 플랜 리스트" 
-              onClick={() => window.location.href = '/my-page/course-plan'} 
+            <MenuItem
+              label="나의 플랜 리스트"
+              onClick={() => (window.location.href = '/my-page/course-plan')}
             />
-            <MenuItem 
-              label="좋아요한 장소" 
-              onClick={() => console.log('좋아요한 장소 클릭')} 
+            <MenuItem
+              label="좋아요한 장소"
+              onClick={() => console.log('좋아요한 장소 클릭')}
             />
-            <MenuItem 
-              label="감정 설문 결과 확인" 
-              onClick={() => console.log('감정 설문 결과 클릭')} 
+            <MenuItem
+              label="감정 설문 결과 확인"
+              onClick={() => console.log('감정 설문 결과 클릭')}
             />
-            <MenuItem 
-              label="감정 설문 다시 하기" 
-              onClick={() => console.log('감정 설문 다시 하기 클릭')} 
+            <MenuItem
+              label="감정 설문 다시 하기"
+              onClick={() => console.log('감정 설문 다시 하기 클릭')}
             />
-            <MenuItem 
-              label="계정 관리" 
-              onClick={() => console.log('계정 관리 클릭')} 
+            <MenuItem
+              label="계정 관리"
+              onClick={() => console.log('계정 관리 클릭')}
             />
           </div>
         </div>
