@@ -15,7 +15,6 @@
 .content {
   flex: 1;
   padding: 0 20px;
-  padding-top: 3.5rem; /* 헤더 높이만큼 상단 패딩 추가 */
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -135,9 +134,8 @@
     background: rgba(255, 255, 255, 0.4);
   }
 
-  svg {
-    width: 16px;
-    height: 16px;
+  svg {    width: 18px;
+    height: 18px;
   }
 }
 
@@ -181,8 +179,8 @@
     height: 28px;
 
     svg {
-      width: 14px;
-      height: 14px;
+      width: 16px;
+      height: 16px;
     }
   }
 }
