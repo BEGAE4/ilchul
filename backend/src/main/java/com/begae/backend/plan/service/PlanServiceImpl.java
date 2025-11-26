@@ -24,6 +24,6 @@ public class PlanServiceImpl implements PlanService{
 
     @Override
     public void createPlanWithPlaces(String userName, CreatePlanRequestDto createPlanRequestDto) {
-        userRepository.
+
     }
 }
