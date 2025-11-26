@@ -33,14 +33,20 @@ const Header: React.FC<HeaderProps> = ({
       <div className={styles.center}>
         {center}
       </div>
-      <button
-        className={styles.rightButton}
-        onClick={onRightClick}
-        aria-label="Right Icon"
-        type="button"
-      >
-        {rightIcon || <DefaultRightIcon />}
-      </button>
+      {rightIcon ? (
+        <div className={styles.rightButton}>
+          {rightIcon}
+        </div>
+      ) : (
+        <button
+          className={styles.rightButton}
+          onClick={onRightClick}
+          aria-label="Right Icon"
+          type="button"
+        >
+          <DefaultRightIcon />
+        </button>
+      )}
     </header>
   );
 };

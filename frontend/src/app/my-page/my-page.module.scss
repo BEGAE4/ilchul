@@ -1,15 +1,26 @@
-.container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background-color: #ffffff;
-  overflow: hidden;
+// Header Section
+.headerWrapper {
+  position: relative;
+  width: 100%;
+  z-index: 10;
+}
+
+.header {
+  position: relative;
 }
 
 .headerTitle {
   font-size: 18px;
   font-weight: 600;
   color: #374151;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #ffffff;
+  overflow: hidden;
 }
 
 .content {

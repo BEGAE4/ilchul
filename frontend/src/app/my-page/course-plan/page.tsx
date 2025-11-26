@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import Header from "@/shared/ui/Header";
 import styles from "./course-plan.module.scss";
 
 // 플랜 데이터 타입 정의
@@ -47,10 +46,6 @@ const CoursePlanPage: React.FC = () => {
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
   const [editName, setEditName] = useState<string>("");
   const [isPublic, setIsPublic] = useState<boolean>(true);
-
-  const handleBackClick = () => {
-    router.back();
-  };
 
   const handlePlanClick = (planId: string) => {
     // 모달이 열려있으면 카드 클릭 무시
@@ -99,12 +94,6 @@ const CoursePlanPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <Header
-        center={null}
-        onLeftClick={handleBackClick}
-        rightIcon={null}
-      />
-      
       <div className={styles.content}>
         <h1 className={styles.pageTitle}>나의 플랜 리스트</h1>
         <div className={styles.planList}>
