@@ -1,7 +1,6 @@
 package com.begae.backend.user.service;
 
 import com.begae.backend.plan.domain.Plan;
-import com.begae.backend.plan.exception.PlanNotFoundException;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.user.domain.User;
 import com.begae.backend.user.dto.MyPlansResponse;
@@ -47,7 +46,7 @@ public class MyPageServiceImpl implements MyPageService {
     @Override
     public Boolean updateMyPlanVisibility(Integer planId) {
         Plan plan = planRepository.findById(planId)
-                .orElseThrow(() -> new PlanNotFoundException("PLAN_NOT_FOUND"));
+                .orElseThrow(() -> new RuntimeException("PLAN_NOT_FOUND"));
         Boolean prevVisibility = plan.getIsPlanVisible();
         plan.updateIsPlanVisibility();
         Boolean currVisibility = plan.getIsPlanVisible();

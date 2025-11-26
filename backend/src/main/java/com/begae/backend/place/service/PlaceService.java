@@ -111,6 +111,7 @@ public class PlaceService {
     }
 
     public void upsertPlaceFrom(KakaoPlaceResponseDto.Document document, PlaceSummaryDto dto) {
+
         final String sourceId = document.getId();
         LocalDateTime now = LocalDateTime.now();
 
@@ -122,13 +123,13 @@ public class PlaceService {
                     .sourceId(sourceId)
                     .addressName(document.getAddressName())
                     .roadAddressName(document.getRoadAddressName())
-                    .categoryName(document.getCategoryName())
+                    .categoryName(dto != null ? dto.getCategoryName() : document.getCategoryName())
                     .phone(document.getPhone())
                     .placeName(document.getPlaceName())
                     .placeUrl(document.getPlaceUrl())
                     .placeImageUrl(dto != null ? dto.getPlaceImageUrl() : null)
-                    .x(document.getX())
-                    .y(document.getY())
+                    .longitude(document.getX())
+                    .latitude(document.getY())
                     .lastFetchedAt(now)
                     .lastSeenAt(now)
                     .build();
