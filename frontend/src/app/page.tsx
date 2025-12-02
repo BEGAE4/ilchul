@@ -1,8 +1,139 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Hexagon, MapPin, Search, Smile, UserRound } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { ImageCard } from '@/shared/ui/ImageCard/component';
 import styles from './page.module.scss';
+
+const heroImage =
+  'http://localhost:3845/assets/398116975079b078a825ae61887b59837aee71de.png';
+const aromaImage =
+  'http://localhost:3845/assets/a8bd1ae7ef3479881bfba65e6d6d72b62ae708d1.png';
+const poolPlanImage =
+  'http://localhost:3845/assets/f0d197b218a5692f6bba05c7f1648b4095ce41ab.png';
+const forestPlanImage =
+  'http://localhost:3845/assets/3a4ba42bcc1b81eeb272e3e4ce1ea3a87befbe72.png';
+
+const themeOptions = [
+  { id: 'aroma', label: '아로마 테라피', selected: true },
+  { id: 'walk', label: '산책', selected: false },
+  { id: 'spa', label: '스파와 온천', selected: false },
+];
+
+const popularPlans = [
+  {
+    id: 'plan-private-pool',
+    title: '시원한 프라이빗 풀에서',
+    subtitle: '즐기는 나만의 여유',
+    image: poolPlanImage,
+  },
+  {
+    id: 'plan-forest-daytrip',
+    title: '피톤 치드와 함께하는',
+    subtitle: '당일 치기 숲 속 트래킹',
+    image: forestPlanImage,
+  },
+];
+
+const nearbyPlaces = [
+  {
+    id: 'place-1',
+    title: '아로마 테라피',
+    location: '둔산점',
+    status: '예약 가능',
+    discount: '75%',
+    price: '54,000원',
+    image: poolPlanImage,
+  },
+  {
+    id: 'place-2',
+    title: '아로마 테라피',
+    location: '둔산점',
+    status: '예약 가능',
+    discount: '75%',
+    price: '54,000원',
+    image: forestPlanImage,
+  },
+  {
+    id: 'place-3',
+    title: '아로마 테라피',
+    location: '둔산점',
+    status: '예약 가능',
+    discount: '75%',
+    price: '54,000원',
+    image: poolPlanImage,
+  },
+];
+
+type NavItem = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  active?: boolean;
+};
+
+const navItems: NavItem[] = [
+  { id: 'map', label: '지도', icon: MapPin },
+  { id: 'search', label: '검색', icon: Search },
+  { id: 'explore', label: '탐색', icon: Hexagon },
+  { id: 'mood', label: '힐링', icon: Smile, active: true },
+  { id: 'profile', label: '프로필', icon: UserRound },
+];
+
+function useDragScroll<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    let isPointerDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+
+      isPointerDown = true;
+      startX = event.clientX;
+      scrollLeft = element.scrollLeft;
+      element.setPointerCapture(event.pointerId);
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!isPointerDown) return;
+
+      const deltaX = event.clientX - startX;
+      element.scrollLeft = scrollLeft - deltaX;
+      event.preventDefault();
+    };
+
+    const endDrag = (event: PointerEvent) => {
+      if (!isPointerDown) return;
+      isPointerDown = false;
+      if (element.hasPointerCapture(event.pointerId)) {
+        element.releasePointerCapture(event.pointerId);
+      }
+    };
+
+    element.addEventListener('pointerdown', handlePointerDown);
+    element.addEventListener('pointermove', handlePointerMove);
+    element.addEventListener('pointerup', endDrag);
+    element.addEventListener('pointerleave', endDrag);
+    element.addEventListener('pointercancel', endDrag);
+
+    return () => {
+      element.removeEventListener('pointerdown', handlePointerDown);
+      element.removeEventListener('pointermove', handlePointerMove);
+      element.removeEventListener('pointerup', endDrag);
+      element.removeEventListener('pointerleave', endDrag);
+      element.removeEventListener('pointercancel', endDrag);
+    };
+  }, []);
+
+  return ref;
+}
 
 export default function Home() {
   const [selectedTheme, setSelectedTheme] = useState('아로마 테라피');

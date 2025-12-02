@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'tailwindcss';
 
 /* Pretendard Variable 폰트 정의  */
 @font-face {
@@ -6,6 +7,8 @@
   font-weight: 45 920;
   font-style: normal;
   font-display: swap;
+  src: url('/fonts/pretendard/PretendardVariable.woff2')
+    format('woff2-variations');
   src: url('/fonts/pretendard/PretendardVariable.woff2')
     format('woff2-variations');
 }
@@ -104,6 +107,13 @@ body {
     'Segoe UI',
     Roboto,
     sans-serif;
+  font-family:
+    'Pretendard',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   font-size: 16px; /* 모바일에서 최소 16px로 줌 방지 */
   line-height: 1.6;
   -webkit-text-size-adjust: 100%;
@@ -176,6 +186,10 @@ button,
 [role='button'],
 input[type='button'],
 input[type='submit'] {
+button,
+[role='button'],
+input[type='button'],
+input[type='submit'] {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   min-height: 44px; /* iOS 권장 터치 영역 */
@@ -189,6 +203,8 @@ html {
 }
 
 /* 모바일 폼 요소 최적화 */
+input,
+textarea,
 input,
 textarea,
 select {

@@ -9,7 +9,15 @@ const nextConfig: NextConfig = {
 
     return config;
   },
-  /* config options here */
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '3845',
+      },
+    ],
+  },
   output: "standalone",
 };
 
