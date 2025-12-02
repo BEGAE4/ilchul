@@ -56,7 +56,7 @@ const CoursePlanPage: React.FC = () => {
     // 모달이 열려있으면 카드 클릭 무시
     if (selectedPlanId) return;
     // 플랜 상세 페이지로 이동
-    router.push(`/course-detail/${planId}`);
+    console.log("플랜 클릭:", planId);
   };
 
   const handleMoreClick = (planId: string, event: React.MouseEvent) => {
