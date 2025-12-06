@@ -1,6 +1,6 @@
 'use client';
 
-export default function CommunityError({
+export default function FeedError({
   error,
   reset,
 }: {
@@ -8,8 +8,8 @@ export default function CommunityError({
   reset: () => void;
 }) {
   return (
-    <div className="community-error-container">
-      <h2>커뮤니티를 불러오는데 실패했습니다</h2>
+    <div className="feed-error-container">
+      <h2>피드를 불러오는데 실패했습니다</h2>
       <p>{error.message}</p>
       <button onClick={() => reset()}>다시 시도</button>
     </div>

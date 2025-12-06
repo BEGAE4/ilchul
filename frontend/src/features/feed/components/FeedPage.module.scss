@@ -1,0 +1,13 @@
+.feedPage {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #ffffff;
+  padding: 16px;
+}
+
+.feedList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
