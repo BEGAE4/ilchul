@@ -6,6 +6,7 @@ import {
   getActivityTypeLabel,
   getActivityActionButton
 } from '../utils/course-detail.utils';
+import IconBox from '@/shared/ui/IconBox';
 import styles from './CourseDetailPage.module.scss';
 
 export const CourseDetailContent: React.FC<CourseDetailContentProps> = ({
@@ -197,44 +198,7 @@ export const CourseDetailContent: React.FC<CourseDetailContentProps> = ({
                         {stamp.isCompleted ? (
                           <div className={styles.stampIcon}>
                             <div className={styles.completedIcon}>
-                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="10" cy="8" r="2.5" fill="white"/>
-                                <path
-                                  d="M7 15c0-1.5 1.5-3 3-3h2c1.5 0 3 1.5 3 3"
-                                  stroke="white"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  fill="none"
-                                />
-                                <path
-                                  d="M7 12l-2-1.5"
-                                  stroke="white"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  fill="none"
-                                />
-                                <path
-                                  d="M13 12l2-1.5"
-                                  stroke="white"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  fill="none"
-                                />
-                                <path
-                                  d="M8 17l-1.5 2"
-                                  stroke="white"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  fill="none"
-                                />
-                                <path
-                                  d="M12 17l1.5 2"
-                                  stroke="white"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  fill="none"
-                                />
-                              </svg>
+                              <IconBox name="run" size={28} color="white" className={styles.completedIconSvg} />
                             </div>
                           </div>
                         ) : stamp.needsVerification ? (
