@@ -1,7 +1,7 @@
 .page {
   min-height: 100vh;
   background: #eef1f6;
-  padding: 0 0 5rem;
+  // padding: 0 0 5rem;
 }
 
 .container {
@@ -124,8 +124,9 @@
   flex-wrap: nowrap;
   justify-content: flex-start;
   width: 100%;
-  overflow-x: scroll;
+  overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  margin-bottom: 1rem;
 }
 
 .themeButton {
@@ -229,11 +230,6 @@
   padding-bottom: 1rem;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
-}
-
-.plansCarousel::-webkit-scrollbar,
-.nearbyCards::-webkit-scrollbar {
-  height: 0;
 }
 
 .planCard {
@@ -432,16 +428,7 @@
 .navIconActive {
   background: #eef2ff;
   color: #5a7ff2;
-  box-shadow: 0 15px 35px rgba(90, 127, 242, 0.3);
-}
-
-.dragScrollable {
-  cursor: grab;
-  user-select: none;
-
-  &:active {
-    cursor: grabbing;
-  }
+  // box-shadow: 0 15px 35px rgba(90, 127, 242, 0.3);
 }
 
 @media (max-width: 390px) {

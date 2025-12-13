@@ -1,0 +1,298 @@
+.pageWrapper {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: #fafafa;
+
+  // PageLayout의 container를 100% 높이로 설정
+  :global {
+    [class*='container'] {
+      height: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+  }
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-top: calc(3.5rem + 1rem); /* 헤더 높이 + 여백 */
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  min-height: 0; /* flexbox에서 overflow를 위해 필요 */
+}
+
+.textSection {
+  padding: 2rem 0;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #000000;
+  margin: 0 0 1rem 0;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+}
+
+.description {
+  font-size: 1rem;
+  font-weight: 400;
+  color: #000000;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.graphicSection {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0;
+  min-height: 300px;
+}
+
+.graphic {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shape1,
+.shape2,
+.shape3,
+.shape4,
+.shape5 {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.4;
+  filter: blur(30px);
+}
+
+.shape1 {
+  width: 200px;
+  height: 200px;
+  background: linear-gradient(135deg, #d4f4e8 0%, #b8e6d8 100%);
+  top: 10%;
+  left: 10%;
+  animation: float 6s ease-in-out infinite;
+}
+
+.shape2 {
+  width: 180px;
+  height: 180px;
+  background: linear-gradient(135deg, #d8f0e8 0%, #c0e8d8 100%);
+  top: 30%;
+  right: 15%;
+  animation: float 8s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+.shape3 {
+  width: 160px;
+  height: 160px;
+  background: linear-gradient(135deg, #e0f4ec 0%, #c8ece0 100%);
+  bottom: 20%;
+  left: 20%;
+  animation: float 7s ease-in-out infinite;
+  animation-delay: -4s;
+}
+
+.shape4 {
+  width: 140px;
+  height: 140px;
+  background: linear-gradient(135deg, #e4f0e8 0%, #d0e8dc 100%);
+  top: 50%;
+  right: 25%;
+  animation: float 9s ease-in-out infinite;
+  animation-delay: -1s;
+}
+
+.shape5 {
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, #e8f4ec 0%, #d8ece4 100%);
+  bottom: 15%;
+  right: 10%;
+  animation: float 6.5s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0) scale(1);
+  }
+  33% {
+    transform: translateY(-20px) translateX(10px) scale(1.05);
+  }
+  66% {
+    transform: translateY(10px) translateX(-10px) scale(0.95);
+  }
+}
+
+.buttonSection {
+  padding: 1.25rem;
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  background-color: #fafafa;
+  flex-shrink: 0;
+}
+
+.startButton {
+  width: 100%;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .content {
+    padding-top: 3.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .textSection {
+    padding: 1.5rem 0;
+  }
+
+  .title {
+    font-size: 1.5rem;
+    margin-bottom: 0.875rem;
+  }
+
+  .description {
+    font-size: 0.95rem;
+  }
+
+  .graphicSection {
+    min-height: 250px;
+    padding: 1.5rem 0;
+  }
+
+  .graphic {
+    max-width: 350px;
+    height: 350px;
+  }
+
+  .shape1 {
+    width: 160px;
+    height: 160px;
+  }
+
+  .shape2 {
+    width: 140px;
+    height: 140px;
+  }
+
+  .shape3 {
+    width: 120px;
+    height: 120px;
+  }
+
+  .shape4 {
+    width: 110px;
+    height: 110px;
+  }
+
+  .shape5 {
+    width: 100px;
+    height: 100px;
+  }
+
+  .buttonSection {
+    padding: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .textSection {
+    padding: 1.25rem 0;
+  }
+
+  .title {
+    font-size: 1.3rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.35;
+  }
+
+  .description {
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .graphicSection {
+    min-height: 200px;
+    padding: 1rem 0;
+  }
+
+  .graphic {
+    max-width: 300px;
+    height: 300px;
+  }
+
+  .shape1 {
+    width: 140px;
+    height: 140px;
+  }
+
+  .shape2 {
+    width: 120px;
+    height: 120px;
+  }
+
+  .shape3 {
+    width: 100px;
+    height: 100px;
+  }
+
+  .shape4 {
+    width: 90px;
+    height: 90px;
+  }
+
+  .shape5 {
+    width: 80px;
+    height: 80px;
+  }
+
+  .buttonSection {
+    padding: 0.75rem 1rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* 다크 모드 대응 (선택사항) */
+@media (prefers-color-scheme: dark) {
+  .container {
+    background-color: #fafafa;
+  }
+
+  .title {
+    color: #000000;
+  }
+
+  .description {
+    color: #000000;
+  }
+
+  .buttonSection {
+    background-color: #fafafa;
+  }
+}

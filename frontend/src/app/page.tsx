@@ -1,25 +1,50 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Hexagon, MapPin, Search, Smile, UserRound } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ImageCard } from '@/shared/ui/ImageCard/component';
 import styles from './page.module.scss';
 
-const heroImage =
-  'http://localhost:3845/assets/398116975079b078a825ae61887b59837aee71de.png';
-const aromaImage =
-  'http://localhost:3845/assets/a8bd1ae7ef3479881bfba65e6d6d72b62ae708d1.png';
-const poolPlanImage =
-  'http://localhost:3845/assets/f0d197b218a5692f6bba05c7f1648b4095ce41ab.png';
-const forestPlanImage =
-  'http://localhost:3845/assets/3a4ba42bcc1b81eeb272e3e4ce1ea3a87befbe72.png';
+const INTRO_SEEN_KEY = 'ilchul_intro_seen';
+
+// TODO: 이미지 서버가 준비되면 실제 URL로 변경 필요
+// 임시로 placeholder 이미지 사용 (실제 이미지가 준비되면 교체)
+const heroImage = '/course_plan.png'; // 임시 이미지
+const aromaImage = '/course_plan.png'; // 임시 이미지
+const poolPlanImage = '/course_plan.png'; // 임시 이미지
+const forestPlanImage = '/course_plan.png'; // 임시 이미지
 
 const themeOptions = [
   { id: 'aroma', label: '아로마 테라피', selected: true },
   { id: 'walk', label: '산책', selected: false },
   { id: 'spa', label: '스파와 온천', selected: false },
 ];
+
+const themeData = {
+  aroma: {
+    image: aromaImage,
+    text: {
+      top: '고요함 속 좋은 향기와',
+      bottom: '굳어진 몸의 이완',
+    },
+  },
+  walk: {
+    image: forestPlanImage,
+    text: {
+      top: '자연 속 힐링 산책과',
+      bottom: '마음의 평화',
+    },
+  },
+  spa: {
+    image: poolPlanImage,
+    text: {
+      top: '따뜻한 온천과',
+      bottom: '몸과 마음의 회복',
+    },
+  },
+};
 
 const popularPlans = [
   {
@@ -76,74 +101,29 @@ type NavItem = {
 const navItems: NavItem[] = [
   { id: 'map', label: '지도', icon: MapPin },
   { id: 'search', label: '검색', icon: Search },
-  { id: 'explore', label: '탐색', icon: Hexagon },
-  { id: 'mood', label: '힐링', icon: Smile, active: true },
+  { id: 'explore', label: '홈', icon: Hexagon, active: true },
+  { id: 'mood', label: '힐링', icon: Smile },
   { id: 'profile', label: '프로필', icon: UserRound },
 ];
 
-function useDragScroll<T extends HTMLElement>() {
-  const ref = useRef<T | null>(null);
+export default function Home() {
+  const router = useRouter();
+  const [isFooterExpanded, setIsFooterExpanded] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState<string>('aroma');
 
   useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
+    // intro를 보지 않았다면 intro 페이지로 리다이렉트
+    const hasSeenIntro = localStorage.getItem(INTRO_SEEN_KEY);
+    if (hasSeenIntro !== 'true') {
+      router.push('/intro');
+    }
+  }, [router]);
 
-    let isPointerDown = false;
-    let startX = 0;
-    let scrollLeft = 0;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (event.button !== 0) return;
-
-      isPointerDown = true;
-      startX = event.clientX;
-      scrollLeft = element.scrollLeft;
-      element.setPointerCapture(event.pointerId);
-    };
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (!isPointerDown) return;
-
-      const deltaX = event.clientX - startX;
-      element.scrollLeft = scrollLeft - deltaX;
-      event.preventDefault();
-    };
-
-    const endDrag = (event: PointerEvent) => {
-      if (!isPointerDown) return;
-      isPointerDown = false;
-      if (element.hasPointerCapture(event.pointerId)) {
-        element.releasePointerCapture(event.pointerId);
-      }
-    };
-
-    element.addEventListener('pointerdown', handlePointerDown);
-    element.addEventListener('pointermove', handlePointerMove);
-    element.addEventListener('pointerup', endDrag);
-    element.addEventListener('pointerleave', endDrag);
-    element.addEventListener('pointercancel', endDrag);
-
-    return () => {
-      element.removeEventListener('pointerdown', handlePointerDown);
-      element.removeEventListener('pointermove', handlePointerMove);
-      element.removeEventListener('pointerup', endDrag);
-      element.removeEventListener('pointerleave', endDrag);
-      element.removeEventListener('pointercancel', endDrag);
-    };
-  }, []);
-
-  return ref;
-}
-
-export default function Home() {
-  const themeDragRef = useDragScroll<HTMLDivElement>();
-  const plansDragRef = useDragScroll<HTMLDivElement>();
-  const nearbyDragRef = useDragScroll<HTMLDivElement>();
-  const [isFooterExpanded, setIsFooterExpanded] = useState(false);
-
+  // 메인 콘텐츠
   return (
     <div className={styles.page}>
       <div className={styles.container}>
+        {/* 헤더 없음 - 메인 페이지는 헤더 없이 구성 */}
         <section className={styles.heroSection}>
           <div
             className={styles.heroImage}
@@ -165,16 +145,13 @@ export default function Home() {
               <p>일단 출발하는</p>
               <h2>나만의 힐링 여행 테마</h2>
             </div>
-            <div
-              ref={themeDragRef}
-              className={`${styles.themeButtons} ${styles.dragScrollable}`}
-              role="list"
-            >
-              {themeOptions.map(({ id, label, selected }) => (
+            <div className={styles.themeButtons} role="list">
+              {themeOptions.map(({ id, label }) => (
                 <button
                   key={id}
-                  className={`${styles.themeButton} ${selected ? styles.themeButtonSelected : ''}`}
+                  className={`${styles.themeButton} ${selectedTheme === id ? styles.themeButtonSelected : ''}`}
                   type="button"
+                  onClick={() => setSelectedTheme(id)}
                 >
                   {label}
                 </button>
@@ -182,12 +159,21 @@ export default function Home() {
             </div>
             <div
               className={styles.aromaCard}
-              style={{ backgroundImage: `url(${aromaImage})` }}
+              style={{
+                backgroundImage: `url(${themeData[selectedTheme as keyof typeof themeData].image})`,
+              }}
             >
               <div className={styles.aromaOverlay} />
               <div className={styles.aromaText}>
-                <p>고요함 속 좋은 향기와</p>
-                <h3>굳어진 몸의 이완</h3>
+                <p>
+                  {themeData[selectedTheme as keyof typeof themeData].text.top}
+                </p>
+                <h3>
+                  {
+                    themeData[selectedTheme as keyof typeof themeData].text
+                      .bottom
+                  }
+                </h3>
               </div>
             </div>
           </section>
@@ -199,10 +185,7 @@ export default function Home() {
                 더보기
               </button>
             </div>
-            <div
-              ref={plansDragRef}
-              className={`${styles.plansCarousel} ${styles.dragScrollable}`}
-            >
+            <div className={styles.plansCarousel}>
               {popularPlans.map(plan => (
                 <ImageCard
                   key={plan.id}
@@ -222,10 +205,7 @@ export default function Home() {
                 더보기
               </button>
             </div>
-            <div
-              ref={nearbyDragRef}
-              className={`${styles.nearbyCards} ${styles.dragScrollable}`}
-            >
+            <div className={styles.nearbyCards}>
               {nearbyPlaces.map(place => (
                 <article
                   key={place.id}
