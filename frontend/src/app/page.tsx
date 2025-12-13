@@ -3,18 +3,19 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Hexagon, MapPin, Search, Smile, UserRound } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { ImageCard } from '@/shared/ui/ImageCard/component';
+import PageLayout from '@/shared/ui/PageLayout';
+import type { NavItem } from '@/shared/ui/BottomNavigation';
 import styles from './page.module.scss';
 
 const INTRO_SEEN_KEY = 'ilchul_intro_seen';
 
 // TODO: 이미지 서버가 준비되면 실제 URL로 변경 필요
 // 임시로 placeholder 이미지 사용 (실제 이미지가 준비되면 교체)
-const heroImage = '/course_plan.png'; // 임시 이미지
-const aromaImage = '/course_plan.png'; // 임시 이미지
-const poolPlanImage = '/course_plan.png'; // 임시 이미지
-const forestPlanImage = '/course_plan.png'; // 임시 이미지
+const heroImage = '/images/course-plan.png'; // 임시 이미지
+const aromaImage = '/images/course-plan.png'; // 임시 이미지
+const poolPlanImage = '/images/course-plan.png'; // 임시 이미지
+const forestPlanImage = '/images/course-plan.png'; // 임시 이미지
 
 const themeOptions = [
   { id: 'aroma', label: '아로마 테라피', selected: true },
@@ -91,13 +92,6 @@ const nearbyPlaces = [
   },
 ];
 
-type NavItem = {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  active?: boolean;
-};
-
 const navItems: NavItem[] = [
   { id: 'map', label: '지도', icon: MapPin },
   { id: 'search', label: '검색', icon: Search },
@@ -121,10 +115,9 @@ export default function Home() {
 
   // 메인 콘텐츠
   return (
-    <div className={styles.page}>
-      <div className={styles.container}>
-        {/* 헤더 없음 - 메인 페이지는 헤더 없이 구성 */}
-        <section className={styles.heroSection}>
+    <PageLayout bottomNavItems={navItems}>
+      {/* 헤더 없음 - 메인 페이지는 헤더 없이 구성 */}
+      <section className={styles.heroSection}>
           <div
             className={styles.heroImage}
             style={{ backgroundImage: `url(${heroImage})` }}
@@ -253,22 +246,6 @@ export default function Home() {
             <a href="#">입점문의</a>
           </div>
         </footer>
-      </div>
-
-      <nav className={styles.bottomNavigation} aria-label="하단 내비게이션">
-        <div className={styles.navIcons}>
-          {navItems.map(({ id, label, icon: Icon, active }) => (
-            <button
-              key={id}
-              type="button"
-              className={`${styles.navIcon} ${active ? styles.navIconActive : ''}`}
-              aria-label={label}
-            >
-              <Icon aria-hidden="true" size={22} />
-            </button>
-          ))}
-        </div>
-      </nav>
-    </div>
+    </PageLayout>
   );
 }

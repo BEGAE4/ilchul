@@ -24,21 +24,21 @@ const mockPlans: PlanData[] = [
     title: '워킹 테라피',
     createdAt: '2025.07.24',
     performedAt: '2025.07.25',
-    imageUrl: '/course_plan.png',
+    imageUrl: '/images/course-plan.png',
   },
   {
     id: '2',
     title: '워킹 테라피',
     createdAt: '2025.07.24',
     performedAt: '2025.07.25',
-    imageUrl: '/course_plan.png',
+    imageUrl: '/images/course-plan.png',
   },
   {
     id: '3',
     title: '워킹 테라피',
     createdAt: '2025.07.24',
     performedAt: '2025.07.25',
-    imageUrl: '/course_plan.png',
+    imageUrl: '/images/course-plan.png',
   },
 ];
 
