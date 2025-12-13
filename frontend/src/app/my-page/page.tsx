@@ -1,8 +1,11 @@
 'use client';
 
 import React from 'react';
+import PageLayout from '@/shared/ui/PageLayout';
+import Header from '@/shared/ui/Header';
 import IconBox from '@/shared/ui/IconBox';
 import styles from './my-page.module.scss';
+import router from 'next/router';
 
 interface MenuItemProps {
   label: string;
@@ -23,7 +26,13 @@ const MyPage: React.FC = () => {
   };
 
   return (
-    <div className={styles.container}>
+    <PageLayout>
+      <Header
+        variant="withTitle"
+        title="마이페이지"
+        onLeftClick={() => router.back()}
+      />
+
       <div className={styles.content}>
         {/* 프로필 섹션 */}
         <div className={styles.profileSection}>
@@ -71,7 +80,7 @@ const MyPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 };
 
