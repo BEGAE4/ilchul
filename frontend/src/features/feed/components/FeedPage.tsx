@@ -33,11 +33,13 @@ export const FeedPage: React.FC = () => {
   return (
     <div className={styles.feedPage}>
       {/* 배너 */}
-      <FeedBanner
-        image="/images/feed-banner.png"
-        title="실시간"
-        subtitle="인기 장소"
-      />
+      <div className={styles.bannerWrapper}>
+        <FeedBanner
+          image="/images/feed-banner.png"
+          title="실시간"
+          subtitle="인기 장소"
+        />
+      </div>
 
       {/* 피드 리스트 */}
       <div className={styles.feedList}>

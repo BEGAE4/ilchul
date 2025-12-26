@@ -1,7 +1,9 @@
+import styles from './layout.module.scss';
+
 export default function FeedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <div className="feed-layout">{children}</div>;
+  return <div className={styles.feedLayout}>{children}</div>;
 }
