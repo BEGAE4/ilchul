@@ -3,7 +3,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: #fafafa;
 
   // PageLayout의 container를 100% 높이로 설정
   :global {
@@ -146,7 +145,6 @@
 .buttonSection {
   padding: 1.25rem;
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
-  background-color: #fafafa;
   flex-shrink: 0;
 }
 
@@ -280,19 +278,11 @@
 
 /* 다크 모드 대응 (선택사항) */
 @media (prefers-color-scheme: dark) {
-  .container {
-    background-color: #fafafa;
-  }
-
   .title {
     color: #000000;
   }
 
   .description {
     color: #000000;
-  }
-
-  .buttonSection {
-    background-color: #fafafa;
   }
 }

@@ -137,8 +137,8 @@ input[type='button'],
 input[type='submit'] {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  min-height: 44px; /* iOS 권장 터치 영역 */
-  min-width: 44px;
+  /* min-height: 44px; iOS 권장 터치 영역 */
+  /* min-width: 44px; */
 }
 
 /* 모바일 스크롤 최적화 */
