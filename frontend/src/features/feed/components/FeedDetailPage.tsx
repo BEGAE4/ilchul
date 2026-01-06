@@ -70,3 +70,4 @@ export const FeedDetailPage: React.FC<FeedDetailPageProps> = ({ post }) => {
   );
 };
 
+

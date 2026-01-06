@@ -51,3 +51,4 @@ export default function FeedDetail() {
   return <FeedDetailPage post={post} />;
 }
 
+

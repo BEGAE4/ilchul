@@ -7,3 +7,4 @@ export const fetchMyPlans = async (): Promise<MyPlan[]> => {
   return response.data;
 };
 
+
