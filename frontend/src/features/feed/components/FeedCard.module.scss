@@ -1,17 +1,30 @@
 .feedCard {
+  position: relative;
   background-color: #ffffff;
   border-radius: 12px;
   margin-bottom: 16px;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
 }
 
 .header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background-color: #f3f4f6;
+  z-index: 2;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(0, 0, 0, 0.05) 30%,
+    transparent 60%
+  );
 }
 
 .userInfo {
@@ -47,39 +60,56 @@
 .username {
   font-size: 14px;
   font-weight: 500;
-  color: #9ca3af;
+  color: #ffffff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .menuButton {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: opacity 0.2s ease;
 
   &:hover {
-    opacity: 0.7;
+    opacity: 0.9;
   }
 
   &:active {
-    opacity: 0.5;
+    opacity: 0.6;
   }
 }
+
+.iconWrapper {
+  transition: transform 0.2s ease;
+}
+
+.menuButton:hover .iconWrapper {
+  transform: scale(1.1);
+}
+
+
 
 .imageContainer {
   position: relative;
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
+  min-height: 500px;
   overflow: hidden;
 }
 
 .image {
   width: 100%;
   height: 100%;
+  min-height: 500px;
   object-fit: cover;
+  display: block;
 }
 
 .imageOverlay {
@@ -104,23 +134,28 @@
 }
 
 .carouselIndicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 6px;
   padding: 12px;
-  background-color: #ffffff;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent);
+  z-index: 2;
 }
 
 .dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background-color: #d1d5db;
+  background-color: rgba(255, 255, 255, 0.5);
   transition: background-color 0.2s ease;
 }
 
 .dot.active {
-  background-color: #6b7280;
+  background-color: #ffffff;
 }
 

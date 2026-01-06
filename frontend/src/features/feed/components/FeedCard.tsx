@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import IconBox from '@/shared/ui/IconBox';
 import { FeedPost } from '../types';
 import styles from './FeedCard.module.scss';
@@ -10,10 +11,15 @@ interface FeedCardProps {
 }
 
 export const FeedCard: React.FC<FeedCardProps> = ({ post }) => {
+  const router = useRouter();
   const currentImage = post.images[post.currentImageIndex || 0];
 
+  const handleClick = () => {
+    router.push(`/feed/${post.id}`);
+  };
+
   return (
-    <div className={styles.feedCard}>
+    <div className={styles.feedCard} onClick={handleClick} style={{ cursor: 'pointer' }}>
       {/* 헤더 */}
       <div className={styles.header}>
         <div className={styles.userInfo}>
@@ -27,7 +33,9 @@ export const FeedCard: React.FC<FeedCardProps> = ({ post }) => {
           <span className={styles.username}>{post.username}</span>
         </div>
         <button className={styles.menuButton}>
-          <IconBox name="more-vertical" size={20} color="#9CA3AF" />
+          <div className={styles.iconWrapper}>
+            <IconBox name="more-vertical" size={24} color="#FFFFFF" />
+          </div>
         </button>
       </div>
 
@@ -38,21 +46,20 @@ export const FeedCard: React.FC<FeedCardProps> = ({ post }) => {
           <div className={styles.location}>{post.location}</div>
           <div className={styles.description}>{post.description}</div>
         </div>
+        {/* 캐러셀 인디케이터 */}
+        {post.images.length > 1 && (
+          <div className={styles.carouselIndicator}>
+            {post.images.map((_, index) => (
+              <div
+                key={index}
+                className={`${styles.dot} ${
+                  index === (post.currentImageIndex || 0) ? styles.active : ''
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* 캐러셀 인디케이터 */}
-      {post.images.length > 1 && (
-        <div className={styles.carouselIndicator}>
-          {post.images.map((_, index) => (
-            <div
-              key={index}
-              className={`${styles.dot} ${
-                index === (post.currentImageIndex || 0) ? styles.active : ''
-              }`}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 };
