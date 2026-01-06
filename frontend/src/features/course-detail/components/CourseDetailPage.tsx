@@ -102,7 +102,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
         <div className={styles.heroContainer}>
           <div 
             className={styles.backgroundImage}
-            style={{ backgroundImage: 'url(/course_plan.png)' }}
+            style={{ backgroundImage: 'url(/images/course-plan.png)' }}
           >
             <div className={styles.overlay} />
           </div>

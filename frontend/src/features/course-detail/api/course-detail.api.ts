@@ -163,7 +163,7 @@ export const fetchCourseDetail = async (courseId: string): Promise<CourseDetail>
         title: '무계획 기차여행',
         description: '아산 외암마을 도착',
         status: 'available',
-        imageUrl: '/course-plan.png'
+        imageUrl: '/images/course-plan.png'
       },
       {
         id: '2',
@@ -186,7 +186,7 @@ export const fetchCourseDetail = async (courseId: string): Promise<CourseDetail>
         title: '무계획 기차여행 (이용불가)',
         description: '우천으로 인한 일부 열차 미운행',
         status: 'unavailable',
-        imageUrl: '/course-plan.png'
+        imageUrl: '/images/course-plan.png'
       },
       {
         id: '4',
@@ -197,7 +197,7 @@ export const fetchCourseDetail = async (courseId: string): Promise<CourseDetail>
         title: '무계획 기차여행',
         description: '아산 외암마을 도착',
         status: 'available',
-        imageUrl: '/course-plan.png'
+        imageUrl: '/images/course-plan.png'
       }
     ]
   };
