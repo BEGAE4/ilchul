@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class PlanServiceImpl implements PlanService{
+public class PlanServiceImpl implements PlanService {
 
     private final UserRepository userRepository;
     private final PlanRepository planRepository;

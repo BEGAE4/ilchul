@@ -37,6 +37,9 @@ public class PlanPlace extends BaseEntity {
     @Column(name = "order_index")
     private int orderIndex;
 
+    @Column(name = "travel_time")
+    private int travelTime;
+
     @Column(name = "is_stamped")
     private Boolean isStamped;
 
