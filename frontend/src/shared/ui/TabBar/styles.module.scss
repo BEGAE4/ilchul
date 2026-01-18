@@ -1,0 +1,67 @@
+// TabBar 컨테이너
+.nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: white;
+  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 -2px 4px -1px rgba(0, 0, 0, 0.06);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 4rem; // 64px
+  z-index: 50;
+  padding: 0 0.5rem;
+}
+
+// Tab 버튼
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  transition: all 200ms ease;
+  
+  &:focus {
+    outline: none;
+  }
+}
+
+// 아이콘 스타일
+.icon {
+  width: 1.75rem; // 28px
+  height: 1.75rem; // 28px
+  stroke-width: 2;
+  transition: color 200ms ease;
+  
+  &.active {
+    color: #5883f2;
+  }
+  
+  &.inactive {
+    color: #8e8dfb;
+  }
+}
+
+// 인디케이터 바
+.indicator {
+  width: 1.5rem; // 24px
+  height: 0.25rem; // 4px
+  margin-top: 0.25rem;
+  border-radius: 9999px;
+  transition: all 200ms ease;
+  
+  &.active {
+    background-color: #5883f2;
+  }
+  
+  &.inactive {
+    background-color: transparent;
+  }
+}

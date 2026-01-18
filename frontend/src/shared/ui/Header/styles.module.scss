@@ -1,0 +1,59 @@
+// Header 스타일
+.header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  height: 3.5rem; // 56px
+  background-color: white;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+}
+
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 0.5rem;
+  transition: background-color 200ms ease;
+  
+  &:hover {
+    background-color: rgb(243, 244, 246);
+  }
+  
+  &:active {
+    background-color: rgb(229, 231, 235);
+  }
+  
+  &:focus {
+    outline: none;
+    background-color: rgb(243, 244, 246);
+  }
+}
+
+.leftButton {
+  @extend .iconButton;
+  margin-left: -0.5rem;
+}
+
+.rightButton {
+  @extend .iconButton;
+  margin-right: -0.5rem;
+}
+
+.center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 0.5rem;
+}

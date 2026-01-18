@@ -70,7 +70,7 @@ pipeline {
                             --restart unless-stopped \
                             mysql:8.0
                         
-                        echo "Waiting for MySQL to start..."
+                        echo "Waiting for MySQL to start..."    
                         sleep 20
                     '''
                 }

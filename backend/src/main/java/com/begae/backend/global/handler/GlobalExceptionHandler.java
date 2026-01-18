@@ -1,8 +1,6 @@
 package com.begae.backend.global.handler;
 
 import com.begae.backend.global.dto.ErrorResponse;
-import com.begae.backend.like.domain.Like;
-import com.begae.backend.like.exception.LikeNotFoundException;
 import com.begae.backend.plan.exception.PlanNotFoundException;
 import com.begae.backend.user.exception.UserNotFoundException;
 import org.apache.coyote.Response;
@@ -45,13 +43,13 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(LikeNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleLikeNotFound(LikeNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                ErrorResponse.of(
-                        HttpStatus.NOT_FOUND,
-                        "좋아요를 찾을 수 없습니다."
-                )
-        );
-    }
+//    @ExceptionHandler(LikeNotFoundException.class)
+//    public ResponseEntity<ErrorResponse> handleLikeNotFound(LikeNotFoundException ex) {
+//        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+//                ErrorResponse.of(
+//                        HttpStatus.NOT_FOUND,
+//                        "좋아요를 찾을 수 없습니다."
+//                )
+//        );
+//    }
 }

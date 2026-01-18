@@ -1,0 +1,39 @@
+.tabMenu {
+    display: flex;
+    gap: 2rem;
+    padding: 1rem 0;
+  }
+  
+  .tabItem {
+    position: relative;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem 0;
+    color: #666;
+    font-weight: 500;
+    transition: color 0.2s ease;
+  
+    &:hover {
+      color: #888;
+    }
+  
+    &.active {
+      color: #333;
+      font-weight: 600;
+    }
+  }
+  
+  .tabLabel {
+    display: block;
+  }
+  
+  .tabUnderline {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #333;
+    border-radius: 1px;
+  }
