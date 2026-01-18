@@ -1,5 +1,6 @@
 package com.begae.backend.user.service;
 
+import com.begae.backend.place.domain.Place;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.exception.PlanNotFoundException;
 import com.begae.backend.plan.repository.PlanRepository;
@@ -38,9 +39,27 @@ public class MyPageServiceImpl implements MyPageService {
     public MyPlansResponse findMyPlans() {
         Integer userId = 1;
         List<Plan> plans = planRepository.findByUserUserId(userId);
-        log.info("{} {}", plans.get(0).getPlanId(), plans.get(0).getPlanTitle());
-        return new MyPlansResponse(
-                plans.stream().map(MyPlansResponse.PlanSummary::from).toList());
+        List<MyPlansResponse.PlanSummary> summaries = plans.stream()
+                .map(plan -> {
+                    List<String> images = plan.getPlanPlaces().stream()
+                            .map(planPlace -> {
+                                Place place = planPlace.getPlace();
+                                return place.getPlaceImageUrl();
+                            })
+                            .filter(url -> url != null && !url.isBlank())
+                            .toList();
+
+                    return new MyPlansResponse.PlanSummary(
+                            plan.getPlanId(),
+                            plan.getPlanTitle(),
+                            plan.getCreateAt(),
+                            plan.getTripDate(),
+                            images
+                    );
+                })
+                .toList();
+
+        return new MyPlansResponse(summaries);
     }
 
     @Transactional
