@@ -55,11 +55,11 @@ public class PlanPlace extends BaseEntity {
     @Column(name = "snapshot_place_name")
     private String snapshotPlaceName;
 
-    @Column(name = "snapshot_longitude")
-    private String snapshotLongitude;
+    @Column(name = "snapshot_x")
+    private String snapshotX;
 
-    @Column(name = "snapshot_latitude")
-    private String snapshotLatitude;
+    @Column(name = "snapshot_y")
+    private String snapshotY;
 
     @OneToMany(mappedBy = "planPlace", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanPlaceImage> planPlaceImages = new ArrayList<>();

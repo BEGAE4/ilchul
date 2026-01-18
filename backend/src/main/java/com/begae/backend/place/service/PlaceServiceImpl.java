@@ -138,8 +138,8 @@ public class PlaceServiceImpl implements PlaceService {
                     .placeName(document.getPlaceName())
                     .placeUrl(document.getPlaceUrl())
                     .placeImageUrl(dto != null ? dto.getPlaceImageUrl() : null)
-                    .longitude(document.getX())
-                    .latitude(document.getY())
+                    .x(Double.parseDouble(document.getX()))
+                    .y(Double.parseDouble(document.getY()))
                     .lastFetchedAt(now)
                     .lastSeenAt(now)
                     .build();

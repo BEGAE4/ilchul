@@ -44,7 +44,5 @@ public class PlaceController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    // JSON으로 받은 응답을 keyword만 뽑아서 검색을 한 뒤 돌려줘야 하는데
-    // 어떻게 할지?
 }
 
