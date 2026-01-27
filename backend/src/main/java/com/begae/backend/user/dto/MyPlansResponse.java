@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -25,14 +26,16 @@ public class MyPlansResponse {
         private String planTitle;
         private LocalDateTime createAt;
         private LocalDateTime tripDate;
+        private List<String> planImages = new ArrayList<>();
 
-        public static PlanSummary from(Plan plan) {
-            return new PlanSummary(
-                    plan.getPlanId(),
-                    plan.getPlanTitle(),
-                    plan.getCreateAt(),
-                    plan.getTripDate()
-            );
-        }
+//        public static PlanSummary from(Plan plan) {
+//            return new PlanSummary(
+//                    plan.getPlanId(),
+//                    plan.getPlanTitle(),
+//                    plan.getCreateAt(),
+//                    plan.getTripDate(),
+//
+//            );
+//        }
     }
 }
