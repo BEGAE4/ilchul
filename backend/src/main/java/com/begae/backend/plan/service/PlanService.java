@@ -11,5 +11,5 @@ public interface PlanService {
 
 //    PlanPreviewResponse createPlanPreview(PlanPreviewRequest planPreviewRequest);
 
-//    PlanDetailDto getPlanDetail(Integer planId);
+    PlanDetailDto getPlanDetail(Integer planId);
 }

@@ -31,4 +31,16 @@ public class Like {
 
     @Column(name = "like_status")
     private boolean likeStatus;
+
+    public static Like createLike(User user, Plan plan) {
+        Like like = new Like();
+        like.user = user;
+        like.plan = plan;
+        like.likeStatus = true;
+        return like;
+    }
+
+    public void toggleLikeStatus() {
+        this.likeStatus = !this.likeStatus;
+    }
 }
