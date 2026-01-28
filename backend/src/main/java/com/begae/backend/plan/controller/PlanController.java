@@ -1,8 +1,6 @@
 package com.begae.backend.plan.controller;
 
 import com.begae.backend.plan.dto.PlanDetailDto;
-import com.begae.backend.plan.dto.PlanPreviewRequest;
-import com.begae.backend.plan.dto.PlanPreviewResponse;
 import com.begae.backend.plan.service.PlanService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -22,13 +20,13 @@ public class PlanController {
         return null;
     }
 
-    @PostMapping("/preview")
-    public ResponseEntity<PlanPreviewResponse> postPlanPreview(@RequestBody PlanPreviewRequest planPreviewRequest) {
-        return ResponseEntity.status(HttpStatus.OK).body(planService.createPlanPreview(planPreviewRequest));
-    }
-
-    @GetMapping("/{planId}")
-    public ResponseEntity<PlanDetailDto> getPlanDetail(@PathVariable Integer planId) {
-        return ResponseEntity.status(HttpStatus.OK).body(planService.getPlanDetail(planId));
-    }
+//    @PostMapping("/preview")
+//    public ResponseEntity<PlanPreviewResponse> postPlanPreview(@RequestBody PlanPreviewRequest planPreviewRequest) {
+//        return ResponseEntity.status(HttpStatus.OK).body(planService.createPlanPreview(planPreviewRequest));
+//    }
+//
+//    @GetMapping("/{planId}")
+//    public ResponseEntity<PlanDetailDto> getPlanDetail(@PathVariable Integer planId) {
+//        return ResponseEntity.status(HttpStatus.OK).body(planService.getPlanDetail(planId));
+//    }
 }

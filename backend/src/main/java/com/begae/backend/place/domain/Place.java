@@ -49,10 +49,10 @@ public class Place extends BaseEntity {
     private String placeImageUrl;
 
     @Column
-    private String x;
+    private double x;
 
     @Column
-    private String y;
+    private double y;
 
     @Column(name = "last_fetched_at")
     private LocalDateTime lastFetchedAt;
@@ -65,7 +65,7 @@ public class Place extends BaseEntity {
 
     @Builder
     public Place(String sourceId, String addressName, String roadAddressName, String categoryName,
-                 String phone, String placeName, String placeUrl, String placeImageUrl, String x, String y,
+                 String phone, String placeName, String placeUrl, String placeImageUrl, double x, double y,
                  LocalDateTime lastFetchedAt, LocalDateTime lastSeenAt) {
         this.sourceId = sourceId;
         this.addressName = addressName;
@@ -88,8 +88,8 @@ public class Place extends BaseEntity {
         if (hasText(doc.getPhone())) this.phone = doc.getPhone();
         if (hasText(doc.getPlaceName())) this.placeName = doc.getPlaceName();
         if (hasText(doc.getPlaceUrl())) this.placeUrl = doc.getPlaceUrl();
-        if (hasText(doc.getX())) this.x = doc.getX();
-        if (hasText(doc.getY())) this.y = doc.getY();
+        if (hasText(doc.getX())) this.x = Double.parseDouble(doc.getX());
+        if (hasText(doc.getY())) this.y = Double.parseDouble(doc.getY());
 
         if (dto != null && hasText(dto.getPlaceImageUrl())) {
             this.placeImageUrl = dto.getPlaceImageUrl();

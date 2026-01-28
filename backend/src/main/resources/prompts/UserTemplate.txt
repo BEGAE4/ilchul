@@ -1,0 +1,27 @@
+다음 설문 JSON을 바탕으로 즉흥여행 '장소 카테고리 키워드'를 추천해줘.
+
+반드시 아래 Response schema를 정확히 따르고, JSON만 출력해.
+마크다운 코드 블록(```)이나 다른 텍스트는 포함하지 마세요.
+
+Response schema:
+{
+  "input": {
+    "emotion": "string",
+    "time_of_day": "string",
+    "duration_minutes": 0
+  },
+  "recommendations": [
+    {
+      "keyword": "string",
+      "why": "string",
+      "best_for": ["string"],
+      "avoid_if": ["string"]
+    }
+  ],
+  "constraints": {
+    "notes": ["string"]
+  }
+}
+
+Survey JSON:
+{{SURVEY_JSON}}

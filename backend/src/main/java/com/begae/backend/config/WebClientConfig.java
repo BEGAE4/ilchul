@@ -30,6 +30,20 @@ public class WebClientConfig {
                 .build();
     }
 
+    @Bean("kakaoNaviWebClient")
+    public WebClient kakaoNaviWebClient(WebClient.Builder builder) {
+        return builder
+                .baseUrl("https://apis-navi.kakaomobility.com")
+                .defaultHeaders(httpHeaders -> {
+                    httpHeaders.add(HttpHeaders.AUTHORIZATION, "KakaoAK " + KAKAO_API_KEY);
+                    httpHeaders.add(HttpHeaders.CONTENT_TYPE, "application/json");
+                })
+                .codecs(clientCodecConfigurer ->
+                        clientCodecConfigurer.defaultCodecs().maxInMemorySize(2 * 1024 * 1024))
+                .clientConnector(new ReactorClientHttpConnector(HttpClient.create().responseTimeout(Duration.ofMinutes(5))))
+                .build();
+    }
+
     @Bean("googleWebClient")
     public WebClient googleWebClient(WebClient.Builder builder) {
         return builder
