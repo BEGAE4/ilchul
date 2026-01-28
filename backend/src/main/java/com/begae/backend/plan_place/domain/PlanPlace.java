@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,6 +39,9 @@ public class PlanPlace {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "plan_id")
     private Plan plan;
+
+    @Column(name = "travel_time")
+    private Integer travelTime;
 
     @OneToMany(mappedBy = "planPlace", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanPlaceImage> planPlaceImages = new ArrayList<>();
