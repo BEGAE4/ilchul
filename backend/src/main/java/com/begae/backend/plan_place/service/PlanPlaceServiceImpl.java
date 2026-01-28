@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -32,11 +33,11 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
 
         List<CalculateDurationRequestDto.Place> ordered = request.getPlaces()
                 .stream()
-                .sorted(Comparator.comparingInt(place -> place.order))
+                .sorted(Comparator.comparingInt(CalculateDurationRequestDto.Place::getOrder))
                 .toList();
 
         List<Integer> ids = ordered.stream()
-                .map(place -> place.placeId)
+                .map(CalculateDurationRequestDto.Place::getPlaceId)
                 .toList();
 
         List<Place> places = placeRepository.findAllById(ids);
@@ -46,7 +47,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
 
         List<Point> points = ordered.stream()
                 .map(p -> {
-                    Place place = placeById.get(p.placeId);
+                    Place place = placeById.get(p.getPlaceId());
                     return new Point(place.getPlaceName(), place.getX(), place.getY());
                 })
                 .toList();
@@ -79,9 +80,25 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                 .map(section -> (int) Math.round(section.getDuration() / 60.0))
                 .toList();
 
+        List<CalculateDurationResponseDto.Place> routes = new ArrayList<>();
+        for(int i = 0; i < places.size(); i++) {
+            Place place = places.get(i);
+            routes.add(CalculateDurationResponseDto.Place.builder()
+                    .placeId(place.getPlaceId())
+                    .placeName(place.getPlaceName())
+                    .placeImageUrl(place.getPlaceImageUrl())
+                    .roadAddressName(place.getRoadAddressName())
+                    .order(i + 1)
+                    .Duration(i == 0 ? 0 : sectionDuration.get(i - 1))
+                    .build());
+        }
+
         return CalculateDurationResponseDto.builder()
+                .planTitle(request.getPlanTitle())
+                .planDescription(request.getPlanDescription())
+                .isPlanVisible(request.getIsPlanVisible())
                 .totalDuration(totalDuration)
-                .sectionDuration(sectionDuration)
+                .places(routes)
                 .build();
     }
 

@@ -5,7 +5,9 @@ import lombok.Data;
 
 @Data
 @Builder
-public class PlaceSummaryDto {
+public class SearchPlaceResponseDto {
+
+    private int placeId;
 
     private String placeImageUrl;
 

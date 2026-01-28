@@ -42,7 +42,7 @@ public class PlaceServiceImpl implements PlaceService {
     private final PlaceRepository placeRepository;
     private final PromptRegistry promptRegistry;
 
-    public List<PlaceSummaryDto> searchPlace(String keyword) {
+    public List<SearchPlaceResponseDto> searchPlace(String keyword) {
 
         KakaoPlaceResponseDto kakaoResponse = kakaoWebClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -65,7 +65,7 @@ public class PlaceServiceImpl implements PlaceService {
                 .block(Duration.ofSeconds(20));
     }
 
-    public Mono<PlaceSummaryDto> toPlaceSummary(KakaoPlaceResponseDto.Document document) {
+    public Mono<SearchPlaceResponseDto> toPlaceSummary(KakaoPlaceResponseDto.Document document) {
         String textQuery = document.getRoadAddressName() + ", " + document.getPlaceName();
 
         Mono<GooglePlaceResponseDto> googleResponse = googleWebClient.post()
@@ -106,9 +106,14 @@ public class PlaceServiceImpl implements PlaceService {
         }).onErrorResume(exception -> Mono.just(buildDto(document, null)));
 
         return placeSummary.flatMap(placeSummaryDto ->
-                Mono.fromRunnable(() -> upsertPlaceFrom(document, placeSummaryDto))
+                Mono.fromCallable(() -> upsertPlaceFrom(document, placeSummaryDto))
                         .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
-                        .thenReturn(placeSummaryDto));
+                        .map(placeId -> SearchPlaceResponseDto.builder()
+                                .placeId(placeId)
+                                .placeName(placeSummaryDto.getPlaceName())
+                                .categoryName(placeSummaryDto.getCategoryName())
+                                .placeImageUrl(placeSummaryDto.getPlaceImageUrl())
+                                .build()));
     }
 
     private PlaceSummaryDto buildDto(KakaoPlaceResponseDto.Document document, String photoUri) {
@@ -120,7 +125,7 @@ public class PlaceServiceImpl implements PlaceService {
                 .build();
     }
 
-    public void upsertPlaceFrom(KakaoPlaceResponseDto.Document document, PlaceSummaryDto dto) {
+    public int upsertPlaceFrom(KakaoPlaceResponseDto.Document document, PlaceSummaryDto dto) {
 
         final String sourceId = document.getId();
         LocalDateTime now = LocalDateTime.now();
@@ -144,7 +149,7 @@ public class PlaceServiceImpl implements PlaceService {
                     .lastSeenAt(now)
                     .build();
             placeRepository.save(newPlace);
-            return;
+            return newPlace.getPlaceId();
         }
 
         Place place = existing.get();
@@ -158,11 +163,12 @@ public class PlaceServiceImpl implements PlaceService {
                 place.getLastFetchedAt().isBefore(now.minusDays(7));
 
         if (!stale) { // 갱신된 데이터라면 DB 쓰기 생략
-            return;
+            return place.getPlaceId();
         }
 
         place.mergeFrom(document, dto);
         placeRepository.save(place);
+        return place.getPlaceId();
     }
 
     public RecommendKeywordDto generateKeyword(SurveyResultDto survey) throws JsonProcessingException {

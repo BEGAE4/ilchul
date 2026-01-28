@@ -7,12 +7,19 @@ import java.util.List;
 @Data
 public class CalculateDurationRequestDto {
 
+    private String planTitle;
+
+    private String planDescription;
+
+    private Boolean isPlanVisible;
+
     private List<Place> places;
 
+    @Data
     public static class Place {
-        public int placeId;
+        private int placeId;
 
-        public int order;
+        private int order;
     }
 
 }
