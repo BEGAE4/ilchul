@@ -76,37 +76,37 @@ public class PlanServiceImpl implements PlanService{
 //                .build();
 //    }
 //
-//    @Override
-//    public PlanDetailDto getPlanDetail(Integer planId) {
-//        List<PlanDetailFlatDto> flats = planRepository.findPlanDetailFlat(planId);
-//        if (flats.isEmpty()) {
-//            throw new IllegalArgumentException("plan이 없습니다.");
-//        }
-//        PlanDetailFlatDto first = flats.getFirst();
-//        List<PlanDetailDto.PlanPlaceDetailDto> places =
-//                flats.stream()
-//                        .filter(f -> f.getPlanPlaceId() != null)
-//                        .map(f -> PlanDetailDto.PlanPlaceDetailDto.builder()
-//                                .planPlaceId(f.getPlanPlaceId())
-//                                .placeImage(f.getPlaceImage())
-//                                .placeName(f.getPlaceName())
-//                                .address(f.getAddress())
-//                                .travelTime(f.getTravelTime())
-//                                .orderIndex(f.getOrderIndex())
-//                                .isStamped(f.getIsStamped())
-//                                .build())
-//                        .toList();
-//
-//        return PlanDetailDto.builder()
-//                .planId(first.getPlanId())
-//                .planTitle(first.getPlanTitle())
-//                .tripDate(first.getTripDate())
-//                .createAt(first.getCreateAt())
-//                .isPlanVisible(first.getIsPlanVisible())
-//                .planDescription(first.getPlanDescription())
-//                .planPlaceDetailDtos(places)
-//                .build();
-//    }
+    @Override
+    public PlanDetailDto getPlanDetail(Integer planId) {
+        List<PlanDetailFlatDto> flats = planRepository.findPlanDetailFlat(planId);
+        if (flats.isEmpty()) {
+            throw new IllegalArgumentException("plan이 없습니다.");
+        }
+        PlanDetailFlatDto first = flats.getFirst();
+        List<PlanDetailDto.PlanPlaceDetailDto> places =
+                flats.stream()
+                        .filter(f -> f.getPlanPlaceId() != null)
+                        .map(f -> PlanDetailDto.PlanPlaceDetailDto.builder()
+                                .planPlaceId(f.getPlanPlaceId())
+                                .placeImage(f.getPlaceImage())
+                                .placeName(f.getPlaceName())
+                                .address(f.getAddress())
+                                .travelTime(f.getTravelTime())
+                                .orderIndex(f.getOrderIndex())
+                                .isStamped(f.getIsStamped())
+                                .build())
+                        .toList();
+
+        return PlanDetailDto.builder()
+                .planId(first.getPlanId())
+                .planTitle(first.getPlanTitle())
+                .tripDate(first.getTripDate())
+                .createAt(first.getCreateAt())
+                .isPlanVisible(first.getIsPlanVisible())
+                .planDescription(first.getPlanDescription())
+                .planPlaceDetailDtos(places)
+                .build();
+    }
 //
 //    private List<RouteSegment> calculateAllRoutes(PlanPreviewRequest request) {
 //        List<RouteSegment> routes = new ArrayList<>();

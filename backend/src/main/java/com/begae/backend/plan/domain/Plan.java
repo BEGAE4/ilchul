@@ -68,4 +68,12 @@ public class Plan extends BaseEntity {
     public void updateIsPlanVisibility() {
         this.isPlanVisible = !this.isPlanVisible;
     }
+
+    public void decreaseLikeCount() {
+        this.likeCount--;
+    }
+
+    public void increaseLikeCount() {
+        this.likeCount++;
+    }
 }

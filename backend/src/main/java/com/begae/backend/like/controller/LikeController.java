@@ -17,8 +17,8 @@ public class LikeController {
 
     private final LikeService likeService;
 
-//    @PostMapping("/{planId}")
-//    public ResponseEntity<LikeResponseDto> toggleLike(@PathVariable Integer planId) {
-//        return ResponseEntity.status(HttpStatus.OK).body(likeService.toggleLike(planId));
-//    }
+    @PostMapping("/{planId}")
+    public ResponseEntity<LikeResponseDto> toggleLike(@PathVariable Integer planId) {
+        return ResponseEntity.status(HttpStatus.OK).body(likeService.toggleLike(planId));
+    }
 }

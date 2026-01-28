@@ -14,8 +14,8 @@ public class PlanDetailFlatDto {
     private LocalDateTime createAt;
     private Boolean isPlanVisible;
     private String planDescription;
-    private Integer travelTime;
     private Integer planPlaceId;
+    private Integer travelTime;
     private String placeImage;
     private String placeName;
     private String address;

@@ -25,8 +25,8 @@ public class PlanController {
 //        return ResponseEntity.status(HttpStatus.OK).body(planService.createPlanPreview(planPreviewRequest));
 //    }
 //
-//    @GetMapping("/{planId}")
-//    public ResponseEntity<PlanDetailDto> getPlanDetail(@PathVariable Integer planId) {
-//        return ResponseEntity.status(HttpStatus.OK).body(planService.getPlanDetail(planId));
-//    }
+    @GetMapping("/{planId}")
+    public ResponseEntity<PlanDetailDto> getPlanDetail(@PathVariable Integer planId) {
+        return ResponseEntity.status(HttpStatus.OK).body(planService.getPlanDetail(planId));
+    }
 }
