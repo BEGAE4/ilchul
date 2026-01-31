@@ -20,10 +20,22 @@
   background-color: white;
 }
 
-// Variant: backArrow - 왼쪽 뒤로가기 화살표만
+// Variant: backArrow - 왼쪽 뒤로가기 화살표, 선택적 중앙 타이틀
 .header.backArrow {
   background-color: white;
   justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+.backArrowTitle {
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgb(17, 24, 39);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 // Variant: profile - 왼쪽 뒤로가기 화살표, 프로필 이미지, 사용자명

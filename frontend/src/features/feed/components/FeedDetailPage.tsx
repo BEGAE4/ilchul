@@ -2,13 +2,14 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Hexagon, MapPin, Search, Smile, UserRound } from 'lucide-react';
-import PageLayout from '@/shared/ui/PageLayout';
+// import { Hexagon, MapPin, Search, Smile, UserRound } from 'lucide-react';
+// import PageLayout from '@/shared/ui/PageLayout';
 import Header from '@/shared/ui/Header';
 import IconBox from '@/shared/ui/IconBox';
-import type { NavItem } from '@/shared/ui/BottomNavigation';
+// import type { NavItem } from '@/shared/ui/BottomNavigation';
 import { FeedPost } from '../types';
 import styles from './FeedDetailPage.module.scss';
+import Image from 'next/image';
 
 interface FeedDetailPageProps {
   post: FeedPost;
@@ -42,10 +43,12 @@ export const FeedDetailPage: React.FC<FeedDetailPageProps> = ({ post }) => {
           {/* 왼쪽: 썸네일과 위치 정보 */}
           <div className={styles.thumbnailSection}>
             <div className={styles.thumbnailWrapper}>
-              <img
+              <Image
                 src={currentImage}
                 alt={post.description}
                 className={styles.thumbnail}
+                width={150}
+                height={150}
               />
               <div className={styles.thumbnailOverlay}>
                 <div className={styles.locationName}>{post.location}</div>

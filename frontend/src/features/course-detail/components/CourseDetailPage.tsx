@@ -121,7 +121,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({
               <IconBox name="share" size={24} color="white" />
             </button>
             <button onClick={handleImage} className={styles.iconButton}>
-              <IconBox name="img" size={24} color="white" />
+              <IconBox name="image" size={24} color="white" />
             </button>
           </div>
         </div>

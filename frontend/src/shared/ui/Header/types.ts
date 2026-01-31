@@ -11,6 +11,7 @@ export type HeaderProps = {
 
   // backArrow variant props
   onBackClick?: () => void; // 뒤로가기 클릭 핸들러
+  title?: string; // 선택적 타이틀 (backArrow variant에서 중앙 표시)
 
   // profile variant props
   username?: string; // 사용자명 (profile variant에서 사용)

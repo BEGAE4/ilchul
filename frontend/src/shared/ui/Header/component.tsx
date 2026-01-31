@@ -12,6 +12,7 @@ const Header: React.FC<HeaderProps> = ({
   username,
   onUsernameClick,
   className = '',
+  title,
 }) => {
   // logo variant: 왼쪽 로고, 오른쪽 프로필 이미지
   if (variant === 'logo') {
@@ -48,7 +49,7 @@ const Header: React.FC<HeaderProps> = ({
     );
   }
 
-  // backArrow variant: 왼쪽 뒤로가기 화살표만
+  // backArrow variant: 왼쪽 뒤로가기 화살표, 선택적으로 중앙 타이틀
   if (variant === 'backArrow') {
     return (
       <header className={`${styles.header} ${styles.backArrow} ${className}`}>
@@ -60,6 +61,7 @@ const Header: React.FC<HeaderProps> = ({
         >
           <IconBox name="arrow-left" size={24} color="rgb(55, 65, 81)" />
         </button>
+        {title && <span className={styles.backArrowTitle}>{title}</span>}
       </header>
     );
   }
