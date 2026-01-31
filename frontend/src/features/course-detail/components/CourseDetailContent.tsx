@@ -1,17 +1,14 @@
 import React from 'react';
-import { CourseDetail, Activity } from '../api/course-detail.api';
-import { TabMenu } from './TabMenu';
-import { ActivityCard } from './ActivityCard';
-import styles from './CourseDetailContent.module.scss';
-
-interface CourseDetailContentProps {
-  course: CourseDetail;
-  activeTab: 'plan' | 'stamp';
-  onTabChange: (tab: 'plan' | 'stamp') => void;
-  onEditOrder: () => void;
-  onActivityClick: (activity: Activity) => void;
-  onMoreClick: () => void;
-}
+import { CourseDetailContentProps } from '../types/course-detail.types';
+import {
+  getActivityStatusColor,
+  getActivityStatusLabel,
+  getActivityTypeLabel,
+  getActivityActionButton,
+} from '../utils/course-detail.utils';
+import { Activity, StampHistory, Stamp } from '../api/course-detail.api';
+import IconBox from '@/shared/ui/IconBox';
+import styles from './CourseDetailPage.module.scss';
 
 export const CourseDetailContent: React.FC<CourseDetailContentProps> = ({
   course,
@@ -19,18 +16,21 @@ export const CourseDetailContent: React.FC<CourseDetailContentProps> = ({
   onTabChange,
   onEditOrder,
   onActivityClick,
-  onMoreClick
+  onMoreClick,
+  stampHistory,
+  stampLoading,
+  onStampClick,
 }) => {
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
+      <div className={styles.contentHeader}>
         <div className={styles.headerTop}>
-          <div className={styles.title}>{course.title}</div>
+          <div className={styles.contentTitle}>{course.title}</div>
           <button className={styles.moreButton} onClick={onMoreClick}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="6" r="2" fill="currentColor"/>
-              <circle cx="12" cy="12" r="2" fill="currentColor"/>
-              <circle cx="12" cy="18" r="2" fill="currentColor"/>
+              <circle cx="12" cy="6" r="2" fill="currentColor" />
+              <circle cx="12" cy="12" r="2" fill="currentColor" />
+              <circle cx="12" cy="18" r="2" fill="currentColor" />
             </svg>
           </button>
         </div>
@@ -40,14 +40,21 @@ export const CourseDetailContent: React.FC<CourseDetailContentProps> = ({
         <div className={styles.description}>{course.description}</div>
       </div>
 
-      <TabMenu
-        tabs={[
+      {/* TabMenu */}
+      <div className={styles.tabMenu}>
+        {[
           { id: 'plan', label: '계획 상세보기' },
-          { id: 'stamp', label: '스탬프 이력 보기' }
-        ]}
-        activeTab={activeTab}
-        onTabChange={onTabChange}
-      />
+          { id: 'stamp', label: '스탬프 이력 보기' },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            className={`${styles.tab} ${activeTab === tab.id ? styles.active : ''}`}
+            onClick={() => onTabChange(tab.id as 'plan' | 'stamp')}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
       {activeTab === 'plan' && (
         <div className={styles.planSection}>
@@ -59,21 +66,206 @@ export const CourseDetailContent: React.FC<CourseDetailContentProps> = ({
           </div>
 
           <div className={styles.activities}>
-            {course.activities.map((activity, index) => (
-              <ActivityCard
-                key={activity.id}
-                activity={activity}
-                order={index + 1}
-                onClick={() => onActivityClick(activity)}
-              />
-            ))}
+            {course.activities.map((activity: Activity, index: number) => {
+              const order = index + 1;
+
+              // ActivityCard - Move 타입
+              if (activity.status === 'move') {
+                return (
+                  <div
+                    key={activity.id}
+                    className={styles.card}
+                    onClick={() => onActivityClick(activity)}
+                  >
+                    <div className={styles.leftSection}>
+                      <div className={styles.moveBadge}>
+                        <span>이동</span>
+                      </div>
+                      <div className={styles.timeInfo}>
+                        <div className={styles.time}>
+                          {activity.startTime} 부터
+                          <br />
+                          {activity.endTime}까지
+                        </div>
+                      </div>
+                    </div>
+                    <div className={styles.rightSection}>
+                      <div
+                        className={`${styles.activityCard} ${styles.moveCard}`}
+                      >
+                        <div className={styles.moveCardContent}>
+                          <div className={styles.moveTypeBadge}>
+                            {getActivityTypeLabel(activity.type)}
+                          </div>
+                          <div className={styles.moveCardInfo}>
+                            <h4 className={styles.moveTitle}>
+                              {activity.title}
+                            </h4>
+                            {activity.route && (
+                              <p className={styles.moveRoute}>
+                                {activity.route}
+                              </p>
+                            )}
+                          </div>
+                          {getActivityActionButton(activity) && (
+                            <button className={styles.moveActionButton}>
+                              {getActivityActionButton(activity)}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              // ActivityCard - 일반 타입
+              return (
+                <div
+                  key={activity.id}
+                  className={styles.card}
+                  onClick={() => onActivityClick(activity)}
+                >
+                  <div className={styles.leftSection}>
+                    {activity.status === 'unavailable' ? (
+                      <div className={styles.unavailableIcon}>
+                        <span>✕</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className={styles.orderBadge}>
+                          <span>{order}</span>
+                        </div>
+                        <div className={styles.timeInfo}>
+                          <div className={styles.time}>
+                            {activity.startTime} 부터
+                            <br />
+                            {activity.endTime} 까지
+                          </div>
+                          {activity.status === 'available' && (
+                            <div className={styles.editLink}>수정</div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <div className={styles.rightSection}>
+                    <div
+                      className={styles.activityCard}
+                      style={{
+                        backgroundImage: activity.imageUrl
+                          ? `url(${activity.imageUrl})`
+                          : undefined,
+                        opacity: activity.status === 'unavailable' ? 0.6 : 1,
+                      }}
+                    >
+                      <div className={styles.cardOverlay}>
+                        <div
+                          className={styles.statusBadge}
+                          style={{
+                            backgroundColor: getActivityStatusColor(
+                              activity.status
+                            ),
+                          }}
+                        >
+                          {getActivityStatusLabel(activity.status)}
+                        </div>
+                        <div className={styles.cardContent}>
+                          <h4 className={styles.activityTitle}>
+                            {activity.title}
+                          </h4>
+                          <p className={styles.activityDescription}>
+                            {activity.description}
+                          </p>
+                        </div>
+                        {getActivityActionButton(activity) && (
+                          <button className={styles.actionButton}>
+                            {getActivityActionButton(activity)}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
       {activeTab === 'stamp' && (
         <div className={styles.stampSection}>
-          <p>스탬프 이력이 여기에 표시됩니다.</p>
+          <h3 className={styles.stampSectionTitle}>스탬프 이력 보기</h3>
+          {stampLoading ? (
+            <div className={styles.stampLoading}>
+              <div className={styles.spinner}></div>
+              <p>스탬프 이력을 불러오는 중...</p>
+            </div>
+          ) : stampHistory.length === 0 ? (
+            <div className={styles.stampEmpty}>
+              <p>스탬프 이력이 없습니다.</p>
+            </div>
+          ) : (
+            <div className={styles.stampHistoryList}>
+              {stampHistory.map((history: StampHistory, index: number) => (
+                <div
+                  key={`${history.date}-${index}`}
+                  className={styles.stampHistoryGroup}
+                >
+                  <div className={styles.stampDate}>{history.date}</div>
+                  <div className={styles.stampCardList}>
+                    {history.stamps.map((stamp: Stamp) => (
+                      <div
+                        key={stamp.id}
+                        className={styles.stampCard}
+                        onClick={() => onStampClick(stamp)}
+                      >
+                        <div
+                          className={styles.stampOrderBadge}
+                          style={{
+                            backgroundColor: stamp.isCompleted
+                              ? '#0066cc'
+                              : '#666666',
+                          }}
+                        >
+                          <span>{stamp.order}</span>
+                        </div>
+                        <div className={styles.stampTitle}>
+                          {getActivityTypeLabel(stamp.type)}
+                        </div>
+                        {stamp.isCompleted ? (
+                          <div className={styles.stampIcon}>
+                            <div className={styles.completedIcon}>
+                              <IconBox
+                                name="run"
+                                size={28}
+                                color="white"
+                                className={styles.completedIconSvg}
+                              />
+                            </div>
+                          </div>
+                        ) : stamp.needsVerification ? (
+                          <button
+                            className={styles.verifyButton}
+                            onClick={e => {
+                              e.stopPropagation();
+                              onStampClick(stamp);
+                            }}
+                          >
+                            인증하기
+                          </button>
+                        ) : (
+                          <div className={styles.stampIcon}>
+                            <div className={styles.pendingIcon}></div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

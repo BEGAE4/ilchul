@@ -1,179 +1,251 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Hexagon, MapPin, Search, Smile, UserRound } from 'lucide-react';
 import { ImageCard } from '@/shared/ui/ImageCard/component';
+import PageLayout from '@/shared/ui/PageLayout';
+import type { NavItem } from '@/shared/ui/BottomNavigation';
 import styles from './page.module.scss';
 
+const INTRO_SEEN_KEY = 'ilchul_intro_seen';
+
+// TODO: 이미지 서버가 준비되면 실제 URL로 변경 필요
+// 임시로 placeholder 이미지 사용 (실제 이미지가 준비되면 교체)
+const heroImage = '/images/course-plan.png'; // 임시 이미지
+const aromaImage = '/images/course-plan.png'; // 임시 이미지
+const poolPlanImage = '/images/course-plan.png'; // 임시 이미지
+const forestPlanImage = '/images/course-plan.png'; // 임시 이미지
+
+const themeOptions = [
+  { id: 'aroma', label: '아로마 테라피', selected: true },
+  { id: 'walk', label: '산책', selected: false },
+  { id: 'spa', label: '스파와 온천', selected: false },
+];
+
+const themeData = {
+  aroma: {
+    image: aromaImage,
+    text: {
+      top: '고요함 속 좋은 향기와',
+      bottom: '굳어진 몸의 이완',
+    },
+  },
+  walk: {
+    image: forestPlanImage,
+    text: {
+      top: '자연 속 힐링 산책과',
+      bottom: '마음의 평화',
+    },
+  },
+  spa: {
+    image: poolPlanImage,
+    text: {
+      top: '따뜻한 온천과',
+      bottom: '몸과 마음의 회복',
+    },
+  },
+};
+
+const popularPlans = [
+  {
+    id: 'plan-private-pool',
+    title: '시원한 프라이빗 풀에서',
+    subtitle: '즐기는 나만의 여유',
+    image: poolPlanImage,
+  },
+  {
+    id: 'plan-forest-daytrip',
+    title: '피톤 치드와 함께하는',
+    subtitle: '당일 치기 숲 속 트래킹',
+    image: forestPlanImage,
+  },
+];
+
+const nearbyPlaces = [
+  {
+    id: 'place-1',
+    title: '아로마 테라피',
+    location: '둔산점',
+    status: '예약 가능',
+    discount: '75%',
+    price: '54,000원',
+    image: poolPlanImage,
+  },
+  {
+    id: 'place-2',
+    title: '아로마 테라피',
+    location: '둔산점',
+    status: '예약 가능',
+    discount: '75%',
+    price: '54,000원',
+    image: forestPlanImage,
+  },
+  {
+    id: 'place-3',
+    title: '아로마 테라피',
+    location: '둔산점',
+    status: '예약 가능',
+    discount: '75%',
+    price: '54,000원',
+    image: poolPlanImage,
+  },
+];
+
+const navItems: NavItem[] = [
+  { id: 'map', label: '지도', icon: MapPin },
+  { id: 'search', label: '검색', icon: Search },
+  { id: 'explore', label: '홈', icon: Hexagon, active: true },
+  { id: 'mood', label: '힐링', icon: Smile },
+  { id: 'profile', label: '프로필', icon: UserRound },
+];
+
 export default function Home() {
-  const [selectedTheme, setSelectedTheme] = useState('아로마 테라피');
+  const router = useRouter();
+  const [isFooterExpanded, setIsFooterExpanded] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState<string>('aroma');
 
-  const healingThemes = [
-    {
-      id: 'aroma',
-      label: '아로마 테라피',
-      isActive: selectedTheme === '아로마 테라피',
-    },
-    { id: 'walk', label: '산책', isActive: selectedTheme === '산책' },
-    {
-      id: 'spa',
-      label: '스파와 온천',
-      isActive: selectedTheme === '스파와 온천',
-    },
-  ];
+  useEffect(() => {
+    // intro를 보지 않았다면 intro 페이지로 리다이렉트
+    const hasSeenIntro = localStorage.getItem(INTRO_SEEN_KEY);
+    if (hasSeenIntro !== 'true') {
+      router.push('/intro');
+    }
+  }, [router]);
 
-  const popularPlans = [
-    {
-      id: 1,
-      title: '시원한 프라이빗 풀에서 즐기는 나만의 여유',
-      image: '/images/private-pool.jpg',
-      type: 'experience',
-    },
-    {
-      id: 2,
-      title: '피톤치드오 당일 치기',
-      image: '/images/forest.jpg',
-      type: 'experience',
-    },
-  ];
-
-  const nearbyPlaces = [
-    {
-      id: 1,
-      title: '아로마 테라피 둔산점',
-      image: '/images/aroma-dunsan.jpg',
-      action: { type: 'button' as const, text: '예약 가능', onClick: () => {} },
-      price: { label: '예상 예산', value: '54,000원', discount: '75%' },
-    },
-    {
-      id: 2,
-      title: '아로마 테라피 둔산점',
-      image: '/images/aroma-dunsan2.jpg',
-      action: { type: 'button' as const, text: '예약 가능', onClick: () => {} },
-      price: { label: '예상 예산', value: '54,000원', discount: '75%' },
-    },
-    {
-      id: 3,
-      title: '아로마 테라피 둔산점',
-      image: '/images/aroma-dunsan3.jpg',
-      action: { type: 'button' as const, text: '예약 가능', onClick: () => {} },
-      price: { label: '예상 예산', value: '54,000원', discount: '75%' },
-    },
-  ];
-
+  // 메인 콘텐츠
   return (
-    <div className={styles.homePage}>
-      {/* 힐링 숲 히어로 섹션 */}
+    <PageLayout bottomNavItems={navItems}>
+      {/* 헤더 없음 - 메인 페이지는 헤더 없이 구성 */}
       <section className={styles.heroSection}>
-        <div className={styles.heroBackground}>
-          <ImageCard
-            title="당신을 위한"
-            subtitle="피톤치드 가득 힐링 숲"
-            description="조용한 숲속 트래킹으로 내 몸과 마음에 휴식을"
-            image="/images/mock/forest-heel.png"
-            variant="service"
-            className={styles.heroCard}
-          />
-        </div>
-      </section>
+          <div
+            className={styles.heroImage}
+            style={{ backgroundImage: `url(${heroImage})` }}
+          >
+            <div className={styles.heroOverlay} />
+            <div className={styles.heroGradient} />
+            <div className={styles.heroText}>
+              <p>당신을 위한</p>
+              <h1>피톤치드 가득 힐링 숲</h1>
+              <span>조용한 숲속 트래킹으로 내 몸과 마음에 휴식을</span>
+            </div>
+          </div>
+        </section>
 
-      {/* 힐링 여행 테마 섹션 */}
-      <section className={styles.themesSection}>
-        <div className={styles.sectionHeader}>
-          <h2>일단 출발하는 나만의 힐링 여행 테마</h2>
-        </div>
-
-        <div className={styles.themeButtons}>
-          {healingThemes.map(theme => (
-            <button
-              key={theme.id}
-              className={`${styles.themeButton} ${theme.isActive ? styles.active : ''}`}
-              onClick={() => setSelectedTheme(theme.label)}
+        <div className={styles.content}>
+          <section className={styles.themeSection}>
+            <div className={styles.sectionTitle}>
+              <p>일단 출발하는</p>
+              <h2>나만의 힐링 여행 테마</h2>
+            </div>
+            <div className={styles.themeButtons} role="list">
+              {themeOptions.map(({ id, label }) => (
+                <button
+                  key={id}
+                  className={`${styles.themeButton} ${selectedTheme === id ? styles.themeButtonSelected : ''}`}
+                  type="button"
+                  onClick={() => setSelectedTheme(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div
+              className={styles.aromaCard}
+              style={{
+                backgroundImage: `url(${themeData[selectedTheme as keyof typeof themeData].image})`,
+              }}
             >
-              {theme.label}
-            </button>
-          ))}
-        </div>
-      </section>
+              <div className={styles.aromaOverlay} />
+              <div className={styles.aromaText}>
+                <p>
+                  {themeData[selectedTheme as keyof typeof themeData].text.top}
+                </p>
+                <h3>
+                  {
+                    themeData[selectedTheme as keyof typeof themeData].text
+                      .bottom
+                  }
+                </h3>
+              </div>
+            </div>
+          </section>
 
-      {/* 아로마 테라피 카드 섹션 */}
-      <section className={styles.aromaSection}>
-        <ImageCard
-          title="고요함 속 좋은 향기와 굳어진 몸의 이완"
-          image="/images/aroma-therapy.jpg"
-          variant="service"
-          className={styles.aromaCard}
-        />
-      </section>
+          <section className={styles.popularPlansSection}>
+            <div className={styles.sectionHeader}>
+              <h3>가장 많이 찾는 플랜</h3>
+              <button type="button" className={styles.moreButton}>
+                더보기
+              </button>
+            </div>
+            <div className={styles.plansCarousel}>
+              {popularPlans.map(plan => (
+                <ImageCard
+                  key={plan.id}
+                  title={plan.title}
+                  subtitle={plan.subtitle}
+                  image={plan.image}
+                  className={styles.planCard}
+                />
+              ))}
+            </div>
+          </section>
 
-      {/* 가장 많이 찾는 플랜 섹션 */}
-      <section className={styles.popularPlansSection}>
-        <div className={styles.sectionHeader}>
-          <h2>가장 많이 찾는 플랜</h2>
-          <a href="/courses" className={styles.moreLink}>
-            더보기
-          </a>
+          <section className={styles.nearbyPlacesSection}>
+            <div className={styles.sectionHeader}>
+              <h3>실시간 주변 인기 장소</h3>
+              <button type="button" className={styles.moreButton}>
+                더보기
+              </button>
+            </div>
+            <div className={styles.nearbyCards}>
+              {nearbyPlaces.map(place => (
+                <article
+                  key={place.id}
+                  className={styles.nearbyCard}
+                  style={{ backgroundImage: `url(${place.image})` }}
+                >
+                  <div className={styles.nearbyGradient} />
+                  <div className={styles.nearbyInfoTop}>
+                    <p>{place.title}</p>
+                    <span>{place.location}</span>
+                  </div>
+                  <div className={styles.nearbyInfoBottom}>
+                    <span className={styles.statusBadge}>{place.status}</span>
+                    <div className={styles.priceInfo}>
+                      <span>예상 예산</span>
+                      <strong>
+                        <em>{place.discount}</em> {place.price}
+                      </strong>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
         </div>
 
-        <div className={styles.plansGrid}>
-          {popularPlans.map(plan => (
-            <ImageCard
-              key={plan.id}
-              title={plan.title}
-              image={plan.image}
-              variant="experience"
-              className={styles.planCard}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* 실시간 주변 인기 장소 섹션 */}
-      <section className={styles.nearbyPlacesSection}>
-        <div className={styles.sectionHeader}>
-          <h2>실시간 주변 인기 장소</h2>
-          <a href="/courses" className={styles.moreLink}>
-            더보기
-          </a>
-        </div>
-
-        <div className={styles.placesGrid}>
-          {nearbyPlaces.map(place => (
-            <ImageCard
-              key={place.id}
-              title={place.title}
-              image={place.image}
-              action={place.action}
-              price={place.price}
-              variant="service"
-              className={styles.placeCard}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* 하단 네비게이션 */}
-      <nav className={styles.bottomNavigation}>
-        <div className={styles.navItem}>
-          <span className={styles.navIcon}>🗺️</span>
-          <span className={styles.navLabel}>지도</span>
-        </div>
-        <div className={styles.navItem}>
-          <span className={styles.navIcon}>🔍</span>
-          <span className={styles.navLabel}>검색</span>
-        </div>
-        <div className={styles.navItem}>
-          <span className={styles.navIcon}>💎</span>
-          <span className={styles.navLabel}>추천</span>
-        </div>
-        <div className={`${styles.navItem} ${styles.active}`}>
-          <span className={styles.navIcon}>😊</span>
-          <span className={styles.navLabel}>힐링</span>
-        </div>
-        <div className={styles.navItem}>
-          <span className={styles.navIcon}>👤</span>
-          <span className={styles.navLabel}>마이</span>
-        </div>
-      </nav>
-    </div>
+        <footer
+          className={`${styles.footer} ${isFooterExpanded ? styles.footerExpanded : ''}`}
+        >
+          <button
+            type="button"
+            className={styles.footerBrand}
+            onClick={() => setIsFooterExpanded(prev => !prev)}
+            aria-expanded={isFooterExpanded}
+          >
+            <span>일출</span>
+            <span className={styles.footerToggleIcon}>
+              {isFooterExpanded ? '˄' : '˅'}
+            </span>
+          </button>
+          <div className={styles.footerLinks} aria-hidden={!isFooterExpanded}>
+            <a href="#">이용약관</a>
+            <a href="#">사업자 정보</a>
+            <a href="#">개인정보처리방침</a>
+            <a href="#">입점문의</a>
+          </div>
+        </footer>
+    </PageLayout>
   );
 }

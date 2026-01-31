@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CourseDetail } from '../api/course-detail.api';
-import { fetchCourseDetail } from '../api/course-detail.api';
+import { CourseDetail, Activity, fetchCourseDetail } from '../api/course-detail.api';
 
 export const useCourseDetail = (courseId: string) => {
   const router = useRouter();
@@ -11,7 +10,7 @@ export const useCourseDetail = (courseId: string) => {
   const [activeTab, setActiveTab] = useState<'plan' | 'stamp'>('plan');
 
   useEffect(() => {
-    const loadCourse = async () => {
+    const loadCourseDetail = async () => {
       try {
         setLoading(true);
         setError(null);
@@ -19,13 +18,14 @@ export const useCourseDetail = (courseId: string) => {
         setCourse(courseData);
       } catch (err) {
         setError(err instanceof Error ? err.message : '코스 정보를 불러오는데 실패했습니다.');
+        console.error('코스 상세 정보 로드 실패:', err);
       } finally {
         setLoading(false);
       }
     };
 
     if (courseId) {
-      loadCourse();
+      loadCourseDetail();
     }
   }, [courseId]);
 
@@ -38,24 +38,23 @@ export const useCourseDetail = (courseId: string) => {
     console.log('순서 수정');
   };
 
-  const handleActivityClick = (activity: any) => {
-    // TODO: 활동 상세 보기 또는 액션 처리
+  const handleActivityClick = (activity: Activity) => {
+    // TODO: 활동 상세 보기 기능 구현
     console.log('활동 클릭:', activity);
   };
 
   const handleBack = () => {
-    // 이전 페이지로 돌아가기
     router.back();
   };
 
   const handleShare = () => {
     // TODO: 공유 기능 구현
-    console.log('공유');
+    console.log('공유하기');
   };
 
   const handleImage = () => {
-    // TODO: 이미지 보기 기능 구현
-    console.log('이미지 보기');
+    // TODO: 이미지 기능 구현
+    console.log('이미지');
   };
 
   return {
@@ -68,6 +67,6 @@ export const useCourseDetail = (courseId: string) => {
     handleActivityClick,
     handleBack,
     handleShare,
-    handleImage
+    handleImage,
   };
 };
