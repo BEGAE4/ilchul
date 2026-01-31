@@ -16,19 +16,16 @@ interface MyPageHeaderProps {
 const MyPageHeader: React.FC<MyPageHeaderProps> = ({
   center,
   rightIcon,
-  onBack
+  onBack,
 }) => {
   return (
     <div className={styles.headerWrapper}>
       <Header
-        leftIcon={
-          <IconBox name="arrow-left" size={24} color="rgb(55, 65, 81)" />
-        }
-        center={center}
-        rightIcon={rightIcon}
-        onLeftClick={onBack}
+        variant="backArrow"
+        onBackClick={onBack}
         className={styles.header}
       />
+      {center && <div className={styles.headerCenter}>{center}</div>}
     </div>
   );
 };
@@ -73,9 +70,7 @@ export default function MyPageLayout({
         rightIcon={headerConfig.rightIcon}
         onBack={handleBackClick}
       />
-      <main className="my-page-main">
-        {children}
-      </main>
+      <main className="my-page-main">{children}</main>
     </div>
   );
 }

@@ -27,11 +27,7 @@ const MyPage: React.FC = () => {
 
   return (
     <PageLayout>
-      <Header
-        variant="withTitle"
-        title="마이페이지"
-        onLeftClick={() => router.back()}
-      />
+      <Header variant="backArrow" onBackClick={() => router.back()} />
 
       <div className={styles.content}>
         {/* 프로필 섹션 */}

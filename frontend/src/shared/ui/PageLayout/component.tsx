@@ -15,11 +15,12 @@ const PageLayout: React.FC<PageLayoutProps> = ({
 }) => {
   return (
     <div className={`${styles.page} ${className}`}>
-      <div className={styles.container}>{children}</div>
-      {bottomNavItems && <BottomNavigation items={bottomNavItems} />}
+      <div className={styles.container}>
+        {children}
+        {bottomNavItems && <BottomNavigation items={bottomNavItems} />}
+      </div>
     </div>
   );
 };
 
 export default PageLayout;
-

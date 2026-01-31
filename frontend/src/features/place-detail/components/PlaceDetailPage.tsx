@@ -51,19 +51,21 @@ export const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({
 }) => {
   const router = useRouter();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'dailylog' | 'info' | 'nearby' | 'curation'>('info');
+  const [activeTab, setActiveTab] = useState<
+    'dailylog' | 'info' | 'nearby' | 'curation'
+  >('info');
   const [isBookmarked, setIsBookmarked] = useState(false);
 
   // 실제로는 API에서 가져와야 함
   const place = mockPlace;
 
-  const handleBack = () => {
-    router.back();
-  };
+  // const handleBack = () => {
+  //   router.back();
+  // };
 
-  const handleShare = () => {
-    console.log('공유하기:', placeId);
-  };
+  // const handleShare = () => {
+  //   console.log('공유하기:', placeId);
+  // };
 
   const handleAddToPlan = () => {
     console.log('내 플랜에 추가:', placeId);
@@ -113,15 +115,7 @@ export const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({
 
   return (
     <PageLayout bottomNavItems={navItems}>
-      <Header
-        variant="withTitle"
-        title="장소 상세"
-        onLeftClick={handleBack}
-        rightIcon={
-          <IconBox name="share" size={24} color="#000000" />
-        }
-        onRightClick={handleShare}
-      />
+      <Header variant="backArrow" title="장소 상세" />
 
       {/* 메인 콘텐츠 */}
       <div className={styles.content}>
@@ -129,10 +123,12 @@ export const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({
         <div className={styles.imageSection}>
           <div
             className={styles.backgroundImage}
-            style={{ backgroundImage: `url(${place.images[currentImageIndex]})` }}
+            style={{
+              backgroundImage: `url(${place.images[currentImageIndex]})`,
+            }}
           >
             <div className={styles.overlay} />
-            
+
             {/* 장소 이름 */}
             <div className={styles.titleSection}>
               <h1 className={styles.placeName}>{place.name}</h1>
@@ -175,10 +171,11 @@ export const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({
               </div>
             </div>
             <p className={styles.locationDetail}>
-              {place.location.city}, {place.location.district} | {place.location.category}
+              {place.location.city}, {place.location.district} |{' '}
+              {place.location.category}
             </p>
-            <button 
-              className={styles.getDirectionsButton} 
+            <button
+              className={styles.getDirectionsButton}
               onClick={() => console.log('길찾기')}
             >
               길찾기
@@ -196,10 +193,7 @@ export const PlaceDetailPage: React.FC<PlaceDetailPageProps> = ({
 
       {/* 하단 액션 바 */}
       <div className={styles.bottomActionBar}>
-        <button
-          className={styles.addToPlanButton}
-          onClick={handleAddToPlan}
-        >
+        <button className={styles.addToPlanButton} onClick={handleAddToPlan}>
           내 플랜에 추가
         </button>
         <button

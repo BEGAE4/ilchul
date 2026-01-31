@@ -10,19 +10,19 @@ import styles from './survey.module.scss';
 const SurveyStartPage: React.FC = () => {
   const router = useRouter();
 
-  const handleBackClick = () => {
-    router.back();
-  };
-
   const handleStartClick = () => {
     // 설문 시작 - 다음 단계로 이동
     router.push('/course-plan/survey/questions');
   };
 
+  const handleBackClick = () => {
+    router.back();
+  };
+
   return (
     <div className={styles.pageWrapper}>
       <PageLayout>
-        <Header variant="default" onLeftClick={handleBackClick} />
+        <Header variant="backArrow" onBackClick={handleBackClick} />
 
         <div className={styles.content}>
           <div className={styles.textSection}>

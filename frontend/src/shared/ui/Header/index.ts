@@ -1,2 +1,2 @@
-export { default } from "./component";
-export * from "./types";
+export { default } from './component';
+export * from './types';
