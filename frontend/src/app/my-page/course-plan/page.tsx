@@ -97,10 +97,7 @@ const CoursePlanPage: React.FC = () => {
 
   return (
     <PageLayout>
-      <Header
-        variant="backArrow"
-        onBackClick={() => router.back()}
-      />
+      <Header variant="backArrow" onBackClick={() => router.back()} />
 
       <div className={styles.content}>
         <h1 className={styles.pageTitle}>나의 플랜 리스트</h1>

@@ -30,9 +30,9 @@ export const FeedDetailPage: React.FC<FeedDetailPageProps> = ({ post }) => {
 
       {/* 메인 이미지 */}
       <div className={styles.mainImageContainer}>
-        <img 
-          src={currentImage} 
-          alt={post.description} 
+        <img
+          src={currentImage}
+          alt={post.description}
           className={styles.mainImage}
         />
       </div>
@@ -42,8 +42,8 @@ export const FeedDetailPage: React.FC<FeedDetailPageProps> = ({ post }) => {
         {/* 왼쪽: 썸네일과 위치 정보 */}
         <div className={styles.thumbnailSection}>
           <div className={styles.thumbnailWrapper}>
-            <img 
-              src={currentImage} 
+            <img
+              src={currentImage}
               alt={post.description}
               className={styles.thumbnail}
             />
@@ -70,5 +70,3 @@ export const FeedDetailPage: React.FC<FeedDetailPageProps> = ({ post }) => {
     </div>
   );
 };
-
-
