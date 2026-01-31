@@ -21,14 +21,15 @@ const MyPageHeader: React.FC<MyPageHeaderProps> = ({
   return (
     <div className={styles.headerWrapper}>
       <Header
-        leftIcon={
-          <IconBox name="arrow-left" size={24} color="rgb(55, 65, 81)" />
-        }
-        center={center}
-        rightIcon={rightIcon}
-        onLeftClick={onBack}
+        variant="backArrow"
+        onBackClick={onBack}
         className={styles.header}
       />
+      {center && (
+        <div className={styles.headerCenter}>
+          {center}
+        </div>
+      )}
     </div>
   );
 };

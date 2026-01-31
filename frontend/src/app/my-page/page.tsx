@@ -28,9 +28,8 @@ const MyPage: React.FC = () => {
   return (
     <PageLayout>
       <Header
-        variant="withTitle"
-        title="마이페이지"
-        onLeftClick={() => router.back()}
+        variant="backArrow"
+        onBackClick={() => router.back()}
       />
 
       <div className={styles.content}>

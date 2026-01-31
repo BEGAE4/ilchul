@@ -23,7 +23,8 @@ export const FeedDetailPage: React.FC<FeedDetailPageProps> = ({ post }) => {
     <div className={styles.feedDetailPage}>
       {/* 헤더 */}
       <Header
-        onLeftClick={handleBack}
+        variant="backArrow"
+        onBackClick={handleBack}
         className={styles.header}
       />
 

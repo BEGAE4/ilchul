@@ -98,11 +98,8 @@ const CoursePlanPage: React.FC = () => {
   return (
     <PageLayout>
       <Header
-        variant="withTitle"
-        title="코스 계획"
-        onLeftClick={() => router.back()}
-        rightIcon={<IconBox name="user-plus" size={24} color="#5188f1" />}
-        onRightClick={() => console.log('사용자 추가 클릭')}
+        variant="backArrow"
+        onBackClick={() => router.back()}
       />
 
       <div className={styles.content}>

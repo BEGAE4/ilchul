@@ -110,20 +110,18 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
         {/* Header */}
         <div className={styles.headerWrapper}>
           <Header
-            leftIcon={<IconBox name="arrow-left" size={24} color="white" />}
-            rightIcon={
-              <div className={styles.rightIcons}>
-                <button onClick={handleShare} className={styles.iconButton}>
-                  <IconBox name="share" size={24} color="white" />
-                </button>
-                <button onClick={handleImage} className={styles.iconButton}>
-                  <IconBox name="image" size={24} color="white" />
-                </button>
-              </div>
-            }
-            onLeftClick={handleBack}
+            variant="backArrow"
+            onBackClick={handleBack}
             className={styles.header}
           />
+          <div className={styles.rightIcons}>
+            <button onClick={handleShare} className={styles.iconButton}>
+              <IconBox name="share" size={24} color="white" />
+            </button>
+            <button onClick={handleImage} className={styles.iconButton}>
+              <IconBox name="img" size={24} color="white" />
+            </button>
+          </div>
         </div>
       </div>
       <CourseDetailContent

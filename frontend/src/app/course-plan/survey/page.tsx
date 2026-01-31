@@ -22,7 +22,7 @@ const SurveyStartPage: React.FC = () => {
   return (
     <div className={styles.pageWrapper}>
       <PageLayout>
-        <Header variant="default" onLeftClick={handleBackClick} />
+        <Header variant="backArrow" onBackClick={handleBackClick} />
 
         <div className={styles.content}>
           <div className={styles.textSection}>
