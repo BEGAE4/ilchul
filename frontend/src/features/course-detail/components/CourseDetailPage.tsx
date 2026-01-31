@@ -4,7 +4,7 @@ import IconBox from '@/shared/ui/IconBox';
 import BottomMenu from '@/shared/ui/BottomMenu';
 import { useCourseDetail } from '../hooks/useCourseDetail';
 import { useStampHistory } from '../hooks/useStampHistory';
-import { CourseDetailPageProps } from '../types';
+import { CourseDetailPageProps } from '../types/course-detail.types';
 import { Stamp } from '../api/course-detail.api';
 import { CourseDetailContent } from './CourseDetailContent';
 import styles from './CourseDetailPage.module.scss';
