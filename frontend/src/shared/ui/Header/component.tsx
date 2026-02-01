@@ -2,146 +2,118 @@ import React from 'react';
 import IconBox from '../IconBox';
 import { HeaderProps } from './types';
 import styles from './styles.module.scss';
-
-const DefaultLeftIcon = ({ color = 'rgb(55, 65, 81)' }: { color?: string }) => (
-  <IconBox name="arrow-left" size={24} color={color} />
-);
-
+import Image from 'next/image';
 const Header: React.FC<HeaderProps> = ({
-  variant = 'default',
-  leftIcon,
-  rightIcon,
-  rightIcons,
-  center,
-  title,
-  onLeftClick,
-  onRightClick,
-  onRightIconClick,
+  variant = 'logo',
+  logo,
+  profileImage,
+  onProfileClick,
+  onBackClick,
+  username,
+  onUsernameClick,
   className = '',
+  title,
 }) => {
-  const renderLeftButton = () => {
-    if (variant === 'withBackground') {
-      return (
-        <button
-          className={styles.leftButtonWithBg}
-          onClick={onLeftClick}
-          aria-label="뒤로가기"
-          type="button"
-        >
-          {leftIcon || <DefaultLeftIcon color="#ffffff" />}
-        </button>
-      );
-    }
-
-    if (variant === 'withTitle') {
-      return (
-        <button
-          className={styles.leftButton}
-          onClick={onLeftClick}
-          aria-label="뒤로가기"
-          type="button"
-        >
-          {leftIcon || <DefaultLeftIcon color="#5188f1" />}
-        </button>
-      );
-    }
-
-    // default variant
+  // logo variant: 왼쪽 로고, 오른쪽 프로필 이미지
+  if (variant === 'logo') {
     return (
-      <button
-        className={styles.leftButton}
-        onClick={onLeftClick}
-        aria-label="뒤로가기"
-        type="button"
-      >
-        {leftIcon || <DefaultLeftIcon />}
-      </button>
+      <header className={`${styles.header} ${styles.logo} ${className}`}>
+        <div className={styles.logoContainer}>
+          {logo || (
+            <div className={styles.defaultLogo}>
+              <Image src="/logo.svg" alt="logo" width={30} height={30} />
+            </div>
+          )}
+        </div>
+        <button
+          className={styles.profileButton}
+          onClick={onProfileClick}
+          aria-label="프로필"
+          type="button"
+        >
+          {typeof profileImage === 'string' ? (
+            <Image
+              src={profileImage}
+              alt="프로필"
+              className={styles.profileImage}
+              width={32}
+              height={32}
+            />
+          ) : (
+            <div className={styles.defaultProfileImage}>
+              {/* <IconBox name="user-plus" size={32} /> */}
+            </div>
+          )}
+        </button>
+      </header>
     );
-  };
+  }
 
-  const renderRightButtons = () => {
-    if (variant === 'withBackground') {
-      if (rightIcons && rightIcons.length > 0) {
-        return (
-          <div className={styles.rightButtonsGroup}>
-            {rightIcons.map((icon, index) => (
-              <button
-                key={index}
-                className={styles.rightButtonWithBg}
-                onClick={() => onRightIconClick?.(index)}
-                aria-label={`오른쪽 버튼 ${index + 1}`}
-                type="button"
-              >
-                {icon}
-              </button>
-            ))}
-          </div>
-        );
-      }
-      // rightIcons가 없으면 rightIcon 사용
-      if (rightIcon) {
-        return (
+  // backArrow variant: 왼쪽 뒤로가기 화살표, 선택적으로 중앙 타이틀
+  if (variant === 'backArrow') {
+    return (
+      <header className={`${styles.header} ${styles.backArrow} ${className}`}>
+        <button
+          className={styles.backButton}
+          onClick={onBackClick}
+          aria-label="뒤로가기"
+          type="button"
+        >
+          <IconBox name="arrow-left" size={24} color="rgb(55, 65, 81)" />
+        </button>
+        {title && <span className={styles.backArrowTitle}>{title}</span>}
+      </header>
+    );
+  }
+
+  // profile variant: 왼쪽 뒤로가기 화살표, 프로필 이미지, 사용자명
+  if (variant === 'profile') {
+    return (
+      <header className={`${styles.header} ${styles.profile} ${className}`}>
+        <button
+          className={styles.backButton}
+          onClick={onBackClick}
+          aria-label="뒤로가기"
+          type="button"
+        >
+          <IconBox name="arrow-left" size={24} color="rgb(55, 65, 81)" />
+        </button>
+        <div className={styles.profileSection}>
           <button
-            className={styles.rightButtonWithBg}
-            onClick={onRightClick}
-            aria-label="오른쪽 버튼"
+            className={styles.profileImageButton}
+            onClick={onProfileClick}
+            aria-label="프로필"
             type="button"
           >
-            {rightIcon}
+            {typeof profileImage === 'string' ? (
+              <Image
+                src={profileImage}
+                alt="프로필"
+                className={styles.profileImage}
+              />
+            ) : (
+              profileImage || (
+                <div className={styles.defaultProfileImage}>
+                  {/* <IconBox name="user-plus" size={32} /> */}
+                </div>
+              )
+            )}
           </button>
-        );
-      }
-      return null;
-    }
+          {username && (
+            <button
+              className={styles.usernameButton}
+              onClick={onUsernameClick}
+              type="button"
+            >
+              <span className={styles.username}>{username}</span>
+            </button>
+          )}
+        </div>
+      </header>
+    );
+  }
 
-    if (variant === 'withTitle' && rightIcon) {
-      return (
-        <button
-          className={styles.rightButton}
-          onClick={onRightClick}
-          aria-label="오른쪽 버튼"
-          type="button"
-        >
-          {rightIcon}
-        </button>
-      );
-    }
-
-    if (rightIcon) {
-      return (
-        <button
-          className={styles.rightButton}
-          onClick={onRightClick}
-          aria-label="오른쪽 버튼"
-          type="button"
-        >
-          {rightIcon}
-        </button>
-      );
-    }
-
-    return null;
-  };
-
-  const renderCenter = () => {
-    if (variant === 'withTitle' && title) {
-      return <div className={styles.center}>{title}</div>;
-    }
-
-    if (center) {
-      return <div className={styles.center}>{center}</div>;
-    }
-
-    return null;
-  };
-
-  return (
-    <header className={`${styles.header} ${styles[variant]} ${className}`}>
-      {renderLeftButton()}
-      {renderCenter()}
-      {renderRightButtons()}
-    </header>
-  );
+  return null;
 };
 
 export default Header;

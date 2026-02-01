@@ -15,9 +15,7 @@ const mockPosts: FeedPost[] = [
   {
     id: '1',
     username: 'username',
-    images: [
-      '/images/yoga-feed.png', 
-    ],
+    images: ['/images/yoga-feed.png'],
     location: '제주',
     description: '걷다 보니 요가하기 딱 좋은 장소 발견',
     currentImageIndex: 0,
@@ -25,9 +23,7 @@ const mockPosts: FeedPost[] = [
   {
     id: '2',
     username: 'username',
-    images: [
-      '/images/airplane-feed.png',
-    ],
+    images: ['/images/airplane-feed.png'],
     location: '제주',
     description: '걷다 보니 요가하기 딱 좋은 장소 발견',
     currentImageIndex: 0,
@@ -38,34 +34,34 @@ export const FeedPage: React.FC = () => {
   const router = useRouter();
 
   const navItems: NavItem[] = [
-    { 
-      id: 'map', 
-      label: '지도', 
+    {
+      id: 'map',
+      label: '지도',
       icon: MapPin,
       onClick: () => router.push('/map'),
     },
-    { 
-      id: 'search', 
-      label: '검색', 
+    {
+      id: 'search',
+      label: '검색',
       icon: Search,
       onClick: () => router.push('/search'),
     },
-    { 
-      id: 'explore', 
-      label: '홈', 
-      icon: Hexagon, 
+    {
+      id: 'explore',
+      label: '홈',
+      icon: Hexagon,
       active: true,
       onClick: () => router.push('/'),
     },
-    { 
-      id: 'mood', 
-      label: '힐링', 
+    {
+      id: 'mood',
+      label: '힐링',
       icon: Smile,
       onClick: () => router.push('/mood'),
     },
-    { 
-      id: 'profile', 
-      label: '프로필', 
+    {
+      id: 'profile',
+      label: '프로필',
       icon: UserRound,
       onClick: () => router.push('/my-page'),
     },
@@ -74,9 +70,9 @@ export const FeedPage: React.FC = () => {
   return (
     <PageLayout bottomNavItems={navItems}>
       <Header
-        variant="withTitle"
-        title="피드"
-        onLeftClick={() => router.back()}
+        variant="backArrow"
+        // title="피드"
+        // onLeftClick={() => router.back()}
       />
 
       <div className={styles.content}>
@@ -91,7 +87,7 @@ export const FeedPage: React.FC = () => {
 
         {/* 피드 리스트 */}
         <div className={styles.feedList}>
-          {mockPosts.map((post) => (
+          {mockPosts.map(post => (
             <FeedCard key={post.id} post={post} />
           ))}
         </div>
@@ -99,4 +95,3 @@ export const FeedPage: React.FC = () => {
     </PageLayout>
   );
 };
-

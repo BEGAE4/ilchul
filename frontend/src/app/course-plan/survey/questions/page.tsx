@@ -598,7 +598,7 @@ const SurveyQuestionsPage: React.FC = () => {
 
   return (
     <PageLayout>
-      <Header variant="withTitle" title="설문" onLeftClick={handleBackClick} />
+      <Header variant="backArrow" onBackClick={handleBackClick} />
 
       <div className={styles.content}>
         {currentQuestionIndex === 0 && renderQuestion1()}

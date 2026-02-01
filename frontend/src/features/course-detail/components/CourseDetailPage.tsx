@@ -9,9 +9,11 @@ import { Stamp } from '../api/course-detail.api';
 import { CourseDetailContent } from './CourseDetailContent';
 import styles from './CourseDetailPage.module.scss';
 
-export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) => {
+export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({
+  courseId,
+}) => {
   const [showBottomMenu, setShowBottomMenu] = useState(false);
-  
+
   const {
     course,
     loading,
@@ -22,7 +24,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
     handleActivityClick,
     handleBack,
     handleShare,
-    handleImage
+    handleImage,
   } = useCourseDetail(courseId);
 
   const { stampHistory, stampLoading } = useStampHistory(courseId, activeTab);
@@ -48,7 +50,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
       onClick: () => {
         console.log('수정 클릭');
         setShowBottomMenu(false);
-      }
+      },
     },
     {
       id: 'share',
@@ -56,7 +58,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
       onClick: () => {
         handleShare();
         setShowBottomMenu(false);
-      }
+      },
     },
     {
       id: 'delete',
@@ -64,8 +66,8 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
       onClick: () => {
         console.log('삭제 클릭');
         setShowBottomMenu(false);
-      }
-    }
+      },
+    },
   ];
 
   if (loading) {
@@ -100,7 +102,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
       <div className={styles.headerSection}>
         {/* Hero Section */}
         <div className={styles.heroContainer}>
-          <div 
+          <div
             className={styles.backgroundImage}
             style={{ backgroundImage: 'url(/images/course-plan.png)' }}
           >
@@ -110,20 +112,18 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
         {/* Header */}
         <div className={styles.headerWrapper}>
           <Header
-            leftIcon={<IconBox name="arrow-left" size={24} color="white" />}
-            rightIcon={
-              <div className={styles.rightIcons}>
-                <button onClick={handleShare} className={styles.iconButton}>
-                  <IconBox name="share" size={24} color="white" />
-                </button>
-                <button onClick={handleImage} className={styles.iconButton}>
-                  <IconBox name="image" size={24} color="white" />
-                </button>
-              </div>
-            }
-            onLeftClick={handleBack}
+            variant="backArrow"
+            onBackClick={handleBack}
             className={styles.header}
           />
+          <div className={styles.rightIcons}>
+            <button onClick={handleShare} className={styles.iconButton}>
+              <IconBox name="share" size={24} color="white" />
+            </button>
+            <button onClick={handleImage} className={styles.iconButton}>
+              <IconBox name="image" size={24} color="white" />
+            </button>
+          </div>
         </div>
       </div>
       <CourseDetailContent
@@ -137,7 +137,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
         stampLoading={stampLoading}
         onStampClick={handleStampClick}
       />
-      
+
       <BottomMenu
         isOpen={showBottomMenu}
         onClose={() => setShowBottomMenu(false)}
