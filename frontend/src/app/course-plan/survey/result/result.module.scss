@@ -1,0 +1,236 @@
+.pageWrapper {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: #ffffff;
+
+  // PageLayout의 container를 100% 높이로 설정
+  :global {
+    [class*='container'] {
+      height: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+  }
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-top: calc(3.5rem + 1rem); /* 헤더 높이 + 여백 */
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  padding-bottom: 1rem;
+  min-height: 0; /* flexbox에서 overflow를 위해 필요 */
+  align-items: center;
+  gap: 1.375rem; /* 22px */
+}
+
+.textSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem; /* 4px */
+  align-items: flex-start;
+  width: 100%;
+  max-width: 20rem; /* 320px */
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.subtitle {
+  font-size: 0.875rem; /* 14px */
+  font-weight: 500; /* Medium */
+  line-height: 1.43; /* 20px */
+  color: #454545;
+  margin: 0;
+  text-align: center;
+  width: 100%;
+}
+
+.title {
+  font-size: 1.5rem; /* 24px */
+  font-weight: 700; /* Bold */
+  line-height: 1.25; /* 30px */
+  color: #454545;
+  margin: 0;
+  text-align: center;
+  width: 100%;
+}
+
+.resultCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem; /* 10px */
+  align-items: flex-start;
+  padding: 1rem; /* 16px */
+  border: 1px solid #eeeeee;
+  border-radius: 1rem; /* 16px */
+  background-color: #ffffff;
+  width: 100%;
+  max-width: 20rem; /* 320px */
+  flex-shrink: 0;
+}
+
+.imageContainer {
+  position: relative;
+  width: 100%;
+  height: 13.3125rem; /* 213px */
+  max-width: 13.5rem; /* 216px */
+  margin: 0 auto;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.resultImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.typeSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.typeTitle {
+  font-size: 1.25rem; /* 20px */
+  font-weight: 700; /* Bold */
+  line-height: 1.5;
+  color: #454545;
+  text-align: center;
+  margin: 0;
+  letter-spacing: -0.01em; /* -0.1px */
+}
+
+.descriptionSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.typeDescription {
+  font-size: 0.875rem; /* 14px */
+  font-weight: 600; /* SemiBold */
+  line-height: 1.5;
+  color: #454545;
+  text-align: center;
+  margin: 0;
+  white-space: nowrap;
+  letter-spacing: -0.007em; /* -0.07px */
+}
+
+.buttonSection {
+  padding: 1.25rem;
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  flex-shrink: 0;
+}
+
+.nextButton {
+  width: 100%;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .content {
+    padding-top: 3.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    gap: 1.25rem;
+  }
+
+  .textSection {
+    max-width: 100%;
+  }
+
+  .subtitle {
+    font-size: 0.8125rem;
+  }
+
+  .title {
+    font-size: 1.375rem;
+  }
+
+  .resultCard {
+    max-width: 100%;
+    padding: 0.875rem;
+  }
+
+  .imageContainer {
+    height: 12rem;
+    max-width: 12rem;
+  }
+
+  .typeTitle {
+    font-size: 1.125rem;
+  }
+
+  .typeDescription {
+    font-size: 0.8125rem;
+    white-space: normal;
+  }
+
+  .buttonSection {
+    padding: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    gap: 1rem;
+  }
+
+  .textSection {
+    gap: 0.25rem;
+  }
+
+  .subtitle {
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .title {
+    font-size: 1.25rem;
+    line-height: 1.3;
+  }
+
+  .resultCard {
+    padding: 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .imageContainer {
+    height: 10rem;
+    max-width: 10rem;
+  }
+
+  .typeTitle {
+    font-size: 1rem;
+  }
+
+  .typeDescription {
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  .buttonSection {
+    padding: 0.75rem 1rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+}
+
