@@ -1,0 +1,388 @@
+.pageWrapper {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: #ffffff;
+
+  // PageLayout의 container를 100% 높이로 설정
+  :global {
+    [class*='container'] {
+      height: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+  }
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding-top: calc(3.5rem + 1rem); /* 헤더 높이 + 여백 */
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  padding-bottom: 1rem;
+  min-height: 0; /* flexbox에서 overflow를 위해 필요 */
+  gap: 1.375rem; /* 22px */
+}
+
+.textSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem; /* 4px */
+  align-items: flex-start;
+  width: 100%;
+  max-width: 20rem; /* 320px */
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 1.5rem; /* 24px */
+  font-weight: 700; /* Bold */
+  line-height: 1.25; /* 30px */
+  color: #454545;
+  margin: 0;
+  width: 100%;
+}
+
+.description {
+  font-size: 0.875rem; /* 14px */
+  font-weight: 500; /* Medium */
+  line-height: 1.43; /* 20px */
+  color: #454545;
+  margin: 0;
+  width: 100%;
+
+  p {
+    margin: 0;
+  }
+}
+
+.courseList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem; /* 10px */
+  width: 100%;
+  max-width: 20rem; /* 320px */
+  flex-shrink: 0;
+  min-height: 35rem; /* 560px */
+}
+
+.courseCard {
+  position: relative;
+  width: 100%;
+  height: 9.375rem; /* 150px */
+  border: 1px solid #eeeeee;
+  border-radius: 1rem; /* 16px */
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.cardImageContainer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.cardImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.imageOverlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+}
+
+.cardContent {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 1;
+}
+
+.cardText {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  width: 100%;
+  background: linear-gradient(
+    to bottom,
+    #000000 0%,
+    rgba(153, 153, 153, 0) 100%
+  );
+  padding: 1rem; /* 16px */
+  padding-bottom: 0.5rem;
+}
+
+.cardTitle {
+  font-size: 1.125rem; /* 18px */
+  font-weight: 600; /* SemiBold */
+  line-height: 1.5;
+  color: #ffffff;
+  margin: 0 0 0.25rem 0;
+  letter-spacing: -0.009em; /* -0.09px */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.cardSubtitle {
+  font-size: 0.875rem; /* 14px */
+  font-weight: 400; /* Regular */
+  line-height: 1.5;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.007em; /* -0.07px */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.cardActions {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  gap: 0.625rem; /* 10px */
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 1rem; /* 16px */
+}
+
+.detailButton,
+.selectButton {
+  height: 2.125rem; /* 34px */
+  padding: 0.75rem 1.75rem; /* 12px 28px */
+  border: 1px solid #ffffff;
+  border-radius: 100px;
+  background-color: transparent;
+  color: #ffffff;
+  font-size: 0.875rem; /* 14px */
+  font-weight: 600; /* SemiBold */
+  line-height: 1.5;
+  letter-spacing: -0.007em; /* -0.07px */
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0px 10px 20px 10px rgba(0, 0, 0, 0.12);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.selectedButton {
+  height: 2.125rem; /* 34px */
+  width: 2.1875rem; /* 35px */
+  padding: 0;
+  border: none;
+  border-radius: 100px;
+  background-color: #5883f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0px 10px 20px 10px rgba(0, 0, 0, 0.12);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: #4a73e0;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.buttonSection {
+  padding: 1.25rem;
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  flex-shrink: 0;
+}
+
+.completeButton {
+  width: 100%;
+  height: 3.375rem; /* 54px */
+  background: linear-gradient(
+    128.365deg,
+    #6e6af6 5.3555%,
+    #4d8aee 28.876%,
+    #499be5 53.702%,
+    #428feb 73.738%,
+    #5e7af2 95.952%
+  );
+  border: none;
+  border-radius: 100px;
+  color: #ffffff;
+  font-size: 0.875rem; /* 14px */
+  font-weight: 600; /* SemiBold */
+  line-height: 1.5;
+  letter-spacing: -0.007em; /* -0.07px */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(110, 106, 246, 0.3);
+  font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(110, 106, 246, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .content {
+    padding-top: 3.5rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    gap: 1.25rem;
+  }
+
+  .textSection {
+    max-width: 100%;
+  }
+
+  .title {
+    font-size: 1.375rem;
+  }
+
+  .description {
+    font-size: 0.8125rem;
+  }
+
+  .courseList {
+    max-width: 100%;
+    min-height: auto;
+  }
+
+  .courseCard {
+    height: 8.5rem;
+  }
+
+  .cardTitle {
+    font-size: 1rem;
+  }
+
+  .cardSubtitle {
+    font-size: 0.8125rem;
+  }
+
+  .detailButton,
+  .selectButton {
+    height: 2rem;
+    padding: 0.625rem 1.5rem;
+    font-size: 0.8125rem;
+  }
+
+  .selectedButton {
+    height: 2rem;
+    width: 2rem;
+  }
+
+  .buttonSection {
+    padding: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .completeButton {
+    height: 3rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    gap: 1rem;
+  }
+
+  .textSection {
+    gap: 0.25rem;
+  }
+
+  .title {
+    font-size: 1.25rem;
+    line-height: 1.3;
+  }
+
+  .description {
+    font-size: 0.75rem;
+    line-height: 1.4;
+
+    p {
+      margin-bottom: 0.125rem;
+    }
+  }
+
+  .courseList {
+    gap: 0.5rem;
+  }
+
+  .courseCard {
+    height: 8rem;
+  }
+
+  .cardText {
+    padding: 0.875rem;
+  }
+
+  .cardTitle {
+    font-size: 0.9375rem;
+  }
+
+  .cardSubtitle {
+    font-size: 0.75rem;
+  }
+
+  .cardActions {
+    gap: 0.5rem;
+  }
+
+  .detailButton,
+  .selectButton {
+    height: 1.875rem;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.75rem;
+  }
+
+  .selectedButton {
+    height: 1.875rem;
+    width: 1.875rem;
+  }
+
+  .buttonSection {
+    padding: 0.75rem 1rem;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .completeButton {
+    height: 2.75rem;
+    font-size: 0.8125rem;
+  }
+}
+
