@@ -42,7 +42,7 @@ services:
       - "${SERVER_PORT}:8080"
     environment:
       - TZ=Asia/Seoul
-      - MYSQL_DRIVER=com.mysql.cj.jdbc.driver
+      - MYSQL_DRIVER=com.mysql.cj.jdbc.Driver
       - MYSQL_URL=mysql:3306
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
