@@ -2,8 +2,8 @@ spring:
   application:
     name: backend
     version: v1
-  config:
-    import: optional:file:.env[.properties]
+#  config:
+#    import: optional:file:.env[.properties]
 
   servlet:
     multipart:
