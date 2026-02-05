@@ -129,7 +129,7 @@ EOF
                     sh """
                         cd ${PROJECT_PATH}
 
-                        # Ensure current_environment.txt exists with default value
+                        # Ensure current_environment.txt exists with default values
                         if [ ! -f current_environment.txt ] || [ ! -s current_environment.txt ]; then
                             echo "⚠️ current_environment.txt not found or empty, initializing to blue"
                             echo "blue" > current_environment.txt
