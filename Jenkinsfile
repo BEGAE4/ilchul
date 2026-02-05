@@ -408,23 +408,28 @@ Click 'Proceed' to switch traffic to ${env.TARGET_ENV}
     post {
         always {
             script {
-                sh """
-                    cd ${env.PROJECT_PATH}
+                // Only run if PROJECT_PATH is available (pipeline progressed past initialization)
+                if (env.PROJECT_PATH) {
+                    sh """
+                        cd ${env.PROJECT_PATH}
 
-                    echo "=== Container Status ==="
-                    docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
+                        echo "=== Container Status ==="
+                        docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
 
-                    echo ""
-                    echo "=== Active Environment ==="
-                    if [ -f current_environment.txt ]; then
-                        cat current_environment.txt
-                    else
-                        echo "current_environment.txt not found"
-                    fi
+                        echo ""
+                        echo "=== Active Environment ==="
+                        if [ -f current_environment.txt ]; then
+                            cat current_environment.txt
+                        else
+                            echo "current_environment.txt not found"
+                        fi
 
-                    # Cleanup
-                    docker system prune -f || true
-                """
+                        # Cleanup
+                        docker system prune -f || true
+                    """
+                } else {
+                    echo "Pipeline failed during initialization. Skipping cleanup."
+                }
             }
         }
         success {
@@ -463,8 +468,8 @@ No traffic was switched. No downtime occurred.
 ==================================================
 """
 
-                // Only try to cleanup if TARGET_ENV was set
-                if (env.TARGET_ENV && env.TARGET_ENV != 'null') {
+                // Only try to cleanup if TARGET_ENV and PROJECT_PATH were set
+                if (env.PROJECT_PATH && env.TARGET_ENV && env.TARGET_ENV != 'null' && env.TARGET_ENV != 'unknown') {
                     sh """
                         cd ${env.PROJECT_PATH}
 
@@ -477,8 +482,14 @@ No traffic was switched. No downtime occurred.
                         docker-compose -f docker-compose.yml -f docker-compose.${env.TARGET_ENV}.yml down || true
                     """
                 } else {
-                    echo "⚠️ TARGET_ENV not set, skipping cleanup"
-                    echo "Check the 'Determine Environment' stage logs for errors"
+                    echo "⚠️ Pipeline failed during initialization - skipping environment cleanup"
+                    echo "💡 Check Jenkins credentials and configuration"
+                    if (!env.PROJECT_PATH) {
+                        echo "   - PROJECT_PATH not available (pipeline failed early)"
+                    }
+                    if (!env.TARGET_ENV || env.TARGET_ENV == 'null' || env.TARGET_ENV == 'unknown') {
+                        echo "   - TARGET_ENV not set (pipeline failed before 'Determine Environment' stage)"
+                    }
                 }
             }
         }
