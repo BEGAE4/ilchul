@@ -106,7 +106,7 @@ EOF
                             echo "MySQL is already running"
                         else
                             echo "=== Starting MySQL ==="
-                            docker-compose up -d mysql
+                            docker compose up -d mysql
 
                             echo "Waiting for MySQL to be healthy..."
                             for i in {1..30}; do
@@ -191,7 +191,7 @@ EOF
                         cd ${PROJECT_PATH}
 
                         echo "=== Building ${TARGET_ENV} environment ==="
-                        docker-compose -f docker-compose.yml -f docker-compose.${TARGET_ENV}.yml build --no-cache
+                        docker compose -f docker compose.yml -f docker compose.${TARGET_ENV}.yml build --no-cache
                     """
                 }
             }
@@ -204,7 +204,7 @@ EOF
                         cd ${PROJECT_PATH}
 
                         echo "=== Starting ${TARGET_ENV} environment ==="
-                        docker-compose -f docker-compose.yml -f docker-compose.${TARGET_ENV}.yml up -d
+                        docker compose -f docker compose.yml -f docker compose.${TARGET_ENV}.yml up -d
 
                         echo "Waiting for services to initialize..."
                         sleep 10
@@ -283,7 +283,7 @@ EOF
                             echo "=== Starting Nginx ==="
 
                             # Initialize symlinks to blue (default)
-                            docker-compose -f docker-compose.nginx.yml up -d
+                            docker compose -f docker compose.nginx.yml up -d
 
                             sleep 3
 
@@ -391,7 +391,7 @@ Click 'Proceed' to switch traffic to ${env.TARGET_ENV}
                                 cd ${PROJECT_PATH}
 
                                 echo "=== Stopping old ${CURRENT_ENV} environment ==="
-                                docker-compose -f docker-compose.yml -f docker-compose.${CURRENT_ENV}.yml down
+                                docker compose -f docker compose.yml -f docker compose.${CURRENT_ENV}.yml down
 
                                 echo "✅ Old ${CURRENT_ENV} environment stopped"
                                 echo "💡 You can still rollback by running ./rollback.sh on the server"
@@ -475,11 +475,11 @@ No traffic was switched. No downtime occurred.
 
                         echo "=== Failure Investigation ==="
                         echo "Target environment logs (${env.TARGET_ENV}):"
-                        docker-compose -f docker-compose.yml -f docker-compose.${env.TARGET_ENV}.yml logs --tail 50 || true
+                        docker compose -f docker compose.yml -f docker compose.${env.TARGET_ENV}.yml logs --tail 50 || true
 
                         echo ""
                         echo "Cleaning up failed ${env.TARGET_ENV} environment..."
-                        docker-compose -f docker-compose.yml -f docker-compose.${env.TARGET_ENV}.yml down || true
+                        docker compose -f docker compose.yml -f docker compose.${env.TARGET_ENV}.yml down || true
                     """
                 } else {
                     echo "⚠️ Pipeline failed during initialization - skipping environment cleanup"
