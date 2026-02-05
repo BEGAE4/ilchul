@@ -1,0 +1,28 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx_server
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/html:/usr/share/nginx/html:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:rw
+      - /home/ubuntu/ssl/certificate.crt:/etc/ssl/certs/certificate.crt:ro
+      - /home/ubuntu/ssl/private.key:/etc/ssl/certs/private.key:ro
+      - /var/www/certbot:/var/www/certbot
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Seoul
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/nginx-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  app-network:
+    external: true
