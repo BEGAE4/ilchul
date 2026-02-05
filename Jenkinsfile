@@ -19,11 +19,27 @@ pipeline {
     }
 
     stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    echo "=== Checking out code ==="
+                    checkout scm
+                }
+            }
+        }
+
         stage('Preparation') {
             steps {
                 script {
                     sh """
+                        set -e  # Exit on error
+
+                        echo "=== Preparation Stage ==="
+                        echo "PROJECT_PATH: ${PROJECT_PATH}"
+                        echo "Current directory: \$(pwd)"
+
                         cd ${PROJECT_PATH}
+                        echo "Changed to: \$(pwd)"
 
                         # Create .env file with all credentials
                         cat > .env << EOF
@@ -44,24 +60,28 @@ OAUTH_NAVER_REDIRECT_URI=${OAUTH_NAVER_REDIRECT_URI}
 JWT_SECRET_KEY=${JWT_SECRET_KEY}
 EOF
 
-                        echo "=== .env file created ==="
+                        echo "✅ .env file created"
 
-                        # Initialize current_environment.txt if not exists
-                        if [ ! -f current_environment.txt ]; then
+                        # Initialize current_environment.txt if not exists or empty
+                        if [ ! -f current_environment.txt ] || [ ! -s current_environment.txt ]; then
                             echo "blue" > current_environment.txt
-                            echo "Initialized current_environment.txt to blue"
+                            echo "✅ Initialized current_environment.txt to blue"
+                        else
+                            echo "✅ current_environment.txt already exists: \$(cat current_environment.txt)"
                         fi
 
                         # Ensure nginx conf.d directory exists
                         mkdir -p nginx/conf.d
+                        echo "✅ nginx/conf.d directory ensured"
+
+                        # Verify critical files
+                        echo ""
+                        echo "=== Verification ==="
+                        echo "current_environment.txt exists: \$(test -f current_environment.txt && echo YES || echo NO)"
+                        echo "current_environment.txt content: '\$(cat current_environment.txt 2>/dev/null || echo EMPTY)'"
+                        echo "current_environment.txt size: \$(wc -c < current_environment.txt 2>/dev/null || echo 0) bytes"
                     """
                 }
-            }
-        }
-
-        stage('Checkout') {
-            steps {
-                checkout scm
             }
         }
 
@@ -109,8 +129,22 @@ EOF
                     sh """
                         cd ${PROJECT_PATH}
 
+                        # Ensure current_environment.txt exists with default value
+                        if [ ! -f current_environment.txt ] || [ ! -s current_environment.txt ]; then
+                            echo "⚠️ current_environment.txt not found or empty, initializing to blue"
+                            echo "blue" > current_environment.txt
+                        fi
+
                         # Read current active environment
-                        CURRENT_ENV=\$(cat current_environment.txt)
+                        CURRENT_ENV=\$(cat current_environment.txt | tr -d '[:space:]')
+
+                        # Validate CURRENT_ENV
+                        if [ -z "\$CURRENT_ENV" ]; then
+                            echo "❌ CURRENT_ENV is empty, defaulting to blue"
+                            CURRENT_ENV="blue"
+                            echo "blue" > current_environment.txt
+                        fi
+
                         echo "Current active environment: \$CURRENT_ENV"
 
                         # Determine target environment (opposite of current)
@@ -121,15 +155,31 @@ EOF
                         fi
 
                         echo "Target deployment environment: \$TARGET_ENV"
+
+                        # Save to files
                         echo "\$TARGET_ENV" > target_environment.txt
                         echo "\$CURRENT_ENV" > previous_environment.txt
+
+                        # Verify files were created
+                        echo "=== Verification ==="
+                        echo "target_environment.txt: \$(cat target_environment.txt)"
+                        echo "previous_environment.txt: \$(cat previous_environment.txt)"
                     """
 
-                    env.TARGET_ENV = sh(script: "cat ${PROJECT_PATH}/target_environment.txt", returnStdout: true).trim()
-                    env.CURRENT_ENV = sh(script: "cat ${PROJECT_PATH}/previous_environment.txt", returnStdout: true).trim()
+                    env.TARGET_ENV = sh(script: "cat ${PROJECT_PATH}/target_environment.txt | tr -d '[:space:]'", returnStdout: true).trim()
+                    env.CURRENT_ENV = sh(script: "cat ${PROJECT_PATH}/previous_environment.txt | tr -d '[:space:]'", returnStdout: true).trim()
 
+                    echo "=== Environment Variables Set ==="
                     echo "Deploying to: ${env.TARGET_ENV}"
                     echo "Currently active: ${env.CURRENT_ENV}"
+
+                    // Validate environment variables
+                    if (!env.TARGET_ENV || env.TARGET_ENV == '' || env.TARGET_ENV == 'null') {
+                        error("❌ TARGET_ENV is not set properly: ${env.TARGET_ENV}")
+                    }
+                    if (!env.CURRENT_ENV || env.CURRENT_ENV == '' || env.CURRENT_ENV == 'null') {
+                        error("❌ CURRENT_ENV is not set properly: ${env.CURRENT_ENV}")
+                    }
                 }
             }
         }
@@ -358,59 +408,89 @@ Click 'Proceed' to switch traffic to ${env.TARGET_ENV}
     post {
         always {
             script {
-                sh """
-                    cd ${PROJECT_PATH}
+                // Only run if PROJECT_PATH is available (pipeline progressed past initialization)
+                if (env.PROJECT_PATH) {
+                    sh """
+                        cd ${env.PROJECT_PATH}
 
-                    echo "=== Container Status ==="
-                    docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
+                        echo "=== Container Status ==="
+                        docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"
 
-                    echo ""
-                    echo "=== Active Environment ==="
-                    cat current_environment.txt
+                        echo ""
+                        echo "=== Active Environment ==="
+                        if [ -f current_environment.txt ]; then
+                            cat current_environment.txt
+                        else
+                            echo "current_environment.txt not found"
+                        fi
 
-                    # Cleanup
-                    docker system prune -f || true
-                """
+                        # Cleanup
+                        docker system prune -f || true
+                    """
+                } else {
+                    echo "Pipeline failed during initialization. Skipping cleanup."
+                }
             }
         }
         success {
-            echo """
+            script {
+                def targetEnv = env.TARGET_ENV ?: 'unknown'
+                def currentEnv = env.CURRENT_ENV ?: 'unknown'
+
+                echo """
 ==================================================
 ✅ DEPLOYMENT SUCCESSFUL
 ==================================================
-Active environment: ${env.TARGET_ENV}
-Previous environment: ${env.CURRENT_ENV} (still running for rollback)
+Active environment: ${targetEnv}
+Previous environment: ${currentEnv} (still running for rollback)
 
 🌐 Site: https://il-chul.com
 
 To rollback: ssh to server and run ./rollback.sh
 ==================================================
 """
+            }
         }
         failure {
-            echo """
+            script {
+                def targetEnv = env.TARGET_ENV ?: 'unknown'
+                def currentEnv = env.CURRENT_ENV ?: 'unknown'
+
+                echo """
 ==================================================
 ❌ DEPLOYMENT FAILED
 ==================================================
-Target environment: ${env.TARGET_ENV}
-Active environment: ${env.CURRENT_ENV} (unchanged)
+Target environment: ${targetEnv}
+Active environment: ${currentEnv} (unchanged)
 
-Your previous ${env.CURRENT_ENV} environment is still active.
+Your previous ${currentEnv} environment is still active.
 No traffic was switched. No downtime occurred.
 ==================================================
 """
-            script {
-                sh """
-                    cd ${PROJECT_PATH}
 
-                    echo "=== Failure Investigation ==="
-                    echo "Target environment logs (${TARGET_ENV}):"
-                    docker-compose -f docker-compose.yml -f docker-compose.${TARGET_ENV}.yml logs --tail 50 || true
+                // Only try to cleanup if TARGET_ENV and PROJECT_PATH were set
+                if (env.PROJECT_PATH && env.TARGET_ENV && env.TARGET_ENV != 'null' && env.TARGET_ENV != 'unknown') {
+                    sh """
+                        cd ${env.PROJECT_PATH}
 
-                    echo ""
-                    echo "Cleaning up failed ${TARGET_ENV} environment..."
-                    docker-compose -f docker-compose.yml -f docker-compose.${TARGET_ENV}.yml down || true
-                """
+                        echo "=== Failure Investigation ==="
+                        echo "Target environment logs (${env.TARGET_ENV}):"
+                        docker-compose -f docker-compose.yml -f docker-compose.${env.TARGET_ENV}.yml logs --tail 50 || true
+
+                        echo ""
+                        echo "Cleaning up failed ${env.TARGET_ENV} environment..."
+                        docker-compose -f docker-compose.yml -f docker-compose.${env.TARGET_ENV}.yml down || true
+                    """
+                } else {
+                    echo "⚠️ Pipeline failed during initialization - skipping environment cleanup"
+                    echo "💡 Check Jenkins credentials and configuration"
+                    if (!env.PROJECT_PATH) {
+                        echo "   - PROJECT_PATH not available (pipeline failed early)"
+                    }
+                    if (!env.TARGET_ENV || env.TARGET_ENV == 'null' || env.TARGET_ENV == 'unknown') {
+                        echo "   - TARGET_ENV not set (pipeline failed before 'Determine Environment' stage)"
+                    }
+                }
             }
         }
     }
