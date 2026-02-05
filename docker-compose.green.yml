@@ -1,15 +1,15 @@
 services:
-  backend-green:
+  backend_green:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: backend_green_1
+    container_name: backend_green
     ports:
-      - "8081:8080"
+      - "8082:8080"
     environment:
       - TZ=Asia/Seoul
       - MYSQL_DRIVER=com.mysql.cj.jdbc.driver
-      - MYSQL_URL=mysql:3306
+      - MYSQL_URL=jdbc:mysql://mysql_db:3306/${MYSQL_DATABASE}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
@@ -31,13 +31,13 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
-  frontend-green:
+  frontend_green:
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -47,7 +47,7 @@ services:
     ports:
       - "3001:3000"
     depends_on:
-      backend-green:
+      backend_green:
         condition: service_healthy
     environment:
       - NODE_ENV=production
@@ -56,10 +56,10 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
       start_period: 40s
 
 networks:

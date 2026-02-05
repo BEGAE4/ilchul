@@ -241,7 +241,7 @@ EOF
                             fi
                             if [ \$i -eq 30 ]; then
                                 echo "❌ Backend health check failed"
-                                docker logs backend_${TARGET_ENV}_1 --tail 50
+                                docker logs backend_${TARGET_ENV} --tail 50
                                 exit 1
                             fi
                             echo "Waiting for backend... (\$i/30)"
