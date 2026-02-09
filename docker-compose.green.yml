@@ -9,7 +9,7 @@ services:
     environment:
       - TZ=Asia/Seoul
       - MYSQL_DRIVER=com.mysql.cj.jdbc.Driver
-      - MYSQL_URL=jdbc:mysql://mysql_db:3306/${MYSQL_DATABASE}
+      - MYSQL_URL=mysql_db:3306
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
@@ -24,6 +24,7 @@ services:
       - OAUTH_NAVER_CLIENT_SECRET=${OAUTH_NAVER_CLIENT_SECRET}
       - OAUTH_NAVER_REDIRECT_URI=${OAUTH_NAVER_REDIRECT_URI}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     depends_on:
       mysql:
         condition: service_healthy
