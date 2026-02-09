@@ -16,6 +16,7 @@ pipeline {
         OAUTH_NAVER_CLIENT_SECRET = credentials('oauth-naver-client-secret')
         OAUTH_NAVER_REDIRECT_URI = credentials('oauth-naver-redirect-uri')
         JWT_SECRET_KEY = credentials('jwt-secret-key')
+        ANTHROPIC_API_KEY = credentials('anthropic-api-key')
     }
 
     stages {
@@ -58,6 +59,7 @@ OAUTH_NAVER_CLIENT_ID=${OAUTH_NAVER_CLIENT_ID}
 OAUTH_NAVER_CLIENT_SECRET=${OAUTH_NAVER_CLIENT_SECRET}
 OAUTH_NAVER_REDIRECT_URI=${OAUTH_NAVER_REDIRECT_URI}
 JWT_SECRET_KEY=${JWT_SECRET_KEY}
+ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 EOF
 
                         echo "✅ .env file created"
