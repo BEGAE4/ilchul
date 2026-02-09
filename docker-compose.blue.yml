@@ -9,7 +9,7 @@ services:
     environment:
       - TZ=Asia/Seoul
       - MYSQL_DRIVER=com.mysql.cj.jdbc.Driver
-      - MYSQL_URL=jdbc:mysql://mysql_db:3306/${MYSQL_DATABASE}
+      - MYSQL_URL=mysql_db:3306
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
