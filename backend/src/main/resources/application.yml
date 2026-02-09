@@ -2,8 +2,8 @@ spring:
   application:
     name: backend
     version: v1
-  config:
-    import: optional:file:.env[.properties]
+#  config:
+#    import: optional:file:.env[.properties]
 
   servlet:
     multipart:
@@ -115,3 +115,12 @@ google:
 
 anthropic-api:
   api-key: ${ANTHROPIC_API_KEY}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
