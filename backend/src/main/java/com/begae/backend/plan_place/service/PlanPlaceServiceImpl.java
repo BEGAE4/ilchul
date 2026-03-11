@@ -29,15 +29,15 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
 
     private final WebClient kakaoNaviWebClient;
 
-    public CalculateDurationResponseDto calculateDuration(CalculateDurationRequestDto request) {
+    public CreatePlanPreviewResponseDto createPlanPreview(CreatePlanPreviewRequestDto request) {
 
-        List<CalculateDurationRequestDto.Place> ordered = request.getPlaces()
+        List<CreatePlanPreviewRequestDto.Place> ordered = request.getPlaces()
                 .stream()
-                .sorted(Comparator.comparingInt(CalculateDurationRequestDto.Place::getOrder))
+                .sorted(Comparator.comparingInt(CreatePlanPreviewRequestDto.Place::getOrder))
                 .toList();
 
         List<Integer> ids = ordered.stream()
-                .map(CalculateDurationRequestDto.Place::getPlaceId)
+                .map(CreatePlanPreviewRequestDto.Place::getPlaceId)
                 .toList();
 
         List<Place> places = placeRepository.findAllById(ids);
@@ -80,20 +80,20 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                 .map(section -> (int) Math.round(section.getDuration() / 60.0))
                 .toList();
 
-        List<CalculateDurationResponseDto.Place> routes = new ArrayList<>();
+        List<CreatePlanPreviewResponseDto.Place> routes = new ArrayList<>();
         for(int i = 0; i < places.size(); i++) {
             Place place = places.get(i);
-            routes.add(CalculateDurationResponseDto.Place.builder()
+            routes.add(CreatePlanPreviewResponseDto.Place.builder()
                     .placeId(place.getPlaceId())
                     .placeName(place.getPlaceName())
                     .placeImageUrl(place.getPlaceImageUrl())
                     .roadAddressName(place.getRoadAddressName())
                     .order(i + 1)
-                    .Duration(i == 0 ? 0 : sectionDuration.get(i - 1))
+                    .duration(i == 0 ? 0 : sectionDuration.get(i - 1))
                     .build());
         }
 
-        return CalculateDurationResponseDto.builder()
+        return CreatePlanPreviewResponseDto.builder()
                 .planTitle(request.getPlanTitle())
                 .planDescription(request.getPlanDescription())
                 .isPlanVisible(request.getIsPlanVisible())

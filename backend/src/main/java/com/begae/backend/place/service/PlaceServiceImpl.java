@@ -195,6 +195,7 @@ public class PlaceServiceImpl implements PlaceService {
                 .trim();
 
         RecommendKeywordDto recommend = new ObjectMapper().readValue(content, RecommendKeywordDto.class);
+
         return recommend;
     }
 

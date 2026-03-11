@@ -69,7 +69,8 @@ public class CustomUserDetailsService extends DefaultOAuth2UserService {
         SimpleGrantedAuthority authority = new SimpleGrantedAuthority(user.getUserRole().name());
 
         // 사용자 인증 정보 반환 -> Authentication 객체에 담김(인증 상태) -> SecurityContext에 저장
-        return new OauthUserDetails(String.valueOf(user.getUserEmail()),
+        return new OauthUserDetails(user.getUserId(),
+                String.valueOf(user.getUserEmail()),
                 Collections.singletonList(authority),
                 oAuth2User.getAttributes());
     }
