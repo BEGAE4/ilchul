@@ -19,6 +19,9 @@ import java.util.Collection;
 public class RefreshToken {
 
     private String id;
+
+    private int userId;
+    private String email;
     private Collection<? extends GrantedAuthority> authorities;
 
     @Indexed // 필드 값으로 데이터를 검색

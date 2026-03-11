@@ -1,6 +1,5 @@
-package com.begae.backend.like.domain;
+package com.begae.backend.plan.domain;
 
-import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -8,18 +7,20 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-@Table(name = "likes")
-public class Like {
+@Table(name = "scrapped_plan")
+public class ScrappedPlan {
 
     @Id
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "like_id")
-    private int likeId;
+    @Column(name = "scrap_id")
+    private int scrapId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -29,21 +30,6 @@ public class Like {
     @JoinColumn(name = "plan_id")
     private Plan plan;
 
-    @Column(name = "like_type")
-    private char likeType;
-
-    @Column(name = "like_status")
-    private boolean likeStatus;
-
-    public static Like createLike(User user, Plan plan) {
-        Like like = new Like();
-        like.user = user;
-        like.plan = plan;
-        like.likeStatus = true;
-        return like;
-    }
-
-    public void toggleLikeStatus() {
-        this.likeStatus = !this.likeStatus;
-    }
+    @Column(name = "scrapped_at", updatable = false)
+    private LocalDateTime scrappedAt;
 }

@@ -1,8 +1,8 @@
 package com.begae.backend.plan_place.service;
 
-import com.begae.backend.plan_place.dto.CalculateDurationRequestDto;
-import com.begae.backend.plan_place.dto.CalculateDurationResponseDto;
+import com.begae.backend.plan_place.dto.CreatePlanPreviewRequestDto;
+import com.begae.backend.plan_place.dto.CreatePlanPreviewResponseDto;
 
 public interface PlanPlaceService {
-    public CalculateDurationResponseDto calculateDuration(CalculateDurationRequestDto request);
+    public CreatePlanPreviewResponseDto createPlanPreview(CreatePlanPreviewRequestDto request);
 }

@@ -28,6 +28,7 @@ import java.util.*;
 @Component
 public class JwtManager {
 
+    private static final String AUTH_USER_ID = "USER_ID";
     private static final String AUTH_KEY = "AUTHORITY";
     private static final String AUTH_EMAIL = "EMAIL";
 
@@ -58,13 +59,14 @@ public class JwtManager {
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     } // JWT 생성에 사용될 키 값 생성
 
-    public JwtDto createToken(String email, String role) {
+    public JwtDto createToken(int userId, String email, String role) {
         long now = (new Date()).getTime();
 
         Date accessValidity = new Date(now + this.accessTokenValidityTime);
         Date refreshValidity = new Date(now + this.refreshTokenValidityTime);
 
-        Map<String, String> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
+        map.put(AUTH_USER_ID, userId);
         map.put(AUTH_EMAIL, email);
         map.put(AUTH_KEY, role);
 
@@ -115,8 +117,11 @@ public class JwtManager {
                 .map(auth -> new SimpleGrantedAuthority(auth))
                 .toList();
 
+        int userId = Integer.parseInt(claims.get(AUTH_USER_ID).toString());
+        String email = claims.get(AUTH_EMAIL).toString();
+
         OauthUserDetails principal = new OauthUserDetails(
-                (String) claims.get(AUTH_EMAIL), simpleGrantedAuthorities, Map.of()
+                userId, email, simpleGrantedAuthorities, Map.of()
         );
 
         return new UsernamePasswordAuthenticationToken(principal, token, simpleGrantedAuthorities);
@@ -126,9 +131,11 @@ public class JwtManager {
     public JwtDto reissueAccessToken(String refreshToken) {
         RefreshToken availableToken = refreshTokenRedisRepository.findByRefreshToken(refreshToken);
 
-        JwtDto jwtDto = createToken(availableToken.getId(), availableToken.getAuthority());
+        JwtDto jwtDto = createToken(availableToken.getUserId(), availableToken.getEmail(), availableToken.getAuthority());
         refreshTokenRedisRepository.save(RefreshToken.builder()
                 .id(availableToken.getId())
+                .userId(availableToken.getUserId())
+                .email(availableToken.getEmail())
                 .authorities(availableToken.getAuthorities())
                 .refreshToken(jwtDto.getRefreshToken())
                 .build());
