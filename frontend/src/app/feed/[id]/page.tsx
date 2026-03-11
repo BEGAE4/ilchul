@@ -4,6 +4,7 @@ import React from 'react';
 import { useParams } from 'next/navigation';
 import { FeedDetailPage } from '@/features/feed/components/FeedDetailPage';
 import { FeedPost } from '@/features/feed/types';
+import PageLayout from '@/shared/ui/PageLayout';
 
 // 임시 데이터 - 실제로는 API에서 가져와야 함
 const mockPosts: Record<string, FeedPost> = {
@@ -11,7 +12,7 @@ const mockPosts: Record<string, FeedPost> = {
     id: '1',
     username: 'username',
     images: [
-      '/images/yoga-feed.png', 
+      '/images/yoga-feed.png',
     ],
     location: '어느 공원',
     description: '청주',
@@ -36,19 +37,17 @@ export default function FeedDetail() {
 
   if (!post) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        height: '100vh',
-        color: '#ffffff'
-      }}>
-        피드를 찾을 수 없습니다.
-      </div>
+      <PageLayout>
+        <div className="flex items-center justify-center h-screen text-gray-500">
+          피드를 찾을 수 없습니다.
+        </div>
+      </PageLayout>
     );
   }
 
-  return <FeedDetailPage post={post} />;
+  return (
+    <PageLayout>
+      <FeedDetailPage post={post} />
+    </PageLayout>
+  );
 }
-
-

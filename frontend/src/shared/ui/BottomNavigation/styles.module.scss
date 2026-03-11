@@ -21,15 +21,17 @@
 }
 
 .navIcon {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   border-radius: 18px;
   border: none;
   background: #fff;
   color: #454545;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   font-size: 1.25rem;
   transition: all 0.2s ease;
   cursor: pointer;
@@ -43,10 +45,15 @@
   }
 }
 
+.navLabel {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+}
+
 .navIconActive {
-  background: #eef2ff;
-  color: #5a7ff2;
-  // box-shadow: 0 15px 35px rgba(90, 127, 242, 0.3);
+  background: #f0f9ff;
+  color: #0ea5e9;
 }
 
 @media (max-width: 390px) {
