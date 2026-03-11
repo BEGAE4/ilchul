@@ -33,15 +33,36 @@ public class PlanPlace {
     @Column(name = "order_index")
     private int orderIndex;
 
+    @Column(name = "travel_time")
+    private int travelTime;
+
+    @Column(name = "stay_time")
+    private int stayTime;
+
     @Column(name = "is_stamped")
     private Boolean isStamped;
+
+    @Column(name = "snapshot_address_name")
+    private String snapshotAddressName;
+
+    @Column(name = "snapshot_road_address_name")
+    private String snapshotRoadAddressName;
+
+    @Column(name = "snapshot_category_name")
+    private String snapshotCategoryName;
+
+    @Column(name = "snapshot_place_name")
+    private String snapshotPlaceName;
+
+    @Column(name = "snapshot_x")
+    private double snapshotX;
+
+    @Column(name = "snapshot_y")
+    private double snapshotY;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "plan_id")
     private Plan plan;
-
-    @Column(name = "travel_time")
-    private Integer travelTime;
 
     @OneToMany(mappedBy = "planPlace", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanPlaceImage> planPlaceImages = new ArrayList<>();

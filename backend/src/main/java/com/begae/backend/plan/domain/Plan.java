@@ -3,6 +3,7 @@ package com.begae.backend.plan.domain;
 import com.begae.backend.like.domain.Like;
 import com.begae.backend.plan_place.domain.PlanPlace;
 import com.begae.backend.global.domain.BaseEntity;
+import com.begae.backend.reply.domain.Reply;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -49,11 +50,17 @@ public class Plan extends BaseEntity {
     @Column(name = "departure_point")
     private String departurePoint;
 
-    @Column(name = "trip_date")
-    private LocalDateTime tripDate;
+    @Column(name = "trip_start_date")
+    private LocalDateTime tripStartDate;
+
+    @Column(name = "trip_end_date")
+    private LocalDateTime tripEndDate;
 
     @Column(name = "like_count")
     private Integer likeCount;
+
+    @Column(name = "scrap_count")
+    private Integer scrapCount;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -64,6 +71,12 @@ public class Plan extends BaseEntity {
 
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Like> likes = new ArrayList<>();
+
+    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ScrappedPlan> scrappedPlans = new ArrayList<>();
+
+    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Reply> replies = new ArrayList<>();
 
     public void updateIsPlanVisibility() {
         this.isPlanVisible = !this.isPlanVisible;

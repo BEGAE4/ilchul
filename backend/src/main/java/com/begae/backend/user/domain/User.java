@@ -1,8 +1,12 @@
 package com.begae.backend.user.domain;
 
+import com.begae.backend.cs_inquiry.domain.CsInquiry;
 import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.like.domain.Like;
 import com.begae.backend.plan.domain.Plan;
+import com.begae.backend.plan.domain.ScrappedPlan;
+import com.begae.backend.reply.domain.Reply;
+import com.begae.backend.report.domain.Report;
 import com.begae.backend.user.common.SocialType;
 import com.begae.backend.user.common.UserRole;
 import com.begae.backend.user.common.UserStatus;
@@ -50,8 +54,20 @@ public class User extends BaseEntity {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Like> likes = new ArrayList<>();
 
-    @CreatedDate
-    private LocalDateTime createAt;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ScrappedPlan> scrappedPlans = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<CsInquiry> inquiries = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Reply> replies = new ArrayList<>();
+
+    @OneToMany(mappedBy = "reportUser", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Report> reports = new ArrayList<>();
+
+    @OneToMany(mappedBy = "reportedUser", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Report> reported = new ArrayList<>();
 
     @Builder
     public User(String userEmail, SocialType socialType, String userNickname, UserRole userRole, UserStatus userStatus) {
