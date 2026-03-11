@@ -20,6 +20,14 @@ const nextConfig: NextConfig = {
         hostname: 'localhost',
         port: '3845',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.pravatar.cc',
+      },
     ],
   },
   output: "standalone",

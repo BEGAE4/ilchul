@@ -58,8 +58,34 @@ export default function IntroPage() {
     };
   }, [router]);
 
+  const handleSkip = () => {
+    localStorage.setItem(INTRO_SEEN_KEY, 'true');
+    router.push('/login');
+  };
+
   return (
     <div className={styles.introContainer}>
+      {/* 건너뛰기 버튼 */}
+      <button
+        onClick={handleSkip}
+        style={{
+          position: 'absolute',
+          top: '16px',
+          right: '16px',
+          zIndex: 100,
+          padding: '8px 16px',
+          fontSize: '14px',
+          color: '#6b7280',
+          background: 'rgba(255,255,255,0.8)',
+          backdropFilter: 'blur(4px)',
+          borderRadius: '9999px',
+          border: 'none',
+          cursor: 'pointer',
+        }}
+      >
+        건너뛰기
+      </button>
+
       {/* 첫 번째 장면: 로고 */}
       <div
         className={`${styles.scene} ${currentScene === 0 && isVisible ? styles.visible : ''}`}

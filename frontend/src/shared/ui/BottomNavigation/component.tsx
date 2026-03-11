@@ -23,6 +23,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({
             onClick={onClick}
           >
             <Icon aria-hidden="true" size={22} />
+            <span className={styles.navLabel}>{label}</span>
           </button>
         ))}
       </div>

@@ -1,0 +1,1 @@
+export { ScrollCarousel } from './component';
