@@ -226,7 +226,7 @@ EOF
                             BACKEND_PORT=8080
                             FRONTEND_PORT=3000
                         else
-                            BACKEND_PORT=8081
+                            BACKEND_PORT=8082
                             FRONTEND_PORT=3001
                         fi
 
@@ -313,7 +313,7 @@ Target environment: ${env.TARGET_ENV}
 
 The new ${env.TARGET_ENV} environment is healthy and ready.
 
-✅ Backend (${env.TARGET_ENV}): http://localhost:${env.TARGET_ENV == 'blue' ? '8080' : '8081'}/health
+✅ Backend (${env.TARGET_ENV}): http://localhost:${env.TARGET_ENV == 'blue' ? '8080' : '8082'}/health
 ✅ Frontend (${env.TARGET_ENV}): http://localhost:${env.TARGET_ENV == 'blue' ? '3000' : '3001'}
 
 Click 'Proceed' to switch traffic to ${env.TARGET_ENV}
