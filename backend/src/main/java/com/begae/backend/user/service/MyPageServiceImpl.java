@@ -52,7 +52,8 @@ public class MyPageServiceImpl implements MyPageService {
                             plan.getPlanId(),
                             plan.getPlanTitle(),
                             plan.getCreateAt(),
-                            plan.getTripDate(),
+                            plan.getTripStartDate(),
+                            plan.getTripEndDate(),
                             images
                     );
                 })
