@@ -25,7 +25,8 @@ public class MyPlansResponse {
         private int planId;
         private String planTitle;
         private LocalDateTime createAt;
-        private LocalDateTime tripDate;
+        private LocalDateTime tripStartDate;
+        private LocalDateTime tripEndDate;
         private List<String> planImages = new ArrayList<>();
 
 //        public static PlanSummary from(Plan plan) {

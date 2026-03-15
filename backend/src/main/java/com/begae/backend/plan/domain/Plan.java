@@ -39,7 +39,7 @@ public class Plan extends BaseEntity {
     private String planDescription;
 
     @Column(name = "required_time")
-    private Duration requiredTime;
+    private int requiredTime;
 
     @Column(name = "total_budget")
     private int totalBudget;
