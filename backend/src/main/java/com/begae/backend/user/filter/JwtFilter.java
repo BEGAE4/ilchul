@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,9 @@ public class JwtFilter extends OncePerRequestFilter {
     private static final String REFRESH_COOKIE = "RefreshToken";
 
     private final JwtManager jwtManager;
+
+    @Value("${oauth.reissue-uri}")
+    private String REISSUE_URI;
 
 
 
@@ -95,6 +99,6 @@ public class JwtFilter extends OncePerRequestFilter {
         response.addHeader("Set-Cookie", accessToken.toString());
         response.addHeader("Set-Cookie", refreshToken.toString());
 
-        response.sendRedirect("http://localhost:5173/login/reissue");
+        response.sendRedirect(REISSUE_URI);
     }
 }
