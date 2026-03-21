@@ -39,58 +39,60 @@
   src: url('/fonts/pretendard/static/Pretendard-Bold.woff2') format('woff2');
 }
 
-/* Reset CSS */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+/* Reset CSS - @layer base에 포함해 Tailwind 유틸리티(py-4 등)가 우선 적용되도록 함 */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
 
-* {
-  margin: 0;
-  padding: 0;
-}
+  * {
+    margin: 0;
+    padding: 0;
+  }
 
-html,
-body {
-  height: 100%;
-}
+  html,
+  body {
+    height: 100%;
+  }
 
-body {
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  body {
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-img,
-picture,
-video,
-canvas,
-svg {
-  display: block;
-  max-width: 100%;
-}
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
 
-input,
-button,
-textarea,
-select {
-  font: inherit;
-}
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+  }
 
-p,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  overflow-wrap: break-word;
-}
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    overflow-wrap: break-word;
+  }
 
-#root,
-#__next {
-  isolation: isolate;
+  #root,
+  #__next {
+    isolation: isolate;
+  }
 }
 
 /* 모바일 우선 기본 스타일 */
@@ -137,8 +139,12 @@ input[type='button'],
 input[type='submit'] {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  /* min-height: 44px; iOS 권장 터치 영역 */
-  /* min-width: 44px; */
+}
+
+/* 포커스 가시성 (접근성) */
+*:focus-visible {
+  outline: 2px solid #0ea5e9;
+  outline-offset: 2px;
 }
 
 /* 모바일 스크롤 최적화 */

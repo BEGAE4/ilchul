@@ -5,7 +5,7 @@ import PageLayout from '@/shared/ui/PageLayout';
 import Header from '@/shared/ui/Header';
 import IconBox from '@/shared/ui/IconBox';
 import styles from './my-page.module.scss';
-import router from 'next/router';
+import { useRouter } from 'next/navigation';
 
 interface MenuItemProps {
   label: string;
@@ -20,6 +20,8 @@ const MenuItem: React.FC<MenuItemProps> = ({ label, onClick }) => (
 );
 
 const MyPage: React.FC = () => {
+  const router = useRouter();
+
   const handleProfileClick = () => {
     // 프로필 수정 처리
     console.log('Profile clicked');

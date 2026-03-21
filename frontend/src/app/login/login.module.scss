@@ -17,6 +17,18 @@
   gap: 2.8125rem; // 45px
 }
 
+.errorMessage {
+  width: 100%;
+  max-width: 390px;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background-color: rgba(239, 68, 68, 0.08);
+  color: #b91c1c;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
 .header {
   display: flex;
   flex-direction: column;
