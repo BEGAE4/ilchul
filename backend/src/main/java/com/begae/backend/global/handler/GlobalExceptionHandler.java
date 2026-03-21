@@ -1,6 +1,7 @@
 package com.begae.backend.global.handler;
 
 import com.begae.backend.global.dto.ErrorResponse;
+import com.begae.backend.place.exception.SearchLogNotExistException;
 import com.begae.backend.plan.exception.PlanNotFoundException;
 import com.begae.backend.user.exception.UserNotFoundException;
 import org.apache.coyote.Response;
@@ -52,4 +53,14 @@ public class GlobalExceptionHandler {
 //                )
 //        );
 //    }
+
+    @ExceptionHandler(SearchLogNotExistException.class)
+    public ResponseEntity<ErrorResponse> handleSearchLogNotExist(SearchLogNotExistException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                ErrorResponse.of(
+                        HttpStatus.NOT_FOUND,
+                        "검색기록이 존재하지 않습니다."
+                )
+        );
+    }
 }

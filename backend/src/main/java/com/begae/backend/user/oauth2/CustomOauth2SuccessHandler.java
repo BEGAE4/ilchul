@@ -12,6 +12,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -30,7 +31,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CustomOauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
-    private static final String REDIRECT_URI = "http://localhost:5173/login/success";
+
+    @Value("${oauth.redirect-uri}")
+    private String REDIRECT_URI;
 
     private final JwtManager jwtManager;
     private final UserRepository userRepository;
@@ -62,7 +65,7 @@ public class CustomOauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
         User user = userRepository.findByUserEmailAndSocialType(userInfo.get("email"), socialType)
                 .orElseThrow(UserNotFoundException::new);
 
-        JwtDto jwtDto = jwtManager.createToken(user.getUserEmail(), user.getUserRole().name());
+        JwtDto jwtDto = jwtManager.createToken(user.getUserId(), user.getUserEmail(), user.getUserRole().name());
 
         saveRefreshTokenOnRedis(user, jwtDto);
 
@@ -93,6 +96,8 @@ public class CustomOauth2SuccessHandler extends SimpleUrlAuthenticationSuccessHa
         simpleGrantedAuthorities.add(new SimpleGrantedAuthority(user.getUserRole().name()));
         refreshTokenRedisRepository.save(RefreshToken.builder()
                 .id(user.getUserEmail())
+                .userId(user.getUserId())
+                .email(user.getUserEmail())
                 .authorities(simpleGrantedAuthorities)
                 .refreshToken(jwtDto.getRefreshToken())
                 .build());
