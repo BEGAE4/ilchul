@@ -37,7 +37,7 @@ export default function IconBox({
       role={onClick ? 'button' : 'img'}
       style={{ 
         color: color,
-        cursor: onClick ? 'pointer' : 'default',
+        cursor: 'pointer',
         opacity: disabled ? 0.5 : 1,
         pointerEvents: disabled ? 'none' : 'auto'
       }}

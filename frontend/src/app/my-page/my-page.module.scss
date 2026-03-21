@@ -1,24 +1,13 @@
-.container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background-color: #ffffff;
-  overflow: hidden;
-}
-
-.headerTitle {
-  font-size: 18px;
-  font-weight: 600;
-  color: #374151;
-}
+// PageLayout이 컨테이너 역할을 하므로 제거
 
 .content {
   flex: 1;
   padding: 0 20px;
-  padding-top: 3.5rem; /* 헤더 높이만큼 상단 패딩 추가 */
+  padding-top: calc(3.5rem + 1rem); /* 헤더 높이 + 여백 */
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  min-height: calc(100vh - 3.5rem);
 }
 
 /* 프로필 섹션 */
@@ -156,39 +145,39 @@
 @media (max-width: 768px) {
   .content {
     padding: 0 16px;
-    padding-top: 3.5rem; /* 헤더 높이만큼 상단 패딩 추가 */
+    padding-top: calc(3.5rem + 1rem);
   }
-  
+
   .profileSection {
     padding: 16px 0;
   }
-  
+
   .menuSection {
     padding: 24px 0 20px;
   }
-  
+
   .avatar {
     width: 50px;
     height: 50px;
   }
-  
+
   .username {
     font-size: 16px;
   }
-  
+
   .email {
     font-size: 13px;
   }
-  
+
   .sectionTitle {
     font-size: 18px;
     margin-bottom: 20px;
   }
-  
+
   .menuItem {
     padding: 16px 0;
   }
-  
+
   .menuLabel {
     font-size: 15px;
   }

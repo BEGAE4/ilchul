@@ -23,4 +23,5 @@ export type IconName =
   | 'search' 
   | 'chevron-right'
   | 'circle-check'
-  | 'close';
+  | 'close'
+  | 'run';

@@ -14,6 +14,7 @@ import SearchIcon from '@/shared/assets/icons/icon-search.svg';
 import ChevronRightIcon from '@/shared/assets/icons/icon-chevron-right.svg';
 import CircleCheckIcon from '@/shared/assets/icons/icon-circle-check.svg';
 import CloseIcon from '@/shared/assets/icons/icon-close.svg';
+import RunIcon from '@/shared/assets/icons/icon-run.svg';
 
 export const icons = {
   chat: ChatIcon,
@@ -31,4 +32,5 @@ export const icons = {
   'chevron-right': ChevronRightIcon,
   'circle-check': CircleCheckIcon,
   close: CloseIcon,
+  run: RunIcon,
 } as const;

@@ -1,11 +1,43 @@
 // BottomMenu 스타일
 .container {
   position: fixed;
-  inset: 0;
+  top: 0;
+  bottom: 0;
   z-index: 50;
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  
+  // 모바일에서는 전체 너비 (web-app-container가 전체 너비)
+  @media (max-width: 767px) {
+    left: 0;
+    right: 0;
+    max-width: 100vw;
+  }
+  
+  // 데스크톱에서 web-app-container 내부에만 제한
+  // web-app-container는 max-width: 428px이고 margin: 0 auto로 중앙 정렬됨
+  @media (min-width: 768px) {
+    left: 50%;
+    right: auto;
+    margin-left: -214px; // 428px / 2
+    max-width: 428px;
+    width: 428px;
+  }
+  
+  // 태블릿 대응 (max-width: 480px)
+  @media (min-width: 768px) and (max-width: 1024px) {
+    margin-left: -240px; // 480px / 2
+    max-width: 480px;
+    width: 480px;
+  }
+  
+  // 큰 화면에서도 적절한 크기 유지 (max-width: 428px)
+  @media (min-width: 1200px) {
+    margin-left: -214px; // 428px / 2
+    max-width: 428px;
+    width: 428px;
+  }
 }
 
 .overlay {
@@ -82,7 +114,15 @@
   
   &:hover {
     color: rgb(55, 65, 81);
-    background-color: rgb(243, 244, 246);
+    transform: scale(1.1);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+  
+  &:focus {
+    outline: none;
   }
 }
 

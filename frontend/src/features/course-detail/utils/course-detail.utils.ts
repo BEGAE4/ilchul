@@ -48,12 +48,15 @@ export const getActivityTypeLabel = (type: string): string => {
   }
 };
 
-export const getActivityActionButton = (activity: any): string | null => {
+export const getActivityActionButton = (activity: { status: string; type: string }): string | null => {
   if (activity.status === 'available') {
     if (activity.type === 'car') {
       return '경로 보기';
     }
     return '방문 가능';
+  }
+  if (activity.status === 'move') {
+    return '경로 보기';
   }
   return null;
 };

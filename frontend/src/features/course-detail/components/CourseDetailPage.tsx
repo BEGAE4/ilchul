@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { CourseDetailHeader } from './CourseDetailHeader';
-import { CourseDetailContent } from './CourseDetailContent';
+import Header from '@/shared/ui/Header';
+import IconBox from '@/shared/ui/IconBox';
 import BottomMenu from '@/shared/ui/BottomMenu';
 import { useCourseDetail } from '../hooks/useCourseDetail';
+import { useStampHistory } from '../hooks/useStampHistory';
+import { CourseDetailPageProps } from '../types/course-detail.types';
+import { Stamp } from '../api/course-detail.api';
+import { CourseDetailContent } from './CourseDetailContent';
 import styles from './CourseDetailPage.module.scss';
 
-interface CourseDetailPageProps {
-  courseId: string;
-}
-
-export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) => {
+export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({
+  courseId,
+}) => {
   const [showBottomMenu, setShowBottomMenu] = useState(false);
-  
+
   const {
     course,
     loading,
@@ -22,8 +24,20 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
     handleActivityClick,
     handleBack,
     handleShare,
-    handleImage
+    handleImage,
   } = useCourseDetail(courseId);
+
+  const { stampHistory, stampLoading } = useStampHistory(courseId, activeTab);
+
+  const handleStampClick = (stamp: Stamp) => {
+    if (stamp.needsVerification) {
+      // TODO: 인증하기 기능 구현
+      console.log('인증하기:', stamp);
+    } else {
+      // TODO: 스탬프 상세 보기
+      console.log('스탬프 클릭:', stamp);
+    }
+  };
 
   const handleMoreClick = () => {
     setShowBottomMenu(true);
@@ -36,7 +50,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
       onClick: () => {
         console.log('수정 클릭');
         setShowBottomMenu(false);
-      }
+      },
     },
     {
       id: 'share',
@@ -44,7 +58,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
       onClick: () => {
         handleShare();
         setShowBottomMenu(false);
-      }
+      },
     },
     {
       id: 'delete',
@@ -52,8 +66,8 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
       onClick: () => {
         console.log('삭제 클릭');
         setShowBottomMenu(false);
-      }
-    }
+      },
+    },
   ];
 
   if (loading) {
@@ -85,14 +99,33 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
 
   return (
     <div className={styles.page}>
-      <CourseDetailHeader
-        title={course.title}
-        date={course.date}
-        backgroundImage="/course_plan.png"
-        onBack={handleBack}
-        onShare={handleShare}
-        onImage={handleImage}
-      />
+      <div className={styles.headerSection}>
+        {/* Hero Section */}
+        <div className={styles.heroContainer}>
+          <div
+            className={styles.backgroundImage}
+            style={{ backgroundImage: 'url(/images/course-plan.png)' }}
+          >
+            <div className={styles.overlay} />
+          </div>
+        </div>
+        {/* Header */}
+        <div className={styles.headerWrapper}>
+          <Header
+            variant="backArrow"
+            onBackClick={handleBack}
+            className={styles.header}
+          />
+          <div className={styles.rightIcons}>
+            <button onClick={handleShare} className={styles.iconButton}>
+              <IconBox name="share" size={24} color="white" />
+            </button>
+            <button onClick={handleImage} className={styles.iconButton}>
+              <IconBox name="image" size={24} color="white" />
+            </button>
+          </div>
+        </div>
+      </div>
       <CourseDetailContent
         course={course}
         activeTab={activeTab}
@@ -100,8 +133,11 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({ courseId }) 
         onEditOrder={handleEditOrder}
         onActivityClick={handleActivityClick}
         onMoreClick={handleMoreClick}
+        stampHistory={stampHistory}
+        stampLoading={stampLoading}
+        onStampClick={handleStampClick}
       />
-      
+
       <BottomMenu
         isOpen={showBottomMenu}
         onClose={() => setShowBottomMenu(false)}
