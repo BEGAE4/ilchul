@@ -2,7 +2,6 @@ package com.begae.backend.plan.controller;
 
 import com.begae.backend.plan.dto.PlanDetailDto;
 import com.begae.backend.plan.service.PlanService;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

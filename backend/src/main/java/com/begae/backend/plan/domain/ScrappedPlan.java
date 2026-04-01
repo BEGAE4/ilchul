@@ -2,16 +2,15 @@ package com.begae.backend.plan.domain;
 
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Table(name = "scrapped_plan")
 public class ScrappedPlan {
@@ -27,8 +26,12 @@ public class ScrappedPlan {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "plan_id")
-    private Plan plan;
+    @JoinColumn(name = "origin_plan_id")
+    private Plan originPlan;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "new_plan_id")
+    private Plan newPlan;
 
     @Column(name = "scrapped_at", updatable = false)
     private LocalDateTime scrappedAt;
