@@ -3,19 +3,16 @@ package com.begae.backend.plan_place.domain;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.plan.domain.Plan;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import lombok.*;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Getter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Table(name = "plan_place")
 public class PlanPlace {
@@ -64,6 +61,7 @@ public class PlanPlace {
     @JoinColumn(name = "plan_id")
     private Plan plan;
 
+    @Builder.Default
     @OneToMany(mappedBy = "planPlace", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanPlaceImage> planPlaceImages = new ArrayList<>();
 }

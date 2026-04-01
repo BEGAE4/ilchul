@@ -17,7 +17,7 @@ public class PlanDetailFlatDto {
     private Boolean isPlanVisible;
     private String planDescription;
     private int requiredTime;
-    private int totalBudget;
+//    private int totalBudget;
     private int totalDistance;
     private Integer likeCount;
     private Integer scrapCount;

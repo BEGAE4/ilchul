@@ -1,11 +1,9 @@
 package com.begae.backend.user.dto;
 
-import com.begae.backend.plan.domain.Plan;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -27,6 +25,8 @@ public class MyPlansResponse {
         private LocalDateTime createAt;
         private LocalDateTime tripStartDate;
         private LocalDateTime tripEndDate;
+        private Boolean isPlanVisible;
+        private Integer requiredTime;
         private List<String> planImages = new ArrayList<>();
 
 //        public static PlanSummary from(Plan plan) {
