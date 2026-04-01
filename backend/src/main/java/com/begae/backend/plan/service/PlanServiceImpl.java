@@ -4,18 +4,11 @@ import com.begae.backend.plan.dto.PlanDetailDto;
 import com.begae.backend.plan.dto.PlanDetailFlatDto;
 import com.begae.backend.plan.repository.PlanRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -77,6 +70,7 @@ public class PlanServiceImpl implements PlanService{
 //    }
 //
     @Override
+    @Transactional(readOnly = true)
     public PlanDetailDto getPlanDetail(Integer planId) {
         List<PlanDetailFlatDto> flats = planRepository.findPlanDetailFlat(planId);
         if (flats.isEmpty()) {
@@ -90,20 +84,29 @@ public class PlanServiceImpl implements PlanService{
                                 .planPlaceId(f.getPlanPlaceId())
                                 .placeImage(f.getPlaceImage())
                                 .placeName(f.getPlaceName())
-                                .address(f.getAddress())
+                                .addressName(f.getAddressName())
+                                .roadAddressName(f.getRoadAddressName())
                                 .travelTime(f.getTravelTime())
                                 .orderIndex(f.getOrderIndex())
                                 .isStamped(f.getIsStamped())
+                                .categoryName(f.getCategoryName())
+                                .stayTime(f.getStayTime())
                                 .build())
                         .toList();
 
         return PlanDetailDto.builder()
                 .planId(first.getPlanId())
                 .planTitle(first.getPlanTitle())
-                .tripDate(first.getTripDate())
+                .tripStartDate(first.getTripStartDate())
+                .tripEndDate(first.getTripEndDate())
                 .createAt(first.getCreateAt())
+                .isVerified(first.getIsVerified())
                 .isPlanVisible(first.getIsPlanVisible())
                 .planDescription(first.getPlanDescription())
+                .requiredTime(first.getRequiredTime())
+                .totalDistance(first.getTotalDistance())
+                .likeCount(first.getLikeCount())
+                .scrapCount(first.getScrapCount())
                 .planPlaceDetailDtos(places)
                 .build();
     }

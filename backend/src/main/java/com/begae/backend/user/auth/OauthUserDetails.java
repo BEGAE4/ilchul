@@ -1,5 +1,6 @@
 package com.begae.backend.user.auth;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -8,9 +9,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+@Getter
 @RequiredArgsConstructor
 public class OauthUserDetails implements OAuth2User {
 
+    private final int userId;
     private final String email;
     private final List<? extends GrantedAuthority> authorities;
     private final Map<String, Object> attributes;

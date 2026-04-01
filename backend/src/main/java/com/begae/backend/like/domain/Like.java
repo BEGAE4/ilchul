@@ -29,6 +29,9 @@ public class Like {
     @JoinColumn(name = "plan_id")
     private Plan plan;
 
+    @Column(name = "like_type")
+    private char likeType;
+
     @Column(name = "like_status")
     private boolean likeStatus;
 

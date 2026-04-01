@@ -3,9 +3,12 @@ package com.begae.backend.user.service;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.repository.PlanRepository;
+import com.begae.backend.plan.repository.ScrappedPlanRepository;
 import com.begae.backend.user.domain.User;
 import com.begae.backend.user.dto.MyPlansResponse;
-import com.begae.backend.user.dto.UpdateUserNicknameRequest;
+import com.begae.backend.user.dto.UpdateUserProfileRequest;
+import com.begae.backend.user.dto.UserProfileResponseDto;
+import com.begae.backend.user.dto.UserProfileSummaryResponseDto;
 import com.begae.backend.user.exception.UserNotFoundException;
 import com.begae.backend.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -22,15 +25,19 @@ public class MyPageServiceImpl implements MyPageService {
 
     private final UserRepository userRepository;
     private final PlanRepository planRepository;
+    private final ScrappedPlanRepository scrappedPlanRepository;
 
     @Transactional
     @Override
-    public Boolean updateUserNickname(UpdateUserNicknameRequest updateUserNicknameRequest) {
+    public UserProfileResponseDto updateUserProfile(UpdateUserProfileRequest updateUserProfileRequest) {
         Integer userId = 1;
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
-        user.updateUserNickname(updateUserNicknameRequest.getNewUserNickname());
+        user.updateUserProfile(
+                updateUserProfileRequest.getNewUserNickname(),
+                updateUserProfileRequest.getNewUserIntro(),
+                updateUserProfileRequest.getNewUserProfileImg());
         User newNicknameUser = userRepository.save(user);
-        return newNicknameUser.getUserNickname().equals(updateUserNicknameRequest.getNewUserNickname());
+        return UserProfileResponseDto.from(user);
     }
 
     @Transactional
@@ -52,7 +59,10 @@ public class MyPageServiceImpl implements MyPageService {
                             plan.getPlanId(),
                             plan.getPlanTitle(),
                             plan.getCreateAt(),
-                            plan.getTripDate(),
+                            plan.getTripStartDate(),
+                            plan.getTripEndDate(),
+                            plan.getIsPlanVisible(),
+                            plan.getRequiredTime(),
                             images
                     );
                 })
@@ -70,5 +80,35 @@ public class MyPageServiceImpl implements MyPageService {
         plan.updateIsPlanVisibility();
         Boolean currVisibility = plan.getIsPlanVisible();
         return prevVisibility.equals(!currVisibility);
+    }
+
+    @Override
+    public UserProfileResponseDto findMypageProfile(Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+        return new UserProfileResponseDto(
+                user.getUserNickname(),
+                user.getUserImg(),
+                user.getUserIntro()
+        );
+    }
+
+    @Override
+    public UserProfileSummaryResponseDto findMyPageSummary(Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+        List<Plan> plans = planRepository.findByUserUserId(user.getUserId());
+        List<Integer> planIds = plans.stream().map(Plan::getPlanId).toList();
+        Integer publicPlanCount = plans.stream().filter(Plan::getIsPlanVisible).toList().size();
+        Integer verifyPlanCount = plans.stream().filter(Plan::getIsVerified).toList().size();
+        Integer scrappedByOthersCount = scrappedPlanRepository.countByOriginPlan_PlanIdIn(planIds);
+        Integer savedCourseCount = scrappedPlanRepository.countByUser_UserId(user.getUserId());
+        return UserProfileSummaryResponseDto
+                .builder()
+                .publicPlanCount(publicPlanCount)
+                .verifyPlanCount(verifyPlanCount)
+                .scrappedByOthersCount(scrappedByOthersCount)
+                .savedCourseCount(savedCourseCount)
+                .build();
     }
 }

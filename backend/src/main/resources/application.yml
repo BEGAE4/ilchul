@@ -36,7 +36,7 @@ spring:
   # Redis
   data:
     redis:
-      host: redis_db
+      host: ${REDIS_DB}
       port: 6379
 
   security:
@@ -115,6 +115,10 @@ google:
 
 anthropic-api:
   api-key: ${ANTHROPIC_API_KEY}
+
+oauth:
+  redirect-uri: ${FRONTEND_BASE_URL}/login/success
+  reissue-uri: ${FRONTEND_BASE_URL}/login/reissue
 
 management:
   endpoints:

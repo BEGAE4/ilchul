@@ -1,11 +1,13 @@
 package com.begae.backend.place.domain;
 
-import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.place.dto.KakaoPlaceResponseDto;
 import com.begae.backend.place.dto.PlaceSummaryDto;
 import com.begae.backend.plan_place.domain.PlanPlace;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -16,7 +18,7 @@ import java.util.List;
 @NoArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Table(name = "place")
-public class Place extends BaseEntity {
+public class Place /*extends BaseEntity*/ {
 
     @Id
     @EqualsAndHashCode.Include
