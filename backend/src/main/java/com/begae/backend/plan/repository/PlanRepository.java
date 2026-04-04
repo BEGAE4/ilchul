@@ -30,7 +30,6 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
         pl.isPlanVisible,
         pl.planDescription,
         pl.requiredTime,
-        pl.totalBudget,
         pl.totalDistance,
         pl.likeCount,
         pl.scrapCount,

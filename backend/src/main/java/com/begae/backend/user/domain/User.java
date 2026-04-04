@@ -12,10 +12,8 @@ import com.begae.backend.user.common.UserRole;
 import com.begae.backend.user.common.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,7 +22,7 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @EntityListeners(AuditingEntityListener.class)
-@Table(name = "users")
+@Table(name = "user")
 public class User extends BaseEntity {
 
     @Id
@@ -48,6 +46,12 @@ public class User extends BaseEntity {
     @Column(name = "user_nickname")
     private String userNickname;
 
+    @Column(name = "user_intro")
+    private String userIntro;
+
+    @Column(name = "user_img")
+    private String userImg;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Plan> plans = new ArrayList<>();
 
@@ -70,16 +74,20 @@ public class User extends BaseEntity {
     private List<Report> reported = new ArrayList<>();
 
     @Builder
-    public User(String userEmail, SocialType socialType, String userNickname, UserRole userRole, UserStatus userStatus) {
+    public User(String userEmail, SocialType socialType, String userNickname, UserRole userRole, UserStatus userStatus, String userIntro, String userImg) {
         this.userEmail = userEmail;
         this.socialType = socialType;
         this.userNickname = userNickname;
         this.userRole = userRole;
         this.userStatus = userStatus;
+        this.userIntro = userIntro;
+        this.userImg = userImg;
     }
 
-    public void updateUserNickname(String userNickname) {
+    public void updateUserProfile(String userNickname, String userIntro, String userImg) {
         this.userNickname = userNickname;
+        this.userIntro = userIntro;
+        this.userImg = userImg;
     }
 }
 

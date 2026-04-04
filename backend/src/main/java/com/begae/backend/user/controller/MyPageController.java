@@ -1,11 +1,11 @@
 package com.begae.backend.user.controller;
 
 import com.begae.backend.user.dto.MyPlansResponse;
-import com.begae.backend.user.dto.UpdateUserNicknameRequest;
+import com.begae.backend.user.dto.UpdateUserProfileRequest;
+import com.begae.backend.user.dto.UserProfileResponseDto;
+import com.begae.backend.user.dto.UserProfileSummaryResponseDto;
 import com.begae.backend.user.service.MyPageService;
 import lombok.RequiredArgsConstructor;
-import org.apache.coyote.Response;
-import org.springframework.boot.autoconfigure.graphql.GraphQlProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,10 +17,10 @@ public class MyPageController {
 
     private final MyPageService myPageService;
 
-    @PatchMapping("/nickname")
-    public ResponseEntity<Boolean> setUserNickname(UpdateUserNicknameRequest updateUserNicknameRequest) {
+    @PatchMapping("/profile")
+    public ResponseEntity<UserProfileResponseDto> setUserProfile(@RequestBody UpdateUserProfileRequest updateUserProfileRequest) {
         return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(myPageService.updateUserNickname(updateUserNicknameRequest));
+                .body(myPageService.updateUserProfile(updateUserProfileRequest));
     }
 
     @GetMapping("plans")
@@ -38,5 +38,17 @@ public class MyPageController {
             return ResponseEntity.status(HttpStatus.NOT_MODIFIED).build();
         }
         return ResponseEntity.status(HttpStatus.OK).build();
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<UserProfileResponseDto> getMypageProfile() {
+        Integer userId = 1;
+        return ResponseEntity.status(HttpStatus.OK).body(myPageService.findMypageProfile(userId));
+    }
+
+    @GetMapping("/summary")
+    public ResponseEntity<UserProfileSummaryResponseDto> getMyPageSummary() {
+        Integer userId = 1;
+        return ResponseEntity.status(HttpStatus.OK).body(myPageService.findMyPageSummary(userId));
     }
 }

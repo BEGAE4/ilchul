@@ -34,6 +34,21 @@ services:
     networks:
       - app-network
 
+  redis:
+    container_name: redis_db
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
 volumes:
   mysql_data_volume:
 
