@@ -32,7 +32,9 @@ import {
   PLACE_COORDS,
   MOCK_ADDRESSES,
 } from '@/shared/data/mockData';
-import type { Place } from '@/shared/types';
+import { useKakaoPlaceSearch, reverseGeocode } from '@/shared/lib/hooks/useKakaoPlaceSearch';
+import { Search } from 'lucide-react';
+import type { Place, StartingPoint } from '@/shared/types';
 
 // ── Survey 1: 마음 상태 ──
 const MIND_STATES = [
@@ -723,188 +725,20 @@ export const CourseCreationFlow: React.FC = () => {
   // (6) Starting Point Selection
   // ════════════════════════════════════════════
   if (step === 'startPoint') {
-    const filteredAddresses = customAddress.trim()
-      ? MOCK_ADDRESSES.filter((a) => a.label.includes(customAddress.trim()))
-      : MOCK_ADDRESSES;
-
     return (
-      <div className="flex flex-col h-full bg-white">
-        <Header onBack={handleBack} title="출발지 설정" showStep />
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-5 pb-3">
-            <h2 className="text-xl font-bold mb-2 text-gray-900">어디에서 출발하시나요?</h2>
-            <p className="text-sm text-gray-500 mb-3">
-              지도에서 출발지를 선택하거나 검색해주세요.
-            </p>
-            <div className="flex justify-end mb-3">
-              <button
-                onClick={handleRetry}
-                className="flex items-center gap-1.5 text-xs text-gray-400 bg-gray-50 px-3 py-1.5 rounded-full"
-              >
-                <RotateCcw size={12} />
-                설문 다시 하기
-              </button>
-            </div>
-          </div>
-
-          {/* 지도 프리뷰 */}
-          <div className="px-4 pb-3">
-            <div className="relative rounded-xl overflow-hidden border-2 border-indigo-100">
-              <RouteMap
-                startingPoint={startingPoint}
-                stops={[]}
-                showRoute={false}
-                className="h-48"
-              />
-              <div className="absolute top-3 left-3 right-3 z-10">
-                <div className="bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-gray-100">
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin size={16} className="text-indigo-500 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-gray-900 truncate">
-                        {startingPoint.address || '출발지를 선택해주세요'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 현재 위치 버튼 + 검색 */}
-          <div className="px-5 space-y-3">
-            <button
-              onClick={() => {
-                setGeoStatus('loading');
-                if (navigator.geolocation) {
-                  navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                      const mockAddress = '서울 용산구 한강대로 405 서울역';
-                      setGeoStatus('success');
-                      setCustomAddress(mockAddress);
-                      setStartingPoint({
-                        type: 'current',
-                        address: mockAddress,
-                        coord: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-                      });
-                    },
-                    () => {
-                      setGeoStatus('error');
-                      toast.error('현재 위치를 가져올 수 없습니다', {
-                        description: '직접 입력으로 출발지를 설정해주세요.',
-                      });
-                    },
-                    { timeout: 5000 }
-                  );
-                } else {
-                  setGeoStatus('error');
-                  toast.error('GPS를 사용할 수 없습니다');
-                }
-              }}
-              className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-indigo-500 text-white font-bold active:bg-indigo-600 transition-colors"
-            >
-              {geoStatus === 'loading' ? (
-                <>
-                  <Loader2 size={20} className="animate-spin" />
-                  위치 확인 중...
-                </>
-              ) : (
-                <>
-                  <LocateFixed size={20} />
-                  현재 위치로 설정
-                </>
-              )}
-            </button>
-
-            {/* 검색 입력 */}
-            <div>
-              <div className="relative">
-                <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  value={customAddress}
-                  onChange={(e) => {
-                    setCustomAddress(e.target.value);
-                    setShowAddressList(true);
-                  }}
-                  onFocus={() => setShowAddressList(true)}
-                  placeholder="역, 주소, 장소명으로 검색"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-base focus:border-indigo-400 outline-none transition-all"
-                />
-              </div>
-
-              {showAddressList && customAddress && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-2 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden"
-                >
-                  {filteredAddresses.length > 0 ? (
-                    filteredAddresses.map((addr) => (
-                      <button
-                        key={addr.label}
-                        onClick={() => {
-                          setCustomAddress(addr.label);
-                          setStartingPoint({
-                            type: 'custom',
-                            address: addr.label,
-                            coord: addr.coord,
-                          });
-                          setShowAddressList(false);
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-indigo-50 border-b border-gray-50 last:border-b-0"
-                      >
-                        <MapPin size={14} className="text-indigo-400 shrink-0" />
-                        <span className="text-sm text-gray-700">{addr.label}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-4 py-6 text-center text-sm text-gray-400">
-                      검색 결과가 없습니다
-                    </div>
-                  )}
-                </motion.div>
-              )}
-
-              {!customAddress && !showAddressList && (
-                <div className="mt-3 space-y-2">
-                  <div className="text-xs font-bold text-gray-500 px-1">추천 출발지</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {MOCK_ADDRESSES.slice(0, 4).map((addr) => (
-                      <button
-                        key={addr.label}
-                        onClick={() => {
-                          setCustomAddress(addr.label);
-                          setStartingPoint({
-                            type: 'custom',
-                            address: addr.label,
-                            coord: addr.coord,
-                          });
-                        }}
-                        className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 border border-gray-100 text-left hover:bg-indigo-50 hover:border-indigo-200 transition-colors"
-                      >
-                        <MapPin size={12} className="text-gray-400 shrink-0" />
-                        <span className="text-xs text-gray-700 font-medium truncate">
-                          {addr.label}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="p-4 border-t border-gray-100">
-          <button
-            onClick={handleNext}
-            disabled={!startingPoint.address}
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shadow-lg shadow-sky-100"
-          >
-            다음으로
-          </button>
-        </div>
-      </div>
+      <StartPointStep
+        startingPoint={startingPoint}
+        setStartingPoint={setStartingPoint}
+        customAddress={customAddress}
+        setCustomAddress={setCustomAddress}
+        showAddressList={showAddressList}
+        setShowAddressList={setShowAddressList}
+        geoStatus={geoStatus}
+        setGeoStatus={setGeoStatus}
+        handleBack={handleBack}
+        handleNext={handleNext}
+        handleRetry={handleRetry}
+      />
     );
   }
 
@@ -1282,3 +1116,287 @@ export const CourseCreationFlow: React.FC = () => {
 
   return null;
 };
+
+// ════════════════════════════════════════════
+// StartPointStep — 출발지 설정 (카카오맵 장소 검색 연동)
+// ════════════════════════════════════════════
+interface StartPointStepProps {
+  startingPoint: StartingPoint;
+  setStartingPoint: (p: { type: 'current' | 'custom' | 'suggestion'; address: string; coord: { lat: number; lng: number } }) => void;
+  customAddress: string;
+  setCustomAddress: (v: string) => void;
+  showAddressList: boolean;
+  setShowAddressList: (v: boolean) => void;
+  geoStatus: 'idle' | 'loading' | 'success' | 'error';
+  setGeoStatus: (v: 'idle' | 'loading' | 'success' | 'error') => void;
+  handleBack: () => void;
+  handleNext: () => void;
+  handleRetry: () => void;
+}
+
+function StartPointHeader({
+  onBack,
+  currentStep,
+}: {
+  onBack: () => void;
+  currentStep: number;
+}) {
+  return (
+    <div className="bg-white sticky top-0 z-10">
+      <div className="flex items-center p-4 border-b border-gray-100">
+        <button
+          onClick={onBack}
+          className="p-2 -ml-2 text-gray-700 rounded-full active:bg-gray-100"
+        >
+          <ArrowLeft size={24} />
+        </button>
+        <span className="font-bold text-lg ml-2">출발지 설정</span>
+      </div>
+      <StepIndicator currentStep={currentStep} totalSteps={TOTAL_STEPS} />
+    </div>
+  );
+}
+
+function StartPointStep({
+  startingPoint,
+  setStartingPoint,
+  customAddress,
+  setCustomAddress,
+  showAddressList,
+  setShowAddressList,
+  geoStatus,
+  setGeoStatus,
+  handleBack,
+  handleNext,
+  handleRetry,
+}: StartPointStepProps) {
+  const { results: searchResults, searching } = useKakaoPlaceSearch(customAddress);
+
+  const handleMapClick = (coord: { lat: number; lng: number }, address: string) => {
+    setCustomAddress(address);
+    setStartingPoint({ type: 'custom', address, coord });
+    setShowAddressList(false);
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-white">
+      <StartPointHeader onBack={handleBack} currentStep={STEP_NUMBERS.startPoint} />
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-5 pb-3">
+          <h2 className="text-xl font-bold mb-2 text-gray-900">어디에서 출발하시나요?</h2>
+          <p className="text-sm text-gray-500 mb-3">
+            지도에서 출발지를 선택하거나 검색해주세요.
+          </p>
+          <div className="flex justify-end mb-3">
+            <button
+              onClick={handleRetry}
+              className="flex items-center gap-1.5 text-xs text-gray-400 bg-gray-50 px-3 py-1.5 rounded-full"
+            >
+              <RotateCcw size={12} />
+              설문 다시 하기
+            </button>
+          </div>
+        </div>
+
+        {/* 지도 프리뷰 — 클릭으로 출발지 선택 가능 */}
+        <div className="px-4 pb-3">
+          <div className="relative rounded-xl overflow-hidden border-2 border-indigo-100">
+            <RouteMap
+              startingPoint={startingPoint}
+              stops={[]}
+              showRoute={false}
+              className="h-48"
+              onMapClick={handleMapClick}
+            />
+            <div className="absolute top-3 left-3 right-3 z-10 pointer-events-none">
+              <div className="bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-gray-100">
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin size={16} className="text-indigo-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-gray-900 truncate">
+                      {startingPoint.address || '출발지를 선택해주세요'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-1.5 text-center">
+            지도를 클릭하여 출발지를 지정할 수도 있어요
+          </p>
+        </div>
+
+        {/* 현재 위치 버튼 + 검색 */}
+        <div className="px-5 space-y-3">
+          <button
+            onClick={() => {
+              setGeoStatus('loading');
+              if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                  async (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    try {
+                      const address = await reverseGeocode(latitude, longitude);
+                      setGeoStatus('success');
+                      setCustomAddress(address);
+                      setStartingPoint({
+                        type: 'current',
+                        address,
+                        coord: { lat: latitude, lng: longitude },
+                      });
+                    } catch {
+                      // 역지오코딩 실패 시 좌표만 설정
+                      const fallback = `위도 ${latitude.toFixed(4)}, 경도 ${longitude.toFixed(4)}`;
+                      setGeoStatus('success');
+                      setCustomAddress(fallback);
+                      setStartingPoint({
+                        type: 'current',
+                        address: fallback,
+                        coord: { lat: latitude, lng: longitude },
+                      });
+                    }
+                  },
+                  () => {
+                    setGeoStatus('error');
+                    toast.error('현재 위치를 가져올 수 없습니다', {
+                      description: '직접 입력으로 출발지를 설정해주세요.',
+                    });
+                  },
+                  { timeout: 5000 },
+                );
+              } else {
+                setGeoStatus('error');
+                toast.error('GPS를 사용할 수 없습니다');
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-indigo-500 text-white font-bold active:bg-indigo-600 transition-colors"
+          >
+            {geoStatus === 'loading' ? (
+              <>
+                <Loader2 size={20} className="animate-spin" />
+                위치 확인 중...
+              </>
+            ) : (
+              <>
+                <LocateFixed size={20} />
+                현재 위치로 설정
+              </>
+            )}
+          </button>
+
+          {/* 카카오 장소 검색 */}
+          <div>
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={customAddress}
+                onChange={(e) => {
+                  setCustomAddress(e.target.value);
+                  setShowAddressList(true);
+                }}
+                onFocus={() => setShowAddressList(true)}
+                placeholder="역, 주소, 장소명으로 검색"
+                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-base focus:border-indigo-400 outline-none transition-all"
+              />
+              {searching && (
+                <Loader2
+                  size={16}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-400 animate-spin"
+                />
+              )}
+            </div>
+
+            {/* 카카오 장소 검색 결과 */}
+            {showAddressList && customAddress && customAddress.trim().length >= 2 && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-2 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto"
+              >
+                {searching ? (
+                  <div className="px-4 py-6 text-center text-sm text-gray-400 flex items-center justify-center gap-2">
+                    <Loader2 size={14} className="animate-spin" />
+                    검색 중...
+                  </div>
+                ) : searchResults.length > 0 ? (
+                  searchResults.map((place) => (
+                    <button
+                      key={place.id}
+                      onClick={() => {
+                        setCustomAddress(place.name);
+                        setStartingPoint({
+                          type: 'custom',
+                          address: place.roadAddress || place.address,
+                          coord: place.coord,
+                        });
+                        setShowAddressList(false);
+                      }}
+                      className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-indigo-50 border-b border-gray-50 last:border-b-0"
+                    >
+                      <MapPin size={14} className="text-indigo-400 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-gray-900 truncate">
+                          {place.name}
+                        </div>
+                        <div className="text-xs text-gray-400 truncate mt-0.5">
+                          {place.roadAddress || place.address}
+                        </div>
+                        {place.category && (
+                          <span className="text-[10px] text-indigo-400 mt-0.5 inline-block">
+                            {place.category}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-4 py-6 text-center text-sm text-gray-400">
+                    검색 결과가 없습니다
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* 추천 출발지 (검색어 없을 때) */}
+            {!customAddress && !showAddressList && (
+              <div className="mt-3 space-y-2">
+                <div className="text-xs font-bold text-gray-500 px-1">추천 출발지</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {MOCK_ADDRESSES.slice(0, 4).map((addr) => (
+                    <button
+                      key={addr.label}
+                      onClick={() => {
+                        setCustomAddress(addr.label);
+                        setStartingPoint({
+                          type: 'custom',
+                          address: addr.label,
+                          coord: addr.coord,
+                        });
+                      }}
+                      className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 border border-gray-100 text-left hover:bg-indigo-50 hover:border-indigo-200 transition-colors"
+                    >
+                      <MapPin size={12} className="text-gray-400 shrink-0" />
+                      <span className="text-xs text-gray-700 font-medium truncate">
+                        {addr.label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="p-4 border-t border-gray-100">
+        <button
+          onClick={handleNext}
+          disabled={!startingPoint.address}
+          className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shadow-lg shadow-sky-100"
+        >
+          다음으로
+        </button>
+      </div>
+    </div>
+  );
+}

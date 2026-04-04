@@ -1,24 +1,29 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { Navigation, AlertCircle } from 'lucide-react';
 import type { Place, StartingPoint } from '@/shared/types';
 import { PLACE_COORDS } from '@/shared/data/mockData';
 import { useKakaoMap } from '@/shared/lib/hooks/useKakaoMap';
+import { reverseGeocode } from '@/shared/lib/hooks/useKakaoPlaceSearch';
 
 interface RouteMapProps {
   startingPoint: StartingPoint;
   stops: Place[];
   showRoute?: boolean;
   className?: string;
+  onMapClick?: (coord: { lat: number; lng: number }, address: string) => void;
 }
 
-export function RouteMap({ startingPoint, stops, showRoute = false, className = '' }: RouteMapProps) {
+export function RouteMap({ startingPoint, stops, showRoute = false, className = '', onMapClick }: RouteMapProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<kakao.maps.Map | null>(null);
   const markersRef = useRef<(kakao.maps.CustomOverlay | kakao.maps.Marker)[]>([]);
   const polylineRef = useRef<kakao.maps.Polyline | null>(null);
   const loadStatus = useKakaoMap();
+
+  const onMapClickRef = useRef(onMapClick);
+  onMapClickRef.current = onMapClick;
 
   // 지도 초기화
   useEffect(() => {
@@ -33,6 +38,31 @@ export function RouteMap({ startingPoint, stops, showRoute = false, className = 
       });
     }
   }, [loadStatus, startingPoint.coord.lat, startingPoint.coord.lng]);
+
+  // 지도 클릭 이벤트
+  useEffect(() => {
+    if (loadStatus !== 'loaded' || !mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clickHandler = (mouseEvent: any) => {
+      if (!onMapClickRef.current) return;
+      const lat = mouseEvent.latLng.getLat();
+      const lng = mouseEvent.latLng.getLng();
+      reverseGeocode(lat, lng)
+        .then((address) => {
+          onMapClickRef.current?.({ lat, lng }, address);
+        })
+        .catch(() => {
+          onMapClickRef.current?.({ lat, lng }, `위도 ${lat.toFixed(4)}, 경도 ${lng.toFixed(4)}`);
+        });
+    };
+
+    kakao.maps.event.addListener(map, 'click', clickHandler);
+    return () => {
+      kakao.maps.event.removeListener(map, 'click', clickHandler);
+    };
+  }, [loadStatus]);
 
   // 마커 & 경로 업데이트
   useEffect(() => {

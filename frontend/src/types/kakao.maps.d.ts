@@ -107,5 +107,105 @@ declare namespace kakao {
       function addListener(target: object, type: string, handler: (...args: unknown[]) => void): void;
       function removeListener(target: object, type: string, handler: (...args: unknown[]) => void): void;
     }
+
+    namespace services {
+      enum Status {
+        OK = 'OK',
+        ZERO_RESULT = 'ZERO_RESULT',
+        ERROR = 'ERROR',
+      }
+
+      enum SortBy {
+        ACCURACY = 'accuracy',
+        DISTANCE = 'distance',
+      }
+
+      interface PlacesSearchOptions {
+        location?: LatLng;
+        x?: number;
+        y?: number;
+        radius?: number;
+        bounds?: LatLngBounds;
+        page?: number;
+        size?: number;
+        sort?: SortBy;
+        category_group_code?: string;
+      }
+
+      interface PlacesSearchResult {
+        id: string;
+        place_name: string;
+        category_name: string;
+        category_group_code: string;
+        category_group_name: string;
+        phone: string;
+        address_name: string;
+        road_address_name: string;
+        x: string;
+        y: string;
+        place_url: string;
+        distance: string;
+      }
+
+      interface Pagination {
+        totalCount: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
+        current: number;
+        gotoPage(page: number): void;
+        gotoFirst(): void;
+        gotoLast(): void;
+        nextPage(): void;
+        prevPage(): void;
+      }
+
+      type PlacesSearchCallback = (
+        result: PlacesSearchResult[],
+        status: Status,
+        pagination: Pagination,
+      ) => void;
+
+      class Places {
+        constructor(map?: Map);
+        keywordSearch(keyword: string, callback: PlacesSearchCallback, options?: PlacesSearchOptions): void;
+        categorySearch(code: string, callback: PlacesSearchCallback, options?: PlacesSearchOptions): void;
+        setMap(map: Map | null): void;
+      }
+
+      interface AddressResult {
+        address: {
+          address_name: string;
+          region_1depth_name: string;
+          region_2depth_name: string;
+          region_3depth_name: string;
+          mountain_yn: string;
+          main_address_no: string;
+          sub_address_no: string;
+        };
+        road_address: {
+          address_name: string;
+          region_1depth_name: string;
+          region_2depth_name: string;
+          region_3depth_name: string;
+          road_name: string;
+          underground_yn: string;
+          main_building_no: string;
+          sub_building_no: string;
+          building_name: string;
+          zone_no: string;
+        } | null;
+      }
+
+      type Coord2AddressCallback = (
+        result: AddressResult[],
+        status: Status,
+      ) => void;
+
+      class Geocoder {
+        constructor();
+        coord2Address(lng: number, lat: number, callback: Coord2AddressCallback): void;
+        addressSearch(addr: string, callback: (result: { x: string; y: string; address_name: string }[], status: Status) => void): void;
+      }
+    }
   }
 }
