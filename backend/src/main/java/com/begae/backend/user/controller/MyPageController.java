@@ -1,5 +1,7 @@
 package com.begae.backend.user.controller;
 
+import com.begae.backend.plan.dto.ScrappedPlanResponseDto;
+import com.begae.backend.plan.service.ScrappedPlanService;
 import com.begae.backend.user.dto.MyPlansResponse;
 import com.begae.backend.user.dto.UpdateUserProfileRequest;
 import com.begae.backend.user.dto.UserProfileResponseDto;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class MyPageController {
 
     private final MyPageService myPageService;
+    private final ScrappedPlanService scrappedPlanService;
 
     @PatchMapping("/profile")
     public ResponseEntity<UserProfileResponseDto> setUserProfile(@RequestBody UpdateUserProfileRequest updateUserProfileRequest) {
@@ -50,5 +53,11 @@ public class MyPageController {
     public ResponseEntity<UserProfileSummaryResponseDto> getMyPageSummary() {
         Integer userId = 1;
         return ResponseEntity.status(HttpStatus.OK).body(myPageService.findMyPageSummary(userId));
+    }
+
+    @GetMapping("/scrapped")
+    public ResponseEntity<ScrappedPlanResponseDto> getScrappedPlan() {
+        Integer userId = 1;
+        return ResponseEntity.status(HttpStatus.OK).body(scrappedPlanService.findUserScrappedPlan(userId));
     }
 }

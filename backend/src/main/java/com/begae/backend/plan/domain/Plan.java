@@ -76,12 +76,8 @@ public class Plan extends BaseEntity {
     private List<Like> likes = new ArrayList<>();
 
     @Builder.Default
-    @OneToMany(mappedBy = "originPlan", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ScrappedPlan> scrappedOriginPlans = new ArrayList<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "newPlan", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ScrappedPlan> scrappedNewPlans = new ArrayList<>();
+    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ScrappedPlan> scrappedPlans = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -100,4 +96,6 @@ public class Plan extends BaseEntity {
     }
 
     public void increaseScrappedCount() { this.scrapCount++; }
+
+    public void decreaseScrappedCount() { this.scrapCount--; }
 }
