@@ -51,4 +51,6 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
     order by ppl.orderIndex
 """)
     List<PlanDetailFlatDto> findPlanDetailFlat(@Param("planId") Integer planId);
+
+    List<Plan> findByPlanIdIn(List<Integer> planIds);
 }
