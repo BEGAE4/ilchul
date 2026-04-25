@@ -1,9 +1,11 @@
 'use client';
 
 import React from 'react';
+import PageLayout from '@/shared/ui/PageLayout';
 import Header from '@/shared/ui/Header';
 import IconBox from '@/shared/ui/IconBox';
 import styles from './my-page.module.scss';
+import { useRouter } from 'next/navigation';
 
 interface MenuItemProps {
   label: string;
@@ -18,15 +20,7 @@ const MenuItem: React.FC<MenuItemProps> = ({ label, onClick }) => (
 );
 
 const MyPage: React.FC = () => {
-  const handleBackClick = () => {
-    // 뒤로가기 처리
-    if (window.history.length > 1) {
-      window.history.back();
-    } else {
-      // 히스토리가 없으면 홈으로 이동
-      window.location.href = '/';
-    }
-  };
+  const router = useRouter();
 
   const handleProfileClick = () => {
     // 프로필 수정 처리
@@ -34,14 +28,8 @@ const MyPage: React.FC = () => {
   };
 
   return (
-    <div className={styles.container}>
-      <Header
-        leftIcon={
-          <IconBox name="arrow-left" size={24} color="rgb(55, 65, 81)" />
-        }
-        center={<span className={styles.headerTitle}>마이페이지</span>}
-        onLeftClick={handleBackClick}
-      />
+    <PageLayout>
+      <Header variant="backArrow" onBackClick={() => router.back()} />
 
       <div className={styles.content}>
         {/* 프로필 섹션 */}
@@ -90,7 +78,7 @@ const MyPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 };
 

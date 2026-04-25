@@ -1,0 +1,1 @@
+export { ShareBottomSheet } from './component';

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,9 +36,14 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
       </head>
       <body className="mobile-optimized">
-        <div className="web-app-container">
-          {children}
-        </div>
+        {children}
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            style: { fontSize: '14px' },
+            duration: 2000,
+          }}
+        />
       </body>
     </html>
   );

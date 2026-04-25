@@ -1,702 +1,437 @@
-// 메인페이지 스타일
-.homePage {
-  min-height: 100vh;
-  background-color: #f8f9fa;
+// ─── 배너 ───────────────────────────────────────────────────────────────────
+
+.bannerSection {
   width: 100%;
-  max-width: 100%;
 }
 
-// 히어로 섹션
-.heroSection {
+.bannerSlider {
   position: relative;
-  height: 400px;
-  margin-bottom: 2rem;
-}
-
-.heroBackground {
   width: 100%;
-  height: 100%;
-}
-
-.heroCard {
-  :global(.card) {
-    border-radius: 0;
-    height: 100%;
-  }
-
-  :global(.content) {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 2rem;
-    color: white;
-  }
-
-  :global(.title) {
-    font-size: 1.5rem;
-    font-weight: 300;
-    margin-bottom: 0.5rem;
-  }
-
-  :global(.subtitle) {
-    font-size: 1.8rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-  }
-
-  :global(.description) {
-    font-size: 1rem;
-    opacity: 0.9;
-    max-width: 300px;
-  }
-}
-
-// 섹션 헤더
-.sectionHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  padding: 0 1rem;
-
-  h2 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #333;
-    margin: 0;
-  }
-}
-
-.moreLink {
-  color: #666;
-  text-decoration: none;
-  font-size: 0.9rem;
-
-  &:hover {
-    color: #333;
-    text-decoration: underline;
-  }
-}
-
-// 테마 버튼들
-.themesSection {
-  padding: 1rem;
-  margin-bottom: 2rem;
-}
-
-.themeButtons {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.themeButton {
-  padding: 0.75rem 1.5rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 25px;
-  background: white;
-  color: #666;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    border-color: #999;
-  }
-
-  &.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-color: transparent;
-  }
-}
-
-// 아로마 섹션
-.aromaSection {
-  padding: 0 1rem;
-  margin-bottom: 2rem;
-}
-
-.aromaCard {
-  :global(.card) {
-    background: #2c2c2c;
-    color: white;
-    min-height: 200px;
-  }
-
-  :global(.content) {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 2rem;
-  }
-
-  :global(.title) {
-    font-size: 1.1rem;
-    font-weight: 500;
-    line-height: 1.4;
-  }
-}
-
-// 플랜 섹션
-.popularPlansSection {
-  padding: 1rem;
-  margin-bottom: 2rem;
-}
-
-.plansGrid {
-  display: flex;
-  gap: 1rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
-
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 2px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 2px;
-  }
-}
-
-.plan-card {
-  min-width: 280px;
-  flex-shrink: 0;
-
-  :global(.card) {
-    height: 180px;
-  }
-
-  :global(.content) {
-    justify-content: flex-end;
-  }
-
-  :global(.title) {
-    font-size: 0.95rem;
-    line-height: 1.3;
-  }
-}
-
-// 주변 장소 섹션
-.nearbyPlacesSection {
-  padding: 1rem;
-  margin-bottom: 6rem; // 하단 네비게이션 공간 확보
-}
-
-.placesGrid {
-  display: flex;
-  gap: 1rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
-
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 2px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: #ccc;
-    border-radius: 2px;
-  }
-}
-
-.place-card {
-  min-width: 200px;
-  flex-shrink: 0;
-
-  :global(.card) {
-    height: 220px;
-  }
-
-  :global(.content) {
-    justify-content: flex-end;
-    padding: 1rem;
-  }
-
-  :global(.title) {
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-  }
-
-  :global(.actionButton) {
-    background: #ff6b35;
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-  }
-
-  :global(.priceInfo) {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  :global(.priceLabel) {
-    font-size: 0.75rem;
-    color: #999;
-  }
-
-  :global(.priceValue) {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: white;
-  }
-
-  :global(.discount) {
-    color: #ff6b35;
-    margin-right: 0.25rem;
-  }
-}
-
-// 하단 네비게이션
-.bottomNavigation {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 428px; /* 웹앱 컨테이너와 동일한 너비 */
-  background: white;
-  border-top: 1px solid #e0e0e0;
-  display: flex;
-  justify-content: space-around;
-  padding: 0.75rem 0;
-  z-index: 100;
-}
-
-// 데스크톱에서 하단 네비게이션 스타일링
-@media (min-width: 768px) {
-  .bottomNavigation {
-    border-radius: 0 0 0px 0px; /* 하단 둥근 모서리 */
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-    border-top: none;
-  }
-}
-
-.navItem {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  cursor: pointer;
-  transition: color 0.2s ease;
-
-  &.active {
-    color: #667eea;
-
-    .nav-icon {
-      transform: scale(1.1);
-    }
-  }
-}
-
-.navIcon {
-  font-size: 1.5rem;
-  transition: transform 0.2s ease;
-}
-
-.navLabel {
-  font-size: 0.7rem;
-  font-weight: 500;
-}
-
-// 반응형 디자인
-@media (max-width: 768px) {
-  .heroSection {
-    height: 300px;
-  }
-
-  .heroCard {
-    :global(.title) {
-      font-size: 1.2rem;
-    }
-
-    :global(.subtitle) {
-      font-size: 1.4rem;
-    }
-
-    :global(.description) {
-      font-size: 0.9rem;
-    }
-  }
-
-  .themeButtons {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .themeButton {
-    padding: 0.5rem 1rem;
-    font-size: 0.8rem;
-  }
-
-  .planCard {
-    min-width: 250px;
-  }
-
-  .placeCard {
-    min-width: 180px;
-  }
-
-  // 모바일에서는 하단 네비게이션을 전체 너비로
-  .bottomNavigation {
-    left: 0;
-    transform: none;
-    max-width: 100vw;
-  }
-}
-.container {
-  max-width: 100%;
-  margin: 0 auto;
-  background-color: #f8f9fa;
-}
-
-// 히어로 섹션
-.heroSection {
-  position: relative;
-  height: 400px;
+  height: 240px;
   overflow: hidden;
 }
 
-.heroImage {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400"><defs><linearGradient id="forest" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%234a5568;stop-opacity:1" /><stop offset="100%" style="stop-color:%232d3748;stop-opacity:1" /></linearGradient></defs><rect width="1000" height="400" fill="url(%23forest)"/><path d="M0,300 Q250,250 500,300 T1000,300 L1000,400 L0,400 Z" fill="%231a202c" opacity="0.8"/><circle cx="200" cy="100" r="3" fill="%23fbbf24" opacity="0.6"/><circle cx="400" cy="80" r="2" fill="%23fbbf24" opacity="0.4"/><circle cx="600" cy="120" r="2.5" fill="%23fbbf24" opacity="0.5"/><circle cx="800" cy="90" r="2" fill="%23fbbf24" opacity="0.3"/></svg>');
+.bannerSlide {
+  position: absolute;
+  inset: 0;
   background-size: cover;
   background-position: center;
+  opacity: 0;
+  transition: opacity 0.6s ease;
 }
 
-.heroOverlay {
+.bannerSlideActive {
+  opacity: 1;
+}
+
+.bannerOverlay {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.3);
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.1) 0%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+.bannerContent {
+  position: absolute;
+  bottom: 40px;
+  left: 20px;
+  right: 20px;
+  color: #fff;
+  z-index: 1;
+}
+
+.bannerTag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  letter-spacing: 0.03em;
+  backdrop-filter: blur(4px);
+}
+
+.bannerSubtitle {
+  font-size: 13px;
+  opacity: 0.9;
+  margin: 0 0 4px;
+}
+
+.bannerTitle {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.bannerDots {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  align-items: center;
-  justify-content: center;
+  gap: 6px;
+  z-index: 2;
 }
 
-.heroText {
-  text-align: center;
-  color: white;
-
-  h1 {
-    font-size: 1.2rem;
-    font-weight: 400;
-    margin-bottom: 0.5rem;
-    opacity: 0.9;
-  }
-
-  h2 {
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin-bottom: 0.8rem;
-    line-height: 1.2;
-  }
-
-  p {
-    font-size: 1rem;
-    font-weight: 300;
-    opacity: 0.8;
-    line-height: 1.4;
-  }
+.bannerDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s;
 }
 
-// 테마 섹션
-.themeSection {
-  padding: 2rem 1rem;
-  background: white;
+.bannerDotActive {
+  background: #fff;
+  width: 18px;
+  border-radius: 3px;
+}
+
+// ─── 공통 레이아웃 ────────────────────────────────────────────────────────────
+
+.content {
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
 }
 
 .sectionHeader {
-  margin-bottom: 1.5rem;
-
-  h3 {
-    font-size: 1.1rem;
-    color: #4a5568;
-    margin-bottom: 0.3rem;
-  }
-
-  h4 {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: #2d3748;
-  }
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
 
+.sectionTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.moreBtn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: #3b82f6;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+// ─── 테마 버튼 ────────────────────────────────────────────────────────────────
+
 .themeButtons {
-  display: flex;
-  gap: 0.8rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
+  padding-bottom: 4px;
 }
 
 .themeButton {
-  flex-shrink: 0;
-  padding: 0.8rem 1.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 25px;
-  background: white;
-  color: #4a5568;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    border-color: #667eea;
-    color: #667eea;
-  }
-
-  &.selected {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-color: transparent;
-    color: white;
-  }
-}
-
-// 아로마 섹션
-.aromaSection {
-  padding: 2rem 1rem;
-  background: #2d3748;
-  color: white;
-}
-
-.aromaContent {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.aromaText {
-  h3 {
-    font-size: 1.1rem;
-    color: #a0aec0;
-    margin-bottom: 0.3rem;
-  }
-
-  h4 {
-    font-size: 1.4rem;
-    font-weight: 700;
-  }
-}
-
-.aromaImage {
-  width: 100%;
-  height: 200px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: linear-gradient(45deg, #4a5568, #2d3748);
-}
-
-// 인기 플랜 섹션
-.popularPlansSection {
-  padding: 2rem 1rem;
-  background: white;
-}
-
-.plansGrid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1rem;
-}
-
-.planCard {
-  height: 150px;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.moreButton {
-  background: none;
+  padding: 7px 16px;
+  border-radius: 999px;
   border: none;
-  color: #667eea;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-// 주변 장소 섹션
-.nearbyPlacesSection {
-  padding: 2rem 1rem;
-  background: white;
-}
-
-.placesList {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
+// ─── 장소 카드 (주변) ──────────────────────────────────────────────────────────
 
 .placeCard {
-  display: flex;
-  gap: 1rem;
-  padding: 1rem;
-  border: 1px solid #e2e8f0;
+  width: 130px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.placeImageWrapper {
+  position: relative;
+  width: 130px;
+  height: 100px;
   border-radius: 12px;
-  background: white;
+  overflow: hidden;
+  margin-bottom: 8px;
 }
 
 .placeImage {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
-  background: linear-gradient(45deg, #667eea, #764ba2);
-  flex-shrink: 0;
+  object-fit: cover;
 }
 
 .placeInfo {
-  flex: 1;
-
-  h4 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #2d3748;
-    margin-bottom: 0.3rem;
-  }
-
-  p {
-    font-size: 0.9rem;
-    color: #4a5568;
-    margin-bottom: 0.5rem;
-  }
+  padding: 0 2px;
 }
 
-.statusBadge {
-  display: inline-block;
-  padding: 0.2rem 0.6rem;
-  background: #fed7d7;
-  color: #c53030;
-  font-size: 0.8rem;
+.placeCategory {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.placeName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  margin: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.placeMeta {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+// ─── 코스 카드 (베스트) ───────────────────────────────────────────────────────
+
+.courseCard {
+  width: 200px;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: white;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.courseImageWrapper {
+  position: relative;
+  width: 200px;
+  height: 130px;
+}
+
+.courseImage {
+  object-fit: cover;
+}
+
+.rankBadge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.bookmarkBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.courseInfo {
+  padding: 10px 12px 12px;
+}
+
+.courseTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.courseMeta {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.courseMetaItem {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.courseFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.courseLikes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.courseTags {
+  display: flex;
+  gap: 4px;
+}
+
+.courseTag {
+  font-size: 10px;
+  color: #3b82f6;
+  background: #eff6ff;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+// ─── 전국 인기 장소 (그리드) ──────────────────────────────────────────────────
+
+.placesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.gridPlaceCard {
+  background: white;
   border-radius: 12px;
-  margin-bottom: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
 }
 
-.priceInfo {
+.gridPlaceImageWrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+}
+
+.gridPlaceInfo {
+  padding: 8px 10px 10px;
+}
+
+.gridPlaceName {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  margin: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// ─── 전국 인기 코스 (리스트) ──────────────────────────────────────────────────
+
+.nationwideList {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-
-  span:first-child {
-    font-size: 0.8rem;
-    color: #718096;
-  }
-
-  .price {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #2d3748;
-  }
+  gap: 12px;
 }
 
-// 하단 네비게이션
-.bottomNavigation {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+.listCourseCard {
+  display: flex;
+  gap: 12px;
   background: white;
-  border-top: 1px solid #e2e8f0;
-  z-index: 1000;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  padding: 12px;
+  align-items: flex-start;
+}
+
+.listCourseImageWrapper {
+  position: relative;
+  width: 88px;
+  height: 72px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.listCourseInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.listCourseTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.listCourseDesc {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listCourseMeta {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.listCourseFooter {
+  display: flex;
+  gap: 12px;
+}
+
+// ─── 푸터 ────────────────────────────────────────────────────────────────────
+
+.footer {
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+  padding: 24px 20px 32px;
+  text-align: center;
 }
 
 .footerLinks {
   display: flex;
   justify-content: center;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.8rem 1rem;
-  font-size: 0.8rem;
-  color: #718096;
-  border-bottom: 1px solid #e2e8f0;
-
-  span {
-    font-weight: 600;
-    color: #2d3748;
-  }
+  gap: 16px;
+  margin-bottom: 12px;
 
   a {
-    color: #718096;
+    font-size: 12px;
+    color: #9ca3af;
     text-decoration: none;
-
-    &:hover {
-      color: #4a5568;
-    }
   }
 }
 
-.navIcons {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 0.8rem 1rem;
+.footerLinkBold {
+  font-weight: 700 !important;
 }
 
-.navIcon {
-  font-size: 1.5rem;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-
-  &.active {
-    background: #667eea;
-    color: white;
-  }
+.footerCopy {
+  font-size: 10px;
+  color: #d1d5db;
+  line-height: 1.7;
+  margin: 0;
 }
 
-// 반응형 디자인
-@media (max-width: 768px) {
-  .heroText {
-    h1 {
-      font-size: 1rem;
-    }
-    h2 {
-      font-size: 1.5rem;
-    }
-    p {
-      font-size: 0.9rem;
-    }
-  }
+// ─── heroSection (레거시 호환 — 제거 예정) ────────────────────────────────────
 
-  .themeButtons {
-    gap: 0.6rem;
-  }
-
-  .themeButton {
-    padding: 0.6rem 1.2rem;
-    font-size: 0.8rem;
-  }
-
-  .plansGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .placeCard {
-    padding: 0.8rem;
-  }
-
-  .placeImage {
-    width: 60px;
-    height: 60px;
-  }
+.heroSection {
+  display: none;
 }

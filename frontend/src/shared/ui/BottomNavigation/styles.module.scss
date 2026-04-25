@@ -1,0 +1,63 @@
+.bottomNavigation {
+  width: min(390px, 100%);
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.08);
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.5rem));
+  z-index: 100;
+}
+
+.navIcons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 0.5rem 2rem 0;
+  gap: 0.5rem;
+}
+
+.navIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  border: none;
+  background: #fff;
+  color: #454545;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 1.25rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+
+  &:hover {
+    background: #f5f5f5;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.navLabel {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.navIconActive {
+  background: #f0f9ff;
+  color: #0ea5e9;
+}
+
+@media (max-width: 390px) {
+  .navIcons {
+    padding: 0.5rem 1.5rem 0;
+  }
+}
