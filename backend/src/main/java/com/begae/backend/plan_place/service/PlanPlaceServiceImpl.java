@@ -86,7 +86,6 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
             routes.add(CreatePlanPreviewResponseDto.Place.builder()
                     .placeId(place.getPlaceId())
                     .placeName(place.getPlaceName())
-                    .placeImageUrl(place.getPlaceImageUrl())
                     .roadAddressName(place.getRoadAddressName())
                     .order(i + 1)
                     .duration(i == 0 ? 0 : sectionDuration.get(i - 1))

@@ -1,18 +1,38 @@
-다음 설문 JSON을 바탕으로 즉흥여행 '장소 카테고리 키워드'를 추천해줘.
+다음 JSON을 바탕으로 즉흥여행 장소를 추천해줘.
 
-반드시 아래 Response schema를 정확히 따르고, JSON만 출력해.
-마크다운 코드 블록(```)이나 다른 텍스트는 포함하지 마세요.
+[추론 순서 - 반드시 이 순서대로 처리]
+1. startTime ~ endTime으로 총 가용 시간을 계산해.
+2. transport 기준으로 탐색 반경(meter)을 추정해.
+   - 도보: 500~2000m / 자전거: 2000~5000m / 차: 5000~15000m (시간에 비례)
+3. 장소당 평균 체류 30~90분 + 이동 시간을 고려해 방문 가능 장소 수를 계산해.
+4. emotion을 최우선으로 고려해서,카카오 로컬 API 키워드 검색에 바로 사용할 수 있는
+   짧고 구체적인 한국어 키워드를 추천해. (예: "카페", "공원", "서점", "해변")
+5. location으로 현재 위치를 추정해 현실적인 장소에 대한 키워드를 추천해야 해.
+
+[출력 규칙]
+- JSON만 출력. 마크다운 코드블록(```)이나 설명 텍스트 없음.
+- keyword는 카카오 로컬 키워드 검색에 그대로 쓸 수 있는 1~3단어 한국어.
+- radius_m은 카카오 API의 radius 파라미터에 그대로 전달할 미터 단위 숫자.
 
 Response schema:
 {
   "input": {
     "emotion": "string",
-    "time_of_day": "string",
-    "duration_minutes": 0
+    "start_time": "string",
+    "end_time": "string",
+    "transport": "string",
+    "location": { "x": "string", "y": "string" }
+  },
+  "travel_plan": {
+    "total_hours": number,
+    "estimated_place_count": number,
+    "reasoning": "string"
   },
   "recommendations": [
     {
-      "keyword": "string",
+      "order": number,
+      "keyword": "string",        // 카카오 API에 그대로 전달
+      "radius_m": number,         // 카카오 API radius에 그대로 전달
       "why": "string",
       "best_for": ["string"],
       "avoid_if": ["string"]
