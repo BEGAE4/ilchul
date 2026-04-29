@@ -1,13 +1,22 @@
 package com.begae.backend.plan.service;
 
+import com.begae.backend.plan.domain.Plan;
+import com.begae.backend.plan.dto.PlanCopyResponseDto;
 import com.begae.backend.plan.dto.PlanDetailDto;
 import com.begae.backend.plan.dto.PlanDetailFlatDto;
+import com.begae.backend.plan.exception.PlanNotFoundException;
 import com.begae.backend.plan.repository.PlanRepository;
+import com.begae.backend.plan_place.domain.PlanPlace;
+import com.begae.backend.plan_place.domain.PlanPlaceImage;
+import com.begae.backend.user.domain.User;
+import com.begae.backend.user.exception.UserNotFoundException;
+import com.begae.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -16,6 +25,7 @@ public class PlanServiceImpl implements PlanService{
 
     private final PlanRepository planRepository;
     private final RestTemplate restTemplate = new RestTemplate();
+    private final UserRepository userRepository;
 
 //    @Value("${tmap.api.key}")
 //    private String tmapApiKey;
@@ -109,6 +119,61 @@ public class PlanServiceImpl implements PlanService{
                 .scrapCount(first.getScrapCount())
                 .planPlaceDetailDtos(places)
                 .build();
+    }
+
+    @Override
+    public PlanCopyResponseDto copyPlan(Integer planId, Integer userId) {
+        Plan originPlan = planRepository.findById(planId)
+                .orElseThrow(() -> new PlanNotFoundException("PLAN_NOT_FOUND"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        // 새로운 플랜 만들기
+        Plan newPlan = Plan.builder()
+                .planTitle(originPlan.getPlanTitle())
+                .requiredTime(originPlan.getRequiredTime())
+                .totalDistance(originPlan.getTotalDistance())
+                .departurePoint(originPlan.getDeparturePoint())
+                .user(user)
+                .likeCount(0)
+                .scrapCount(0)
+                .isVerified(false)
+                .isPlanVisible(false)
+                .planPlaces(new ArrayList<>())
+                .build();
+
+        // 새로운 플랜 장소 만들기
+        for(PlanPlace planPlace : originPlan.getPlanPlaces()) {
+            PlanPlace newPlanPlace = PlanPlace.builder()
+                    .place(planPlace.getPlace())
+                    .plan(newPlan)
+                    .orderIndex(planPlace.getOrderIndex())
+                    .travelTime(planPlace.getTravelTime())
+                    .stayTime(planPlace.getStayTime())
+                    .snapshotAddressName(planPlace.getSnapshotAddressName())
+                    .snapshotRoadAddressName(planPlace.getSnapshotRoadAddressName())
+                    .snapshotCategoryName(planPlace.getSnapshotCategoryName())
+                    .snapshotPlaceName(planPlace.getSnapshotPlaceName())
+                    .snapshotX(planPlace.getSnapshotX())
+                    .snapshotY(planPlace.getSnapshotY())
+                    .isStamped(false)
+                    .planPlaceImages(new ArrayList<>())
+                    .build();
+
+            for (PlanPlaceImage planPlaceImage : planPlace.getPlanPlaceImages()) {
+                PlanPlaceImage newPlanPlaceImage = PlanPlaceImage.builder()
+                        .imageUrl(planPlaceImage.getImageUrl())
+                        .planPlace(newPlanPlace)
+                        .build();
+                newPlanPlace.getPlanPlaceImages().add(newPlanPlaceImage);
+            }
+
+            newPlan.getPlanPlaces().add(newPlanPlace);
+        }
+
+        planRepository.save(newPlan);
+        return new PlanCopyResponseDto(newPlan.getPlanId());
     }
 //
 //    private List<RouteSegment> calculateAllRoutes(PlanPreviewRequest request) {
