@@ -1,5 +1,6 @@
 package com.begae.backend.like.domain;
 
+import com.begae.backend.like.enums.LikeType;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
@@ -25,20 +26,20 @@ public class Like {
     @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "plan_id")
-    private Plan plan;
+    @Column(name = "type_id")
+    private Integer typeId;
 
     @Column(name = "like_type")
-    private char likeType;
+    private LikeType likeType;
 
     @Column(name = "like_status")
     private boolean likeStatus;
 
-    public static Like createLike(User user, Plan plan) {
+    public static Like createPlanLike(User user, Plan plan) {
         Like like = new Like();
         like.user = user;
-        like.plan = plan;
+        like.typeId = plan.getPlanId();
+        like.likeType = LikeType.PLAN;
         like.likeStatus = true;
         return like;
     }
