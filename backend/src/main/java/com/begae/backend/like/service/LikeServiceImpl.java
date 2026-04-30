@@ -2,6 +2,7 @@ package com.begae.backend.like.service;
 
 import com.begae.backend.like.domain.Like;
 import com.begae.backend.like.dto.LikeResponseDto;
+import com.begae.backend.like.enums.LikeType;
 import com.begae.backend.like.repository.LikeRepository;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.repository.PlanRepository;
@@ -33,7 +34,8 @@ public class LikeServiceImpl implements LikeService {
                 () -> new IllegalArgumentException("플랜을 찾을 수 없습니다.")
         );
 
-        Optional<Like> existingLike = likeRepository.findByUserAndPlan(user, plan);
+        Optional<Like> existingLike = likeRepository
+                .findByUser_UserIdAndTypeIdAndLikeType(userId, plan.getPlanId(), LikeType.PLAN);
 
         boolean isLiked;
 
@@ -50,7 +52,7 @@ public class LikeServiceImpl implements LikeService {
                 isLiked = true;
             }
         } else {
-            Like newLike = Like.createLike(user, plan);
+            Like newLike = Like.createPlanLike(user, plan);
             likeRepository.save(newLike);
             plan.increaseLikeCount();
             isLiked = true;

@@ -101,7 +101,7 @@ public class MyPageServiceImpl implements MyPageService {
         List<Integer> planIds = plans.stream().map(Plan::getPlanId).toList();
         Integer publicPlanCount = plans.stream().filter(Plan::getIsPlanVisible).toList().size();
         Integer verifyPlanCount = plans.stream().filter(Plan::getIsVerified).toList().size();
-        Integer scrappedByOthersCount = scrappedPlanRepository.countByOriginPlan_PlanIdIn(planIds);
+        Integer scrappedByOthersCount = scrappedPlanRepository.countByPlan_PlanIdIn(planIds);
         Integer savedCourseCount = scrappedPlanRepository.countByUser_UserId(user.getUserId());
         return UserProfileSummaryResponseDto
                 .builder()
