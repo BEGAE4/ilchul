@@ -42,7 +42,7 @@ public class PlaceServiceImpl implements PlaceService {
     private final PlaceRepository placeRepository;
     private final PromptRegistry promptRegistry;
 
-    public List<SearchPlaceResponseDto> searchPlace(String keyword) {
+    public List<SearchPlaceResponseDto> searchPlaceByKeyword(String keyword) {
 
         KakaoPlaceResponseDto kakaoResponse = kakaoWebClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -53,6 +53,27 @@ public class PlaceServiceImpl implements PlaceService {
                 .bodyToMono(KakaoPlaceResponseDto.class)
                 .timeout(Duration.ofMinutes(5))
                 .block();
+        return getSearchResult(kakaoResponse);
+    }
+
+    public List<SearchPlaceResponseDto> searchPlaceForRecommend(SearchPlaceRequestDto request) {
+
+        KakaoPlaceResponseDto kakaoResponse = kakaoWebClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v2/local/search/keyword.json")
+                        .queryParam("query", request.getKeyword())
+                        .queryParam("radius", request.getRadiusM())
+                        .queryParam("x", request.getX())
+                        .queryParam("y", request.getY())
+                        .build())
+                .retrieve()
+                .bodyToMono(KakaoPlaceResponseDto.class)
+                .timeout(Duration.ofMinutes(5))
+                .block();
+        return getSearchResult(kakaoResponse);
+    }
+
+    public List<SearchPlaceResponseDto> getSearchResult(KakaoPlaceResponseDto kakaoResponse) {
         List<KakaoPlaceResponseDto.Document> documents = List.of();
         if(kakaoResponse != null) {
             documents = kakaoResponse.getDocuments() != null
@@ -113,6 +134,8 @@ public class PlaceServiceImpl implements PlaceService {
                                 .placeName(placeSummaryDto.getPlaceName())
                                 .categoryName(placeSummaryDto.getCategoryName())
                                 .placeImageUrl(placeSummaryDto.getPlaceImageUrl())
+                                .x(Double.parseDouble(placeSummaryDto.getX()))
+                                .y(Double.parseDouble(placeSummaryDto.getY()))
                                 .build()));
     }
 
@@ -122,6 +145,8 @@ public class PlaceServiceImpl implements PlaceService {
                 .categoryName(split[0] + "· " + split[1].trim())
                 .placeName(document.getPlaceName())
                 .placeImageUrl(photoUri)
+                .x(document.getX())
+                .y(document.getY())
                 .build();
     }
 

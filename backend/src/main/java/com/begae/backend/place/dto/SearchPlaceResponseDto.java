@@ -15,4 +15,8 @@ public class SearchPlaceResponseDto {
 
     private String placeName;
 
+    private double x;
+
+    private double y;
+
 }

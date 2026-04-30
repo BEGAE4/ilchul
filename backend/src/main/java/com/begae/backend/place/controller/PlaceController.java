@@ -1,9 +1,6 @@
 package com.begae.backend.place.controller;
 
-import com.begae.backend.place.dto.PlaceSummaryDto;
-import com.begae.backend.place.dto.RecommendKeywordDto;
-import com.begae.backend.place.dto.SearchPlaceResponseDto;
-import com.begae.backend.place.dto.SurveyResultDto;
+import com.begae.backend.place.dto.*;
 import com.begae.backend.place.service.PlaceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +21,7 @@ public class PlaceController {
     public ResponseEntity<List<SearchPlaceResponseDto>> searchPlace(@RequestParam String keyword) {
         try {
             log.info("api request : {}", keyword);
-            List<SearchPlaceResponseDto> places = placeService.searchPlace(keyword);
+            List<SearchPlaceResponseDto> places = placeService.searchPlaceByKeyword(keyword);
             return ResponseEntity.ok().body(places);
         } catch (Exception e) {
             log.error(e.getMessage());
@@ -32,18 +29,39 @@ public class PlaceController {
         }
     }
 
-    @GetMapping("/recommend")
+    @PostMapping("/recommend")
     public ResponseEntity<?> recommendPlace(@RequestBody SurveyResultDto survey) {
         try {
-            List<SearchPlaceResponseDto> places = placeService.generateKeyword(survey).getRecommendations().stream()
-                    .map(RecommendKeywordDto.Recommendation::getKeyword)
-                    .flatMap(keyword -> placeService.searchPlace(keyword).stream())
-                    .toList();
-            return ResponseEntity.ok().body(places);
+            List<RecommendPlaceResponseDto> result =
+                    placeService.generateKeyword(survey)
+                            .getRecommendations()
+                            .stream()
+                            .map(recommendation -> {
+                                SearchPlaceRequestDto requestDto = SearchPlaceRequestDto.builder()
+                                        .keyword(recommendation.getKeyword())
+                                        .radiusM(recommendation.getRadiusM())
+                                        .x(String.valueOf(survey.getLocation().getX()))
+                                        .y(String.valueOf(survey.getLocation().getY()))
+                                        .build();
+
+                                List<SearchPlaceResponseDto> places =
+                                        placeService.searchPlaceForRecommend(requestDto);
+
+                                return RecommendPlaceResponseDto.builder()
+                                        .keyword(recommendation.getKeyword())
+                                        .radiusM(recommendation.getRadiusM())
+                                        .places(places)
+                                        .build();
+                            })
+                            .toList();
+            return ResponseEntity.ok().body(result);
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("recommendPlace error", e);
             return ResponseEntity.internalServerError().build();
         }
     }
+
+//    @GetMapping("/detail")
+//    public ResponseEntity<?> getPlaceDetail()
 }
 

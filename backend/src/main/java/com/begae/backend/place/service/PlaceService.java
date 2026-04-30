@@ -7,7 +7,8 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 
 public interface PlaceService {
-    List<SearchPlaceResponseDto> searchPlace(String keyword);
+    List<SearchPlaceResponseDto> searchPlaceByKeyword(String keyword);
+    List<SearchPlaceResponseDto> searchPlaceForRecommend(SearchPlaceRequestDto request);
     Mono<SearchPlaceResponseDto> toPlaceSummary(KakaoPlaceResponseDto.Document document);
     int upsertPlaceFrom(KakaoPlaceResponseDto.Document document, PlaceSummaryDto dto);
     RecommendKeywordDto generateKeyword(SurveyResultDto survey) throws JsonProcessingException;
