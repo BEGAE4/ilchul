@@ -8,5 +8,14 @@ import lombok.Data;
 public class SurveyResultDto {
     String emotion;
     String startTime;
-    String durationMinutes;
+    String endTime;
+    String transport;
+    Location location;
+
+    @Data
+    @Builder
+    public static class Location {
+        double x;
+        double y;
+    }
 }
