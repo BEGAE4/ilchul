@@ -6,6 +6,12 @@ services:
       - "8082:8080"
     env_file:
       - .env
+    environment:
+      - OTEL_SERVICE_NAME=ilchul-backend
+      - OTEL_RESOURCE_ATTRIBUTES=service.version=1.0.1,deployment.color=green
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=none
     depends_on:
       mysql:
         condition: service_healthy
