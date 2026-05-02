@@ -1,13 +1,14 @@
 package com.begae.backend.plan.service;
 
+import com.begae.backend.place.domain.Place;
+import com.begae.backend.place.repository.PlaceRepository;
 import com.begae.backend.plan.domain.Plan;
-import com.begae.backend.plan.dto.PlanCopyResponseDto;
-import com.begae.backend.plan.dto.PlanDetailDto;
-import com.begae.backend.plan.dto.PlanDetailFlatDto;
+import com.begae.backend.plan.dto.*;
 import com.begae.backend.plan.exception.PlanNotFoundException;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan_place.domain.PlanPlace;
 import com.begae.backend.plan_place.domain.PlanPlaceImage;
+import com.begae.backend.plan_place.repository.PlanPlaceRepository;
 import com.begae.backend.user.domain.User;
 import com.begae.backend.user.exception.UserNotFoundException;
 import com.begae.backend.user.repository.UserRepository;
@@ -26,6 +27,8 @@ public class PlanServiceImpl implements PlanService{
     private final PlanRepository planRepository;
     private final RestTemplate restTemplate = new RestTemplate();
     private final UserRepository userRepository;
+    private final PlaceRepository placeRepository;
+    private final PlanPlaceRepository planPlaceRepository;
 
 //    @Value("${tmap.api.key}")
 //    private String tmapApiKey;
@@ -35,50 +38,57 @@ public class PlanServiceImpl implements PlanService{
 
     }
 
-//    @Override
-//    public PlanPreviewResponse createPlanPreview(PlanPreviewRequest planPreviewRequest) {
-//        List<RouteSegment> routes = calculateAllRoutes(planPreviewRequest);
-//
-//        List<PlanPreviewResponse.PlaceWithRoute> places = new ArrayList<>();
-//
-//        for (int i = 0; i < planPreviewRequest.getSelectedPlaces().size(); i++) {
-//            PlanPreviewRequest.SelectedPlace place = planPreviewRequest.getSelectedPlaces().get(i);
-//
-//            // 다음 장소로 가는 경로 (마지막 장소는 null)
-//            PlanPreviewResponse.RouteInfo routeInfo = null;
-//            if (i < routes.size()) {
-//                RouteSegment route = routes.get(i);
-//                String toPlaceName = planPreviewRequest.getSelectedPlaces().get(i + 1).getPlaceName();
-//
-//                routeInfo = PlanPreviewResponse.RouteInfo.builder()
-//                        .fromPlaceName(place.getPlaceName())
-//                        .toPlaceName(toPlaceName)
-//                        .durationMinutes(route.getDurationMinutes())
-//                        .distanceKm(route.getDistanceKm())
-//                        .transportType(TransportType.valueOf(planPreviewRequest.getTransportType().name()))
-//                        .build();
-//            }
-//
-//            places.add(PlanPreviewResponse.PlaceWithRoute.builder()
-//                    .sourceId(place.getSourceId())
-//                    .placeName(place.getPlaceName())
-//                    .addressName(place.getAddressName())
-//                    .latitude(place.getLatitude())
-//                    .longitude(place.getLongitude())
-//                    .orderIndex(i + 1)
-//                    .routeToNext(routeInfo)
-//                    .build());
-//        }
-//
-//        return PlanPreviewResponse.builder()
-//                .planTitle(planPreviewRequest.getPlanTitle())
-//                .planDescription(planPreviewRequest.getPlanDescription())
-//                .tripDate(planPreviewRequest.getTripDate())
-//                .transportType(TransportType.valueOf(planPreviewRequest.getTransportType().name()))
-//                .places(places)
-//                .build();
-//    }
-//
+    @Override
+    @Transactional
+    public CreatePlanResponseDto CreatePlanWithPlaces(Integer userId, CreatePlanRequestDto request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        Plan plan = Plan.builder()
+                .user(user)
+                .planTitle(request.getPlanTitle())
+                .isVerified(false)
+                .isPlanVisible(request.getIsPlanVisible())
+                .planDescription(request.getPlanDescription())
+                .requiredTime(request.getRequiredTime())
+                .totalDistance(request.getTotalDistance())
+                .departurePoint(request.getDeparturePoint())
+                .tripStartDate(request.getTripStartDate())
+                .tripEndDate(request.getTripEndDate())
+                .likeCount(0)
+                .scrapCount(0)
+                .build();
+        Plan savedPlan = planRepository.save(plan);
+
+        List<PlanPlace> planPlaces = request.getPlaces().stream()
+                .map(placeRequest -> {
+                    Place place = placeRepository.findById(placeRequest.getPlaceId())
+                            .orElseThrow(RuntimeException::new);
+
+                    return PlanPlace.builder()
+                            .plan(savedPlan)
+                            .place(place)
+                            .orderIndex(placeRequest.getOrder())
+                            .travelTime(placeRequest.getTraveltime())
+                            .stayTime(placeRequest.getStayTime())
+
+                            // 스냅샷 저장
+                            .snapshotPlaceName(place.getPlaceName())
+                            .snapshotAddressName(place.getAddressName())
+                            .snapshotRoadAddressName(place.getRoadAddressName())
+                            .snapshotCategoryName(place.getCategoryName())
+                            .snapshotX(place.getX())
+                            .snapshotY(place.getY())
+                            .build();
+                })
+                .toList();
+
+        planPlaceRepository.saveAll(planPlaces);
+
+        return CreatePlanResponseDto.builder().planId(savedPlan.getPlanId()).build();
+
+    }
+
     @Override
     @Transactional(readOnly = true)
     public PlanDetailDto getPlanDetail(Integer planId) {
@@ -175,6 +185,54 @@ public class PlanServiceImpl implements PlanService{
         planRepository.save(newPlan);
         return new PlanCopyResponseDto(newPlan.getPlanId());
     }
+
+
+    //    @Override
+//    public PlanPreviewResponse createPlanPreview(PlanPreviewRequest planPreviewRequest) {
+//        List<RouteSegment> routes = calculateAllRoutes(planPreviewRequest);
+//
+//        List<PlanPreviewResponse.PlaceWithRoute> places = new ArrayList<>();
+//
+//        for (int i = 0; i < planPreviewRequest.getSelectedPlaces().size(); i++) {
+//            PlanPreviewRequest.SelectedPlace place = planPreviewRequest.getSelectedPlaces().get(i);
+//
+//            // 다음 장소로 가는 경로 (마지막 장소는 null)
+//            PlanPreviewResponse.RouteInfo routeInfo = null;
+//            if (i < routes.size()) {
+//                RouteSegment route = routes.get(i);
+//                String toPlaceName = planPreviewRequest.getSelectedPlaces().get(i + 1).getPlaceName();
+//
+//                routeInfo = PlanPreviewResponse.RouteInfo.builder()
+//                        .fromPlaceName(place.getPlaceName())
+//                        .toPlaceName(toPlaceName)
+//                        .durationMinutes(route.getDurationMinutes())
+//                        .distanceKm(route.getDistanceKm())
+//                        .transportType(TransportType.valueOf(planPreviewRequest.getTransportType().name()))
+//                        .build();
+//            }
+//
+//            places.add(PlanPreviewResponse.PlaceWithRoute.builder()
+//                    .sourceId(place.getSourceId())
+//                    .placeName(place.getPlaceName())
+//                    .addressName(place.getAddressName())
+//                    .latitude(place.getLatitude())
+//                    .longitude(place.getLongitude())
+//                    .orderIndex(i + 1)
+//                    .routeToNext(routeInfo)
+//                    .build());
+//        }
+//
+//        return PlanPreviewResponse.builder()
+//                .planTitle(planPreviewRequest.getPlanTitle())
+//                .planDescription(planPreviewRequest.getPlanDescription())
+//                .tripDate(planPreviewRequest.getTripDate())
+//                .transportType(TransportType.valueOf(planPreviewRequest.getTransportType().name()))
+//                .places(places)
+//                .build();
+//    }
+//
+
+
 //
 //    private List<RouteSegment> calculateAllRoutes(PlanPreviewRequest request) {
 //        List<RouteSegment> routes = new ArrayList<>();
