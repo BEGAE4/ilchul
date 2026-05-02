@@ -29,7 +29,7 @@ public class User extends BaseEntity {
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
-    int userId;
+    Integer userId;
 
     @Column(name = "user_email")
     private String userEmail;

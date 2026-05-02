@@ -24,7 +24,7 @@ public class Plan extends BaseEntity {
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "plan_id")
-    private int planId;
+    private Integer planId;
 
     @Column(name = "plan_title")
     private String planTitle;
@@ -39,13 +39,13 @@ public class Plan extends BaseEntity {
     private String planDescription;
 
     @Column(name = "required_time")
-    private int requiredTime;
+    private Integer requiredTime;
 
 //    @Column(name = "total_budget") // DB 에서 삭제
 //    private int totalBudget;
 
     @Column(name = "total_distance")
-    private int totalDistance;
+    private Integer totalDistance;
 
     @Column(name = "departure_point")
     private String departurePoint;

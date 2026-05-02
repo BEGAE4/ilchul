@@ -18,7 +18,7 @@ public class Report {
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "report_id")
-    private int reportId;
+    private Integer reportId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "report_user_id")
@@ -29,13 +29,13 @@ public class Report {
     private User reportedUser;
 
     @Column(name = "type_id")
-    private int typeId;
+    private Integer typeId;
 
     @Column(name = "report_type")
-    private char reportType;
+    private Character reportType;
 
     @Column(name = "report_reason")
-    private char reportReason;
+    private Character reportReason;
 
     @Column(name = "content")
     private String content;

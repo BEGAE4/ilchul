@@ -24,7 +24,7 @@ public class Place /*extends BaseEntity*/ {
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "place_id")
-    private int placeId;
+    private Integer placeId;
 
     @Column(name = "source_id")
     private String sourceId;
@@ -51,10 +51,10 @@ public class Place /*extends BaseEntity*/ {
     private String placeImageUrl;
 
     @Column
-    private double x;
+    private Double x;
 
     @Column
-    private double y;
+    private Double y;
 
     @Column(name = "last_fetched_at")
     private LocalDateTime lastFetchedAt;
