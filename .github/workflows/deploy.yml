@@ -16,9 +16,17 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
       config: ${{ steps.filter.outputs.config }}
+      repo_owner: ${{ steps.lowercase.outputs.repo_owner }}
+      actor: ${{ steps.lowercase.outputs.actor }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
+
+      - name: Set lowercase variables
+        id: lowercase
+        run: |
+          echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+          echo "actor=$(echo ${{ github.actor }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
       - name: filter changes
         uses: dorny/paths-filter@v3
@@ -48,7 +56,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ needs.changes.outputs.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & Push Frontend
@@ -57,7 +65,7 @@ jobs:
           context: ./frontend
           push: true
           platforms: linux/arm64
-          tags: ghcr.io/${{ github.repository_owner }}/ilchul-frontend:latest
+          tags: ghcr.io/${{ needs.changes.outputs.repo_owner }}/ilchul-frontend:latest
           build-args: |
             NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
           cache-from: type=gha
@@ -82,7 +90,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ needs.changes.outputs.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & Push Backend
@@ -91,7 +99,7 @@ jobs:
           context: ./backend
           push: true
           platforms: linux/arm64
-          tags: ghcr.io/${{ github.repository_owner }}/ilchul-backend:latest
+          tags: ghcr.io/${{ needs.changes.outputs.repo_owner }}/ilchul-backend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -117,11 +125,15 @@ jobs:
 
       - name: SSH Deploy
         uses: appleboy/ssh-action@master
+        env:
+          REPO_OWNER: ${{ needs.changes.outputs.repo_owner }}
+          ACTOR: ${{ needs.changes.outputs.actor }}
         with:
           host: ${{ secrets.ORACLE_HOST }}
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_KEY }}
           port: ${{ secrets.ORACLE_PORT }}
+          envs: REPO_OWNER,ACTOR
           script: |
             set -e
             PROJECT_PATH="/home/begae/ilchul"
@@ -154,12 +166,12 @@ jobs:
             sudo tee .env > /dev/null << EOF
             ${{ secrets.ENV_FILE }}
             API_BASE_URL=http://ilchul-backend-${TARGET_ENV}:8080
-            FRONTEND_IMAGE=ghcr.io/${{ github.repository_owner }}/ilchul-frontend:latest
-            BACKEND_IMAGE=ghcr.io/${{ github.repository_owner }}/ilchul-backend:latest
+            FRONTEND_IMAGE=ghcr.io/${REPO_OWNER}/ilchul-frontend:latest
+            BACKEND_IMAGE=ghcr.io/${REPO_OWNER}/ilchul-backend:latest
             EOF
 
             # 4. 이미지 풀 및 실행
-            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${ACTOR} --password-stdin
            
             sudo docker compose -f docker-compose.${TARGET_ENV}.yml pull
             sudo docker compose -f docker-compose.${TARGET_ENV}.yml up -d
