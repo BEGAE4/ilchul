@@ -1,0 +1,211 @@
+name: Blue-Green Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # 1. 변경 사항 감지
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      config: ${{ steps.filter.outputs.config }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: filter changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend: [ 'frontend/**' ]
+            backend: [ 'backend/**' ]
+            config: [ 'docker-compose.blue.yml', 'docker-compose.green.yml', '.github/workflows/deploy.yml', 'rollback.sh' ]
+
+  # 2. 프론트엔드 빌드 (NEXT_PUBLIC_ 변수 주입)
+  build-frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          platforms: linux/arm64
+          tags: ghcr.io/${{ github.repository_owner }}/ilchul-frontend:latest
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # 3. 백엔드 빌드
+  build-backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          platforms: linux/arm64
+          tags: ghcr.io/${{ github.repository_owner }}/ilchul-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # 4. 타겟 환경 배포 (파일 복사 및 sudo 권한 적용)
+  deploy-target:
+    needs: [changes, build-frontend, build-backend]
+    if: always() && (needs.build-frontend.result == 'success' || needs.build-frontend.result == 'skipped') && (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      
+      # 🌟 인프라 설정 파일(docker-compose.yml)을 안전하게 제외하고 Blue, Green, Rollback 파일만 복사
+      - name: Copy Config Files
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_KEY }}
+          port: ${{ secrets.ORACLE_PORT }}
+          source: "docker-compose.blue.yml,docker-compose.green.yml,rollback.sh"
+          target: "/home/ubuntu/temp_deploy"
+
+      - name: SSH Deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_KEY }}
+          port: ${{ secrets.ORACLE_PORT }}
+          script: |
+            set -e
+            PROJECT_PATH="/home/begae/ilchul"
+            
+            sudo mkdir -p $PROJECT_PATH
+            sudo cp -r /home/ubuntu/temp_deploy/* $PROJECT_PATH/
+            sudo rm -rf /home/ubuntu/temp_deploy
+            
+            cd $PROJECT_PATH
+            
+            # 1. 환경 결정 로직
+            if [ ! -f current_environment.txt ]; then 
+              echo "blue" | sudo tee current_environment.txt > /dev/null
+            fi
+            CURRENT_ENV=$(cat current_environment.txt | tr -d '[:space:]')
+            TARGET_ENV=$([ "$CURRENT_ENV" = "blue" ] && echo "green" || echo "blue")
+            
+            # 2. 동적 포트 할당
+            if [ "$TARGET_ENV" = "blue" ]; then
+              BACKEND_PORT=8081
+            else
+              BACKEND_PORT=8082
+            fi
+            
+            echo "TARGET_ENV: $TARGET_ENV, BACKEND_PORT: $BACKEND_PORT"
+            echo "$TARGET_ENV" | sudo tee target_environment.txt > /dev/null
+            echo "$CURRENT_ENV" | sudo tee previous_environment.txt > /dev/null
+
+            # 3. .env 파일 생성
+            sudo tee .env > /dev/null << EOF
+            ${{ secrets.ENV_FILE }}
+            API_BASE_URL=http://ilchul-backend-${TARGET_ENV}:8080
+            FRONTEND_IMAGE=ghcr.io/${{ github.repository_owner }}/ilchul-frontend:latest
+            BACKEND_IMAGE=ghcr.io/${{ github.repository_owner }}/ilchul-backend:latest
+            EOF
+
+            # 4. 이미지 풀 및 실행
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u ${{ github.actor }} --password-stdin
+           
+            sudo docker compose -f docker-compose.${TARGET_ENV}.yml pull
+            sudo docker compose -f docker-compose.${TARGET_ENV}.yml up -d
+            
+            # 5. 동적 포트를 이용한 헬스 체크
+            echo "🔍 Health checking $TARGET_ENV on port $BACKEND_PORT..."
+            sleep 20
+            for i in {1..10}; do
+              if curl -f http://localhost:$BACKEND_PORT/actuator/health 2>/dev/null; then
+                echo "✅ Target $TARGET_ENV is healthy!"
+                exit 0
+              fi
+              echo "Waiting... ($i/10)"
+              sleep 5
+            done
+            echo "❌ Health check failed!"
+            exit 1
+
+  # 5. 자동 트래픽 전환 및 구버전 중지
+  switch-traffic:
+    needs: deploy-target
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto Switch
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_KEY }}
+          port: ${{ secrets.ORACLE_PORT }}
+          script: |
+            set -e
+            PROJECT_PATH="/home/begae/ilchul"
+            GLOBAL_NGINX="nginx_server"
+            cd $PROJECT_PATH
+            
+            TARGET_ENV=$(cat target_environment.txt | tr -d '[:space:]')
+            CURRENT_ENV=$(cat previous_environment.txt | tr -d '[:space:]')
+            
+            echo "🔄 Switching Nginx traffic to $TARGET_ENV..."
+            sudo docker exec $GLOBAL_NGINX ln -sf /etc/nginx/conf.d/ilchul/ilchul-${TARGET_ENV}.conf /etc/nginx/conf.d/ilchul/ilchul-active-env.conf
+            sudo docker exec $GLOBAL_NGINX nginx -s reload
+            
+            echo "$TARGET_ENV" | sudo tee current_environment.txt > /dev/null
+            
+            # 구버전 컨테이너 중지
+            sudo docker compose -f docker-compose.${CURRENT_ENV}.yml stop
+            
+            echo "🎉 Switched to $TARGET_ENV. Deployment Complete."

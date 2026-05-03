@@ -1,30 +1,17 @@
 services:
   backend_green:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ${BACKEND_IMAGE}
     container_name: backend_green
     ports:
       - "8082:8080"
+    env_file:
+      - .env
     environment:
-      - TZ=Asia/Seoul
-      - MYSQL_DRIVER=com.mysql.cj.jdbc.Driver
-      - MYSQL_URL=mysql_db:3306
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - OAUTH_GOOGLE_CLIENT_ID=${OAUTH_GOOGLE_CLIENT_ID}
-      - OAUTH_GOOGLE_CLIENT_SECRET=${OAUTH_GOOGLE_CLIENT_SECRET}
-      - OAUTH_GOOGLE_REDIRECT_URI=${OAUTH_GOOGLE_REDIRECT_URI}
-      - KAKAO_REST_API_KEY=${KAKAO_REST_API_KEY}
-      - OAUTH_KAKAO_CLIENT_SECRET=${OAUTH_KAKAO_CLIENT_SECRET}
-      - OAUTH_KAKAO_REDIRECT_URI=${OAUTH_KAKAO_REDIRECT_URI}
-      - OAUTH_NAVER_CLIENT_ID=${OAUTH_NAVER_CLIENT_ID}
-      - OAUTH_NAVER_CLIENT_SECRET=${OAUTH_NAVER_CLIENT_SECRET}
-      - OAUTH_NAVER_REDIRECT_URI=${OAUTH_NAVER_REDIRECT_URI}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OTEL_SERVICE_NAME=ilchul-backend
+      - OTEL_RESOURCE_ATTRIBUTES=service.version=1.0.1,deployment.color=green
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=none
     depends_on:
       mysql:
         condition: service_healthy
@@ -32,32 +19,26 @@ services:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - app-network
+      - ilchul-network
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
-      start_period: 240s
+      start_period: 120s
 
   frontend_green:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - REACT_APP_API_URL=http://il-chul.com/api
+    image: ${FRONTEND_IMAGE}
     container_name: client_app_green
     ports:
-      - "3001:3000"
+      - "3002:3000"
+    env_file:
+      - .env
     depends_on:
-      backend_green:
-        condition: service_healthy
-    environment:
-      - NODE_ENV=production
-      - TZ=Asia/Seoul
+      - backend_green
     restart: unless-stopped
     networks:
-      - app-network
+      - ilchul-network
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000 || exit 1"]
       interval: 10s
@@ -66,5 +47,6 @@ services:
       start_period: 40s
 
 networks:
-  app-network:
+  ilchul-network:
     external: true
+    name: ilchul-network

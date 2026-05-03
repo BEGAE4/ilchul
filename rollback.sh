@@ -1,90 +1,81 @@
 #!/bin/bash
-# Quick rollback script for Blue-Green deployment
-# Usage: ./rollback.sh
+# OCI Migration 반영된 무중단 배포 롤백 스크립트 (프론트/백엔드 동시 점검)
+# 위치: /home/ubuntu/ilchul/rollback.sh
 
 set -e
 
 PROJECT_PATH="/home/ubuntu/ilchul"
+GLOBAL_NGINX="nginx_server"
 cd "$PROJECT_PATH"
 
-echo "=== Blue-Green Rollback ==="
+echo "=== 🔄 Blue-Green Rollback Start ==="
 
-# Get current active environment
+# 1. 현재 환경 확인
 if [ -f current_environment.txt ]; then
-    CURRENT_ENV=$(cat current_environment.txt)
+    CURRENT_ENV=$(cat current_environment.txt | tr -d '[:space:]')
 else
-    echo "❌ current_environment.txt not found"
+    echo "❌ current_environment.txt를 찾을 수 없습니다."
     exit 1
 fi
 
-# Determine rollback target (opposite of current)
+# 2. 롤백 타겟 및 포트 세팅 (프론트/백엔드 모두 지정)
 if [ "$CURRENT_ENV" = "blue" ]; then
     ROLLBACK_ENV="green"
+    BACKEND_PORT=8082
+    FRONTEND_PORT=3002
 else
     ROLLBACK_ENV="blue"
+    BACKEND_PORT=8081
+    FRONTEND_PORT=3001
 fi
 
-echo "Current active environment: $CURRENT_ENV"
-echo "Rolling back to: $ROLLBACK_ENV"
-echo ""
+echo "현재 활성 환경: $CURRENT_ENV"
+echo "롤백 대상 환경: $ROLLBACK_ENV"
 
-# Check if rollback target is running
-if [ "$ROLLBACK_ENV" = "blue" ]; then
-    CHECK_PORT=8080
-else
-    CHECK_PORT=8081
-fi
+# 3. 중지된 컨테이너(프론트+백엔드) 깨우기
+echo "🚀 $ROLLBACK_ENV 컨테이너를 시작합니다..."
+docker compose -f docker-compose.yml -f docker-compose.${ROLLBACK_ENV}.yml start
 
-echo "Checking if $ROLLBACK_ENV environment is available..."
-if ! curl -f http://localhost:$CHECK_PORT/health 2>/dev/null; then
-    echo "❌ $ROLLBACK_ENV environment is not running or not healthy"
-    echo "Cannot rollback to an environment that is not running"
+echo "서비스 부팅 대기 중 (15초)..."
+sleep 15 
+
+# 4. 프론트엔드 헬스 체크
+echo "🔍 $ROLLBACK_ENV 프론트엔드 점검 중 (Port: $FRONTEND_PORT)..."
+if ! curl -f http://localhost:$FRONTEND_PORT 2>/dev/null; then
+    echo "❌ 프론트엔드 환경이 정상이 아닙니다. 롤백을 중단합니다."
+    docker compose -f docker-compose.yml -f docker-compose.${ROLLBACK_ENV}.yml stop
     exit 1
 fi
+echo "✅ 프론트엔드 OK"
 
-echo "✅ $ROLLBACK_ENV environment is healthy"
+# 5. 백엔드 헬스 체크
+echo "🔍 $ROLLBACK_ENV 백엔드 점검 중 (Port: $BACKEND_PORT)..."
+if ! curl -f http://localhost:$BACKEND_PORT/health 2>/dev/null; then
+    echo "❌ 백엔드 환경이 정상이 아닙니다. 롤백을 중단합니다."
+    docker compose -f docker-compose.yml -f docker-compose.${ROLLBACK_ENV}.yml stop
+    exit 1
+fi
+echo "✅ 백엔드 OK"
+
 echo ""
+echo "✅ $ROLLBACK_ENV 환경이 모두 준비되었습니다."
 
-# Confirm rollback
-read -p "Are you sure you want to rollback to $ROLLBACK_ENV? (yes/no): " CONFIRM
+# 6. 최종 확인
+read -p "정말로 $ROLLBACK_ENV(으)로 롤백하시겠습니까? (yes/no): " CONFIRM
 if [ "$CONFIRM" != "yes" ]; then
-    echo "Rollback cancelled"
+    echo "롤백이 취소되었습니다."
+    docker compose -f docker-compose.yml -f docker-compose.${ROLLBACK_ENV}.yml stop
     exit 0
 fi
 
-echo ""
-echo "=== Switching traffic to $ROLLBACK_ENV ==="
+# 7. Nginx 트래픽 전환 (프론트/백엔드 동시 전환)
+echo "🌐 Nginx 트래픽 스위칭: $ROLLBACK_ENV"
+docker exec $GLOBAL_NGINX ln -sf /etc/nginx/conf.d/ilchul/ilchul-${ROLLBACK_ENV}.conf /etc/nginx/conf.d/ilchul/ilchul-active-env.conf
+docker exec $GLOBAL_NGINX nginx -s reload
 
-# Switch traffic by updating nginx symlinks
-docker exec nginx_server ln -sf /etc/nginx/conf.d/active-backend-${ROLLBACK_ENV}.conf /etc/nginx/conf.d/active-backend.conf
-docker exec nginx_server ln -sf /etc/nginx/conf.d/active-frontend-${ROLLBACK_ENV}.conf /etc/nginx/conf.d/active-frontend.conf
-
-# Gracefully reload nginx
-docker exec nginx_server nginx -s reload
-
-# Update current environment marker
+# 8. 상태 업데이트 및 기존 환경 중지
 echo "$ROLLBACK_ENV" > current_environment.txt
+echo "💤 에러가 발생했던 $CURRENT_ENV 환경을 중지하여 메모리를 확보합니다."
+docker compose -f docker-compose.yml -f docker-compose.${CURRENT_ENV}.yml stop
 
-echo "✅ Traffic switched to $ROLLBACK_ENV"
-echo ""
-
-# Final health check
-echo "=== Final health check ==="
-sleep 3
-
-if curl -f http://il-chul.com 2>/dev/null; then
-    echo "✅ Production site is accessible"
-else
-    echo "⚠️ Production site check failed - investigate immediately"
-fi
-
-if curl -f http://il-chul.com/health 2>/dev/null; then
-    echo "✅ Production API is healthy"
-else
-    echo "⚠️ Production API health check failed - investigate immediately"
-fi
-
-echo ""
-echo "🎉 Rollback completed!"
-echo "Active environment: $ROLLBACK_ENV"
-echo "🌐 Site: http://il-chul.com"
+echo "🎉 롤백 완료! 현재 활성 환경: $ROLLBACK_ENV"
