@@ -7,6 +7,8 @@ import com.begae.backend.global.exception.GlobalErrorCode;
 import com.begae.backend.place.exception.SearchLogNotExistException;
 import com.begae.backend.plan.exception.PlanNotFoundException;
 import com.begae.backend.user.exception.UserNotFoundException;
+
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +16,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.HandlerMethod;
 
 /**
  * 전역 예외 처리 핸들러
@@ -73,8 +76,14 @@ public class GlobalExceptionHandler {
      * 그 외 예상치 못한 모든 예외 처리
      */
     @ExceptionHandler(Exception.class)
-    protected ResponseEntity<ErrorResponse> handleException(Exception e) {
-        log.error("handleException", e);
+    protected ResponseEntity<ErrorResponse> handleException(Exception e, HttpServletRequest request) {
+
+        // 요청정보 추출
+        String url = request.getRequestURI();
+        String requestMethod = request.getMethod();
+
+        log.error("예외발생 - 요청메서드 : {}, 요청url : {} | Message : {}", requestMethod, url, e.getMessage(), e);
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 ErrorResponse.of(
                         HttpStatus.INTERNAL_SERVER_ERROR,
