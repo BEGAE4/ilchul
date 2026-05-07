@@ -16,7 +16,7 @@ public class PlanPlaceImage {
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "plan_place_image_id")
-    private int planPlaceImageId;
+    private Integer planPlaceImageId;
 
     @Column(name = "image_url")
     private String imageUrl;

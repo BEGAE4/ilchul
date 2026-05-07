@@ -21,20 +21,20 @@ public class PlanPlace {
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "plan_place_id")
-    private int planPlaceId;
+    private Integer planPlaceId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "place_id")
     private Place place;
 
     @Column(name = "order_index")
-    private int orderIndex;
+    private Integer orderIndex;
 
     @Column(name = "travel_time")
-    private int travelTime;
+    private Integer travelTime;
 
     @Column(name = "stay_time")
-    private int stayTime;
+    private Integer stayTime;
 
     @Column(name = "is_stamped")
     private Boolean isStamped;
@@ -52,10 +52,10 @@ public class PlanPlace {
     private String snapshotPlaceName;
 
     @Column(name = "snapshot_x")
-    private double snapshotX;
+    private Double snapshotX;
 
     @Column(name = "snapshot_y")
-    private double snapshotY;
+    private Double snapshotY;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "plan_id")
