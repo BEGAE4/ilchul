@@ -1,7 +1,7 @@
 services:
-  backend_green:
+  ilchul-backend-green:
     image: ${BACKEND_IMAGE}
-    container_name: backend_green
+    container_name: ilchul-backend-green
     ports:
       - "8082:8080"
     env_file:
@@ -12,11 +12,6 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
       - OTEL_METRICS_EXPORTER=none
       - OTEL_LOGS_EXPORTER=none
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     restart: unless-stopped
     networks:
       - ilchul-network
@@ -27,15 +22,15 @@ services:
       retries: 5
       start_period: 120s
 
-  frontend_green:
+  ilchul-frontend-green:
     image: ${FRONTEND_IMAGE}
-    container_name: client_app_green
+    container_name: ilchul-frontend-green
     ports:
       - "3002:3000"
     env_file:
       - .env
     depends_on:
-      - backend_green
+      - ilchul-backend-green
     restart: unless-stopped
     networks:
       - ilchul-network
