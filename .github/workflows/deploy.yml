@@ -190,7 +190,7 @@ jobs:
           script: |
             set -e
             PROJECT_PATH="/home/begae/ilchul"
-            GLOBAL_NGINX="nginx_server"
+            GLOBAL_NGINX="nginx"
             cd $PROJECT_PATH
             
             TARGET_ENV=$(cat target_environment.txt | tr -d '[:space:]')
