@@ -159,8 +159,8 @@ jobs:
 
             # 4. 이미지 풀 및 실행 (begae가 docker 그룹이므로 sudo 불필요)
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${ACTOR} --password-stdin
-            docker compose -f docker-compose.yml -f docker-compose.${TARGET_ENV}.yml pull
-            docker compose -f docker-compose.yml -f docker-compose.${TARGET_ENV}.yml up -d
+            docker compose -f docker-compose.${TARGET_ENV}.yml pull
+            docker compose -f docker-compose.${TARGET_ENV}.yml up -d
             
             # 5. 헬스 체크
             echo "🔍 Health checking $TARGET_ENV on port $BACKEND_PORT..."
@@ -202,6 +202,6 @@ jobs:
             docker exec $GLOBAL_NGINX nginx -s reload
             
             echo "$TARGET_ENV" > current_environment.txt
-            docker compose -f docker-compose.yml -f docker-compose.${CURRENT_ENV}.yml stop
+            docker compose -f docker-compose.${CURRENT_ENV}.yml stop
             
             echo "🎉 Switched to $TARGET_ENV. Deployment Complete."
