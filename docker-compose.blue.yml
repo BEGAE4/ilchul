@@ -12,11 +12,6 @@ services:
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
       - OTEL_METRICS_EXPORTER=none
       - OTEL_LOGS_EXPORTER=none
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     restart: unless-stopped
     networks:
       - ilchul-network
@@ -35,7 +30,7 @@ services:
     env_file:
       - .env
     depends_on:
-      - backend_blue
+      - ilchul-backend-blue
     restart: unless-stopped
     networks:
       - ilchul-network
