@@ -33,6 +33,11 @@ spring:
       ddl-auto: none
     defer-datasource-initialization: true
 
+  # Flyway
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
   # Redis
   data:
     redis:

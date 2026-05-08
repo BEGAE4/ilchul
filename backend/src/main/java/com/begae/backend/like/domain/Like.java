@@ -20,7 +20,7 @@ public class Like {
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "like_id")
-    private int likeId;
+    private Integer likeId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -33,7 +33,7 @@ public class Like {
     private LikeType likeType;
 
     @Column(name = "like_status")
-    private boolean likeStatus;
+    private Boolean likeStatus;
 
     public static Like createPlanLike(User user, Plan plan) {
         Like like = new Like();

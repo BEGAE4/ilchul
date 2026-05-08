@@ -29,7 +29,7 @@ public class User extends BaseEntity {
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
-    int userId;
+    Integer userId;
 
     @Column(name = "user_email")
     private String userEmail;
@@ -49,7 +49,7 @@ public class User extends BaseEntity {
     @Column(name = "user_intro")
     private String userIntro;
 
-    @Column(name = "user_img")
+    @Column(name = "user_img", length = 2000)
     private String userImg;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)

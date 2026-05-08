@@ -24,15 +24,15 @@ public class Place /*extends BaseEntity*/ {
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "place_id")
-    private int placeId;
+    private Integer placeId;
 
-    @Column(name = "source_id")
+    @Column(name = "source_id", length = 50)
     private String sourceId;
 
-    @Column(name = "address_name")
+    @Column(name = "address_name", length = 300)
     private String addressName;
 
-    @Column(name = "road_address_name")
+    @Column(name = "road_address_name", length = 300)
     private String roadAddressName;
 
     @Column(name = "category_name")
@@ -44,17 +44,17 @@ public class Place /*extends BaseEntity*/ {
     @Column(name = "place_name")
     private String placeName;
 
-    @Column(name = "place_url")
+    @Column(name = "place_url", length = 2000)
     private String placeUrl;
 
-    @Column(name = "place_image_url")
+    @Column(name = "place_image_url", length = 2000)
     private String placeImageUrl;
 
     @Column
-    private double x;
+    private Double x;
 
     @Column
-    private double y;
+    private Double y;
 
     @Column(name = "last_fetched_at")
     private LocalDateTime lastFetchedAt;
@@ -67,7 +67,7 @@ public class Place /*extends BaseEntity*/ {
 
     @Builder
     public Place(String sourceId, String addressName, String roadAddressName, String categoryName,
-                 String phone, String placeName, String placeUrl, String placeImageUrl, double x, double y,
+                 String phone, String placeName, String placeUrl, String placeImageUrl, Double x, Double y,
                  LocalDateTime lastFetchedAt, LocalDateTime lastSeenAt) {
         this.sourceId = sourceId;
         this.addressName = addressName;
@@ -104,7 +104,7 @@ public class Place /*extends BaseEntity*/ {
         this.lastSeenAt = LocalDateTime.now();
     }
 
-    private static boolean hasText(String s) {
+    private static Boolean hasText(String s) {
         return s != null && !s.isBlank();
     }
 

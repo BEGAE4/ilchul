@@ -20,7 +20,7 @@ public class ScrappedPlan {
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "scrap_id")
-    private int scrapId;
+    private Integer scrapId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
