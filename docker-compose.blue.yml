@@ -9,7 +9,7 @@ services:
     environment:
       - OTEL_SERVICE_NAME=ilchul-backend
       - OTEL_RESOURCE_ATTRIBUTES=service.version=1.0.0,deployment.color=blue
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4318
       - OTEL_METRICS_EXPORTER=none
       - OTEL_LOGS_EXPORTER=none
     restart: unless-stopped
