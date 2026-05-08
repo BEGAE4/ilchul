@@ -1,7 +1,6 @@
 package com.begae.backend.plan.domain;
 
 import com.begae.backend.global.domain.BaseEntity;
-import com.begae.backend.like.domain.Like;
 import com.begae.backend.plan_place.domain.PlanPlace;
 import com.begae.backend.reply.domain.Reply;
 import com.begae.backend.user.domain.User;
@@ -25,7 +24,7 @@ public class Plan extends BaseEntity {
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "plan_id")
-    private int planId;
+    private Integer planId;
 
     @Column(name = "plan_title")
     private String planTitle;
@@ -40,13 +39,13 @@ public class Plan extends BaseEntity {
     private String planDescription;
 
     @Column(name = "required_time")
-    private int requiredTime;
+    private Integer requiredTime;
 
 //    @Column(name = "total_budget") // DB 에서 삭제
-//    private int totalBudget;
+//    private Integer totalBudget;
 
     @Column(name = "total_distance")
-    private int totalDistance;
+    private Integer totalDistance;
 
     @Column(name = "departure_point")
     private String departurePoint;
@@ -71,17 +70,13 @@ public class Plan extends BaseEntity {
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanPlace> planPlaces = new ArrayList<>();
 
+//    @Builder.Default
+//    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+//    private List<Like> likes = new ArrayList<>();
+
     @Builder.Default
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Like> likes = new ArrayList<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "originPlan", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ScrappedPlan> scrappedOriginPlans = new ArrayList<>();
-
-    @Builder.Default
-    @OneToMany(mappedBy = "newPlan", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ScrappedPlan> scrappedNewPlans = new ArrayList<>();
+    private List<ScrappedPlan> scrappedPlans = new ArrayList<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -100,4 +95,6 @@ public class Plan extends BaseEntity {
     }
 
     public void increaseScrappedCount() { this.scrapCount++; }
+
+    public void decreaseScrappedCount() { this.scrapCount--; }
 }

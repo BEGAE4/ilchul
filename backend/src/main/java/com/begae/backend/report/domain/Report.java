@@ -1,5 +1,7 @@
 package com.begae.backend.report.domain;
 
+import com.begae.backend.report.enums.ReportReason;
+import com.begae.backend.report.enums.ReportType;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -18,7 +20,7 @@ public class Report {
     @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "report_id")
-    private int reportId;
+    private Integer reportId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "report_user_id")
@@ -29,13 +31,15 @@ public class Report {
     private User reportedUser;
 
     @Column(name = "type_id")
-    private int typeId;
+    private Integer typeId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "report_type")
-    private char reportType;
+    private ReportType reportType;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "report_reason")
-    private char reportReason;
+    private ReportReason reportReason;
 
     @Column(name = "content")
     private String content;

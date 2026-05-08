@@ -1,5 +1,6 @@
 package com.begae.backend.plan.controller;
 
+import com.begae.backend.plan.dto.PlanCopyResponseDto;
 import com.begae.backend.plan.dto.PlanDetailDto;
 import com.begae.backend.plan.service.PlanService;
 import lombok.RequiredArgsConstructor;
@@ -27,5 +28,11 @@ public class PlanController {
     @GetMapping("/{planId}")
     public ResponseEntity<PlanDetailDto> getPlanDetail(@PathVariable Integer planId) {
         return ResponseEntity.status(HttpStatus.OK).body(planService.getPlanDetail(planId));
+    }
+
+    @PostMapping("/copy/{planId}")
+    public ResponseEntity<PlanCopyResponseDto> copyPlan(@PathVariable Integer planId) {
+        int userId = 1;
+        return ResponseEntity.status(HttpStatus.OK).body(planService.copyPlan(planId, userId));
     }
 }

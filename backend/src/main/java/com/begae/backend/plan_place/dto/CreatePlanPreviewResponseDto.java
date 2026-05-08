@@ -9,8 +9,6 @@ import java.util.List;
 @Builder
 public class CreatePlanPreviewResponseDto {
 
-    private String draftId; // redis 캐싱 draft 조회에 필요한 id
-
     private String planTitle;
 
     private String planDescription;
@@ -27,7 +25,6 @@ public class CreatePlanPreviewResponseDto {
         private int placeId;
         private String placeName;
         private String roadAddressName;
-        private String placeImageUrl;
         private int duration;
         private int order;
     }

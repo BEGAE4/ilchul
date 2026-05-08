@@ -13,4 +13,8 @@ public class PlaceSummaryDto {
 
     private String placeName;
 
+    private String x;
+
+    private String y;
+
 }
