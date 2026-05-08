@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-// import { Hexagon, MapPin, Search, Smile, UserRound } from 'lucide-react';
-// import PageLayout from '@/shared/ui/PageLayout';
+import { Hexagon, MapPin, Search, Smile, UserRound } from 'lucide-react';
+import PageLayout from '@/shared/ui/PageLayout';
 import Header from '@/shared/ui/Header';
 import IconBox from '@/shared/ui/IconBox';
-// import type { NavItem } from '@/shared/ui/BottomNavigation';
+import type { NavItem } from '@/shared/ui/BottomNavigation';
 import { FeedPost } from '../types';
 import styles from './FeedDetailPage.module.scss';
 import Image from 'next/image';
@@ -23,9 +23,16 @@ export const FeedDetailPage: React.FC<FeedDetailPageProps> = ({ post }) => {
     router.back();
   };
 
+  const navItems: NavItem[] = [
+    { id: 'map', label: '지도', icon: MapPin, onClick: () => router.push('/map') },
+    { id: 'search', label: '검색', icon: Search, onClick: () => router.push('/search') },
+    { id: 'explore', label: '홈', icon: Hexagon, active: true, onClick: () => router.push('/') },
+    { id: 'mood', label: '힐링', icon: Smile, onClick: () => router.push('/mood') },
+    { id: 'profile', label: '프로필', icon: UserRound, onClick: () => router.push('/my-page') },
+  ];
+
   return (
-    <div className={styles.feedDetailPage}>
-      {/* 헤더 */}
+    <PageLayout bottomNavItems={navItems}>
       <Header variant="backArrow" onBackClick={handleBack} />
 
       <div className={styles.content}>
@@ -71,6 +78,6 @@ export const FeedDetailPage: React.FC<FeedDetailPageProps> = ({ post }) => {
           </div>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 };

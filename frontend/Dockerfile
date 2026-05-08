@@ -12,6 +12,10 @@ RUN yarn --frozen-lockfile --network-timeout 600000
 FROM base AS builder
 # Docker를 build할때 개발 모드 구분용 환경 변수
 ARG ENV_MODE
+
+ARG NEXT_PUBLIC_API_BASE_URL
+
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 # 명령어 실행할 디렉터리
 WORKDIR /app
 # node_modules 등의 dependancy를 복사함.
