@@ -1,5 +1,7 @@
 package com.begae.backend.report.domain;
 
+import com.begae.backend.report.enums.ReportReason;
+import com.begae.backend.report.enums.ReportType;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -31,11 +33,13 @@ public class Report {
     @Column(name = "type_id")
     private Integer typeId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "report_type")
-    private char reportType;
+    private ReportType reportType;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "report_reason")
-    private char reportReason;
+    private ReportReason reportReason;
 
     @Column(name = "content")
     private String content;

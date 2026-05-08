@@ -18,7 +18,7 @@ public class PlanPlaceImage {
     @Column(name = "plan_place_image_id")
     private Integer planPlaceImageId;
 
-    @Column(name = "image_url")
+    @Column(name = "image_url", length = 2000)
     private String imageUrl;
 
     @ManyToOne(fetch = FetchType.LAZY)

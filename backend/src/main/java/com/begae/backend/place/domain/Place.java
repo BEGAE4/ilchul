@@ -26,13 +26,13 @@ public class Place /*extends BaseEntity*/ {
     @Column(name = "place_id")
     private Integer placeId;
 
-    @Column(name = "source_id")
+    @Column(name = "source_id", length = 50)
     private String sourceId;
 
-    @Column(name = "address_name")
+    @Column(name = "address_name", length = 300)
     private String addressName;
 
-    @Column(name = "road_address_name")
+    @Column(name = "road_address_name", length = 300)
     private String roadAddressName;
 
     @Column(name = "category_name")
@@ -44,10 +44,10 @@ public class Place /*extends BaseEntity*/ {
     @Column(name = "place_name")
     private String placeName;
 
-    @Column(name = "place_url")
+    @Column(name = "place_url", length = 2000)
     private String placeUrl;
 
-    @Column(name = "place_image_url")
+    @Column(name = "place_image_url", length = 2000)
     private String placeImageUrl;
 
     @Column

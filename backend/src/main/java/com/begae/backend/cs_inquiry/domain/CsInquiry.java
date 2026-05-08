@@ -1,5 +1,7 @@
 package com.begae.backend.cs_inquiry.domain;
 
+import com.begae.backend.cs_inquiry.enums.InquiryStatus;
+import com.begae.backend.cs_inquiry.enums.InquiryType;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -29,14 +31,16 @@ public class CsInquiry {
     @Column(name = "content")
     private String content;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "inquiry_type")
-    private char inquiryType;
+    private InquiryType inquiryType;
 
     @Column(name = "inquiry_at")
     private LocalDateTime inquiryAt;
 
-    @Column(name = "iquiry_status")
-    private char iquitryStatus;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "inquiry_status")
+    private InquiryStatus inquiryStatus;
 
     @Column(name = "closed_at")
     private LocalDateTime closedAt;

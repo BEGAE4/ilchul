@@ -9,20 +9,20 @@ CREATE TABLE `user` (
     `user_status` VARCHAR(50),
     `user_nickname` VARCHAR(255),
     `user_intro` VARCHAR(255),
-    `user_img` VARCHAR(255),
+    `user_img` VARCHAR(2000),
     `create_at` DATETIME
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `place` (
     `place_id` INT AUTO_INCREMENT PRIMARY KEY,
-    `source_id` VARCHAR(255),
-    `address_name` VARCHAR(255),
-    `road_address_name` VARCHAR(255),
+    `source_id` VARCHAR(50),
+    `address_name` VARCHAR(300),
+    `road_address_name` VARCHAR(300),
     `category_name` VARCHAR(255),
     `phone` VARCHAR(50),
     `place_name` VARCHAR(255),
-    `place_url` VARCHAR(255),
-    `place_image_url` VARCHAR(255),
+    `place_url` VARCHAR(2000),
+    `place_image_url` VARCHAR(2000),
     `x` DOUBLE,
     `y` DOUBLE,
     `last_fetched_at` DATETIME,
@@ -60,9 +60,9 @@ CREATE TABLE `cs_inquiry` (
     `inquiry_id` INT AUTO_INCREMENT PRIMARY KEY,
     `user_id` INT,
     `content` TEXT,
-    `inquiry_type` CHAR(1),
+    `inquiry_type` VARCHAR(50),
     `inquiry_at` DATETIME,
-    `iquiry_status` CHAR(1),
+    `inquiry_status` VARCHAR(50),
     `closed_at` DATETIME,
     FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -98,7 +98,7 @@ CREATE TABLE `plan_place` (
 CREATE TABLE `plan_place_image` (
     `plan_place_image_id` INT AUTO_INCREMENT PRIMARY KEY,
     `plan_place_id` INT,
-    `image_url` VARCHAR(255),
+    `image_url` VARCHAR(2000),
     FOREIGN KEY (`plan_place_id`) REFERENCES `plan_place`(`plan_place_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -117,8 +117,8 @@ CREATE TABLE `report` (
     `report_user_id` INT,
     `reported_user_id` INT,
     `type_id` INT,
-    `report_type` CHAR(1),
-    `report_reason` CHAR(1),
+    `report_type` VARCHAR(50),
+    `report_reason` VARCHAR(50),
     `content` TEXT,
     FOREIGN KEY (`report_user_id`) REFERENCES `user`(`user_id`),
     FOREIGN KEY (`reported_user_id`) REFERENCES `user`(`user_id`)
