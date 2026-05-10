@@ -15,6 +15,8 @@ import {
   ThumbsUp,
   MoreVertical,
   Flag,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -23,6 +25,8 @@ import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { CourseDetailSkeleton } from '@/shared/ui/Skeleton';
 import { MOCK_COMMENTS, REPORT_REASONS } from '@/shared/data/mockData';
 import type { Comment } from '@/shared/types';
+
+const CURRENT_USER = '김여행';
 
 interface CourseViewPageProps {
   courseId: string;
@@ -58,6 +62,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
+  const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null);
 
   if (isLoading) {
     return <CourseDetailSkeleton />;
@@ -120,6 +125,19 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       else next.add(commentId);
       return next;
     });
+  };
+
+  const confirmDeleteComment = () => {
+    if (!commentToDelete) return;
+    setComments((prev) => prev.filter((c) => c.id !== commentToDelete.id));
+    setLikedComments((prev) => {
+      if (!prev.has(commentToDelete.id)) return prev;
+      const next = new Set(prev);
+      next.delete(commentToDelete.id);
+      return next;
+    });
+    setCommentToDelete(null);
+    toast.success('댓글이 삭제되었어요.');
   };
 
   // 관련 플랜 — 태그 매칭 또는 같은 지역 기반 필터링
@@ -326,6 +344,15 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   <span className="text-sm text-gray-500">
                     {likedComments.has(comment.id) ? comment.likes + 1 : comment.likes}
                   </span>
+                  {comment.user === CURRENT_USER && (
+                    <button
+                      onClick={() => setCommentToDelete(comment)}
+                      aria-label="댓글 삭제"
+                      className="ml-auto text-gray-400 hover:text-red-500 active:text-red-600"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -559,6 +586,43 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                 신고하기
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 댓글 삭제 확인 모달 ─── */}
+      {commentToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setCommentToDelete(null)} />
+          <div className="relative w-full max-w-[320px] bg-white rounded-2xl p-6 shadow-lg">
+            <h3 className="text-gray-900 text-lg font-bold mb-2">댓글을 삭제하시겠어요?</h3>
+            <p className="text-gray-500 text-sm mb-4 leading-relaxed">
+              삭제된 댓글은 복구할 수 없습니다.
+            </p>
+            <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100 mb-5 line-clamp-3">
+              {commentToDelete.text}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCommentToDelete(null)}
+                className="flex-1 bg-gray-100 text-gray-700 font-bold py-2.5 px-4 rounded-xl text-sm hover:bg-gray-200"
+              >
+                취소
+              </button>
+              <button
+                onClick={confirmDeleteComment}
+                className="flex-1 bg-red-500 text-white font-bold py-2.5 px-4 rounded-xl text-sm shadow-md shadow-red-200 hover:bg-red-600"
+              >
+                삭제하기
+              </button>
+            </div>
+            <button
+              onClick={() => setCommentToDelete(null)}
+              aria-label="닫기"
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+            >
+              <X size={20} />
+            </button>
           </div>
         </div>
       )}
