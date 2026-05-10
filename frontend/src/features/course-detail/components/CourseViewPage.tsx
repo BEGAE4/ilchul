@@ -66,7 +66,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   if (!course) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-gray-500">
-        <p className="mb-4">코스를 찾을 수 없습니다.</p>
+        <p className="mb-4">플랜을 찾을 수 없습니다.</p>
         <button onClick={() => router.back()} className="text-blue-500 font-medium">
           돌아가기
         </button>
@@ -122,7 +122,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     });
   };
 
-  // 관련 코스 — 태그 매칭 또는 같은 지역 기반 필터링
+  // 관련 플랜 — 태그 매칭 또는 같은 지역 기반 필터링
   const relatedCourses = courses
     .filter((c) => c.id !== courseId)
     .filter(
@@ -132,7 +132,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     )
     .slice(0, 3);
 
-  // 태그/지역 매칭 결과가 3개 미만이면 다른 코스로 채움
+  // 태그/지역 매칭 결과가 3개 미만이면 다른 플랜으로 채움
   if (relatedCourses.length < 3) {
     const remaining = courses
       .filter((c) => c.id !== courseId && !relatedCourses.some((r) => r.id === c.id))
@@ -258,7 +258,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       {/* 타임라인 */}
       <div className="px-5">
         <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <Clock size={20} className="text-sky-500" /> 여행 코스 타임라인
+          <Clock size={20} className="text-sky-500" /> 여행 플랜 타임라인
         </h2>
         <div className="relative pl-2 space-y-8 before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-sky-200 before:to-gray-100 before:content-['']">
           {course.stops.map((stop) => (
@@ -333,10 +333,10 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         </div>
       </div>
 
-      {/* 관련 코스 */}
+      {/* 관련 플랜 */}
       {relatedCourses.length > 0 && (
         <div className="px-5 py-6 border-t border-gray-100 bg-gray-50">
-          <h2 className="font-bold text-lg mb-4">이런 코스도 좋아하실 거예요</h2>
+          <h2 className="font-bold text-lg mb-4">이런 플랜도 좋아하실 거예요</h2>
           <div className="space-y-3">
             {relatedCourses.map((rc) => (
               <div
@@ -386,7 +386,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           whileTap={{ scale: 0.95 }}
           onClick={() => {
             toggleBookmark(courseId);
-            toast.success(bookmarked ? '저장을 해제했어요.' : '코스를 저장했어요!');
+            toast.success(bookmarked ? '저장을 해제했어요.' : '플랜을 저장했어요!');
           }}
           className={`p-3.5 rounded-xl border transition-colors ${
             bookmarked
@@ -400,7 +400,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           onClick={handleSaveCourse}
           className="flex-1 bg-sky-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform"
         >
-          이 코스로 일정 담기
+          이 플랜으로 일정 담기
         </button>
       </div>
 
@@ -416,7 +416,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   <span className="font-bold text-gray-700">&ldquo;{course.title}&rdquo;</span>
                 </p>
                 <p className="text-sm text-gray-500 mb-5">
-                  이 코스를 내 일정에 추가하시겠어요?
+                  이 플랜을 내 일정에 추가하시겠어요?
                   <br />
                   담은 후 날짜와 순서를 수정할 수 있어요.
                 </p>
@@ -442,7 +442,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                 </div>
                 <h3 className="font-bold text-lg mb-2 text-gray-900">일정에 담았어요!</h3>
                 <p className="text-sm text-gray-500 mb-6">
-                  내 코스 상세에서 날짜를 설정하고
+                  내 플랜 상세에서 날짜를 설정하고
                   <br />
                   여행을 시작해보세요.
                 </p>
@@ -460,7 +460,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                     onClick={goToMyCourse}
                     className="flex-1 py-3 bg-sky-500 font-bold rounded-xl text-sm text-white shadow-md shadow-sky-200"
                   >
-                    코스 보기
+                    플랜 보기
                   </button>
                 </div>
               </div>
@@ -483,7 +483,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
             >
               <Bookmark size={18} className="text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">코스 저장 / 해제</span>
+              <span className="text-sm font-medium text-gray-700">플랜 저장 / 해제</span>
             </button>
             <button
               onClick={() => {

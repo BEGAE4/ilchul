@@ -17,7 +17,7 @@ export default function CourseDetailRoute({ params }: PageProps) {
     return (
       <PageLayout>
         <div className="flex items-center justify-center h-screen text-gray-500">
-          코스를 찾을 수 없습니다.
+          플랜을 찾을 수 없습니다.
         </div>
       </PageLayout>
     );

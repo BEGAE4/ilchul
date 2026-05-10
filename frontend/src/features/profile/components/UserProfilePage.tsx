@@ -98,7 +98,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
   );
 
   const STATS = [
-    { label: '공개 코스', value: userCourses.length, color: 'text-sky-500' },
+    { label: '공개 플랜', value: userCourses.length, color: 'text-sky-500' },
     { label: '받은 좋아요', value: totalLikes, color: 'text-red-500' },
     { label: '받은 저장', value: totalBookmarks, color: 'text-violet-500' },
   ];
@@ -155,9 +155,9 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
         </div>
       </div>
 
-      {/* 코스 목록 */}
+      {/* 플랜 목록 */}
       <div className="p-4">
-        <h3 className="font-bold text-gray-900 mb-3">공개 코스</h3>
+        <h3 className="font-bold text-gray-900 mb-3">공개 플랜</h3>
         {userCourses.length > 0 ? (
           <div className="space-y-4">
             {userCourses.map((course) => (
@@ -220,7 +220,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <p className="text-gray-500 font-medium mb-1">아직 공개된 코스가 없어요</p>
+            <p className="text-gray-500 font-medium mb-1">아직 공개된 플랜이 없어요</p>
           </div>
         )}
       </div>

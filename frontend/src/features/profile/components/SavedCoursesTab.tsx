@@ -15,8 +15,8 @@ export const SavedCoursesTab: React.FC = () => {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
         <div className="text-4xl mb-4">🔖</div>
-        <p className="text-gray-500 font-medium mb-1">저장한 코스가 없어요</p>
-        <p className="text-xs text-gray-400">마음에 드는 코스를 저장해보세요!</p>
+        <p className="text-gray-500 font-medium mb-1">저장한 플랜이 없어요</p>
+        <p className="text-xs text-gray-400">마음에 드는 플랜을 저장해보세요!</p>
       </div>
     );
   }

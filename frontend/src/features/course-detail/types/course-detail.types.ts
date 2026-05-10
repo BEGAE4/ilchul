@@ -1,4 +1,4 @@
-// 코스 상세 관련 타입 정의
+// 플랜 상세 관련 타입 정의
 import { CourseDetail, Activity, StampHistory, Stamp } from '../api/course-detail.api';
 
 export type TabType = 'plan' | 'stamp';

@@ -107,7 +107,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({
       {/* Timeline */}
       <div className="px-5">
         <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <Clock size={20} className="text-sky-500" /> 여행 코스 타임라인
+          <Clock size={20} className="text-sky-500" /> 여행 플랜 타임라인
         </h2>
 
         <div className="relative pl-2 space-y-8 before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-sky-200 before:to-gray-100 before:content-['']">
@@ -138,7 +138,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({
       {/* Floating Action Button */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 flex justify-center w-[360px] mx-auto z-50">
         <button className="w-full bg-sky-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform">
-          이 코스로 일정 담기
+          이 플랜으로 일정 담기
         </button>
       </div>
     </div>

@@ -6,7 +6,7 @@ interface LogoLoaderProps {
   message?: string;
 }
 
-export function LogoLoader({ message = '코스를 생성하고 있어요...' }: LogoLoaderProps) {
+export function LogoLoader({ message = '플랜을 생성하고 있어요...' }: LogoLoaderProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-6">
       {/* 로고 애니메이션 */}
