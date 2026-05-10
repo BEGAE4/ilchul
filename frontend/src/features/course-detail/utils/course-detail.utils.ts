@@ -1,4 +1,4 @@
-// 코스 상세 관련 유틸리티 함수들
+// 플랜 상세 관련 유틸리티 함수들
 
 export const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
