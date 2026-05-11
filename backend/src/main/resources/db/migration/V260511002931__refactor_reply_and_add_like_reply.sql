@@ -7,7 +7,7 @@ ALTER TABLE `reply`
     ADD COLUMN `child_count` INT DEFAULT 0 AFTER `like_count`,
     ADD COLUMN `is_deleted` BOOLEAN DEFAULT FALSE AFTER `child_count`,
     ADD COLUMN `create_at` DATETIME DEFAULT CURRENT_TIMESTAMP AFTER `is_deleted`,
-    ADD INDEX idx_reply_parent (parent_reply_id);
+    ADD INDEX idx_reply_parent (parent_reply_id),
     ADD INDEX idx_reply_plan_parent (plan_id, parent_reply_id);
 
 -- 2. like_reply 테이블 생성 (유니크 제약 조건 포함)
