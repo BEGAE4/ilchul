@@ -1,7 +1,7 @@
 ---
-name: Infrastructure Change
-about: Propose changes to project infrastructure
-title: ''
+name: 인프라(Infra)
+about: 인프라 관련 작업(Propose changes to project infrastructure)
+title: '[Infra] '
 labels: 'infra'
 assignees: ''
 ---

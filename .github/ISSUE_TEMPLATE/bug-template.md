@@ -1,7 +1,7 @@
 ---
-name: Bug Report
-about: Report a bug to help us improve
-title: ''
+name: 버그 리포트(Bug)
+about: 발생한 버그를 신고해주세요(Report a Bug to help us improve)
+title: '[Bug] '
 labels: 'bug'
 assignees: ''
 ---

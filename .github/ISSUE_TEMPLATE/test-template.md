@@ -1,7 +1,7 @@
 ---
-name: Test Progress
-about: Conduct project code testing
-title: ''
+name: 테스트(Test)
+about: 테스트 관련 작업(Conduct project code testing)
+title: '[Test] '
 labels: 'test'
 assignees: ''
 
