@@ -19,6 +19,7 @@ public record ReplyResponse(
     Integer likeCount, 
     boolean isLiked, 
     Integer replyCount, 
+    Boolean isDeleted,
     ReplyListResponse replies
 ) {
     public static ReplyResponse from(Reply reply, boolean isLiked, ReplyListResponse childReplies) {
@@ -35,6 +36,7 @@ public record ReplyResponse(
             reply.getLikeCount(),
             isLiked,
             reply.getChildCount(),
+            reply.getIsDeleted(),
             childReplies
         );
     }
