@@ -1,7 +1,7 @@
 ---
-name: Refactor Request
-about: Suggest improvements or refactoring
-title: ''
+name: 리팩토링(Refactor)
+about: 대규모 코드 수정이나 로직 수정 등의 리팩토링(Suggest improvements or refactoring)
+title: '[Refactor] '
 labels: 'refactor'
 assignees: ''
 ---

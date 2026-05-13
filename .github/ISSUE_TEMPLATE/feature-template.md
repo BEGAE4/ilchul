@@ -1,7 +1,7 @@
 ---
-name: Feature Request
-about: Suggest a new feature or enhancement
-title: ''
+name: 새로운 기능(Feature)
+about: 새로운 기능 추가(Suggest a new feature or enhancement)
+title: '[Feature] '
 labels: 'feature'
 assignees: ''
 ---
