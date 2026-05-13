@@ -150,7 +150,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
     if (found) {
       setPlace(found);
       setLikeCount(found.likes);
-      // 같은 location의 코스를 관련 코스로
+      // 같은 location의 플랜을 관련 플랜으로
       const related = ALL_COURSES.filter(
         (c) => c.location === found.location || c.stops.some((s) => s.name === found.name)
       ).slice(0, 5);
@@ -346,11 +346,11 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
         </div>
       </div>
 
-      {/* 이 장소가 포함된 코스 */}
+      {/* 이 장소가 포함된 플랜 */}
       {relatedCourses.length > 0 && (
         <div className="py-4 border-t border-gray-100">
           <div className="px-5 mb-3 flex justify-between items-center">
-            <h2 className="font-bold text-gray-900">이 장소가 포함된 코스</h2>
+            <h2 className="font-bold text-gray-900">이 장소가 포함된 플랜</h2>
             <span className="text-xs text-gray-400">{relatedCourses.length}개</span>
           </div>
           <div className="px-4">
@@ -419,7 +419,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
             className="flex-1 flex items-center justify-center gap-2 bg-sky-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform"
           >
             <Plus size={18} strokeWidth={3} />
-            내 코스에 담기
+            내 플랜에 담기
           </button>
         </div>
       </div>

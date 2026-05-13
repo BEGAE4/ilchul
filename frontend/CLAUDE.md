@@ -95,3 +95,59 @@ Bottom nav tabs are defined in `src/shared/lib/constants/navItems.ts`. The activ
 ### Intro flow
 
 On first visit, `src/app/page.tsx` checks `localStorage` for `ilchul_intro_seen`. If not set, it redirects to `/intro`.
+
+## 프로젝트 컨벤션 (cc/convention)
+
+**모든 agent는 작업을 수행하기 전에 `cc/convention/` 폴더 내의 모든 `.md` 파일을 반드시 읽고, 해당 규칙을 엄격히 준수해야 한다.**
+
+해당 폴더에는 코드 컨벤션, 디렉토리 구조 규칙 등 프로젝트 전반의 표준이 정의되어 있다.
+
+- 위치: [cc/convention/](cc/convention/)
+- 적용 대상: 코드 작성, 파일/폴더 생성, 리팩토링, 리뷰 등 모든 작업
+- 우선순위: `cc/convention/` 내 규칙이 일반 관행보다 우선한다
+- 신규 파일 추가 또는 기존 규칙 갱신 시에도 해당 폴더의 최신 문서를 기준으로 판단한다
+
+**작업 시작 시 체크리스트**:
+
+1. `cc/convention/` 폴더 내 `.md` 파일 목록 확인
+2. 작업 영역에 해당하는 컨벤션 문서 읽기
+3. 컨벤션과 충돌이 있는 경우 사용자에게 확인 후 진행
+
+## Markdown 파일 명명 규칙
+
+**모든 agent는 `.md` 파일 생성 시 아래 네이밍 규칙을 반드시 따라야 한다.**
+
+형식:
+
+```
+생성일-상위폴더명-고유ID-파일명.md
+```
+
+- **생성일**: `YYMMDD` (6자리, 예: `260506`)
+- **상위폴더명**: 파일이 위치할 바로 위 폴더명 (예: `test`, `api`, `plan`)
+- **고유ID**: 세 자리 숫자 (`001`, `002`, `003`, ...). 같은 상위 폴더 내에서 순차적으로 증가
+- **파일명**: 공백 대신 언더스코어(`_`)로 단어 구분 (예: `ilchul_test`, `신고 UI 구현 상태` / 사용자가 자연어로 질문한 것에 대한 답변들은 제목을 '한글'로 저장한다. 반면 코드 작업과 연관된 plan 등의 md파일들은 영문으로 파일명을 작성한다.)
+
+예시:
+
+```
+260506-test-001-ilchul_test.md
+260506-api-002-plan_endpoint_spec.md
+260507-plan-001-course_creation_flow.md
+```
+
+**규칙 적용 시 주의사항**:
+
+- 새 `.md` 파일 생성 전, 동일한 상위 폴더 내 기존 파일들의 고유 ID를 확인하고 다음 번호를 사용한다
+- 날짜는 파일 생성 시점의 날짜를 `YYMMDD` 형식으로 기록한다
+- README.md, CLAUDE.md 등 프로젝트 표준 파일은 이 규칙에서 제외된다
+- 비활성화된 기능(피드, 매거진)은 답변 시 검토 범위에서 제외한다. 
+
+
+**cc directory 사용 규칙**
+- api : api 명세를 version 별로 md파일로 정리(디렉토리명 v뒤의 숫자가 클수록 최신)
+- convention : 코드 구현 시 반드시 참고해야하는 팀의 convention  
+- plan : 사용자가 요청한 구현에 대한 계획을 md파일로 저장해두는 곳
+- result : 사용자 요청에 의해 코드 구현된 결과 내용을 md파일로 저장해두는 곳 
+- ans : 사용자가 자연어로 질문한 내용에 대한 답변을 md파일로 저장해두는 곳
+- docs : ai로 작성된 공식적인 기획 및 개발 문서

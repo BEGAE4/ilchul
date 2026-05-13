@@ -153,7 +153,7 @@ export const CourseCreationFlow: React.FC = () => {
     } else if (step === 'finalPlan') {
       const newCourse = {
         id: `my-${Date.now()}`,
-        title: `${(surveyData.mindState ?? '').slice(0, 10)} 힐링 코스`,
+        title: `${(surveyData.mindState ?? '').slice(0, 10)} 힐링 플랜`,
         description: `${surveyData.transport ?? ''}으로 떠나는 나만의 힐링 여행`,
         author: '김여행',
         authorAvatar: 'https://i.pravatar.cc/150?u=me',
@@ -186,7 +186,7 @@ export const CourseCreationFlow: React.FC = () => {
       const savedId = newCourse.id;
       reset();
       toast.success('힐링 플랜이 생성되었어요!', {
-        description: '내 코스에서 확인해보세요.',
+        description: '내 플랜에서 확인해보세요.',
       });
       router.push(`/my-course/${savedId}`);
     }
@@ -368,7 +368,7 @@ export const CourseCreationFlow: React.FC = () => {
           <p className="text-gray-500 mb-12 leading-relaxed">
             먼저 간단한 설문을 통해
             <br />
-            맞춤 여행 코스를 추천해드릴게요.
+            맞춤 여행 플랜을 추천해드릴게요.
           </p>
           <button
             onClick={handleNext}
@@ -1132,7 +1132,7 @@ export const CourseCreationFlow: React.FC = () => {
 
         <div className="bg-white p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="font-bold text-lg">코스 일정표</h2>
+            <h2 className="font-bold text-lg">플랜 일정표</h2>
             <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-1 rounded">
               총 {finalStops.length}개 장소
             </span>

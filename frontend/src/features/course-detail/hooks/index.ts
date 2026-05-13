@@ -1,3 +1,3 @@
-// 코스 상세 훅들
+// 플랜 상세 훅들
 export * from './useCourseDetail';
 export * from './useStampHistory';

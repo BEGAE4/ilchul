@@ -26,7 +26,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
       const newCourse = {
         id: `my-${Date.now()}`,
         title: `${place.name} 여행`,
-        description: `${place.name}에서 시작하는 나만의 코스`,
+        description: `${place.name}에서 시작하는 나만의 플랜`,
         author: '김여행',
         authorAvatar: 'https://i.pravatar.cc/150?u=me',
         thumbnail: place.image,
@@ -53,7 +53,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
       };
       addMyCourse(newCourse);
       setAddedSuccess(true);
-      toast.success('새 코스가 생성되었어요!', {
+      toast.success('새 플랜이 생성되었어요!', {
         description: `${place.name}이(가) 추가되었습니다.`,
       });
     } else if (selectedCourseId) {
@@ -68,7 +68,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
       setAddedSuccess(true);
       const courseName = myCourses.find((c) => c.id === selectedCourseId)?.title;
       toast.success(`'${courseName}'에 추가했어요!`, {
-        description: `${place.name}이(가) 코스에 담겼습니다.`,
+        description: `${place.name}이(가) 플랜에 담겼습니다.`,
       });
     }
   };
@@ -122,7 +122,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                     <Check size={28} strokeWidth={3} />
                   </div>
                   <p className="text-sm font-bold text-gray-900 mb-1">{place.name}</p>
-                  <p className="text-xs text-gray-500 mb-6">장소가 코스에 추가되었어요!</p>
+                  <p className="text-xs text-gray-500 mb-6">장소가 플랜에 추가되었어요!</p>
                   <button
                     onClick={handleClose}
                     className="w-full py-3 bg-sky-500 text-white font-bold rounded-xl active:scale-[0.98] transition-transform"
@@ -170,8 +170,8 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                         <Plus size={20} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold text-gray-900">새 코스 만들기</div>
-                        <div className="text-xs text-gray-400">이 장소로 새 코스를 시작해요</div>
+                        <div className="text-sm font-bold text-gray-900">새 플랜 만들기</div>
+                        <div className="text-xs text-gray-400">이 장소로 새 플랜을 시작해요</div>
                       </div>
                       {selectedCourseId === '__new__' && (
                         <div className="w-5 h-5 rounded-full bg-sky-500 flex items-center justify-center shrink-0">
@@ -217,9 +217,9 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
 
                     {myCourses.length === 0 && (
                       <div className="text-center py-4 text-xs text-gray-400">
-                        아직 생성된 코스가 없어요.
+                        아직 생성된 플랜이 없어요.
                         <br />
-                        &apos;새 코스 만들기&apos;를 선택해주세요!
+                        &apos;새 플랜 만들기&apos;를 선택해주세요!
                       </div>
                     )}
                   </div>
@@ -229,7 +229,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                     disabled={!selectedCourseId}
                     className="w-full py-3.5 bg-sky-500 text-white font-bold rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shrink-0"
                   >
-                    {selectedCourseId === '__new__' ? '새 코스 생성하며 담기' : '선택한 코스에 담기'}
+                    {selectedCourseId === '__new__' ? '새 플랜 생성하며 담기' : '선택한 플랜에 담기'}
                   </button>
                 </>
               )}
