@@ -141,3 +141,13 @@ On first visit, `src/app/page.tsx` checks `localStorage` for `ilchul_intro_seen`
 - 새 `.md` 파일 생성 전, 동일한 상위 폴더 내 기존 파일들의 고유 ID를 확인하고 다음 번호를 사용한다
 - 날짜는 파일 생성 시점의 날짜를 `YYMMDD` 형식으로 기록한다
 - README.md, CLAUDE.md 등 프로젝트 표준 파일은 이 규칙에서 제외된다
+- 비활성화된 기능(피드, 매거진)은 답변 시 검토 범위에서 제외한다. 
+
+
+**cc directory 사용 규칙**
+- api : api 명세를 version 별로 md파일로 정리(디렉토리명 v뒤의 숫자가 클수록 최신)
+- convention : 코드 구현 시 반드시 참고해야하는 팀의 convention  
+- plan : 사용자가 요청한 구현에 대한 계획을 md파일로 저장해두는 곳
+- result : 사용자 요청에 의해 코드 구현된 결과 내용을 md파일로 저장해두는 곳 
+- ans : 사용자가 자연어로 질문한 내용에 대한 답변을 md파일로 저장해두는 곳
+- docs : ai로 작성된 공식적인 기획 및 개발 문서
