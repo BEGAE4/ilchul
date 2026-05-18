@@ -1,4 +1,4 @@
-package com.begae.backend.user.oauth2;
+package com.begae.backend.global.security.oauth2;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,6 +11,7 @@ public class OauthUserInfo {
     public static String OAUTH_ACCOUNT = "";
     public static final String EMAIL = "email";
     public static final String NICKNAME = "nickname";
+    public static final String PROFILE_IMAGE = "profile_image";
     public static String CLIENT = "";
 
 
@@ -33,10 +34,21 @@ public class OauthUserInfo {
         Map<String, Object> account = objectMapper.convertValue(oauthAccount, typeReferencer);
         // Object 타입 캐스팅 안정성을 높이기 위해 Mapper를 이용해 변환
         if(account != null) {
-            if(CLIENT.equals("kakao")) {
-                Map<String, Object> profile = objectMapper.convertValue(account.get("profile"), typeReferencer);
-                userInfo.put(NICKNAME, (String) profile.get(NICKNAME));
-            } else userInfo.put(NICKNAME, (String) account.get(NICKNAME));
+            switch (CLIENT) {
+                case "kakao":
+                    Map<String, Object> kakaoAccount = objectMapper.convertValue(account.get("kakao_account"), typeReferencer);
+                    userInfo.put(NICKNAME, (String) kakaoAccount.get(NICKNAME));
+                    userInfo.put(PROFILE_IMAGE, (String) kakaoAccount.get("profile_image_url"));
+                    break;
+                case "naver":
+                    userInfo.put(NICKNAME, (String) account.get(NICKNAME));
+                    userInfo.put(PROFILE_IMAGE, (String) account.get("profile_image"));
+                    break;
+                case "google":
+                    userInfo.put(NICKNAME, (String) account.get(NICKNAME));
+                    userInfo.put(PROFILE_IMAGE, (String) account.get("picture"));
+                    break;
+            }
             userInfo.put(EMAIL, (String) account.get(EMAIL));
             return userInfo;
         }

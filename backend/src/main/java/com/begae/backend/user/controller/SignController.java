@@ -1,8 +1,7 @@
 package com.begae.backend.user.controller;
 
-import com.begae.backend.user.auth.OauthUserDetails;
-import com.begae.backend.user.jwt.JwtManager;
-import jakarta.servlet.http.Cookie;
+import com.begae.backend.global.security.principal.OauthUserDetails;
+import com.begae.backend.global.security.jwt.JwtManager;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

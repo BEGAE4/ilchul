@@ -1,4 +1,4 @@
-package com.begae.backend.user.dto;
+package com.begae.backend.global.security.jwt;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

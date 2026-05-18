@@ -1,12 +1,13 @@
-package com.begae.backend.user.oauth2;
+package com.begae.backend.global.handler;
 
 import com.begae.backend.redis.domain.RefreshToken;
 import com.begae.backend.redis.repository.RefreshTokenRedisRepository;
 import com.begae.backend.user.common.SocialType;
 import com.begae.backend.user.domain.User;
-import com.begae.backend.user.dto.JwtDto;
+import com.begae.backend.global.security.jwt.JwtDto;
 import com.begae.backend.user.exception.UserNotFoundException;
-import com.begae.backend.user.jwt.JwtManager;
+import com.begae.backend.global.security.jwt.JwtManager;
+import com.begae.backend.global.security.oauth2.OauthUserInfo;
 import com.begae.backend.user.repository.UserRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
