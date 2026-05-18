@@ -42,7 +42,7 @@ public class Plan extends BaseEntity {
     private Integer requiredTime;
 
 //    @Column(name = "total_budget") // DB 에서 삭제
-//    private int totalBudget;
+//    private Integer totalBudget;
 
     @Column(name = "total_distance")
     private Integer totalDistance;

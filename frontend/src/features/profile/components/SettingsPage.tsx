@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
+import { updateMyPageProfile } from '@/features/my-page/api';
 
 type SettingsSection = 'main' | 'editProfile' | 'notification' | 'privacy' | 'about';
 
@@ -28,13 +29,37 @@ export function SettingsPage() {
 
   const [editName, setEditName] = useState(user.name);
   const [editTitle, setEditTitle] = useState(user.title);
+  const [isSaving, setIsSaving] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  const handleSaveProfile = () => {
-    updateProfile({ name: editName, title: editTitle });
-    setSection('main');
-    toast.success('프로필이 수정되었어요!');
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) return;
+
+    try {
+      setIsSaving(true);
+      const updated = await updateMyPageProfile({
+        newUserNickname: editName,
+        newUserIntro: editTitle,
+        newUserProfileImg: user.avatar,
+      });
+
+      // 응답 데이터로 로컬 스토어 갱신
+      updateProfile({
+        name: updated.userNickname,
+        avatar: updated.userImg,
+        title: updated.userIntro,
+        bio: updated.userIntro,
+      });
+
+      setSection('main');
+      toast.success('프로필이 수정되었어요!');
+    } catch (err) {
+      console.error('프로필 수정 실패:', err);
+      toast.error('프로필 수정에 실패했어요. 다시 시도해 주세요.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleLogout = () => {
@@ -158,10 +183,10 @@ export function SettingsPage() {
         <div className="p-4 border-t border-gray-100">
           <button
             onClick={handleSaveProfile}
-            disabled={!editName.trim()}
+            disabled={!editName.trim() || isSaving}
             className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
           >
-            저장하기
+            {isSaving ? '저장 중...' : '저장하기'}
           </button>
         </div>
       </div>

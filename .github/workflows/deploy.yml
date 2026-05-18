@@ -1,0 +1,207 @@
+name: Blue-Green Deploy (Begae Account Optimized)
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # 1. 변경 사항 감지 및 소문자 변수 설정
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      config: ${{ steps.filter.outputs.config }}
+      repo_owner: ${{ steps.lowercase.outputs.repo_owner }}
+      actor: ${{ steps.lowercase.outputs.actor }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Set lowercase variables
+        id: lowercase
+        run: |
+          echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+          echo "actor=$(echo ${{ github.actor }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+
+      - name: filter changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend: [ 'frontend/**' ]
+            backend: [ 'backend/**' ]
+            config: [ 'docker-compose.blue.yml', 'docker-compose.green.yml', '.github/workflows/deploy.yml', 'rollback.sh' ]
+
+  # 2. 프론트엔드 빌드 (ARM64)
+  build-frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ needs.changes.outputs.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & Push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          platforms: linux/arm64
+          tags: ghcr.io/${{ needs.changes.outputs.repo_owner }}/ilchul-frontend:latest
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # 3. 백엔드 빌드 (ARM64)
+  build-backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.config == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ needs.changes.outputs.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & Push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          platforms: linux/arm64
+          tags: ghcr.io/${{ needs.changes.outputs.repo_owner }}/ilchul-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # 4. 타겟 환경 배포 (begae 계정 직접 사용)
+  deploy-target:
+    needs: [changes, build-frontend, build-backend]
+    if: always() && (needs.build-frontend.result == 'success' || needs.build-frontend.result == 'skipped') && (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      
+      - name: Copy Config Files
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }} # begae
+          key: ${{ secrets.ORACLE_KEY }}
+          port: ${{ secrets.ORACLE_PORT }}
+          source: "docker-compose.blue.yml,docker-compose.green.yml,rollback.sh"
+          target: "/home/begae/ilchul" # begae 홈으로 바로 복사
+
+      - name: SSH Deploy
+        uses: appleboy/ssh-action@master
+        env:
+          REPO_OWNER: ${{ needs.changes.outputs.repo_owner }}
+          ACTOR: ${{ needs.changes.outputs.actor }}
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }} # begae
+          key: ${{ secrets.ORACLE_KEY }}
+          port: ${{ secrets.ORACLE_PORT }}
+          envs: REPO_OWNER,ACTOR
+          script: |
+            set -e
+            PROJECT_PATH="/home/begae/ilchul"
+            cd $PROJECT_PATH
+            
+            # 1. 환경 결정 로직 (sudo 없이 begae 권한으로 실행)
+            if [ ! -f current_environment.txt ]; then 
+              echo "blue" > current_environment.txt
+            fi
+            CURRENT_ENV=$(cat current_environment.txt | tr -d '[:space:]')
+            TARGET_ENV=$([ "$CURRENT_ENV" = "blue" ] && echo "green" || echo "blue")
+            
+            # 2. 동적 포트 할당
+            BACKEND_PORT=$([ "$TARGET_ENV" = "blue" ] && echo "8081" || echo "8082")
+            
+            echo "TARGET_ENV: $TARGET_ENV, BACKEND_PORT: $BACKEND_PORT"
+            echo "$TARGET_ENV" > target_environment.txt
+            echo "$CURRENT_ENV" > previous_environment.txt
+
+            # 3. .env 파일 생성 (특수문자 보호를 위해 분리 기록)
+            # 3-A: 시크릿 값 보호 ('EOF')
+            cat << 'EOF' > .env
+            ${{ secrets.ENV_FILE }}
+            EOF
+            
+            # 3-B: 변수 확장이 필요한 환경변수 추가 (>> 사용하여 덧붙이기)
+            cat << EOF >> .env
+            API_BASE_URL=http://ilchul-backend-${TARGET_ENV}:8080
+            FRONTEND_IMAGE=ghcr.io/${REPO_OWNER}/ilchul-frontend:latest
+            BACKEND_IMAGE=ghcr.io/${REPO_OWNER}/ilchul-backend:latest
+            EOF
+
+            # 4. 이미지 풀 및 실행 (begae가 docker 그룹이므로 sudo 불필요)
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${ACTOR} --password-stdin
+            docker compose -f docker-compose.${TARGET_ENV}.yml pull
+            docker compose -f docker-compose.${TARGET_ENV}.yml up -d
+            
+            # 5. 헬스 체크
+            echo "🔍 Health checking $TARGET_ENV on port $BACKEND_PORT..."
+            sleep 20
+            for i in {1..10}; do
+              if curl -f http://localhost:$BACKEND_PORT/actuator/health 2>/dev/null; then
+                echo "✅ Target $TARGET_ENV is healthy!"
+                exit 0
+              fi
+              echo "Waiting... ($i/10)"
+              sleep 5
+            done
+            exit 1
+
+  # 5. 자동 트래픽 전환 및 구버전 중지
+  switch-traffic:
+    needs: deploy-target
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto Switch
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }} # begae
+          key: ${{ secrets.ORACLE_KEY }}
+          port: ${{ secrets.ORACLE_PORT }}
+          script: |
+            set -e
+            PROJECT_PATH="/home/begae/ilchul"
+            GLOBAL_NGINX="nginx"
+            cd $PROJECT_PATH
+            
+            TARGET_ENV=$(cat target_environment.txt | tr -d '[:space:]')
+            CURRENT_ENV=$(cat previous_environment.txt | tr -d '[:space:]')
+            
+            echo "🔄 Switching Nginx traffic to $TARGET_ENV..."
+            # Nginx 제어도 sudo 없이 begae 권한으로 가능 (docker 그룹)
+            docker exec $GLOBAL_NGINX ln -sf /etc/nginx/conf.d/ilchul/ilchul-${TARGET_ENV}.conf /etc/nginx/conf.d/ilchul/ilchul-active-env.conf
+            docker exec $GLOBAL_NGINX nginx -s reload
+            
+            echo "$TARGET_ENV" > current_environment.txt
+            docker compose -f docker-compose.${CURRENT_ENV}.yml stop
+            
+            echo "🎉 Switched to $TARGET_ENV. Deployment Complete."

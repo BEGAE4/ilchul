@@ -42,7 +42,7 @@ public class LikeServiceImpl implements LikeService {
         if (existingLike.isPresent()) {
             Like like = existingLike.get();
 
-            if (like.isLikeStatus()) {
+            if (like.getLikeStatus()) {
                 like.toggleLikeStatus();
                 plan.decreaseLikeCount();
                 isLiked = false;
