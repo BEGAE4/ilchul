@@ -49,3 +49,6 @@ storybook-static
 
 # sample
 /src/samples/*
+
+# omc
+/.omc/*
