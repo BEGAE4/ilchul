@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 
 public interface PlanRepository extends JpaRepository<Plan, Integer> {
@@ -53,4 +54,15 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
     List<PlanDetailFlatDto> findPlanDetailFlat(@Param("planId") Integer planId);
 
     List<Plan> findByPlanIdIn(List<Integer> planIds);
+
+    @Query("""
+    select p
+    from Plan p
+    left join fetch p.planPlaces
+    where p.planId = :planId
+    and p.user.userId = :userId
+    """)
+    Optional<Plan> findByPlanIdAndUserId(@Param("planId") Integer planId,
+                                         @Param("userId") Integer userId);
+
 }

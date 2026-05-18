@@ -97,4 +97,10 @@ public class Plan extends BaseEntity {
     public void increaseScrappedCount() { this.scrapCount++; }
 
     public void decreaseScrappedCount() { this.scrapCount--; }
+
+    public void updateRouteSummary(Integer requiredTime, Integer totalDistance, String departurePoint) {
+        this.requiredTime = requiredTime;
+        this.totalDistance = totalDistance;
+        this.departurePoint = departurePoint;
+    }
 }

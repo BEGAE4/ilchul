@@ -2,6 +2,9 @@ package com.begae.backend.plan_place.service;
 
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.repository.PlaceRepository;
+import com.begae.backend.plan.domain.Plan;
+import com.begae.backend.plan.repository.PlanRepository;
+import com.begae.backend.plan_place.domain.PlanPlace;
 import com.begae.backend.plan_place.dto.*;
 import com.begae.backend.plan_place.repository.PlanPlaceRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,7 @@ import java.util.stream.Collectors;
 public class PlanPlaceServiceImpl implements PlanPlaceService {
 
     private final PlanPlaceRepository planPlaceRepository;
+    private final PlanRepository planRepository;
     private final PlaceRepository placeRepository;
 
     private final WebClient kakaoNaviWebClient;
@@ -99,6 +103,18 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                 .totalDuration(totalDuration)
                 .places(routes)
                 .build();
+    }
+
+
+    public UpdatePlanPlaceResponseDto updatePlanPlace(Integer userId, Integer planId, UpdatePlanPlaceRequestDto request) {
+        Plan plan = planRepository.findByPlanIdAndUserId(planId, userId).orElseThrow();
+
+        plan.updateRouteSummary(request.getRequiredTime(), request.getTotalDistance(), request.getDeparturePoint());
+
+        List<PlanPlace> oldPlanPlaces = planPlaceRepository.findByPlanOrderByOrderIndexAsc(plan);
+
+
+        return UpdatePlanPlaceResponseDto.builder().build();
     }
 
 }

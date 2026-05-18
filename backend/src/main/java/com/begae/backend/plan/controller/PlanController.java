@@ -5,7 +5,7 @@ import com.begae.backend.plan.dto.CreatePlanResponseDto;
 import com.begae.backend.plan.dto.PlanCopyResponseDto;
 import com.begae.backend.plan.dto.PlanDetailDto;
 import com.begae.backend.plan.service.PlanService;
-import com.begae.backend.user.auth.OauthUserDetails;
+import com.begae.backend.global.security.principal.OauthUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -42,7 +42,7 @@ public class PlanController {
 
     @PostMapping("/create")
     public ResponseEntity<CreatePlanResponseDto> createPlan(@AuthenticationPrincipal OauthUserDetails user,
-                                                            CreatePlanRequestDto request) {
+                                                            @RequestBody CreatePlanRequestDto request) {
         return ResponseEntity.ok(planService.CreatePlanWithPlaces(user.getUserId(), request));
     }
 }
