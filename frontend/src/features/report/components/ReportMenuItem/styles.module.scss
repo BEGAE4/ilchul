@@ -1,0 +1,45 @@
+$report-color-destructive: #ef4444; // red-500
+
+.item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background-color 0.15s;
+  text-align: left;
+
+  &:active {
+    background: #fef2f2; // red-50
+  }
+}
+
+.item--disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+
+  &:active {
+    background: none;
+  }
+}
+
+.icon {
+  flex-shrink: 0;
+  color: $report-color-destructive;
+  display: flex;
+  align-items: center;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  color: $report-color-destructive;
+}
+
+.label--disabled {
+  color: #9ca3af; // gray-400
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -14,16 +14,19 @@ import {
   MessageCircle,
   ThumbsUp,
   MoreVertical,
-  Flag,
   Trash2,
   X,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
+import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { CourseDetailSkeleton } from '@/shared/ui/Skeleton';
-import { MOCK_COMMENTS, REPORT_REASONS } from '@/shared/data/mockData';
+import { MOCK_COMMENTS } from '@/shared/data/mockData';
+import { useReport, ReportDialog, ReportMenuItem } from '@/features/report';
+import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStorage';
+import type { CurrentUser, ReportTarget } from '@/features/report';
 import type { Comment } from '@/shared/types';
 
 const CURRENT_USER = '김여행';
@@ -52,11 +55,18 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     setIsLoading(false);
   }, []);
 
+  const { user, isLoggedIn } = useUserStore();
+  const currentUser: CurrentUser = {
+    id: user?.id ?? '',
+    name: user?.name ?? '',
+    isLoggedIn,
+  };
+
+  const reportMenuTriggerRef = useRef<HTMLButtonElement>(null);
+  const reportCtx = useReport({ reporterId: currentUser.id });
+
   const [shareOpen, setShareOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isReportOpen, setIsReportOpen] = useState(false);
-  const [reportReason, setReportReason] = useState('');
-  const [reportDetail, setReportDetail] = useState('');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savedCourseId, setSavedCourseId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
@@ -82,6 +92,15 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const bookmarked = isBookmarked(courseId);
   const liked = isLiked(courseId);
   const likeCount = getLikeCount(courseId);
+
+  // course가 truthy로 확인된 이후 courseTarget을 구성 (null 케이스는 위에서 early return)
+  const courseTarget: ReportTarget = {
+    type: 'course',
+    id: courseId,
+    ownerId: course.author, // A7: 닉네임 best-effort 매칭
+    title: course.title,
+    contextUrl: `/course/${courseId}`,
+  };
 
   const handleSaveCourse = () => {
     setShowSaveModal(true);
@@ -512,16 +531,14 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
               <Bookmark size={18} className="text-gray-500" />
               <span className="text-sm font-medium text-gray-700">플랜 저장 / 해제</span>
             </button>
-            <button
-              onClick={() => {
-                setIsReportOpen(true);
+            <ReportMenuItem
+              target={courseTarget}
+              currentUser={currentUser}
+              onSelect={() => {
                 setIsMenuOpen(false);
+                reportCtx.open(courseTarget);
               }}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
-            >
-              <Flag size={18} className="text-red-500" />
-              <span className="text-sm font-medium text-red-500">신고하기</span>
-            </button>
+            />
             <button
               onClick={() => setIsMenuOpen(false)}
               className="w-full py-3 text-gray-400 font-bold text-sm mt-1"
@@ -533,62 +550,18 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       )}
 
       {/* ─── 신고 다이얼로그 ─── */}
-      {isReportOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setIsReportOpen(false)} />
-          <div className="relative w-full max-w-xs bg-white rounded-2xl p-6">
-            <h3 className="font-bold text-lg mb-2 text-gray-900">신고하기</h3>
-            <p className="text-sm text-gray-500 mb-5">
-              신고 사유를 선택하고 상세 내용을 입력해주세요.
-            </p>
-            <div className="space-y-2">
-              <select
-                value={reportReason}
-                onChange={(e) => setReportReason(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-sky-500 text-base"
-              >
-                <option value="">신고 사유 선택</option>
-                {REPORT_REASONS.map((reason, idx) => (
-                  <option key={idx} value={reason}>
-                    {reason}
-                  </option>
-                ))}
-              </select>
-              <textarea
-                value={reportDetail}
-                onChange={(e) => setReportDetail(e.target.value)}
-                placeholder="상세 내용 입력..."
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-sky-500 text-base"
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={() => setIsReportOpen(false)}
-                className="flex-1 py-3 bg-gray-100 font-bold rounded-xl text-sm text-gray-600"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => {
-                  if (!reportReason) {
-                    toast.error('신고 사유를 선택해주세요.');
-                    return;
-                  }
-                  setIsReportOpen(false);
-                  setReportReason('');
-                  setReportDetail('');
-                  toast.success('신고가 접수되었어요.');
-                }}
-                disabled={!reportReason}
-                className="flex-1 py-3 bg-sky-500 font-bold rounded-xl text-sm text-white shadow-md shadow-sky-200 disabled:bg-gray-300 disabled:shadow-none"
-              >
-                신고하기
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ReportDialog
+        isOpen={reportCtx.isOpen}
+        target={courseTarget}
+        isSubmitting={reportCtx.isSubmitting}
+        triggerRef={reportMenuTriggerRef}
+        onSubmit={(rc, d) => reportCtx.submit(courseTarget, rc, d)}
+        onClose={reportCtx.close}
+        onHideContent={(t) => {
+          hiddenReportsStorage.add(t);
+          router.back();
+        }}
+      />
 
       {/* ─── 댓글 삭제 확인 모달 ─── */}
       {commentToDelete && (
