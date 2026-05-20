@@ -12,4 +12,6 @@ public interface PlaceService {
     Mono<SearchPlaceResponseDto> toPlaceSummary(KakaoPlaceResponseDto.Document document);
     int upsertPlaceFrom(KakaoPlaceResponseDto.Document document, PlaceSummaryDto dto);
     RecommendKeywordDto generateKeyword(SurveyResultDto survey) throws JsonProcessingException;
+    List<SearchPlaceResponseDto> getSearchResult(KakaoPlaceResponseDto kakaoResponse);
+    PlaceDetailResponseDto getPlaceDetail(Integer placeId);
 }

@@ -4,9 +4,11 @@ import com.anthropic.client.AnthropicClient;
 import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
+import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.place.component.PromptRegistry;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.dto.*;
+import com.begae.backend.place.exception.PlaceErrorCode;
 import com.begae.backend.place.repository.PlaceRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +44,7 @@ public class PlaceServiceImpl implements PlaceService {
     private final PlaceRepository placeRepository;
     private final PromptRegistry promptRegistry;
 
+    @Override
     public List<SearchPlaceResponseDto> searchPlaceByKeyword(String keyword) {
 
         KakaoPlaceResponseDto kakaoResponse = kakaoWebClient.get()
@@ -56,6 +59,7 @@ public class PlaceServiceImpl implements PlaceService {
         return getSearchResult(kakaoResponse);
     }
 
+    @Override
     public List<SearchPlaceResponseDto> searchPlaceForRecommend(SearchPlaceRequestDto request) {
 
         KakaoPlaceResponseDto kakaoResponse = kakaoWebClient.get()
@@ -73,6 +77,7 @@ public class PlaceServiceImpl implements PlaceService {
         return getSearchResult(kakaoResponse);
     }
 
+    @Override
     public List<SearchPlaceResponseDto> getSearchResult(KakaoPlaceResponseDto kakaoResponse) {
         List<KakaoPlaceResponseDto.Document> documents = List.of();
         if(kakaoResponse != null) {
@@ -86,6 +91,7 @@ public class PlaceServiceImpl implements PlaceService {
                 .block(Duration.ofSeconds(20));
     }
 
+    @Override
     public Mono<SearchPlaceResponseDto> toPlaceSummary(KakaoPlaceResponseDto.Document document) {
         String textQuery = document.getRoadAddressName() + ", " + document.getPlaceName();
 
@@ -150,6 +156,7 @@ public class PlaceServiceImpl implements PlaceService {
                 .build();
     }
 
+    @Override
     public int upsertPlaceFrom(KakaoPlaceResponseDto.Document document, PlaceSummaryDto dto) {
 
         final String sourceId = document.getId();
@@ -196,6 +203,7 @@ public class PlaceServiceImpl implements PlaceService {
         return place.getPlaceId();
     }
 
+    @Override
     public RecommendKeywordDto generateKeyword(SurveyResultDto survey) throws JsonProcessingException {
 
         AnthropicClient client = AnthropicOkHttpClient.builder().
@@ -229,5 +237,23 @@ public class PlaceServiceImpl implements PlaceService {
 
         return promptRegistry.getUserTemplate()
                 .replace("{{SURVEY_JSON}}", surveyJson);
+    }
+
+    @Override
+    public PlaceDetailResponseDto getPlaceDetail(Integer placeId) {
+        Place place = placeRepository.findById(placeId).orElseThrow(() -> new CustomException(PlaceErrorCode.PLACE_NOT_FOUND));
+
+        return PlaceDetailResponseDto.builder()
+                .placeId(place.getPlaceId())
+                .placeName(place.getPlaceName())
+                .addressName(place.getAddressName())
+                .roadAddressName(place.getRoadAddressName())
+                .categoryName(place.getCategoryName())
+                .phone(place.getPhone())
+                .placeUrl(place.getPlaceUrl())
+                .placeImageUrl(place.getPlaceImageUrl())
+                .x(place.getX())
+                .y(place.getY())
+                .build();
     }
 }

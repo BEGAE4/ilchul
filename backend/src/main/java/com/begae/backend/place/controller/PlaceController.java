@@ -61,7 +61,9 @@ public class PlaceController {
         }
     }
 
-//    @GetMapping("/detail")
-//    public ResponseEntity<?> getPlaceDetail()
+    @GetMapping("/{placeId}")
+    public ResponseEntity<PlaceDetailResponseDto> getPlaceDetail(@PathVariable Integer placeId) {
+        return ResponseEntity.ok().body(placeService.getPlaceDetail(placeId));
+    }
 }
 
