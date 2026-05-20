@@ -12,11 +12,11 @@ public class PlanDraftHashUtil {
 
     private static final HexFormat HEX = HexFormat.of();
 
-    public static String hashPlaces(List<CreatePlanPreviewResponseDto.Place> places) {
+    public static String hashPlaces(List<CreatePlanPreviewResponseDto.PlanPlacePreview> places) {
         try {
             // order 기준 정렬 → "placeId:order|placeId:order|..."
             String normalized = places.stream()
-                    .sorted(Comparator.comparingInt(CreatePlanPreviewResponseDto.Place::getOrder))
+                    .sorted(Comparator.comparingInt(CreatePlanPreviewResponseDto.PlanPlacePreview::getOrder))
                     .map(p -> p.getPlaceId() + ":" + p.getOrder())
                     .reduce((a, b) -> a + "|" + b)
                     .orElse("");

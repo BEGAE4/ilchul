@@ -33,6 +33,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
 
     private final WebClient kakaoNaviWebClient;
 
+    @Override
     public CreatePlanPreviewResponseDto createPlanPreview(CreatePlanPreviewRequestDto request) {
 
         List<CreatePlanPreviewRequestDto.Place> ordered = request.getPlaces()
@@ -84,15 +85,21 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                 .map(section -> (int) Math.round(section.getDuration() / 60.0))
                 .toList();
 
-        List<CreatePlanPreviewResponseDto.Place> routes = new ArrayList<>();
+        int totalDistance = (int) Math.round(route.getSummary().getDistance() / 1000.0);
+
+        List<CreatePlanPreviewResponseDto.PlanPlacePreview> routes = new ArrayList<>();
         for(int i = 0; i < places.size(); i++) {
             Place place = places.get(i);
-            routes.add(CreatePlanPreviewResponseDto.Place.builder()
+            routes.add(CreatePlanPreviewResponseDto.PlanPlacePreview.builder()
                     .placeId(place.getPlaceId())
                     .placeName(place.getPlaceName())
+                    .categoryName(place.getCategoryName())
+                    .addressName(place.getAddressName())
                     .roadAddressName(place.getRoadAddressName())
                     .order(i + 1)
                     .duration(i == 0 ? 0 : sectionDuration.get(i - 1))
+                    .x(place.getX())
+                    .y(place.getY())
                     .build());
         }
 
@@ -100,7 +107,11 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                 .planTitle(request.getPlanTitle())
                 .planDescription(request.getPlanDescription())
                 .isPlanVisible(request.getIsPlanVisible())
-                .totalDuration(totalDuration)
+                .requiredTime(totalDuration)
+                .totalDistance(totalDistance)
+                .departurePoint(request.getDeparturePoint())
+                .tripStartDate(request.getTripStartDate())
+                .tripEndDate(request.getTripEndDate())
                 .places(routes)
                 .build();
     }
