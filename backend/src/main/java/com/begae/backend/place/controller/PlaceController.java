@@ -1,10 +1,12 @@
 package com.begae.backend.place.controller;
 
+import com.begae.backend.global.security.principal.OauthUserDetails;
 import com.begae.backend.place.dto.*;
 import com.begae.backend.place.service.PlaceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,7 +20,8 @@ public class PlaceController {
     private final PlaceService placeService;
 
     @GetMapping("/search")
-    public ResponseEntity<List<SearchPlaceResponseDto>> searchPlace(@RequestParam String keyword) {
+    public ResponseEntity<List<SearchPlaceResponseDto>> searchPlace(@AuthenticationPrincipal OauthUserDetails user,
+                                                                    @RequestParam String keyword) {
         try {
             log.info("api request : {}", keyword);
             List<SearchPlaceResponseDto> places = placeService.searchPlaceByKeyword(keyword);
@@ -30,7 +33,8 @@ public class PlaceController {
     }
 
     @PostMapping("/recommend")
-    public ResponseEntity<?> recommendPlace(@RequestBody SurveyResultDto survey) {
+    public ResponseEntity<?> recommendPlace(@AuthenticationPrincipal OauthUserDetails user,
+                                            @RequestBody SurveyResultDto survey) {
         try {
             List<RecommendPlaceResponseDto> result =
                     placeService.generateKeyword(survey)
@@ -62,7 +66,8 @@ public class PlaceController {
     }
 
     @GetMapping("/{placeId}")
-    public ResponseEntity<PlaceDetailResponseDto> getPlaceDetail(@PathVariable Integer placeId) {
+    public ResponseEntity<PlaceDetailResponseDto> getPlaceDetail(@AuthenticationPrincipal OauthUserDetails user,
+                                                                 @PathVariable Integer placeId) {
         return ResponseEntity.ok().body(placeService.getPlaceDetail(placeId));
     }
 }
