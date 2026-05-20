@@ -1,9 +1,6 @@
 package com.begae.backend.plan.service;
 
-import com.begae.backend.plan.dto.CreatePlanRequestDto;
-import com.begae.backend.plan.dto.CreatePlanResponseDto;
-import com.begae.backend.plan.dto.PlanCopyResponseDto;
-import com.begae.backend.plan.dto.PlanDetailDto;
+import com.begae.backend.plan.dto.*;
 
 public interface PlanService {
 
@@ -16,4 +13,8 @@ public interface PlanService {
     PlanDetailDto getPlanDetail(Integer planId);
 
     PlanCopyResponseDto copyPlan(Integer planId, Integer userId);
+
+    Integer updatePlan(Integer userId, Integer planId, UpdatePlanRequestDto request);
+
+    void deletePlan(Integer userId, Integer planId);
 }

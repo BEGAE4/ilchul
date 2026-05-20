@@ -8,7 +8,7 @@ import com.begae.backend.reply.dto.request.CreateReplyRequestDto;
 import com.begae.backend.reply.dto.request.PatchReplyRequestDto;
 import com.begae.backend.reply.dto.response.ReplyListResponse;
 import com.begae.backend.reply.service.ReplyService;
-import com.begae.backend.user.auth.OauthUserDetails;
+import com.begae.backend.global.security.principal.OauthUserDetails;
 
 import io.micrometer.core.ipc.http.HttpSender.Response;
 import lombok.RequiredArgsConstructor;

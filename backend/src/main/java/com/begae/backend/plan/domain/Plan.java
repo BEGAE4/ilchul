@@ -103,4 +103,38 @@ public class Plan extends BaseEntity {
         this.totalDistance = totalDistance;
         this.departurePoint = departurePoint;
     }
+
+    public boolean isVerifiedPlan() {
+        return Boolean.TRUE.equals(this.isVerified);
+    }
+
+    public void updateBasicInfo(String planTitle, Boolean isPlanVisible, String planDescription) {
+        if (planTitle != null) {
+            this.planTitle = planTitle;
+        }
+
+        if (isPlanVisible != null) {
+            this.isPlanVisible = isPlanVisible;
+        }
+
+        if (planDescription != null) {
+            this.planDescription = planDescription;
+        }
+    }
+
+    public void updateUnverifiedOnlyInfo(String departurePoint, LocalDateTime tripStartDate, LocalDateTime tripEndDate) {
+        if (departurePoint != null) {
+            this.departurePoint = departurePoint;
+        }
+
+        if (tripStartDate != null) {
+            this.tripStartDate = tripStartDate;
+        }
+
+        if (tripEndDate != null) {
+            this.tripEndDate = tripEndDate;
+        }
+    }
+
+
 }

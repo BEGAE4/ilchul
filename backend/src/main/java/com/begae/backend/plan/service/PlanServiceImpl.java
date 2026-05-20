@@ -1,9 +1,11 @@
 package com.begae.backend.plan.service;
 
+import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.repository.PlaceRepository;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.dto.*;
+import com.begae.backend.plan.exception.PlanErrorCode;
 import com.begae.backend.plan.exception.PlanNotFoundException;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan_place.domain.PlanPlace;
@@ -185,6 +187,58 @@ public class PlanServiceImpl implements PlanService{
         planRepository.save(newPlan);
         return new PlanCopyResponseDto(newPlan.getPlanId());
     }
+
+    @Override
+    @Transactional
+    public Integer updatePlan(Integer userId, Integer planId, UpdatePlanRequestDto request) {
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
+
+        validatePlanOwner(plan, userId);
+
+        if(request.hasVerificationRestrictedFields() && plan.isVerifiedPlan()) {
+            throw new CustomException(PlanErrorCode.VERIFIED_PLAN_UPDATE_RESTRICTED);
+        }
+
+        if (request.getTripStartDate() != null
+                && request.getTripEndDate() != null
+                && request.getTripStartDate().isAfter(request.getTripEndDate())) {
+            throw new CustomException(PlanErrorCode.INVALID_TRIP_DATE_RANGE);
+        }
+
+        plan.updateBasicInfo(
+                request.getPlanTitle(),
+                request.getIsPlanVisible(),
+                request.getPlanDescription()
+        );
+
+        plan.updateUnverifiedOnlyInfo(
+                request.getDeparturePoint(),
+                request.getTripStartDate(),
+                request.getTripEndDate()
+        );
+
+        return plan.getPlanId();
+    }
+
+    @Override
+    @Transactional
+    public void deletePlan(Integer userId, Integer planId) {
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
+
+        validatePlanOwner(plan, userId);
+
+        planRepository.delete(plan);
+
+    }
+
+    private void validatePlanOwner(Plan plan, Integer userId) {
+        if (!plan.getUser().getUserId().equals(userId)) {
+            throw new CustomException(PlanErrorCode.PLAN_ACCESS_DENIED);
+        }
+    }
+
 
 
     //    @Override
