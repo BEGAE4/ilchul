@@ -103,7 +103,7 @@ export default function Home() {
             </div>
             <button
               className="text-xs text-gray-400 flex items-center gap-0.5"
-              onClick={() => router.push('/search')}
+              onClick={() => router.push('/place/popular')}
             >
               더보기 <ArrowRight size={12} />
             </button>
@@ -166,7 +166,7 @@ export default function Home() {
             </div>
             <button
               className="text-xs text-gray-400 flex items-center gap-0.5"
-              onClick={() => router.push('/search')}
+              onClick={() => router.push('/plan/popular')}
             >
               더보기 <ArrowRight size={12} />
             </button>
@@ -238,7 +238,7 @@ export default function Home() {
             </div>
             <button
               className="text-xs text-gray-400 flex items-center gap-0.5"
-              onClick={() => router.push('/search')}
+              onClick={() => router.push('/place/popular/nationwide')}
             >
               더보기 <ArrowRight size={12} />
             </button>
@@ -299,7 +299,7 @@ export default function Home() {
             </div>
             <button
               className="text-xs text-gray-400 flex items-center gap-0.5"
-              onClick={() => router.push('/search')}
+              onClick={() => router.push('/plan/popular/nationwide')}
             >
               더보기 <ArrowRight size={12} />
             </button>

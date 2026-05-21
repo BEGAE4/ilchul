@@ -1,0 +1,1 @@
+export { NationwidePopularPlaceListPage } from './component';
