@@ -216,7 +216,7 @@ export const MOCK_COURSES: Course[] = [
     id: '1',
     title: '성수동 힙플레이스 완전 정복',
     description:
-      '요즘 가장 핫한 성수동의 카페와 팝업스토어를 하루만에 돌아보는 알짜배기 코스입니다.',
+      '요즘 가장 핫한 성수동의 카페와 팝업스토어를 하루만에 돌아보는 알짜배기 플랜입니다.',
     author: '힙스터김',
     authorAvatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d',
     thumbnail:
@@ -377,10 +377,10 @@ export const TRENDING_PLACES: BestPlace[] = [
   { id: 'nw3', name: '경주 불국사', category: '문화', location: '경북 경주시', image: 'https://images.unsplash.com/photo-1653632445017-0da95027672c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxneWVvbmdqdSUyMGhpc3RvcmljJTIwcGFyayUyMGtvcmVhfGVufDF8fHx8MTc3MjAyMzcxNHww&ixlib=rb-4.1.0&q=80&w=1080', likes: 2210 },
 ];
 
-// 지금 뜨는 코스 (검색 페이지용 — 좋아요 top5, NATIONWIDE_COURSES 기반)
+// 지금 뜨는 플랜 (검색 페이지용 — 좋아요 top5, NATIONWIDE_COURSES 기반)
 export const TRENDING_COURSES_IDS = ['nc1', 'nc2', 'nc3', '1', '2'];
 
-// 전국 인기 코스
+// 전국 인기 플랜
 export const NATIONWIDE_COURSES: Course[] = [
   {
     id: 'nc1',
@@ -423,7 +423,7 @@ export const NATIONWIDE_COURSES: Course[] = [
   {
     id: 'nc2',
     title: '부산 감성 골목 여행',
-    description: '감천문화마을과 부산의 숨은 골목들을 탐험하는 코스',
+    description: '감천문화마을과 부산의 숨은 골목들을 탐험하는 플랜',
     author: '부산토박이',
     authorAvatar: 'https://i.pravatar.cc/150?u=nc2',
     thumbnail:
@@ -453,7 +453,7 @@ export const NATIONWIDE_COURSES: Course[] = [
   },
   {
     id: 'nc3',
-    title: '경주 역사 탐방 코스',
+    title: '경주 역사 탐방 플랜',
     description: '천년 고도 경주의 유적지를 하루 만에 둘러보기',
     author: '역사탐험가',
     authorAvatar: 'https://i.pravatar.cc/150?u=nc3',
@@ -495,7 +495,7 @@ export const MY_COURSES_DATA: Course[] = [
   {
     id: 'my1',
     title: '주말 힐링 드라이브',
-    description: '혼자 조용히 다녀오기 좋은 근교 드라이브 코스',
+    description: '혼자 조용히 다녀오기 좋은 근교 드라이브 플랜',
     author: '김여행',
     authorAvatar: 'https://i.pravatar.cc/150?u=me',
     thumbnail:
@@ -533,7 +533,7 @@ export const MY_COURSES_DATA: Course[] = [
   {
     id: 'my2',
     title: '퇴근 후 급번개',
-    description: '친구들과 스트레스 풀러 가는 매운맛 코스',
+    description: '친구들과 스트레스 풀러 가는 매운맛 플랜',
     author: '김여행',
     authorAvatar: 'https://i.pravatar.cc/150?u=me',
     thumbnail:
@@ -646,7 +646,7 @@ export const MOCK_COMMENTS: Comment[] = [
     id: 'cm1',
     user: '여행꿈나무',
     avatar: 'https://i.pravatar.cc/150?u=cm1',
-    text: '이 코스 따라갔는데 진짜 완벽했어요! 특히 두 번째 장소가 최고 👍',
+    text: '이 플랜 따라갔는데 진짜 완벽했어요! 특히 두 번째 장소가 최고 👍',
     date: '2일 전',
     likes: 12,
   },
@@ -662,7 +662,7 @@ export const MOCK_COMMENTS: Comment[] = [
     id: 'cm3',
     user: '힐링마니아',
     avatar: 'https://i.pravatar.cc/150?u=cm3',
-    text: '코스 순서 그대로 따라가면 동선이 딱 맞아요. 짱입니다!',
+    text: '플랜 순서 그대로 따라가면 동선이 딱 맞아요. 짱입니다!',
     date: '1주 전',
     likes: 24,
   },
@@ -794,7 +794,7 @@ export const MOCK_MAGAZINES: MagazineArticle[] = [
 export const REPORT_REASONS = [
   '허위 정보가 포함되어 있어요',
   '부적절한 내용이 있어요',
-  '스팸 또는 광고 코스예요',
+  '스팸 또는 광고 플랜예요',
   '저작권을 침해하고 있어요',
   '기타',
 ];

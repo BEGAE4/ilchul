@@ -217,11 +217,11 @@ export function MagazineDetailPage({ magazineId }: MagazineDetailPageProps) {
         })}
       </div>
 
-      {/* 관련 코스 */}
+      {/* 관련 플랜 */}
       {relatedCourses.length > 0 && (
         <div className="px-5 py-6 border-t border-gray-100 bg-gray-50">
-          <h2 className="font-bold text-lg text-gray-900 mb-1">이 매거진과 관련된 코스</h2>
-          <p className="text-xs text-gray-500 mb-4">에디터가 추천하는 코스를 직접 따라가 보세요</p>
+          <h2 className="font-bold text-lg text-gray-900 mb-1">이 매거진과 관련된 플랜</h2>
+          <p className="text-xs text-gray-500 mb-4">에디터가 추천하는 플랜을 직접 따라가 보세요</p>
 
           <div className="space-y-3">
             {relatedCourses.map((course) => (

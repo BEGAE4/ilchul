@@ -74,7 +74,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({
     return (
       <div className={styles.loading}>
         <div className={styles.spinner}></div>
-        <p>코스 정보를 불러오는 중...</p>
+        <p>플랜 정보를 불러오는 중...</p>
       </div>
     );
   }
@@ -91,7 +91,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({
   if (!course) {
     return (
       <div className={styles.notFound}>
-        <p>코스를 찾을 수 없습니다.</p>
+        <p>플랜을 찾을 수 없습니다.</p>
         <button onClick={handleBack}>돌아가기</button>
       </div>
     );
@@ -142,7 +142,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({
         isOpen={showBottomMenu}
         onClose={() => setShowBottomMenu(false)}
         items={bottomMenuItems}
-        title="코스 옵션"
+        title="플랜 옵션"
       />
     </div>
   );

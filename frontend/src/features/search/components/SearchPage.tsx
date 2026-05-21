@@ -140,7 +140,7 @@ export const SearchPage: React.FC = () => {
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-          placeholder="장소, 코스, 지역명 검색"
+          placeholder="장소, 플랜, 지역명 검색"
           className="w-full bg-gray-100 border-none rounded-2xl py-4 pl-12 pr-10 text-base text-gray-900 font-medium focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all shadow-sm"
         />
         <Search
@@ -194,10 +194,10 @@ export const SearchPage: React.FC = () => {
                 </>
               )}
 
-              {/* 코스 그룹 */}
+              {/* 플랜 그룹 */}
               {courseSuggestions.length > 0 && (
                 <>
-                  <div className={`px-4 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider ${placeSuggestions.length > 0 ? 'border-t' : ''}`}>코스</div>
+                  <div className={`px-4 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider ${placeSuggestions.length > 0 ? 'border-t' : ''}`}>플랜</div>
                   {courseSuggestions.map((item) => (
                     <button
                       key={item.id}
@@ -319,11 +319,11 @@ export const SearchPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 지금 뜨는 코스 */}
+      {/* 지금 뜨는 플랜 */}
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Flame size={16} className="text-violet-500" />
-          <h2 className="font-bold text-gray-900">지금 뜨는 코스</h2>
+          <h2 className="font-bold text-gray-900">지금 뜨는 플랜</h2>
         </div>
         <div className="space-y-2.5">
           {TRENDING_COURSES.map((course, idx) => (

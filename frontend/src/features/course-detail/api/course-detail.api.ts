@@ -1,4 +1,4 @@
-// 코스 상세 정보 API
+// 플랜 상세 정보 API
 export interface CourseDetail {
   id: string;
   title: string;

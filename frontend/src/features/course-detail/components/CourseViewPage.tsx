@@ -15,6 +15,8 @@ import {
   ThumbsUp,
   MoreVertical,
   Flag,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -23,6 +25,8 @@ import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { CourseDetailSkeleton } from '@/shared/ui/Skeleton';
 import { MOCK_COMMENTS, REPORT_REASONS } from '@/shared/data/mockData';
 import type { Comment } from '@/shared/types';
+
+const CURRENT_USER = '김여행';
 
 interface CourseViewPageProps {
   courseId: string;
@@ -58,6 +62,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
+  const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null);
 
   if (isLoading) {
     return <CourseDetailSkeleton />;
@@ -66,7 +71,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   if (!course) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-gray-500">
-        <p className="mb-4">코스를 찾을 수 없습니다.</p>
+        <p className="mb-4">플랜을 찾을 수 없습니다.</p>
         <button onClick={() => router.back()} className="text-blue-500 font-medium">
           돌아가기
         </button>
@@ -122,7 +127,20 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     });
   };
 
-  // 관련 코스 — 태그 매칭 또는 같은 지역 기반 필터링
+  const confirmDeleteComment = () => {
+    if (!commentToDelete) return;
+    setComments((prev) => prev.filter((c) => c.id !== commentToDelete.id));
+    setLikedComments((prev) => {
+      if (!prev.has(commentToDelete.id)) return prev;
+      const next = new Set(prev);
+      next.delete(commentToDelete.id);
+      return next;
+    });
+    setCommentToDelete(null);
+    toast.success('댓글이 삭제되었어요.');
+  };
+
+  // 관련 플랜 — 태그 매칭 또는 같은 지역 기반 필터링
   const relatedCourses = courses
     .filter((c) => c.id !== courseId)
     .filter(
@@ -132,7 +150,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     )
     .slice(0, 3);
 
-  // 태그/지역 매칭 결과가 3개 미만이면 다른 코스로 채움
+  // 태그/지역 매칭 결과가 3개 미만이면 다른 플랜으로 채움
   if (relatedCourses.length < 3) {
     const remaining = courses
       .filter((c) => c.id !== courseId && !relatedCourses.some((r) => r.id === c.id))
@@ -258,7 +276,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       {/* 타임라인 */}
       <div className="px-5">
         <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <Clock size={20} className="text-sky-500" /> 여행 코스 타임라인
+          <Clock size={20} className="text-sky-500" /> 여행 플랜 타임라인
         </h2>
         <div className="relative pl-2 space-y-8 before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-sky-200 before:to-gray-100 before:content-['']">
           {course.stops.map((stop) => (
@@ -326,6 +344,15 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   <span className="text-sm text-gray-500">
                     {likedComments.has(comment.id) ? comment.likes + 1 : comment.likes}
                   </span>
+                  {comment.user === CURRENT_USER && (
+                    <button
+                      onClick={() => setCommentToDelete(comment)}
+                      aria-label="댓글 삭제"
+                      className="ml-auto text-gray-400 hover:text-red-500 active:text-red-600"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -333,10 +360,10 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         </div>
       </div>
 
-      {/* 관련 코스 */}
+      {/* 관련 플랜 */}
       {relatedCourses.length > 0 && (
         <div className="px-5 py-6 border-t border-gray-100 bg-gray-50">
-          <h2 className="font-bold text-lg mb-4">이런 코스도 좋아하실 거예요</h2>
+          <h2 className="font-bold text-lg mb-4">이런 플랜도 좋아하실 거예요</h2>
           <div className="space-y-3">
             {relatedCourses.map((rc) => (
               <div
@@ -386,7 +413,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           whileTap={{ scale: 0.95 }}
           onClick={() => {
             toggleBookmark(courseId);
-            toast.success(bookmarked ? '저장을 해제했어요.' : '코스를 저장했어요!');
+            toast.success(bookmarked ? '저장을 해제했어요.' : '플랜을 저장했어요!');
           }}
           className={`p-3.5 rounded-xl border transition-colors ${
             bookmarked
@@ -400,7 +427,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           onClick={handleSaveCourse}
           className="flex-1 bg-sky-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform"
         >
-          이 코스로 일정 담기
+          이 플랜으로 일정 담기
         </button>
       </div>
 
@@ -416,7 +443,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   <span className="font-bold text-gray-700">&ldquo;{course.title}&rdquo;</span>
                 </p>
                 <p className="text-sm text-gray-500 mb-5">
-                  이 코스를 내 일정에 추가하시겠어요?
+                  이 플랜을 내 일정에 추가하시겠어요?
                   <br />
                   담은 후 날짜와 순서를 수정할 수 있어요.
                 </p>
@@ -442,7 +469,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                 </div>
                 <h3 className="font-bold text-lg mb-2 text-gray-900">일정에 담았어요!</h3>
                 <p className="text-sm text-gray-500 mb-6">
-                  내 코스 상세에서 날짜를 설정하고
+                  내 플랜 상세에서 날짜를 설정하고
                   <br />
                   여행을 시작해보세요.
                 </p>
@@ -460,7 +487,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                     onClick={goToMyCourse}
                     className="flex-1 py-3 bg-sky-500 font-bold rounded-xl text-sm text-white shadow-md shadow-sky-200"
                   >
-                    코스 보기
+                    플랜 보기
                   </button>
                 </div>
               </div>
@@ -483,7 +510,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
             >
               <Bookmark size={18} className="text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">코스 저장 / 해제</span>
+              <span className="text-sm font-medium text-gray-700">플랜 저장 / 해제</span>
             </button>
             <button
               onClick={() => {
@@ -559,6 +586,43 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                 신고하기
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 댓글 삭제 확인 모달 ─── */}
+      {commentToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setCommentToDelete(null)} />
+          <div className="relative w-full max-w-[320px] bg-white rounded-2xl p-6 shadow-lg">
+            <h3 className="text-gray-900 text-lg font-bold mb-2">댓글을 삭제하시겠어요?</h3>
+            <p className="text-gray-500 text-sm mb-4 leading-relaxed">
+              삭제된 댓글은 복구할 수 없습니다.
+            </p>
+            <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100 mb-5 line-clamp-3">
+              {commentToDelete.text}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCommentToDelete(null)}
+                className="flex-1 bg-gray-100 text-gray-700 font-bold py-2.5 px-4 rounded-xl text-sm hover:bg-gray-200"
+              >
+                취소
+              </button>
+              <button
+                onClick={confirmDeleteComment}
+                className="flex-1 bg-red-500 text-white font-bold py-2.5 px-4 rounded-xl text-sm shadow-md shadow-red-200 hover:bg-red-600"
+              >
+                삭제하기
+              </button>
+            </div>
+            <button
+              onClick={() => setCommentToDelete(null)}
+              aria-label="닫기"
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+            >
+              <X size={20} />
+            </button>
           </div>
         </div>
       )}

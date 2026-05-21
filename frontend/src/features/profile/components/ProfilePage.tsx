@@ -134,7 +134,7 @@ export const ProfilePage: React.FC = () => {
 
   const STATS: { label: string; value: number | string; color: string }[] = [
     {
-      label: '공개 코스',
+      label: '공개 플랜',
       value: summaryLoading
         ? '...'
         : summaryError
@@ -143,7 +143,7 @@ export const ProfilePage: React.FC = () => {
       color: 'text-sky-500',
     },
     {
-      label: '인증 코스',
+      label: '인증 플랜',
       value: summaryLoading
         ? '...'
         : summaryError
@@ -161,7 +161,7 @@ export const ProfilePage: React.FC = () => {
       color: 'text-violet-500',
     },
     {
-      label: '저장한 코스',
+      label: '저장한 플랜',
       value: summaryLoading
         ? '...'
         : summaryError
@@ -203,7 +203,7 @@ export const ProfilePage: React.FC = () => {
     if (courseToDelete) {
       deleteMyCourse(courseToDelete);
       setCourseToDelete(null);
-      toast.success('코스가 삭제되었어요.');
+      toast.success('플랜이 삭제되었어요.');
     }
   };
 
@@ -215,8 +215,8 @@ export const ProfilePage: React.FC = () => {
   };
 
   const TABS: { key: MainTab; label: string; count: number }[] = [
-    { key: 'courses', label: '내 코스', count: myCourses.length },
-    { key: 'bookmarks', label: '저장 코스', count: savedCourses.length },
+    { key: 'courses', label: '내 플랜', count: myCourses.length },
+    { key: 'bookmarks', label: '저장 플랜', count: savedCourses.length },
     { key: 'plans', label: '내 플랜', count: plans.length },
   ];
 
@@ -312,7 +312,7 @@ export const ProfilePage: React.FC = () => {
         >
           {mainTab === 'courses' && (
             <>
-              {/* 코스 필터 */}
+              {/* 플랜 필터 */}
               <div className="bg-white border-b border-gray-100 px-5 py-2.5 flex gap-2">
                 {([
                   ['all', `전체 ${myCourses.length}`],
@@ -383,7 +383,7 @@ export const ProfilePage: React.FC = () => {
                                     setCourseToDelete(course.id);
                                   }}
                                   className="p-2.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 active:bg-red-200 transition-colors"
-                                  aria-label="코스 삭제"
+                                  aria-label="플랜 삭제"
                                 >
                                   <Trash2 size={16} />
                                 </button>
@@ -401,18 +401,18 @@ export const ProfilePage: React.FC = () => {
                     </div>
                     <p className="text-gray-500 font-medium mb-1">
                       {courseFilter === 'all'
-                        ? '아직 생성된 코스가 없어요'
-                        : '해당하는 코스가 없어요'}
+                        ? '아직 생성된 플랜이 없어요'
+                        : '해당하는 플랜이 없어요'}
                     </p>
                     <p className="text-xs text-gray-400 mb-6">
-                      나만의 힐링 코스를 만들어보세요!
+                      나만의 힐링 플랜을 만들어보세요!
                     </p>
                     {courseFilter === 'all' && (
                       <button
                         onClick={() => router.push('/create')}
                         className="bg-sky-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-sky-200 active:scale-95 transition-transform"
                       >
-                        코스 생성하기
+                        플랜 생성하기
                       </button>
                     )}
                   </div>
@@ -493,8 +493,8 @@ export const ProfilePage: React.FC = () => {
               ) : (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <div className="text-4xl mb-4">🔖</div>
-                  <p className="text-gray-500 font-medium mb-1">저장한 코스가 없어요</p>
-                  <p className="text-xs text-gray-400">마음에 드는 코스를 저장해보세요!</p>
+                  <p className="text-gray-500 font-medium mb-1">저장한 플랜이 없어요</p>
+                  <p className="text-xs text-gray-400">마음에 드는 플랜을 저장해보세요!</p>
                 </div>
               )}
             </div>
@@ -597,10 +597,10 @@ export const ProfilePage: React.FC = () => {
           <div className="absolute inset-0 bg-black/50" onClick={() => setCourseToDelete(null)} />
           <div className="relative bg-white rounded-2xl p-6 mx-5 w-full max-w-[320px] shadow-lg">
             <h2 className="text-gray-900 text-lg font-bold mb-2">
-              코스를 삭제하시겠어요?
+              플랜을 삭제하시겠어요?
             </h2>
             <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-              삭제된 코스는 복구할 수 없습니다.
+              삭제된 플랜은 복구할 수 없습니다.
               <br />
               정말로 삭제하시겠습니까?
             </p>
