@@ -29,8 +29,6 @@ import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStor
 import type { CurrentUser, ReportTarget } from '@/features/report';
 import type { Comment } from '@/shared/types';
 
-const CURRENT_USER = '김여행';
-
 interface CourseViewPageProps {
   courseId: string;
 }
@@ -73,6 +71,8 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
   const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null);
+  // 어느 댓글의 메뉴인지 추적 — race condition 차단 (Architect C-3)
+  const [commentMenuTarget, setCommentMenuTarget] = useState<ReportTarget | null>(null);
 
   if (isLoading) {
     return <CourseDetailSkeleton />;
@@ -363,13 +363,32 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   <span className="text-sm text-gray-500">
                     {likedComments.has(comment.id) ? comment.likes + 1 : comment.likes}
                   </span>
-                  {comment.user === CURRENT_USER && (
+                  {comment.user === currentUser.name ? (
+                    // 본인 댓글: 삭제 버튼 유지
                     <button
                       onClick={() => setCommentToDelete(comment)}
                       aria-label="댓글 삭제"
                       className="ml-auto text-gray-400 hover:text-red-500 active:text-red-600"
                     >
                       <Trash2 size={16} />
+                    </button>
+                  ) : (
+                    // 타인 댓글: 신고 진입점 ⋮ 버튼 (Q6: BottomMenu 단일 트리거)
+                    <button
+                      onClick={() =>
+                        setCommentMenuTarget({
+                          type: 'comment',
+                          id: comment.id,
+                          ownerId: comment.user,
+                          courseId,
+                          snippet: comment.text.slice(0, 60),
+                          contextUrl: `/course/${courseId}#comment-${comment.id}`,
+                        })
+                      }
+                      aria-label="댓글 더보기"
+                      className="ml-auto text-gray-400 hover:text-gray-600 active:text-gray-700"
+                    >
+                      <MoreVertical size={16} />
                     </button>
                   )}
                 </div>
@@ -549,19 +568,56 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         </div>
       )}
 
-      {/* ─── 신고 다이얼로그 ─── */}
+      {/* ─── 신고 다이얼로그 (course/comment 공용 — target은 reportCtx.target에서 동적 결정) ─── */}
       <ReportDialog
         isOpen={reportCtx.isOpen}
-        target={courseTarget}
+        target={reportCtx.target ?? courseTarget}
         isSubmitting={reportCtx.isSubmitting}
         triggerRef={reportMenuTriggerRef}
-        onSubmit={(rc, d) => reportCtx.submit(courseTarget, rc, d)}
+        onSubmit={(rc, d) => reportCtx.submit(reportCtx.target ?? courseTarget, rc, d)}
         onClose={reportCtx.close}
         onHideContent={(t) => {
-          hiddenReportsStorage.add(t);
-          router.back();
+          if (t.type === 'comment') {
+            // 댓글 신고 후 숨기기: 해당 댓글만 페이지에서 즉시 제거 + 로컬 스토리지에도 기록
+            setComments((prev) => prev.filter((c) => c.id !== t.id));
+            hiddenReportsStorage.add(t);
+          } else {
+            // 플랜 신고 후 숨기기: 로컬 스토리지 기록 + 페이지 이탈
+            hiddenReportsStorage.add(t);
+            router.back();
+          }
         }}
       />
+
+      {/* ─── 댓글 더보기 인라인 시트 ─── */}
+      {/* BottomMenu는 items: MenuItem[] 배열만 지원하고 children/slot 미지원이므로
+          기존 isMenuOpen 패턴(인라인 bottom-sheet)을 재사용한다 (PR-4 범위 내 최소 침습) */}
+      {commentMenuTarget !== null && (
+        <div className="fixed inset-0 z-50 flex items-end">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setCommentMenuTarget(null)}
+          />
+          <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+            <ReportMenuItem
+              target={commentMenuTarget}
+              currentUser={currentUser}
+              onSelect={() => {
+                const target = commentMenuTarget;
+                setCommentMenuTarget(null);
+                reportCtx.open(target);
+              }}
+            />
+            <button
+              onClick={() => setCommentMenuTarget(null)}
+              className="w-full py-3 text-gray-400 font-bold text-sm mt-1"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ─── 댓글 삭제 확인 모달 ─── */}
       {commentToDelete && (

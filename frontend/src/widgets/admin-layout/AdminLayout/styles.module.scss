@@ -1,0 +1,8 @@
+// Admin 셸은 사용자 앱의 mobile-optimized(user-select: none)를 회복시킨다.
+// 운영자는 신고/문의 본문을 복사할 수 있어야 한다.
+.shell,
+.shell * {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
