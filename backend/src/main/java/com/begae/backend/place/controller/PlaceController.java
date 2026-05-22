@@ -1,6 +1,9 @@
 package com.begae.backend.place.controller;
 
+import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.global.exception.GlobalErrorCode;
 import com.begae.backend.place.dto.*;
+import com.begae.backend.place.dto.PopularPlaceResponseDto;
 import com.begae.backend.place.service.PlaceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -63,5 +66,32 @@ public class PlaceController {
 
 //    @GetMapping("/detail")
 //    public ResponseEntity<?> getPlaceDetail()
+
+    /**
+     * 전국 인기 장소 조회
+     */
+    @GetMapping("/popular/nationwide")
+    public ResponseEntity<PopularPlaceResponseDto> getNationwidePopularPlaces(
+            @RequestParam(defaultValue = "6") Integer limit,
+            @RequestParam(defaultValue = "1") Integer page
+    ) {
+        return ResponseEntity.ok(placeService.getNationwidePopularPlaces(limit, page));
+    }
+
+    /**
+     * 내 주변 인기 장소 조회
+     */
+    @GetMapping("/popular")
+    public ResponseEntity<PopularPlaceResponseDto> getPopularPlaces(
+            @RequestParam Double lat,
+            @RequestParam Double lng,
+            @RequestParam(defaultValue = "5") Integer limit,
+            @RequestParam(defaultValue = "1") Integer page
+    ) {
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            throw new CustomException(GlobalErrorCode.INVALID_INPUT_VALUE);
+        }
+        return ResponseEntity.ok(placeService.getPopularPlaces(lat, lng, limit, page));
+    }
 }
 

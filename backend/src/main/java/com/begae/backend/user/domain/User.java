@@ -34,12 +34,15 @@ public class User extends BaseEntity {
     @Column(name = "user_email")
     private String userEmail;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "social_type")
     private SocialType socialType;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "user_role")
     private UserRole userRole;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "user_status")
     private UserStatus userStatus;
 

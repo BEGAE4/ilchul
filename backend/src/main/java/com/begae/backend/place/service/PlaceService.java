@@ -12,4 +12,7 @@ public interface PlaceService {
     Mono<SearchPlaceResponseDto> toPlaceSummary(KakaoPlaceResponseDto.Document document);
     int upsertPlaceFrom(KakaoPlaceResponseDto.Document document, PlaceSummaryDto dto);
     RecommendKeywordDto generateKeyword(SurveyResultDto survey) throws JsonProcessingException;
+    PopularPlaceResponseDto getPopularPlaces(Double lat, Double lng, Integer limit, Integer page);
+
+    PopularPlaceResponseDto getNationwidePopularPlaces(Integer limit, Integer page);
 }
