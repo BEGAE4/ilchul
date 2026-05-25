@@ -14,4 +14,7 @@ public interface PlaceService {
     RecommendKeywordDto generateKeyword(SurveyResultDto survey) throws JsonProcessingException;
     List<SearchPlaceResponseDto> getSearchResult(KakaoPlaceResponseDto kakaoResponse);
     PlaceDetailResponseDto getPlaceDetail(Integer placeId);
+    PopularPlaceResponseDto getPopularPlaces(Double lat, Double lng, Integer limit, Integer page);
+
+    PopularPlaceResponseDto getNationwidePopularPlaces(Integer limit, Integer page);
 }

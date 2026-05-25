@@ -14,6 +14,10 @@ public interface PlanService {
 
     PlanCopyResponseDto copyPlan(Integer planId, Integer userId);
 
+    PopularPlanResponseDto getPopularPlans(Double lat, Double lng, Integer limit, Integer page);
+
+    PopularPlanResponseDto getNationwidePopularPlans(Integer limit, Integer page);
+
     Integer updatePlan(Integer userId, Integer planId, UpdatePlanRequestDto request);
 
     void deletePlan(Integer userId, Integer planId);

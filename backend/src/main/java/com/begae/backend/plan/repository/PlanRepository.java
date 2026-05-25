@@ -55,6 +55,68 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
 
     List<Plan> findByPlanIdIn(List<Integer> planIds);
 
+    @Query(value = """
+            SELECT p.plan_id
+            FROM plan p
+            JOIN plan_place pp ON pp.plan_id = p.plan_id
+            WHERE p.is_plan_visible = true
+              AND pp.snapshot_x IS NOT NULL
+              AND pp.snapshot_y IS NOT NULL
+              AND (6371 * acos(LEAST(1.0,
+                    cos(radians(:lat)) * cos(radians(pp.snapshot_y))
+                    * cos(radians(pp.snapshot_x) - radians(:lng))
+                    + sin(radians(:lat)) * sin(radians(pp.snapshot_y))
+                  ))) <= :radiusKm
+            GROUP BY p.plan_id
+            ORDER BY (MAX(p.like_count) + MAX(p.scrap_count)) DESC
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<Integer> findPopularPlanIds(
+            @Param("lat") Double lat,
+            @Param("lng") Double lng,
+            @Param("radiusKm") double radiusKm,
+            @Param("limit") int limit,
+            @Param("offset") int offset
+            );
+
+    @Query(value = """
+            SELECT COUNT(DISTINCT p.plan_id)
+            FROM plan p
+            JOIN plan_place pp ON pp.plan_id = p.plan_id
+            WHERE p.is_plan_visible = true
+              AND pp.snapshot_x IS NOT NULL
+              AND pp.snapshot_y IS NOT NULL
+              AND (6371 * acos(LEAST(1.0,
+                    cos(radians(:lat)) * cos(radians(pp.snapshot_y))
+                    * cos(radians(pp.snapshot_x) - radians(:lng))
+                    + sin(radians(:lat)) * sin(radians(pp.snapshot_y))
+                  ))) <= :radiusKm
+            """, nativeQuery = true)
+    int countPopularPlans(
+            @Param("lat") Double lat,
+            @Param("lng") Double lng,
+            @Param("radiusKm") double radiusKm
+    );
+
+    @Query(value = """
+            SELECT plan_id
+            FROM plan
+            WHERE is_plan_visible = true
+            ORDER BY (like_count + scrap_count) DESC
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<Integer> findNationwidePopularPlanIds(
+            @Param("limit") int limit,
+            @Param("offset") int offset
+    );
+
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM plan
+            WHERE is_plan_visible = true
+            """, nativeQuery = true)
+    int countNationwidePopularPlans();
+
     @Query("""
     select p
     from Plan p

@@ -6,6 +6,11 @@ import com.begae.backend.place.repository.PlaceRepository;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.dto.*;
 import com.begae.backend.plan.exception.PlanErrorCode;
+import com.begae.backend.plan.dto.PlanCopyResponseDto;
+import com.begae.backend.plan.dto.PlanDetailDto;
+import com.begae.backend.plan.dto.PlanDetailFlatDto;
+import com.begae.backend.plan.dto.PopularPlanItemDto;
+import com.begae.backend.plan.dto.PopularPlanResponseDto;
 import com.begae.backend.plan.exception.PlanNotFoundException;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan_place.domain.PlanPlace;
@@ -19,8 +24,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
@@ -91,48 +99,124 @@ public class PlanServiceImpl implements PlanService{
 
     }
 
-    @Override
+//    @Override
+//    public PlanPreviewResponse createPlanPreview(PlanPreviewRequest planPreviewRequest) {
+//        List<RouteSegment> routes = calculateAllRoutes(planPreviewRequest);
+//
+//        List<PlanPreviewResponse.PlaceWithRoute> places = new ArrayList<>();
+//
+//        for (int i = 0; i < planPreviewRequest.getSelectedPlaces().size(); i++) {
+//            PlanPreviewRequest.SelectedPlace place = planPreviewRequest.getSelectedPlaces().get(i);
+//
+//            // 다음 장소로 가는 경로 (마지막 장소는 null)
+//            PlanPreviewResponse.RouteInfo routeInfo = null;
+//            if (i < routes.size()) {
+//                RouteSegment route = routes.get(i);
+//                String toPlaceName = planPreviewRequest.getSelectedPlaces().get(i + 1).getPlaceName();
+//
+//                routeInfo = PlanPreviewResponse.RouteInfo.builder()
+//                        .fromPlaceName(place.getPlaceName())
+//                        .toPlaceName(toPlaceName)
+//                        .durationMinutes(route.getDurationMinutes())
+//                        .distanceKm(route.getDistanceKm())
+//                        .transportType(TransportType.valueOf(planPreviewRequest.getTransportType().name()))
+//                        .build();
+//            }
+//
+//            places.add(PlanPreviewResponse.PlaceWithRoute.builder()
+//                    .sourceId(place.getSourceId())
+//                    .placeName(place.getPlaceName())
+//                    .addressName(place.getAddressName())
+//                    .latitude(place.getLatitude())
+//                    .longitude(place.getLongitude())
+//                    .orderIndex(i + 1)
+//                    .routeToNext(routeInfo)
+//                    .build());
+//        }
+//
+//        return PlanPreviewResponse.builder()
+//                .planTitle(planPreviewRequest.getPlanTitle())
+//                .planDescription(planPreviewRequest.getPlanDescription())
+//                .tripDate(planPreviewRequest.getTripDate())
+//                .transportType(TransportType.valueOf(planPreviewRequest.getTransportType().name()))
+//                .places(places)
+//                .build();
+//    }
+//
     @Transactional(readOnly = true)
+    @Override
     public PlanDetailDto getPlanDetail(Integer planId) {
         List<PlanDetailFlatDto> flats = planRepository.findPlanDetailFlat(planId);
         if (flats.isEmpty()) {
             throw new IllegalArgumentException("plan이 없습니다.");
         }
-        PlanDetailFlatDto first = flats.getFirst();
-        List<PlanDetailDto.PlanPlaceDetailDto> places =
-                flats.stream()
-                        .filter(f -> f.getPlanPlaceId() != null)
-                        .map(f -> PlanDetailDto.PlanPlaceDetailDto.builder()
-                                .planPlaceId(f.getPlanPlaceId())
-                                .placeImage(f.getPlaceImage())
-                                .placeName(f.getPlaceName())
-                                .addressName(f.getAddressName())
-                                .roadAddressName(f.getRoadAddressName())
-                                .travelTime(f.getTravelTime())
-                                .orderIndex(f.getOrderIndex())
-                                .isStamped(f.getIsStamped())
-                                .categoryName(f.getCategoryName())
-                                .stayTime(f.getStayTime())
-                                .build())
-                        .toList();
 
-        return PlanDetailDto.builder()
-                .planId(first.getPlanId())
-                .planTitle(first.getPlanTitle())
-                .tripStartDate(first.getTripStartDate())
-                .tripEndDate(first.getTripEndDate())
-                .createAt(first.getCreateAt())
-                .isVerified(first.getIsVerified())
-                .isPlanVisible(first.getIsPlanVisible())
-                .planDescription(first.getPlanDescription())
-                .requiredTime(first.getRequiredTime())
-                .totalDistance(first.getTotalDistance())
-                .likeCount(first.getLikeCount())
-                .scrapCount(first.getScrapCount())
-                .planPlaceDetailDtos(places)
-                .build();
+        return PlanDetailDto.from(flats);
     }
 
+    private static final double SEARCH_RADIUS_KM = 10.0;
+
+    @Transactional(readOnly = true)
+    @Override
+    public PopularPlanResponseDto getPopularPlans(Double lat, Double lng, Integer limit, Integer page) {
+        int safeLimit = Math.min(limit, 50);
+        int offset = (page - 1) * safeLimit;
+
+        List<Integer> planIds = planRepository.findPopularPlanIds(lat, lng, SEARCH_RADIUS_KM, safeLimit, offset);
+        int totalCount = planRepository.countPopularPlans(lat, lng, SEARCH_RADIUS_KM);
+
+        if (planIds.isEmpty()) {
+            return PopularPlanResponseDto.of(List.of(), page, safeLimit, totalCount);
+        }
+
+        Map<Integer, Plan> planMap = planRepository.findByPlanIdIn(planIds)
+                .stream()
+                .collect(Collectors.toMap(Plan::getPlanId, p -> p));
+
+        List<PopularPlanItemDto> data = IntStream.range(0, planIds.size())
+                .mapToObj(i -> {
+                    Plan plan = planMap.get(planIds.get(i));
+                    if (plan == null) return null;
+                    int ranking = offset + i + 1;
+                    return PopularPlanItemDto.of(plan, ranking);
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        return PopularPlanResponseDto.of(data, page, safeLimit, totalCount);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public PopularPlanResponseDto getNationwidePopularPlans(Integer limit, Integer page) {
+        int safeLimit = Math.min(limit, 50);
+        int offset = (page - 1) * safeLimit;
+
+        List<Integer> planIds = planRepository.findNationwidePopularPlanIds(safeLimit, offset);
+        int totalCount = planRepository.countNationwidePopularPlans();
+
+        if (planIds.isEmpty()) {
+            return PopularPlanResponseDto.of(List.of(), page, safeLimit, totalCount);
+        }
+
+        Map<Integer, Plan> planMap = planRepository.findByPlanIdIn(planIds)
+                .stream()
+                .collect(Collectors.toMap(Plan::getPlanId, p -> p));
+
+        List<PopularPlanItemDto> data = IntStream.range(0, planIds.size())
+                .mapToObj(i -> {
+                    Plan plan = planMap.get(planIds.get(i));
+                    if (plan == null) return null;
+                    int ranking = offset + i + 1;
+                    return PopularPlanItemDto.of(plan, ranking);
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        return PopularPlanResponseDto.of(data, page, safeLimit, totalCount);
+    }
+
+    @Transactional
     @Override
     public PlanCopyResponseDto copyPlan(Integer planId, Integer userId) {
         Plan originPlan = planRepository.findById(planId)
@@ -141,51 +225,10 @@ public class PlanServiceImpl implements PlanService{
         User user = userRepository.findById(userId)
                 .orElseThrow(UserNotFoundException::new);
 
-        // 새로운 플랜 만들기
-        Plan newPlan = Plan.builder()
-                .planTitle(originPlan.getPlanTitle())
-                .requiredTime(originPlan.getRequiredTime())
-                .totalDistance(originPlan.getTotalDistance())
-                .departurePoint(originPlan.getDeparturePoint())
-                .user(user)
-                .likeCount(0)
-                .scrapCount(0)
-                .isVerified(false)
-                .isPlanVisible(false)
-                .planPlaces(new ArrayList<>())
-                .build();
-
-        // 새로운 플랜 장소 만들기
-        for(PlanPlace planPlace : originPlan.getPlanPlaces()) {
-            PlanPlace newPlanPlace = PlanPlace.builder()
-                    .place(planPlace.getPlace())
-                    .plan(newPlan)
-                    .orderIndex(planPlace.getOrderIndex())
-                    .travelTime(planPlace.getTravelTime())
-                    .stayTime(planPlace.getStayTime())
-                    .snapshotAddressName(planPlace.getSnapshotAddressName())
-                    .snapshotRoadAddressName(planPlace.getSnapshotRoadAddressName())
-                    .snapshotCategoryName(planPlace.getSnapshotCategoryName())
-                    .snapshotPlaceName(planPlace.getSnapshotPlaceName())
-                    .snapshotX(planPlace.getSnapshotX())
-                    .snapshotY(planPlace.getSnapshotY())
-                    .isStamped(false)
-                    .planPlaceImages(new ArrayList<>())
-                    .build();
-
-            for (PlanPlaceImage planPlaceImage : planPlace.getPlanPlaceImages()) {
-                PlanPlaceImage newPlanPlaceImage = PlanPlaceImage.builder()
-                        .imageUrl(planPlaceImage.getImageUrl())
-                        .planPlace(newPlanPlace)
-                        .build();
-                newPlanPlace.getPlanPlaceImages().add(newPlanPlaceImage);
-            }
-
-            newPlan.getPlanPlaces().add(newPlanPlace);
-        }
-
+        Plan newPlan = Plan.copyOf(originPlan, user);
         planRepository.save(newPlan);
-        return new PlanCopyResponseDto(newPlan.getPlanId());
+
+        return PlanCopyResponseDto.from(newPlan);
     }
 
     @Override

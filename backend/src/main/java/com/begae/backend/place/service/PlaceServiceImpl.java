@@ -25,7 +25,10 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Slf4j
 @Service
@@ -255,5 +258,65 @@ public class PlaceServiceImpl implements PlaceService {
                 .x(place.getX())
                 .y(place.getY())
                 .build();
+    }
+
+    private static final double SEARCH_RADIUS_KM = 10.0;
+
+    @Override
+    public PopularPlaceResponseDto getNationwidePopularPlaces(Integer limit, Integer page) {
+        int safeLimit = Math.min(limit, 50);
+        int offset = (page - 1) * safeLimit;
+
+        List<Integer> placeIds = placeRepository.findNationwidePopularPlaceIds(safeLimit, offset);
+        int totalCount = placeRepository.countNationwidePopularPlaces();
+
+        if (placeIds.isEmpty()) {
+            return PopularPlaceResponseDto.of(List.of(), page, safeLimit, totalCount);
+        }
+
+        Map<Integer, Place> placeMap = placeRepository.findByPlaceIdIn(placeIds)
+                .stream()
+                .collect(Collectors.toMap(Place::getPlaceId, p -> p));
+
+        List<PopularPlaceItemDto> data = IntStream.range(0, placeIds.size())
+                .mapToObj(i -> {
+                    Place place = placeMap.get(placeIds.get(i));
+                    if (place == null) return null;
+                    int ranking = offset + i + 1;
+                    return PopularPlaceItemDto.of(place, ranking);
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        return PopularPlaceResponseDto.of(data, page, safeLimit, totalCount);
+    }
+
+    @Override
+    public PopularPlaceResponseDto getPopularPlaces(Double lat, Double lng, Integer limit, Integer page) {
+        int safeLimit = Math.min(limit, 50);
+        int offset = (page - 1) * safeLimit;
+
+        List<Integer> placeIds = placeRepository.findPopularPlaceIds(lat, lng, SEARCH_RADIUS_KM, safeLimit, offset);
+        int totalCount = placeRepository.countPopularPlaces(lat, lng, SEARCH_RADIUS_KM);
+
+        if (placeIds.isEmpty()) {
+            return PopularPlaceResponseDto.of(List.of(), page, safeLimit, totalCount);
+        }
+
+        Map<Integer, Place> placeMap = placeRepository.findByPlaceIdIn(placeIds)
+                .stream()
+                .collect(Collectors.toMap(Place::getPlaceId, p -> p));
+
+        List<PopularPlaceItemDto> data = IntStream.range(0, placeIds.size())
+                .mapToObj(i -> {
+                    Place place = placeMap.get(placeIds.get(i));
+                    if (place == null) return null;
+                    int ranking = offset + i + 1;
+                    return PopularPlaceItemDto.of(place, ranking);
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        return PopularPlaceResponseDto.of(data, page, safeLimit, totalCount);
     }
 }
