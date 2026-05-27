@@ -1,15 +1,16 @@
 package com.begae.backend.plan.service;
 
+import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.dto.PlanCopyResponseDto;
 import com.begae.backend.plan.dto.PlanDetailDto;
 import com.begae.backend.plan.dto.PlanDetailFlatDto;
-import com.begae.backend.plan.exception.PlanNotFoundException;
+import com.begae.backend.plan.exception.PlanErrorCode;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan_place.domain.PlanPlace;
 import com.begae.backend.plan_place.domain.PlanPlaceImage;
 import com.begae.backend.user.domain.User;
-import com.begae.backend.user.exception.UserNotFoundException;
+import com.begae.backend.user.exception.UserErrorCode;
 import com.begae.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -84,7 +85,7 @@ public class PlanServiceImpl implements PlanService{
     public PlanDetailDto getPlanDetail(Integer planId) {
         List<PlanDetailFlatDto> flats = planRepository.findPlanDetailFlat(planId);
         if (flats.isEmpty()) {
-            throw new IllegalArgumentException("plan이 없습니다.");
+            throw new CustomException(PlanErrorCode.PLAN_NOT_FOUND);
         }
         PlanDetailFlatDto first = flats.getFirst();
         List<PlanDetailDto.PlanPlaceDetailDto> places =
@@ -124,10 +125,10 @@ public class PlanServiceImpl implements PlanService{
     @Override
     public PlanCopyResponseDto copyPlan(Integer planId, Integer userId) {
         Plan originPlan = planRepository.findById(planId)
-                .orElseThrow(() -> new PlanNotFoundException("PLAN_NOT_FOUND"));
+                .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
 
         User user = userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
 
         // 새로운 플랜 만들기
         Plan newPlan = Plan.builder()
