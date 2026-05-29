@@ -1,6 +1,5 @@
 package com.begae.backend.user.dto;
 
-import com.begae.backend.plan.domain.Plan;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,14 +17,6 @@ public class MyPlansResponse {
 
     private List<PlanSummary> plans;
 
-    public static MyPlansResponse from(List<Plan> plans) {
-        List<PlanSummary> summaries = plans.stream()
-                .map(PlanSummary::from)
-                .toList();
-
-        return new MyPlansResponse(summaries);
-    }
-
     @Getter
     @AllArgsConstructor
     public static class PlanSummary {
@@ -38,22 +29,14 @@ public class MyPlansResponse {
         private Integer requiredTime;
         private List<String> planImages = new ArrayList<>();
 
-        public static PlanSummary from(Plan plan) {
-            List<String> images = plan.getPlanPlaces().stream()
-                    .map(planPlace -> planPlace.getPlace().getPlaceImageUrl())
-                    .filter(url -> url != null && !url.isBlank())
-                    .toList();
-
-            return new PlanSummary(
-                    plan.getPlanId(),
-                    plan.getPlanTitle(),
-                    plan.getCreateAt(),
-                    plan.getTripStartDate(),
-                    plan.getTripEndDate(),
-                    plan.getIsPlanVisible(),
-                    plan.getRequiredTime(),
-                    images
-            );
-        }
+//        public static PlanSummary from(Plan plan) {
+//            return new PlanSummary(
+//                    plan.getPlanId(),
+//                    plan.getPlanTitle(),
+//                    plan.getCreateAt(),
+//                    plan.getTripDate(),
+//
+//            );
+//        }
     }
 }

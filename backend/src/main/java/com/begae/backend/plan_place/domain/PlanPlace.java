@@ -64,28 +64,4 @@ public class PlanPlace {
     @Builder.Default
     @OneToMany(mappedBy = "planPlace", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanPlaceImage> planPlaceImages = new ArrayList<>();
-
-    public static PlanPlace copyOf(PlanPlace source, Plan newPlan) {
-        PlanPlace newPlanPlace = PlanPlace.builder()
-                .place(source.getPlace())
-                .plan(newPlan)
-                .orderIndex(source.getOrderIndex())
-                .travelTime(source.getTravelTime())
-                .stayTime(source.getStayTime())
-                .snapshotAddressName(source.getSnapshotAddressName())
-                .snapshotRoadAddressName(source.getSnapshotRoadAddressName())
-                .snapshotCategoryName(source.getSnapshotCategoryName())
-                .snapshotPlaceName(source.getSnapshotPlaceName())
-                .snapshotX(source.getSnapshotX())
-                .snapshotY(source.getSnapshotY())
-                .isStamped(false)
-                .planPlaceImages(new ArrayList<>())
-                .build();
-
-        source.getPlanPlaceImages().stream()
-                .map(image -> PlanPlaceImage.copyOf(image, newPlanPlace))
-                .forEach(newPlanPlace.getPlanPlaceImages()::add);
-
-        return newPlanPlace;
-    }
 }
