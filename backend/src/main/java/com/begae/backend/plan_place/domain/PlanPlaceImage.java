@@ -24,4 +24,11 @@ public class PlanPlaceImage {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "plan_place_id")
     private PlanPlace planPlace;
+
+    public static PlanPlaceImage copyOf(PlanPlaceImage source, PlanPlace newPlanPlace) {
+        return PlanPlaceImage.builder()
+                .imageUrl(source.getImageUrl())
+                .planPlace(newPlanPlace)
+                .build();
+    }
 }

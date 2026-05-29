@@ -97,4 +97,25 @@ public class Plan extends BaseEntity {
     public void increaseScrappedCount() { this.scrapCount++; }
 
     public void decreaseScrappedCount() { this.scrapCount--; }
+
+    public static Plan copyOf(Plan source, User newOwner) {
+        Plan newPlan = Plan.builder()
+                .planTitle(source.getPlanTitle())
+                .requiredTime(source.getRequiredTime())
+                .totalDistance(source.getTotalDistance())
+                .departurePoint(source.getDeparturePoint())
+                .user(newOwner)
+                .likeCount(0)
+                .scrapCount(0)
+                .isVerified(false)
+                .isPlanVisible(false)
+                .planPlaces(new ArrayList<>())
+                .build();
+
+        source.getPlanPlaces().stream()
+                .map(planPlace -> PlanPlace.copyOf(planPlace, newPlan))
+                .forEach(newPlan.getPlanPlaces()::add);
+
+        return newPlan;
+    }
 }

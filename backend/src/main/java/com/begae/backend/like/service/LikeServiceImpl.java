@@ -1,12 +1,15 @@
 package com.begae.backend.like.service;
 
+import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.like.domain.Like;
 import com.begae.backend.like.dto.LikeResponseDto;
 import com.begae.backend.like.enums.LikeType;
 import com.begae.backend.like.repository.LikeRepository;
 import com.begae.backend.plan.domain.Plan;
+import com.begae.backend.plan.exception.PlanErrorCode;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.user.domain.User;
+import com.begae.backend.user.exception.UserErrorCode;
 import com.begae.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,14 +27,13 @@ public class LikeServiceImpl implements LikeService {
 
     @Transactional
     @Override
-    public LikeResponseDto toggleLike(Integer planId) {
-        Integer userId = 1;
+    public LikeResponseDto toggleLike(Integer planId, Integer userId) {
         User user = userRepository.findById(userId).orElseThrow(
-                () -> new IllegalArgumentException("유저를 찾을 수 없습니다.")
+                () -> new CustomException(UserErrorCode.USER_NOT_FOUND)
         );
 
         Plan plan = planRepository.findById(planId).orElseThrow(
-                () -> new IllegalArgumentException("플랜을 찾을 수 없습니다.")
+                () -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND)
         );
 
         Optional<Like> existingLike = likeRepository

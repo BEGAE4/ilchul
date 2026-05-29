@@ -1,7 +1,9 @@
 package com.begae.backend.user.service;
 
-import com.begae.backend.place.domain.Place;
+import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.global.exception.GlobalErrorCode;
 import com.begae.backend.plan.domain.Plan;
+import com.begae.backend.plan.exception.PlanErrorCode;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan.repository.ScrappedPlanRepository;
 import com.begae.backend.user.domain.User;
@@ -9,12 +11,12 @@ import com.begae.backend.user.dto.MyPlansResponse;
 import com.begae.backend.user.dto.UpdateUserProfileRequest;
 import com.begae.backend.user.dto.UserProfileResponseDto;
 import com.begae.backend.user.dto.UserProfileSummaryResponseDto;
-import com.begae.backend.user.exception.UserNotFoundException;
+import com.begae.backend.user.exception.UserErrorCode;
 import com.begae.backend.user.repository.UserRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -29,86 +31,66 @@ public class MyPageServiceImpl implements MyPageService {
 
     @Transactional
     @Override
-    public UserProfileResponseDto updateUserProfile(UpdateUserProfileRequest updateUserProfileRequest) {
-        Integer userId = 1;
-        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+    public UserProfileResponseDto updateUserProfile(UpdateUserProfileRequest updateUserProfileRequest, Integer userId) {
+        User user = userRepository.findById(userId).orElseThrow(
+                () -> new CustomException(UserErrorCode.USER_NOT_FOUND)
+        );
         user.updateUserProfile(
                 updateUserProfileRequest.getNewUserNickname(),
                 updateUserProfileRequest.getNewUserIntro(),
                 updateUserProfileRequest.getNewUserProfileImg());
-        User newNicknameUser = userRepository.save(user);
+
         return UserProfileResponseDto.from(user);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     @Override
-    public MyPlansResponse findMyPlans() {
-        Integer userId = 1;
+    public MyPlansResponse findMyPlans(Integer userId) {
         List<Plan> plans = planRepository.findByUserUserId(userId);
-        List<MyPlansResponse.PlanSummary> summaries = plans.stream()
-                .map(plan -> {
-                    List<String> images = plan.getPlanPlaces().stream()
-                            .map(planPlace -> {
-                                Place place = planPlace.getPlace();
-                                return place.getPlaceImageUrl();
-                            })
-                            .filter(url -> url != null && !url.isBlank())
-                            .toList();
 
-                    return new MyPlansResponse.PlanSummary(
-                            plan.getPlanId(),
-                            plan.getPlanTitle(),
-                            plan.getCreateAt(),
-                            plan.getTripStartDate(),
-                            plan.getTripEndDate(),
-                            plan.getIsPlanVisible(),
-                            plan.getRequiredTime(),
-                            images
-                    );
-                })
-                .toList();
-
-        return new MyPlansResponse(summaries);
+        return MyPlansResponse.from(plans);
     }
 
     @Transactional
     @Override
-    public Boolean updateMyPlanVisibility(Integer planId) {
-        Plan plan = planRepository.findById(planId)
-                .orElseThrow(() -> new RuntimeException("PLAN_NOT_FOUND"));
+    public Boolean updateMyPlanVisibility(Integer planId, Integer userId) {
+        Plan plan = planRepository.findById(planId).orElseThrow(
+                () -> 	new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
+
+        // 내 플랜이 아닐 경우 오류
+        if(!plan.getUser().getUserId().equals(userId)) {
+            throw new CustomException(GlobalErrorCode.HANDLE_ACCESS_DENIED);
+        }
         Boolean prevVisibility = plan.getIsPlanVisible();
         plan.updateIsPlanVisibility();
         Boolean currVisibility = plan.getIsPlanVisible();
+
         return prevVisibility.equals(!currVisibility);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public UserProfileResponseDto findMypageProfile(Integer userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
-        return new UserProfileResponseDto(
-                user.getUserNickname(),
-                user.getUserImg(),
-                user.getUserIntro()
-        );
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+
+        return UserProfileResponseDto.from(user);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public UserProfileSummaryResponseDto findMyPageSummary(Integer userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
         List<Plan> plans = planRepository.findByUserUserId(user.getUserId());
         List<Integer> planIds = plans.stream().map(Plan::getPlanId).toList();
         Integer publicPlanCount = plans.stream().filter(Plan::getIsPlanVisible).toList().size();
         Integer verifyPlanCount = plans.stream().filter(Plan::getIsVerified).toList().size();
-        Integer scrappedByOthersCount = scrappedPlanRepository.countByPlan_PlanIdIn(planIds);
+        Integer scrappedByOthersCount = planIds.isEmpty()
+                ? 0
+                : scrappedPlanRepository.countByPlan_PlanIdIn(planIds);
         Integer savedCourseCount = scrappedPlanRepository.countByUser_UserId(user.getUserId());
-        return UserProfileSummaryResponseDto
-                .builder()
-                .publicPlanCount(publicPlanCount)
-                .verifyPlanCount(verifyPlanCount)
-                .scrappedByOthersCount(scrappedByOthersCount)
-                .savedCourseCount(savedCourseCount)
-                .build();
+
+        return UserProfileSummaryResponseDto.of(publicPlanCount, verifyPlanCount, scrappedByOthersCount, savedCourseCount);
     }
 }
