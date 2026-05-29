@@ -7,11 +7,11 @@ import com.begae.backend.user.dto.UserProfileSummaryResponseDto;
 
 public interface MyPageService {
 
-    UserProfileResponseDto updateUserProfile(UpdateUserProfileRequest updateUserProfileRequest, Integer userId);
+    UserProfileResponseDto updateUserProfile(UpdateUserProfileRequest updateUserProfileRequest);
 
-    MyPlansResponse findMyPlans(Integer userId);
+    MyPlansResponse findMyPlans();
 
-    Boolean updateMyPlanVisibility(Integer planId, Integer userId);
+    Boolean updateMyPlanVisibility(Integer planId);
 
     UserProfileResponseDto findMypageProfile(Integer userId);
 

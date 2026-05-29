@@ -7,8 +7,8 @@ import com.begae.backend.global.exception.GlobalErrorCode;
 import com.begae.backend.place.exception.SearchLogNotExistException;
 import com.begae.backend.plan.exception.PlanNotFoundException;
 import com.begae.backend.user.exception.UserNotFoundException;
+
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +16,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.method.HandlerMethod;
 
 /**
  * 전역 예외 처리 핸들러
@@ -50,23 +50,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     protected ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         log.error("handleMethodArgumentNotValidException", e);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                ErrorResponse.of(
-                        HttpStatus.BAD_REQUEST,
-                        GlobalErrorCode.INVALID_INPUT_VALUE.getMessage()
-                )
-        );
-    }
-
-    /**
-     * @PathVariable, @RequestParam 타입 변환 실패 또는 제약 위반 시 발생한다.
-     */
-    @ExceptionHandler({
-            MethodArgumentTypeMismatchException.class,
-            ConstraintViolationException.class
-    })
-    protected ResponseEntity<ErrorResponse> handleBadRequestException(Exception e) {
-        log.error("handleBadRequestException", e);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 ErrorResponse.of(
                         HttpStatus.BAD_REQUEST,

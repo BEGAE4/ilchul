@@ -1,22 +1,24 @@
 package com.begae.backend.plan.service;
 
-import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.place.domain.Place;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.domain.ScrappedPlan;
 import com.begae.backend.plan.dto.ScrappedPlanCreateResponseDto;
 import com.begae.backend.plan.dto.ScrappedPlanResponseDto;
-import com.begae.backend.plan.exception.PlanErrorCode;
+import com.begae.backend.plan.enums.ScrappedStatus;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan.repository.ScrappedPlanRepository;
 import com.begae.backend.user.domain.User;
-import com.begae.backend.user.exception.UserErrorCode;
+import com.begae.backend.user.exception.UserNotFoundException;
 import com.begae.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -27,43 +29,75 @@ public class ScrappedPlanServiceImpl implements ScrappedPlanService {
     private final PlanRepository planRepository;
     private final UserRepository userRepository;
 
-    /**
-     * 같은 plan을 여러번 누를경우 동시성 처리 생각하기
-     *
-     * @param userId
-     * @param planId
-     * @return
-     */
-    @Transactional
     @Override
+    @Transactional
     public ScrappedPlanCreateResponseDto createPlanScrapped(Integer userId, Integer planId) {
         // plan 찾아오기
         Plan plan = planRepository.findById(planId)
-                .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
+                .orElseThrow(() -> new IllegalArgumentException("PLAN 찾을 수 없습니다."));
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+                .orElseThrow(UserNotFoundException::new);
 
-        scrappedPlanRepository.findByUser_UserIdAndPlan_PlanId(userId, planId)
-                .ifPresentOrElse(
-                        ScrappedPlan::toggle,
-                        () -> {
-                            ScrappedPlan newScrap = ScrappedPlan.of(user, plan);
-                            plan.increaseScrappedCount();
-                            scrappedPlanRepository.save(newScrap);
-                        }
-                );
+        Optional<ScrappedPlan> optionalScrappedPlan = scrappedPlanRepository
+                .findByUser_UserIdAndPlan_PlanId(user.getUserId(), plan.getPlanId());
+        if(optionalScrappedPlan.isPresent()) {
+            ScrappedPlan scrappedPlan = optionalScrappedPlan.get();
+            if(scrappedPlan.getScrappedStatus().equals(ScrappedStatus.Y)) {
+                scrappedPlan.updateScrappedStatus(ScrappedStatus.N);
+                plan.decreaseScrappedCount();
+            } else {
+                scrappedPlan.updateScrappedStatus(ScrappedStatus.Y);
+                plan.increaseScrappedCount();
+            }
+            scrappedPlanRepository.save(scrappedPlan);
+        } else {
+            ScrappedPlan newScrappedPlan = ScrappedPlan.builder()
+                    .plan(plan)
+                    .user(user)
+                    .scrappedAt(LocalDateTime.now())
+                    .scrappedStatus(ScrappedStatus.Y)
+                    .build();
+            plan.increaseScrappedCount();
+            scrappedPlanRepository.save(newScrappedPlan);
+        }
 
-        return ScrappedPlanCreateResponseDto.from(plan);
+        return new ScrappedPlanCreateResponseDto(plan.getPlanId());
     }
 
-    @Transactional(readOnly = true)
     @Override
+    @Transactional(readOnly = true)
     public ScrappedPlanResponseDto findUserScrappedPlan(Integer userId) {
         List<Integer> planIds = scrappedPlanRepository.findPlanIdsByUserId(userId);
+
         List<Plan> plans = planRepository.findByPlanIdIn(planIds);
 
-        return ScrappedPlanResponseDto.from(plans);
+        List<ScrappedPlanResponseDto.ScrappedPlanSummary> scrappedPlanSummaries = plans.stream().map(plan -> {
+            List<String> images = plan.getPlanPlaces().stream()
+                    .map(planPlace -> {
+                        Place place = planPlace.getPlace();
+                        return place.getPlaceImageUrl();
+                    })
+                    .filter(url -> url != null && !url.isBlank())
+                    .toList();
+
+            return ScrappedPlanResponseDto.ScrappedPlanSummary.builder()
+                    .planId(plan.getPlanId())
+                    .planTitle(plan.getPlanTitle())
+                    .isPlanVisible(plan.getIsPlanVisible())
+                    .tripStartDate(plan.getTripStartDate())
+                    .tripEndDate(plan.getTripEndDate())
+                    .requiredTime(plan.getRequiredTime())
+                    .createAt(plan.getCreateAt())
+                    .planImages(images)
+                    .build();
+        }).toList();
+
+        log.info("plans : {}", scrappedPlanSummaries);
+
+        return ScrappedPlanResponseDto.builder()
+                .scrappedPlans(scrappedPlanSummaries)
+                .build();
     }
 
 }

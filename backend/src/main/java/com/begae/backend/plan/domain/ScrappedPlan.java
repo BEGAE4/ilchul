@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Table(name = "scrapped_plan")
 public class ScrappedPlan {
@@ -36,26 +36,7 @@ public class ScrappedPlan {
     @Column(name = "scrapped_status")
     private ScrappedStatus scrappedStatus;
 
-    public static ScrappedPlan of(User user, Plan plan) {
-        return ScrappedPlan.builder()
-                .user(user)
-                .plan(plan)
-                .scrappedAt(LocalDateTime.now())
-                .scrappedStatus(ScrappedStatus.Y)
-                .build();
-    }
-
-    public void toggle() {
-        if (this.scrappedStatus == ScrappedStatus.Y) {
-            this.scrappedStatus = ScrappedStatus.N;
-            this.plan.decreaseScrappedCount();
-        } else {
-            this.scrappedStatus = ScrappedStatus.Y;
-            this.plan.increaseScrappedCount();
-        }
-    }
-
-    public boolean isScrapped() {
-        return this.scrappedStatus == ScrappedStatus.Y;
+    public void updateScrappedStatus(ScrappedStatus scrappedStatus) {
+        this.scrappedStatus = scrappedStatus;
     }
 }
