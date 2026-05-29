@@ -1,6 +1,7 @@
 package com.begae.backend.like.domain;
 
 import com.begae.backend.like.enums.LikeType;
+import com.begae.backend.place.domain.Place;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
@@ -29,6 +30,7 @@ public class Like {
     @Column(name = "type_id")
     private Integer typeId;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "like_type")
     private LikeType likeType;
 
@@ -40,6 +42,15 @@ public class Like {
         like.user = user;
         like.typeId = plan.getPlanId();
         like.likeType = LikeType.PLAN;
+        like.likeStatus = true;
+        return like;
+    }
+
+    public static Like createPlaceLike(User user, Place place) {
+        Like like = new Like();
+        like.user = user;
+        like.typeId = place.getPlaceId();
+        like.likeType = LikeType.PLACE;
         like.likeStatus = true;
         return like;
     }

@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -29,6 +28,31 @@ public class PlanDetailDto {
     private Integer scrapCount;
     private List<PlanPlaceDetailDto> planPlaceDetailDtos;
 
+    public static PlanDetailDto from(List<PlanDetailFlatDto> flats) {
+        PlanDetailFlatDto first = flats.getFirst();
+
+        List<PlanPlaceDetailDto> places = flats.stream()
+                .filter(f -> f.getPlanPlaceId() != null)
+                .map(PlanPlaceDetailDto::from)
+                .toList();
+
+        return PlanDetailDto.builder()
+                .planId(first.getPlanId())
+                .planTitle(first.getPlanTitle())
+                .tripStartDate(first.getTripStartDate())
+                .tripEndDate(first.getTripEndDate())
+                .createAt(first.getCreateAt())
+                .isVerified(first.getIsVerified())
+                .isPlanVisible(first.getIsPlanVisible())
+                .planDescription(first.getPlanDescription())
+                .requiredTime(first.getRequiredTime())
+                .totalDistance(first.getTotalDistance())
+                .likeCount(first.getLikeCount())
+                .scrapCount(first.getScrapCount())
+                .planPlaceDetailDtos(places)
+                .build();
+    }
+
     @Getter
     @Builder
     @NoArgsConstructor
@@ -44,5 +68,20 @@ public class PlanDetailDto {
         private Boolean isStamped;
         private Integer travelTime;
         private Integer stayTime;
+
+        public static PlanPlaceDetailDto from(PlanDetailFlatDto flat) {
+            return PlanPlaceDetailDto.builder()
+                    .planPlaceId(flat.getPlanPlaceId())
+                    .placeImage(flat.getPlaceImage())
+                    .placeName(flat.getPlaceName())
+                    .addressName(flat.getAddressName())
+                    .roadAddressName(flat.getRoadAddressName())
+                    .travelTime(flat.getTravelTime())
+                    .orderIndex(flat.getOrderIndex())
+                    .isStamped(flat.getIsStamped())
+                    .categoryName(flat.getCategoryName())
+                    .stayTime(flat.getStayTime())
+                    .build();
+        }
     }
 }
