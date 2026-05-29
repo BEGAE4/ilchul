@@ -14,4 +14,15 @@ public class UserProfileSummaryResponseDto {
     private Integer verifyPlanCount;
     private Integer scrappedByOthersCount;
     private Integer savedCourseCount;
+
+    public static UserProfileSummaryResponseDto of(
+            Integer publicPlanCount,
+            Integer verifyPlanCount,
+            Integer scrappedByOthersCount,
+            Integer savedCourseCount
+    ) {
+        return new UserProfileSummaryResponseDto(
+                publicPlanCount, verifyPlanCount, scrappedByOthersCount, savedCourseCount
+        );
+    }
 }

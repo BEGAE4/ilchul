@@ -1,5 +1,6 @@
 package com.begae.backend.plan.dto;
 
+import com.begae.backend.plan.domain.Plan;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,6 +18,16 @@ public class ScrappedPlanResponseDto {
 
     private List<ScrappedPlanSummary> scrappedPlans;
 
+    public static ScrappedPlanResponseDto from(List<Plan> plans) {
+        List<ScrappedPlanSummary> summaries = plans.stream()
+                .map(ScrappedPlanSummary::from)
+                .toList();
+
+        return ScrappedPlanResponseDto.builder()
+                .scrappedPlans(summaries)
+                .build();
+    }
+
     @Getter
     @Builder
     @NoArgsConstructor
@@ -31,5 +42,23 @@ public class ScrappedPlanResponseDto {
         private Integer requiredTime;
         @Builder.Default
         private List<String> planImages = new ArrayList<>();
+
+        public static ScrappedPlanSummary from(Plan plan) {
+            List<String> images = plan.getPlanPlaces().stream()
+                    .map(planPlace -> planPlace.getPlace().getPlaceImageUrl())
+                    .filter(url -> url != null && !url.isBlank())
+                    .toList();
+
+            return ScrappedPlanSummary.builder()
+                    .planId(plan.getPlanId())
+                    .planTitle(plan.getPlanTitle())
+                    .isPlanVisible(plan.getIsPlanVisible())
+                    .tripStartDate(plan.getTripStartDate())
+                    .tripEndDate(plan.getTripEndDate())
+                    .requiredTime(plan.getRequiredTime())
+                    .createAt(plan.getCreateAt())
+                    .planImages(images)
+                    .build();
+        }
     }
 }
