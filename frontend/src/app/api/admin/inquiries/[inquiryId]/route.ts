@@ -22,10 +22,6 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     const data = await res.json().catch(() => ({}));
     return NextResponse.json(data, { status: res.status });
   }
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
-  }
-
   const detail = getMockInquiryDetail(inquiryId);
   if (!detail) return NextResponse.json({ error: 'not found' }, { status: 404 });
   return NextResponse.json(detail);
@@ -46,10 +42,6 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     const data = await res.json().catch(() => ({}));
     return NextResponse.json(data, { status: res.status });
   }
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
-  }
-
   if (!body?.status || !(VALID_STATUSES as readonly string[]).includes(body.status)) {
     return NextResponse.json({ error: 'invalid status' }, { status: 400 });
   }
