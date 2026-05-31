@@ -48,10 +48,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(data, { status: res.status });
   }
 
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
-  }
-
   let rows = getMockInquiries();
 
   const status = parseStatus(sp.get('status'));

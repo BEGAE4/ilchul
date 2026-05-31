@@ -23,10 +23,6 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     const data = await res.json().catch(() => ({}));
     return NextResponse.json(data, { status: res.status });
   }
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
-  }
-
   if (typeof body?.body !== 'string' || body.body.trim().length === 0) {
     return NextResponse.json({ error: 'body required' }, { status: 400 });
   }
@@ -48,10 +44,6 @@ export async function DELETE(req: NextRequest, ctx: RouteContext) {
     const data = await res.json().catch(() => ({}));
     return NextResponse.json(data, { status: res.status });
   }
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
-  }
-
   const updated = deleteMockInquiryAnswer(inquiryId, answerId);
   if (!updated) return NextResponse.json({ error: 'not found' }, { status: 404 });
   return NextResponse.json(updated);

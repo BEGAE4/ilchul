@@ -23,10 +23,6 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     const data = await res.json().catch(() => ({}));
     return NextResponse.json(data, { status: res.status });
   }
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
-  }
-
   if (!body?.type || !(VALID_TYPES as readonly string[]).includes(body.type)) {
     return NextResponse.json({ error: 'invalid type' }, { status: 400 });
   }
