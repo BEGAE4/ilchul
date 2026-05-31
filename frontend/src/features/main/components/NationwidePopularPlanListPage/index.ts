@@ -1,0 +1,1 @@
+export { NationwidePopularPlanListPage } from './component';

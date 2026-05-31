@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -14,19 +14,20 @@ import {
   MessageCircle,
   ThumbsUp,
   MoreVertical,
-  Flag,
   Trash2,
   X,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
+import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { CourseDetailSkeleton } from '@/shared/ui/Skeleton';
-import { MOCK_COMMENTS, REPORT_REASONS } from '@/shared/data/mockData';
+import { MOCK_COMMENTS } from '@/shared/data/mockData';
+import { useReport, ReportDialog, ReportMenuItem } from '@/features/report';
+import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStorage';
+import type { CurrentUser, ReportTarget } from '@/features/report';
 import type { Comment } from '@/shared/types';
-
-const CURRENT_USER = '김여행';
 
 interface CourseViewPageProps {
   courseId: string;
@@ -52,17 +53,26 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     setIsLoading(false);
   }, []);
 
+  const { user, isLoggedIn } = useUserStore();
+  const currentUser: CurrentUser = {
+    id: user?.id ?? '',
+    name: user?.name ?? '',
+    isLoggedIn,
+  };
+
+  const reportMenuTriggerRef = useRef<HTMLButtonElement>(null);
+  const reportCtx = useReport({ reporterId: currentUser.id });
+
   const [shareOpen, setShareOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isReportOpen, setIsReportOpen] = useState(false);
-  const [reportReason, setReportReason] = useState('');
-  const [reportDetail, setReportDetail] = useState('');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savedCourseId, setSavedCourseId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
   const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
   const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null);
+  // 어느 댓글의 메뉴인지 추적 — race condition 차단 (Architect C-3)
+  const [commentMenuTarget, setCommentMenuTarget] = useState<ReportTarget | null>(null);
 
   if (isLoading) {
     return <CourseDetailSkeleton />;
@@ -82,6 +92,15 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const bookmarked = isBookmarked(courseId);
   const liked = isLiked(courseId);
   const likeCount = getLikeCount(courseId);
+
+  // course가 truthy로 확인된 이후 courseTarget을 구성 (null 케이스는 위에서 early return)
+  const courseTarget: ReportTarget = {
+    type: 'course',
+    id: courseId,
+    ownerId: course.author, // A7: 닉네임 best-effort 매칭
+    title: course.title,
+    contextUrl: `/course/${courseId}`,
+  };
 
   const handleSaveCourse = () => {
     setShowSaveModal(true);
@@ -344,13 +363,32 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   <span className="text-sm text-gray-500">
                     {likedComments.has(comment.id) ? comment.likes + 1 : comment.likes}
                   </span>
-                  {comment.user === CURRENT_USER && (
+                  {comment.user === currentUser.name ? (
+                    // 본인 댓글: 삭제 버튼 유지
                     <button
                       onClick={() => setCommentToDelete(comment)}
                       aria-label="댓글 삭제"
                       className="ml-auto text-gray-400 hover:text-red-500 active:text-red-600"
                     >
                       <Trash2 size={16} />
+                    </button>
+                  ) : (
+                    // 타인 댓글: 신고 진입점 ⋮ 버튼 (Q6: BottomMenu 단일 트리거)
+                    <button
+                      onClick={() =>
+                        setCommentMenuTarget({
+                          type: 'comment',
+                          id: comment.id,
+                          ownerId: comment.user,
+                          courseId,
+                          snippet: comment.text.slice(0, 60),
+                          contextUrl: `/course/${courseId}#comment-${comment.id}`,
+                        })
+                      }
+                      aria-label="댓글 더보기"
+                      className="ml-auto text-gray-400 hover:text-gray-600 active:text-gray-700"
+                    >
+                      <MoreVertical size={16} />
                     </button>
                   )}
                 </div>
@@ -512,16 +550,14 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
               <Bookmark size={18} className="text-gray-500" />
               <span className="text-sm font-medium text-gray-700">플랜 저장 / 해제</span>
             </button>
-            <button
-              onClick={() => {
-                setIsReportOpen(true);
+            <ReportMenuItem
+              target={courseTarget}
+              currentUser={currentUser}
+              onSelect={() => {
                 setIsMenuOpen(false);
+                reportCtx.open(courseTarget);
               }}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
-            >
-              <Flag size={18} className="text-red-500" />
-              <span className="text-sm font-medium text-red-500">신고하기</span>
-            </button>
+            />
             <button
               onClick={() => setIsMenuOpen(false)}
               className="w-full py-3 text-gray-400 font-bold text-sm mt-1"
@@ -532,60 +568,53 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         </div>
       )}
 
-      {/* ─── 신고 다이얼로그 ─── */}
-      {isReportOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setIsReportOpen(false)} />
-          <div className="relative w-full max-w-xs bg-white rounded-2xl p-6">
-            <h3 className="font-bold text-lg mb-2 text-gray-900">신고하기</h3>
-            <p className="text-sm text-gray-500 mb-5">
-              신고 사유를 선택하고 상세 내용을 입력해주세요.
-            </p>
-            <div className="space-y-2">
-              <select
-                value={reportReason}
-                onChange={(e) => setReportReason(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-sky-500 text-base"
-              >
-                <option value="">신고 사유 선택</option>
-                {REPORT_REASONS.map((reason, idx) => (
-                  <option key={idx} value={reason}>
-                    {reason}
-                  </option>
-                ))}
-              </select>
-              <textarea
-                value={reportDetail}
-                onChange={(e) => setReportDetail(e.target.value)}
-                placeholder="상세 내용 입력..."
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-sky-500 text-base"
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={() => setIsReportOpen(false)}
-                className="flex-1 py-3 bg-gray-100 font-bold rounded-xl text-sm text-gray-600"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => {
-                  if (!reportReason) {
-                    toast.error('신고 사유를 선택해주세요.');
-                    return;
-                  }
-                  setIsReportOpen(false);
-                  setReportReason('');
-                  setReportDetail('');
-                  toast.success('신고가 접수되었어요.');
-                }}
-                disabled={!reportReason}
-                className="flex-1 py-3 bg-sky-500 font-bold rounded-xl text-sm text-white shadow-md shadow-sky-200 disabled:bg-gray-300 disabled:shadow-none"
-              >
-                신고하기
-              </button>
-            </div>
+      {/* ─── 신고 다이얼로그 (course/comment 공용 — target은 reportCtx.target에서 동적 결정) ─── */}
+      <ReportDialog
+        isOpen={reportCtx.isOpen}
+        target={reportCtx.target ?? courseTarget}
+        isSubmitting={reportCtx.isSubmitting}
+        triggerRef={reportMenuTriggerRef}
+        onSubmit={(rc, d) => reportCtx.submit(reportCtx.target ?? courseTarget, rc, d)}
+        onClose={reportCtx.close}
+        onHideContent={(t) => {
+          if (t.type === 'comment') {
+            // 댓글 신고 후 숨기기: 해당 댓글만 페이지에서 즉시 제거 + 로컬 스토리지에도 기록
+            setComments((prev) => prev.filter((c) => c.id !== t.id));
+            hiddenReportsStorage.add(t);
+          } else {
+            // 플랜 신고 후 숨기기: 로컬 스토리지 기록 + 페이지 이탈
+            hiddenReportsStorage.add(t);
+            router.back();
+          }
+        }}
+      />
+
+      {/* ─── 댓글 더보기 인라인 시트 ─── */}
+      {/* BottomMenu는 items: MenuItem[] 배열만 지원하고 children/slot 미지원이므로
+          기존 isMenuOpen 패턴(인라인 bottom-sheet)을 재사용한다 (PR-4 범위 내 최소 침습) */}
+      {commentMenuTarget !== null && (
+        <div className="fixed inset-0 z-50 flex items-end">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setCommentMenuTarget(null)}
+          />
+          <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+            <ReportMenuItem
+              target={commentMenuTarget}
+              currentUser={currentUser}
+              onSelect={() => {
+                const target = commentMenuTarget;
+                setCommentMenuTarget(null);
+                reportCtx.open(target);
+              }}
+            />
+            <button
+              onClick={() => setCommentMenuTarget(null)}
+              className="w-full py-3 text-gray-400 font-bold text-sm mt-1"
+            >
+              취소
+            </button>
           </div>
         </div>
       )}

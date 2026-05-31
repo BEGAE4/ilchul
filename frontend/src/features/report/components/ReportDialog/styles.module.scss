@@ -1,0 +1,287 @@
+// ReportDialog 색상 토큰
+// 주의: 라디오 선택 상태(sky 계열)와 제출 버튼(red 계열)이 의도적으로 다름.
+// 선택 상태는 "선택됨" 피드백(정보성), 제출 버튼은 "destructive 액션" 시각 신호.
+$report-color-destructive: #ef4444;      // red-500
+$report-color-destructive-hover: #dc2626; // red-600
+$report-color-selected-bg: #f0f9ff;      // sky-50
+$report-color-selected-border: #38bdf8;  // sky-400
+$report-color-disabled-bg: #d1d5db;      // gray-300
+$report-color-disabled-text: #6b7280;    // gray-500
+$report-color-cancel-bg: #f3f4f6;        // gray-100
+$report-color-cancel-text: #4b5563;      // gray-600
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 199;
+}
+
+.sheet {
+  position: fixed;
+  bottom: var(--keyboard-offset, 0px);
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  z-index: 200;
+  max-height: 85vh;
+  overflow-y: auto;
+  max-width: 480px;
+  margin: 0 auto;
+  // 키보드 회피는 bottom 변수로 처리 — transform을 쓰면 fixed 자식에 영향을 주므로 bottom 사용
+}
+
+.handle {
+  // ShareBottomSheet 기준: 36px × 4px. BottomMenu의 handleBar(48px)와는 다름 — 시트 크기 차이 때문
+  width: 36px;
+  height: 4px;
+  background: #e5e7eb;
+  border-radius: 2px;
+  margin: 12px auto 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 0;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    color: #374151;
+  }
+}
+
+.body {
+  padding: 12px 20px 0;
+}
+
+.description {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.radioOption {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px; // 터치 영역 확보
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1.5px solid #e5e7eb;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+  background: white;
+
+  &--selected {
+    background: $report-color-selected-bg;
+    border-color: $report-color-selected-border;
+  }
+}
+
+.radioInput {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: $report-color-selected-border;
+  cursor: pointer;
+}
+
+.radioLabel {
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+  cursor: pointer;
+  flex: 1;
+}
+
+.textareaWrapper {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #374151;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  line-height: 1.5;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: #93c5fd; // blue-300
+  }
+
+  &::placeholder {
+    color: #9ca3af;
+  }
+}
+
+.counter {
+  text-align: right;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 4px;
+}
+
+.footer {
+  padding: 12px 20px;
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+}
+
+.footerNote {
+  font-size: 12px;
+  color: #9ca3af;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.cancelBtn {
+  flex: 1;
+  padding: 14px;
+  background: $report-color-cancel-bg;
+  color: $report-color-cancel-text;
+  font-weight: 700;
+  font-size: 15px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:active {
+    background: #e5e7eb;
+  }
+}
+
+.submitBtn {
+  flex: 1;
+  padding: 14px;
+  background: $report-color-destructive;
+  color: white;
+  font-weight: 700;
+  font-size: 15px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover:not(:disabled) {
+    background: $report-color-destructive-hover;
+  }
+
+  &:active:not(:disabled) {
+    background: $report-color-destructive-hover;
+  }
+
+  &:disabled {
+    background: $report-color-disabled-bg;
+    color: $report-color-disabled-text;
+    cursor: not-allowed;
+  }
+}
+
+// Step 2 (완료 뷰)
+.doneBody {
+  padding: 24px 20px 8px;
+  text-align: center;
+}
+
+.doneIcon {
+  width: 56px;
+  height: 56px;
+  background: #fef2f2; // red-50
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: $report-color-destructive;
+}
+
+.doneDescription {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+
+.doneButtonGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hideBtn {
+  width: 100%;
+  padding: 14px;
+  background: $report-color-destructive;
+  color: white;
+  font-weight: 700;
+  font-size: 15px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background: $report-color-destructive-hover;
+  }
+
+  &:active {
+    background: $report-color-destructive-hover;
+  }
+}
+
+.closeOnlyBtn {
+  width: 100%;
+  padding: 14px;
+  background: $report-color-cancel-bg;
+  color: $report-color-cancel-text;
+  font-weight: 700;
+  font-size: 15px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:active {
+    background: #e5e7eb;
+  }
+}
