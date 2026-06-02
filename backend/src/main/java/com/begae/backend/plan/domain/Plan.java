@@ -122,10 +122,7 @@ public class Plan extends BaseEntity {
         }
     }
 
-    public void updateUnverifiedOnlyInfo(String departurePoint, LocalDateTime tripStartDate, LocalDateTime tripEndDate) {
-        if (departurePoint != null) {
-            this.departurePoint = departurePoint;
-        }
+    public void updateUnverifiedOnlyInfo(LocalDateTime tripStartDate, LocalDateTime tripEndDate) {
 
         if (tripStartDate != null) {
             this.tripStartDate = tripStartDate;

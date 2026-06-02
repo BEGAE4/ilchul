@@ -24,9 +24,9 @@ public class CreatePlanPreviewRequestDto {
 
     @Data
     public static class Place {
-        private int placeId;
+        private Integer placeId;
 
-        private int order;
+        private Integer order;
     }
 
 }

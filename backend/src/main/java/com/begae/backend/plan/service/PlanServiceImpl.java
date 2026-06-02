@@ -151,7 +151,8 @@ public class PlanServiceImpl implements PlanService{
             throw new IllegalArgumentException("plan이 없습니다.");
         }
 
-        return PlanDetailDto.from(flats);
+//        return PlanDetailDto.from(flats);
+        return null;
     }
 
     private static final double SEARCH_RADIUS_KM = 10.0;
@@ -225,10 +226,11 @@ public class PlanServiceImpl implements PlanService{
         User user = userRepository.findById(userId)
                 .orElseThrow(UserNotFoundException::new);
 
-        Plan newPlan = Plan.copyOf(originPlan, user);
-        planRepository.save(newPlan);
-
-        return PlanCopyResponseDto.from(newPlan);
+//        Plan newPlan = Plan.copyOf(originPlan, user);
+//        planRepository.save(newPlan);
+//
+//        return PlanCopyResponseDto.from(newPlan);
+        return null;
     }
 
     @Override
@@ -256,7 +258,6 @@ public class PlanServiceImpl implements PlanService{
         );
 
         plan.updateUnverifiedOnlyInfo(
-                request.getDeparturePoint(),
                 request.getTripStartDate(),
                 request.getTripEndDate()
         );

@@ -13,13 +13,11 @@ public class UpdatePlanRequestDto {
     private Boolean isPlanVisible;
     private String planDescription;
 
-    private String departurePoint;
     private LocalDateTime tripStartDate;
     private LocalDateTime tripEndDate;
 
     public boolean hasVerificationRestrictedFields() {
-        return departurePoint != null
-                || tripStartDate != null
+        return tripStartDate != null
                 || tripEndDate != null;
     }
 
