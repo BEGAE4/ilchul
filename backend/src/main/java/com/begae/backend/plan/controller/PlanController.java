@@ -8,12 +8,15 @@ import com.begae.backend.plan.dto.PlanDetailDto;
 import com.begae.backend.plan.dto.PopularPlanResponseDto;
 import com.begae.backend.plan.service.PlanService;
 import com.begae.backend.global.security.principal.OauthUserDetails;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+@Validated
 @RestController
 @RequestMapping("api/plan")
 @RequiredArgsConstructor
@@ -39,7 +42,7 @@ public class PlanController {
 
     @PostMapping("/copy/{planId}")
     public ResponseEntity<PlanCopyResponseDto> copyPlan(
-            @PathVariable Integer planId,
+            @PathVariable @Positive Integer planId,
             @AuthenticationPrincipal OauthUserDetails userDetails
     ) {
         return ResponseEntity.status(HttpStatus.OK)

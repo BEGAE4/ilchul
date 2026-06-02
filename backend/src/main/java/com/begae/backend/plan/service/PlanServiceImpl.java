@@ -4,20 +4,16 @@ import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.repository.PlaceRepository;
 import com.begae.backend.plan.domain.Plan;
-import com.begae.backend.plan.dto.*;
 import com.begae.backend.plan.exception.PlanErrorCode;
-import com.begae.backend.plan.dto.PlanCopyResponseDto;
-import com.begae.backend.plan.dto.PlanDetailDto;
-import com.begae.backend.plan.dto.PlanDetailFlatDto;
-import com.begae.backend.plan.dto.PopularPlanItemDto;
-import com.begae.backend.plan.dto.PopularPlanResponseDto;
 import com.begae.backend.plan.exception.PlanNotFoundException;
+import com.begae.backend.user.exception.UserNotFoundException;
+import com.begae.backend.plan.dto.*;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan_place.domain.PlanPlace;
 import com.begae.backend.plan_place.domain.PlanPlaceImage;
 import com.begae.backend.plan_place.repository.PlanPlaceRepository;
 import com.begae.backend.user.domain.User;
-import com.begae.backend.user.exception.UserNotFoundException;
+import com.begae.backend.user.exception.UserErrorCode;
 import com.begae.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -148,11 +144,10 @@ public class PlanServiceImpl implements PlanService{
     public PlanDetailDto getPlanDetail(Integer planId) {
         List<PlanDetailFlatDto> flats = planRepository.findPlanDetailFlat(planId);
         if (flats.isEmpty()) {
-            throw new IllegalArgumentException("plan이 없습니다.");
+            throw new CustomException(PlanErrorCode.PLAN_NOT_FOUND);
         }
 
-//        return PlanDetailDto.from(flats);
-        return null;
+        return PlanDetailDto.from(flats);
     }
 
     private static final double SEARCH_RADIUS_KM = 10.0;
@@ -221,16 +216,15 @@ public class PlanServiceImpl implements PlanService{
     @Override
     public PlanCopyResponseDto copyPlan(Integer planId, Integer userId) {
         Plan originPlan = planRepository.findById(planId)
-                .orElseThrow(() -> new PlanNotFoundException("PLAN_NOT_FOUND"));
+                .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
 
         User user = userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
 
-//        Plan newPlan = Plan.copyOf(originPlan, user);
-//        planRepository.save(newPlan);
-//
-//        return PlanCopyResponseDto.from(newPlan);
-        return null;
+        Plan newPlan = Plan.copyOf(originPlan, user);
+        planRepository.save(newPlan);
+
+        return PlanCopyResponseDto.from(newPlan);
     }
 
     @Override
@@ -282,55 +276,6 @@ public class PlanServiceImpl implements PlanService{
             throw new CustomException(PlanErrorCode.PLAN_ACCESS_DENIED);
         }
     }
-
-
-
-    //    @Override
-//    public PlanPreviewResponse createPlanPreview(PlanPreviewRequest planPreviewRequest) {
-//        List<RouteSegment> routes = calculateAllRoutes(planPreviewRequest);
-//
-//        List<PlanPreviewResponse.PlaceWithRoute> places = new ArrayList<>();
-//
-//        for (int i = 0; i < planPreviewRequest.getSelectedPlaces().size(); i++) {
-//            PlanPreviewRequest.SelectedPlace place = planPreviewRequest.getSelectedPlaces().get(i);
-//
-//            // 다음 장소로 가는 경로 (마지막 장소는 null)
-//            PlanPreviewResponse.RouteInfo routeInfo = null;
-//            if (i < routes.size()) {
-//                RouteSegment route = routes.get(i);
-//                String toPlaceName = planPreviewRequest.getSelectedPlaces().get(i + 1).getPlaceName();
-//
-//                routeInfo = PlanPreviewResponse.RouteInfo.builder()
-//                        .fromPlaceName(place.getPlaceName())
-//                        .toPlaceName(toPlaceName)
-//                        .durationMinutes(route.getDurationMinutes())
-//                        .distanceKm(route.getDistanceKm())
-//                        .transportType(TransportType.valueOf(planPreviewRequest.getTransportType().name()))
-//                        .build();
-//            }
-//
-//            places.add(PlanPreviewResponse.PlaceWithRoute.builder()
-//                    .sourceId(place.getSourceId())
-//                    .placeName(place.getPlaceName())
-//                    .addressName(place.getAddressName())
-//                    .latitude(place.getLatitude())
-//                    .longitude(place.getLongitude())
-//                    .orderIndex(i + 1)
-//                    .routeToNext(routeInfo)
-//                    .build());
-//        }
-//
-//        return PlanPreviewResponse.builder()
-//                .planTitle(planPreviewRequest.getPlanTitle())
-//                .planDescription(planPreviewRequest.getPlanDescription())
-//                .tripDate(planPreviewRequest.getTripDate())
-//                .transportType(TransportType.valueOf(planPreviewRequest.getTransportType().name()))
-//                .places(places)
-//                .build();
-//    }
-//
-
-
 //
 //    private List<RouteSegment> calculateAllRoutes(PlanPreviewRequest request) {
 //        List<RouteSegment> routes = new ArrayList<>();
