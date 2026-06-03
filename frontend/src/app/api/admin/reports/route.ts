@@ -13,7 +13,7 @@ import type {
 import { getMockReports } from './_mock';
 
 const DEFAULT_SIZE = 20;
-const useMock = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
+const useMock = true;
 
 function parseStatus(raw: string | null): ReportStatus | null {
   const allowed: ReportStatus[] = ['PENDING', 'REVIEWING', 'RESOLVED', 'REJECTED'];
