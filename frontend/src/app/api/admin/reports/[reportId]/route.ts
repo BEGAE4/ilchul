@@ -4,7 +4,7 @@ import {
   updateMockReportStatus,
 } from '../_mock';
 
-const useMock = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
+const useMock = true;
 
 interface RouteContext {
   params: Promise<{ reportId: string }>;
