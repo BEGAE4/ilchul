@@ -5,6 +5,7 @@ import {
 } from '../_mock';
 
 const VALID_STATUSES = ['OPEN', 'ANSWERED', 'CLOSED'] as const;
+const useMock = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
 
 interface RouteContext {
   params: Promise<{ inquiryId: string }>;
@@ -13,8 +14,8 @@ interface RouteContext {
 export async function GET(req: NextRequest, ctx: RouteContext) {
   const { inquiryId } = await ctx.params;
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (baseUrl) {
+  if (!useMock) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
     const cookie = req.headers.get('cookie') ?? '';
     const res = await fetch(`${baseUrl}/api/admin/inquiries/${inquiryId}`, {
       headers: { ...(cookie ? { cookie } : {}) },
@@ -31,8 +32,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   const { inquiryId } = await ctx.params;
   const body = await req.json().catch(() => ({}));
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (baseUrl) {
+  if (!useMock) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
     const cookie = req.headers.get('cookie') ?? '';
     const res = await fetch(`${baseUrl}/api/admin/inquiries/${inquiryId}`, {
       method: 'PATCH',

@@ -8,6 +8,7 @@ import type {
 import { getMockInquiries } from './_mock';
 
 const DEFAULT_SIZE = 20;
+const useMock = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
 
 function parseStatus(raw: string | null): InquiryStatus | null {
   const allowed: InquiryStatus[] = ['OPEN', 'ANSWERED', 'CLOSED'];
@@ -36,10 +37,10 @@ function matchesKeyword(row: AdminInquiryListItem, q: string): boolean {
 }
 
 export async function GET(req: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const sp = req.nextUrl.searchParams;
 
-  if (baseUrl) {
+  if (!useMock) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
     const cookie = req.headers.get('cookie') ?? '';
     const res = await fetch(`${baseUrl}/api/admin/inquiries?${sp.toString()}`, {
       headers: { ...(cookie ? { cookie } : {}) },

@@ -3,6 +3,7 @@ import { applyMockSanction } from '../../_mock';
 
 const VALID_TYPES = ['WARNING', 'CONTENT_BLINDED', 'TEMP_BAN', 'PERMANENT_BAN'] as const;
 const VALID_RESOLUTIONS = ['BLINDED', 'WARNED', 'BANNED', 'NO_ACTION'] as const;
+const useMock = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
 
 interface RouteContext {
   params: Promise<{ reportId: string }>;
@@ -12,8 +13,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
   const { reportId } = await ctx.params;
   const body = await req.json().catch(() => ({}));
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (baseUrl) {
+  if (!useMock) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
     const cookie = req.headers.get('cookie') ?? '';
     const res = await fetch(`${baseUrl}/api/admin/reports/${reportId}/sanctions`, {
       method: 'POST',

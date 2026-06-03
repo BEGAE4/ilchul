@@ -4,6 +4,8 @@ import {
   updateMockInquiryAnswer,
 } from '../../../_mock';
 
+const useMock = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
+
 interface RouteContext {
   params: Promise<{ inquiryId: string; answerId: string }>;
 }
@@ -12,8 +14,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   const { inquiryId, answerId } = await ctx.params;
   const body = await req.json().catch(() => ({}));
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (baseUrl) {
+  if (!useMock) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
     const cookie = req.headers.get('cookie') ?? '';
     const res = await fetch(`${baseUrl}/api/admin/inquiries/${inquiryId}/answers/${answerId}`, {
       method: 'PATCH',
@@ -34,8 +36,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
 export async function DELETE(req: NextRequest, ctx: RouteContext) {
   const { inquiryId, answerId } = await ctx.params;
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (baseUrl) {
+  if (!useMock) {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
     const cookie = req.headers.get('cookie') ?? '';
     const res = await fetch(`${baseUrl}/api/admin/inquiries/${inquiryId}/answers/${answerId}`, {
       method: 'DELETE',
