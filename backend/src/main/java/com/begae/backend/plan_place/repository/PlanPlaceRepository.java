@@ -11,5 +11,5 @@ import java.util.List;
 public interface PlanPlaceRepository extends JpaRepository<PlanPlace, Integer> {
     List<PlanPlace> findByPlanOrderByOrderIndexAsc(Plan plan);
 
-    void deleteAllByPlanId(Integer planId);
+    void deleteAllByPlan(Plan plan);
 }

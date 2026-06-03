@@ -395,7 +395,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
 
         }
 
-        planPlaceRepository.deleteAllByPlanId(plan.getPlanId());
+        planPlaceRepository.deleteAllByPlan(plan);
 
         planPlaceRepository.saveAll(routes);
 

@@ -2,7 +2,7 @@ package com.begae.backend.user.controller;
 
 import com.begae.backend.plan.dto.ScrappedPlanResponseDto;
 import com.begae.backend.plan.service.ScrappedPlanService;
-import com.begae.backend.user.auth.OauthUserDetails;
+import com.begae.backend.global.security.principal.OauthUserDetails;
 import com.begae.backend.user.dto.MyPlansResponse;
 import com.begae.backend.user.dto.UpdateUserProfileRequest;
 import com.begae.backend.user.dto.UserProfileResponseDto;
