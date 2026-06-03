@@ -35,7 +35,7 @@ spring:
 
   # Flyway
   flyway:
-    enabled: false
+    enabled: true
     baseline-on-migrate: true
 
   # Redis

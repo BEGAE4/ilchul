@@ -2,6 +2,7 @@ package com.begae.backend.plan.service;
 
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.place.domain.Place;
+import com.begae.backend.place.exception.PlaceErrorCode;
 import com.begae.backend.place.repository.PlaceRepository;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.exception.PlanErrorCode;
@@ -48,7 +49,7 @@ public class PlanServiceImpl implements PlanService{
     @Transactional
     public CreatePlanResponseDto CreatePlanWithPlaces(Integer userId, CreatePlanRequestDto request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
 
         Plan plan = Plan.builder()
                 .user(user)
@@ -69,7 +70,7 @@ public class PlanServiceImpl implements PlanService{
         List<PlanPlace> planPlaces = request.getPlaces().stream()
                 .map(placeRequest -> {
                     Place place = placeRepository.findById(placeRequest.getPlaceId())
-                            .orElseThrow(RuntimeException::new);
+                            .orElseThrow(() -> new CustomException(PlaceErrorCode.PLACE_NOT_FOUND));
 
                     return PlanPlace.builder()
                             .plan(savedPlan)
