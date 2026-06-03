@@ -5,7 +5,7 @@ import {
 } from '../_mock';
 
 const VALID_STATUSES = ['OPEN', 'ANSWERED', 'CLOSED'] as const;
-const useMock = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
+const useMock = true;
 
 interface RouteContext {
   params: Promise<{ inquiryId: string }>;

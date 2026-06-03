@@ -8,7 +8,7 @@ import type {
 import { getMockInquiries } from './_mock';
 
 const DEFAULT_SIZE = 20;
-const useMock = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
+const useMock = true;
 
 function parseStatus(raw: string | null): InquiryStatus | null {
   const allowed: InquiryStatus[] = ['OPEN', 'ANSWERED', 'CLOSED'];

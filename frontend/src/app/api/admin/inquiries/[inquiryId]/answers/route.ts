@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createMockInquiryAnswer } from '../../_mock';
 
-const useMock = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
+const useMock = true;
 
 interface RouteContext {
   params: Promise<{ inquiryId: string }>;
