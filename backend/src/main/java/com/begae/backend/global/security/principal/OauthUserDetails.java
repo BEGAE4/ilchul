@@ -1,4 +1,4 @@
-package com.begae.backend.user.auth;
+package com.begae.backend.global.security.principal;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

@@ -48,6 +48,10 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-mysql'
+	implementation platform("software.amazon.awssdk:bom:2.44.12")
+	implementation "software.amazon.awssdk:s3"
+	implementation "software.amazon.awssdk:auth"
+
 }
 
 tasks.named('test') {

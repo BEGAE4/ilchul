@@ -1,8 +1,7 @@
 package com.begae.backend.user.controller;
 
-import com.begae.backend.user.auth.OauthUserDetails;
-import com.begae.backend.user.jwt.JwtManager;
-import jakarta.servlet.http.Cookie;
+import com.begae.backend.global.security.principal.OauthUserDetails;
+import com.begae.backend.global.security.jwt.JwtManager;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -13,10 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -71,5 +67,11 @@ public class SignController {
     @GetMapping("/reissue")
     public ResponseEntity<String> reissueToken() {
         return new ResponseEntity<>("토큰 재발급 성공", HttpStatus.OK);
+    }
+
+    @DeleteMapping("/delete")
+    public ResponseEntity<Void> deleteUser(@AuthenticationPrincipal OauthUserDetails user) {
+
+        return ResponseEntity.ok().build();
     }
 }

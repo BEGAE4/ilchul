@@ -20,7 +20,7 @@ public class RefreshToken {
 
     private String id;
 
-    private int userId;
+    private Integer userId;
     private String email;
     private Collection<? extends GrantedAuthority> authorities;
 

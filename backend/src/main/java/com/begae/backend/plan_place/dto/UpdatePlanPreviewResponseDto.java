@@ -8,7 +8,9 @@ import java.util.List;
 
 @Data
 @Builder
-public class CreatePlanPreviewResponseDto {
+public class UpdatePlanPreviewResponseDto {
+
+    private Integer planId;
 
     private String planTitle;
 
@@ -38,6 +40,8 @@ public class CreatePlanPreviewResponseDto {
         private String categoryName;
         private Integer duration;
         private Integer order;
+        private Integer stayTime;
+        private Boolean isStamped;
         private Double x;
         private Double y;
     }

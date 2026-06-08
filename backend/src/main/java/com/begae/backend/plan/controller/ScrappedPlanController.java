@@ -2,7 +2,7 @@ package com.begae.backend.plan.controller;
 
 import com.begae.backend.plan.dto.ScrappedPlanCreateResponseDto;
 import com.begae.backend.plan.service.ScrappedPlanService;
-import com.begae.backend.user.auth.OauthUserDetails;
+import com.begae.backend.global.security.principal.OauthUserDetails;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

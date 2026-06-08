@@ -1,12 +1,13 @@
 package com.begae.backend.plan.controller;
 
+import com.begae.backend.plan.dto.*;
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.global.exception.GlobalErrorCode;
 import com.begae.backend.plan.dto.PlanCopyResponseDto;
 import com.begae.backend.plan.dto.PlanDetailDto;
 import com.begae.backend.plan.dto.PopularPlanResponseDto;
 import com.begae.backend.plan.service.PlanService;
-import com.begae.backend.user.auth.OauthUserDetails;
+import com.begae.backend.global.security.principal.OauthUserDetails;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -82,4 +83,27 @@ public class PlanController {
     ) {
         return ResponseEntity.ok(planService.getNationwidePopularPlans(limit, page));
     }
+
+    @PostMapping("/create")
+    public ResponseEntity<CreatePlanResponseDto> createPlan(@AuthenticationPrincipal OauthUserDetails user,
+                                                            @RequestBody CreatePlanRequestDto request) {
+        return ResponseEntity.ok(planService.CreatePlanWithPlaces(user.getUserId(), request));
+    }
+
+    @PatchMapping("/{planId}")
+    public ResponseEntity<Integer> updatePlan(@AuthenticationPrincipal OauthUserDetails user,
+                                           @PathVariable Integer planId,
+                                           @RequestBody UpdatePlanRequestDto request) {
+        // 이름, 사진, 공개여부, 설명은 변경가능
+        // 나머지(출발지, 여행시작/여행종료일자)는 인증 여부 검사
+        return ResponseEntity.ok(planService.updatePlan(user.getUserId(), planId, request));
+    }
+
+    @DeleteMapping("/{planId}")
+    public ResponseEntity<Void> deletePlan(@AuthenticationPrincipal OauthUserDetails user,
+                                           @PathVariable Integer planId) {
+        planService.deletePlan(user.getUserId(), planId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
 }

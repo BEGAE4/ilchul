@@ -1,11 +1,10 @@
-package com.begae.backend.user.service;
+package com.begae.backend.global.security.principal;
 
-import com.begae.backend.user.auth.OauthUserDetails;
 import com.begae.backend.user.common.SocialType;
 import com.begae.backend.user.common.UserRole;
 import com.begae.backend.user.common.UserStatus;
 import com.begae.backend.user.domain.User;
-import com.begae.backend.user.oauth2.OauthUserInfo;
+import com.begae.backend.global.security.oauth2.OauthUserInfo;
 import com.begae.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;

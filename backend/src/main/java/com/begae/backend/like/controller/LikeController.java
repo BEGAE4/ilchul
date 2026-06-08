@@ -2,8 +2,8 @@ package com.begae.backend.like.controller;
 
 import com.begae.backend.like.dto.LikeResponseDto;
 import com.begae.backend.like.service.LikeService;
-import com.begae.backend.user.auth.OauthUserDetails;
 import jakarta.validation.constraints.Positive;
+import com.begae.backend.global.security.principal.OauthUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

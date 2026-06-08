@@ -1,10 +1,18 @@
 package com.begae.backend.plan.service;
 
 import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.place.domain.Place;
+import com.begae.backend.place.exception.PlaceErrorCode;
+import com.begae.backend.place.repository.PlaceRepository;
 import com.begae.backend.plan.domain.Plan;
-import com.begae.backend.plan.dto.*;
 import com.begae.backend.plan.exception.PlanErrorCode;
+import com.begae.backend.plan.exception.PlanNotFoundException;
+import com.begae.backend.user.exception.UserNotFoundException;
+import com.begae.backend.plan.dto.*;
 import com.begae.backend.plan.repository.PlanRepository;
+import com.begae.backend.plan_place.domain.PlanPlace;
+import com.begae.backend.plan_place.domain.PlanPlaceImage;
+import com.begae.backend.plan_place.repository.PlanPlaceRepository;
 import com.begae.backend.user.domain.User;
 import com.begae.backend.user.exception.UserErrorCode;
 import com.begae.backend.user.repository.UserRepository;
@@ -26,12 +34,65 @@ public class PlanServiceImpl implements PlanService{
     private final PlanRepository planRepository;
     private final RestTemplate restTemplate = new RestTemplate();
     private final UserRepository userRepository;
+    private final PlaceRepository placeRepository;
+    private final PlanPlaceRepository planPlaceRepository;
 
 //    @Value("${tmap.api.key}")
 //    private String tmapApiKey;
 
     @Override
     public void findPlanByLikeCount() {
+
+    }
+
+    @Override
+    @Transactional
+    public CreatePlanResponseDto CreatePlanWithPlaces(Integer userId, CreatePlanRequestDto request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+
+        Plan plan = Plan.builder()
+                .user(user)
+                .planTitle(request.getPlanTitle())
+                .isVerified(false)
+                .isPlanVisible(request.getIsPlanVisible())
+                .planDescription(request.getPlanDescription())
+                .requiredTime(request.getRequiredTime())
+                .totalDistance(request.getTotalDistance())
+                .departurePoint(request.getDeparturePoint())
+                .tripStartDate(request.getTripStartDate())
+                .tripEndDate(request.getTripEndDate())
+                .likeCount(0)
+                .scrapCount(0)
+                .build();
+        Plan savedPlan = planRepository.save(plan);
+
+        List<PlanPlace> planPlaces = request.getPlaces().stream()
+                .map(placeRequest -> {
+                    Place place = placeRepository.findById(placeRequest.getPlaceId())
+                            .orElseThrow(() -> new CustomException(PlaceErrorCode.PLACE_NOT_FOUND));
+
+                    return PlanPlace.builder()
+                            .plan(savedPlan)
+                            .place(place)
+                            .orderIndex(placeRequest.getOrder())
+                            .travelTime(placeRequest.getTraveltime())
+                            .stayTime(placeRequest.getStayTime())
+
+                            // 스냅샷 저장
+                            .snapshotPlaceName(place.getPlaceName())
+                            .snapshotAddressName(place.getAddressName())
+                            .snapshotRoadAddressName(place.getRoadAddressName())
+                            .snapshotCategoryName(place.getCategoryName())
+                            .snapshotX(place.getX())
+                            .snapshotY(place.getY())
+                            .build();
+                })
+                .toList();
+
+        planPlaceRepository.saveAll(planPlaces);
+
+        return CreatePlanResponseDto.builder().planId(savedPlan.getPlanId()).build();
 
     }
 
@@ -165,6 +226,56 @@ public class PlanServiceImpl implements PlanService{
         planRepository.save(newPlan);
 
         return PlanCopyResponseDto.from(newPlan);
+    }
+
+    @Override
+    @Transactional
+    public Integer updatePlan(Integer userId, Integer planId, UpdatePlanRequestDto request) {
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
+
+        validatePlanOwner(plan, userId);
+
+        if(request.hasVerificationRestrictedFields() && plan.isVerifiedPlan()) {
+            throw new CustomException(PlanErrorCode.VERIFIED_PLAN_UPDATE_RESTRICTED);
+        }
+
+        if (request.getTripStartDate() != null
+                && request.getTripEndDate() != null
+                && request.getTripStartDate().isAfter(request.getTripEndDate())) {
+            throw new CustomException(PlanErrorCode.INVALID_TRIP_DATE_RANGE);
+        }
+
+        plan.updateBasicInfo(
+                request.getPlanTitle(),
+                request.getIsPlanVisible(),
+                request.getPlanDescription()
+        );
+
+        plan.updateUnverifiedOnlyInfo(
+                request.getTripStartDate(),
+                request.getTripEndDate()
+        );
+
+        return plan.getPlanId();
+    }
+
+    @Override
+    @Transactional
+    public void deletePlan(Integer userId, Integer planId) {
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
+
+        validatePlanOwner(plan, userId);
+
+        planRepository.delete(plan);
+
+    }
+
+    private void validatePlanOwner(Plan plan, Integer userId) {
+        if (!plan.getUser().getUserId().equals(userId)) {
+            throw new CustomException(PlanErrorCode.PLAN_ACCESS_DENIED);
+        }
     }
 //
 //    private List<RouteSegment> calculateAllRoutes(PlanPreviewRequest request) {

@@ -1,4 +1,4 @@
-package com.begae.backend.user.dto;
+package com.begae.backend.plan.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class JwtDto {
-    String accessToken;
-    String refreshToken;
+public class CreatePlanResponseDto {
+    private Integer planId;
 }

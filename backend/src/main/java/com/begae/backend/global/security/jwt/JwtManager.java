@@ -1,10 +1,9 @@
-package com.begae.backend.user.jwt;
+package com.begae.backend.global.security.jwt;
 
 import com.begae.backend.redis.domain.RefreshToken;
 import com.begae.backend.redis.repository.RefreshTokenRedisRepository;
-import com.begae.backend.user.auth.OauthUserDetails;
+import com.begae.backend.global.security.principal.OauthUserDetails;
 import com.begae.backend.user.common.TokenStatus;
-import com.begae.backend.user.dto.JwtDto;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;

@@ -1,4 +1,4 @@
-package com.begae.backend.user.handler;
+package com.begae.backend.global.handler;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

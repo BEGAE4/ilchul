@@ -118,4 +118,41 @@ public class Plan extends BaseEntity {
 
         return newPlan;
     }
+
+    public void updateRouteSummary(Integer requiredTime, Integer totalDistance, String departurePoint) {
+        this.requiredTime = requiredTime;
+        this.totalDistance = totalDistance;
+        this.departurePoint = departurePoint;
+    }
+
+    public boolean isVerifiedPlan() {
+        return Boolean.TRUE.equals(this.isVerified);
+    }
+
+    public void updateBasicInfo(String planTitle, Boolean isPlanVisible, String planDescription) {
+        if (planTitle != null) {
+            this.planTitle = planTitle;
+        }
+
+        if (isPlanVisible != null) {
+            this.isPlanVisible = isPlanVisible;
+        }
+
+        if (planDescription != null) {
+            this.planDescription = planDescription;
+        }
+    }
+
+    public void updateUnverifiedOnlyInfo(LocalDateTime tripStartDate, LocalDateTime tripEndDate) {
+
+        if (tripStartDate != null) {
+            this.tripStartDate = tripStartDate;
+        }
+
+        if (tripEndDate != null) {
+            this.tripEndDate = tripEndDate;
+        }
+    }
+
+
 }

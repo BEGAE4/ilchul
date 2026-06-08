@@ -2,6 +2,7 @@ package com.begae.backend.plan_place.dto;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -13,13 +14,19 @@ public class CreatePlanPreviewRequestDto {
 
     private Boolean isPlanVisible;
 
+    private String departurePoint;
+
+    private LocalDateTime tripStartDate;
+
+    private LocalDateTime tripEndDate;
+
     private List<Place> places;
 
     @Data
     public static class Place {
-        private int placeId;
+        private Integer placeId;
 
-        private int order;
+        private Integer order;
     }
 
 }
