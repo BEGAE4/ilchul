@@ -3,8 +3,7 @@ package com.begae.backend.cs_inquiry.controller;
 import com.begae.backend.cs_inquiry.dto.request.CreateCsInquiryRequestDto;
 import com.begae.backend.cs_inquiry.dto.request.ReplyCsInquiryRequestDto;
 import com.begae.backend.cs_inquiry.dto.request.UpdateCsInquiryRequestDto;
-import com.begae.backend.cs_inquiry.dto.response.CsInquiryListResponseDto;
-import com.begae.backend.cs_inquiry.dto.response.InquiryTypeListResponseDto;
+import com.begae.backend.cs_inquiry.dto.response.*;
 import com.begae.backend.cs_inquiry.enums.InquiryType;
 import com.begae.backend.cs_inquiry.service.CsInquiryService;
 import com.begae.backend.user.auth.OauthUserDetails;
@@ -17,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.begae.backend.global.aop.require_admin.RequireAdmin;
+
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -32,12 +33,12 @@ public class CsInquiryController {
      * @return
      */
     @PostMapping
-    public ResponseEntity<Integer> writeCsInquiry(
+    public ResponseEntity<CreateCsInquiryResponseDto> writeCsInquiry(
         @AuthenticationPrincipal OauthUserDetails user,
         @ModelAttribute @Valid CreateCsInquiryRequestDto request
     ) {
-        Integer inquiryId = csInquiryService.createCsInquiry(user.getUserId(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(inquiryId);
+        CreateCsInquiryResponseDto response = csInquiryService.createCsInquiry(user.getUserId(), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**
@@ -48,13 +49,13 @@ public class CsInquiryController {
      * @return
      */
     @PatchMapping("/{inquiryId}")
-    public ResponseEntity<Integer> patchCsInquiry(
+    public ResponseEntity<UpdateCsInquiryResponseDto> patchCsInquiry(
         @AuthenticationPrincipal OauthUserDetails user,
         @PathVariable(name = "inquiryId") Integer inquiryId,
         @ModelAttribute @Valid UpdateCsInquiryRequestDto request
     ) {
-        Integer updatedId = csInquiryService.updateCsInquiry(user.getUserId(), inquiryId, request);
-        return ResponseEntity.ok(updatedId);
+        UpdateCsInquiryResponseDto response = csInquiryService.updateCsInquiry(user.getUserId(), inquiryId, request);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -64,12 +65,12 @@ public class CsInquiryController {
      * @return
      */
     @DeleteMapping("/{inquiryId}")
-    public ResponseEntity<Void> deleteCsInquiry(
+    public ResponseEntity<Map<String, Object>> deleteCsInquiry(
         @AuthenticationPrincipal OauthUserDetails user,
         @PathVariable(name = "inquiryId") Integer inquiryId
     ) {
         csInquiryService.deleteCsInquiry(user.getUserId(), inquiryId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(Map.of());
     }
 
     /**
@@ -82,13 +83,13 @@ public class CsInquiryController {
      */
     @GetMapping
     @RequireAdmin
-    public ResponseEntity<CsInquiryListResponseDto> getCsInquiry(
+    public ResponseEntity<AdminCsInquiryListResponseDto> getCsInquiry(
         @RequestParam(name = "category", required = false) InquiryType category,
         @RequestParam(name = "search", required = false) String search,
         @RequestParam(name = "size", required = false, defaultValue = "10") @Min(1) int size,
         @RequestParam(name = "lastInquiryId", required = false) Integer lastInquiryId
     ) {
-        CsInquiryListResponseDto response = csInquiryService.getCsInquiries(category, search, size, lastInquiryId);
+        AdminCsInquiryListResponseDto response = csInquiryService.getCsInquiries(category, search, size, lastInquiryId);
         return ResponseEntity.ok(response);
     }
 
@@ -100,12 +101,12 @@ public class CsInquiryController {
      */
     @RequireAdmin
     @PostMapping("/{inquiryId}/reply")
-    public ResponseEntity<Void> replyToCsInquiry(
+    public ResponseEntity<ReplyCsInquiryResponseDto> replyToCsInquiry(
         @PathVariable(name = "inquiryId") Integer inquiryId,
         @RequestBody @Valid ReplyCsInquiryRequestDto request
     ) {
-        csInquiryService.replyToCsInquiry(inquiryId, request);
-        return ResponseEntity.ok().build();
+        ReplyCsInquiryResponseDto response = csInquiryService.replyToCsInquiry(inquiryId, request);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -116,12 +117,12 @@ public class CsInquiryController {
      * @return
      */
     @GetMapping("/my")
-    public ResponseEntity<CsInquiryListResponseDto> getUserCsInquiry(
+    public ResponseEntity<UserCsInquiryListResponseDto> getUserCsInquiry(
         @AuthenticationPrincipal OauthUserDetails user,
         @RequestParam(name = "size", required = false, defaultValue = "10") @Min(1) int size,
         @RequestParam(name = "lastInquiryId", required = false) Integer lastInquiryId
     ) {
-        CsInquiryListResponseDto response = csInquiryService.getUserCsInquiry(user.getUserId(), size, lastInquiryId);
+        UserCsInquiryListResponseDto response = csInquiryService.getUserCsInquiry(user.getUserId(), size, lastInquiryId);
         return ResponseEntity.ok(response);
     }
 

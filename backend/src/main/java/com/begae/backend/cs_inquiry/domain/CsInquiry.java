@@ -62,22 +62,25 @@ public class CsInquiry extends BaseEntity {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
-    private CsInquiry(User user, String content, InquiryType inquiryType) {
+    private CsInquiry(User user, String title, String content, InquiryType inquiryType) {
         this.user = user;
+        this.title = title;
         this.content = content;
         this.inquiryType = inquiryType;
         this.inquiryStatus = InquiryStatus.OPEN;
         this.isDeleted = false;
     }
 
-    public static CsInquiry of(User user, String content, InquiryType inquiryType) {
-        return new CsInquiry(user, content, inquiryType);
+    public static CsInquiry of(User user, String title, String content, InquiryType inquiryType) {
+        return new CsInquiry(user, title, content, inquiryType);
     }
 
-    public void updateContent(String content, InquiryType inquiryType) {
+    public void updateContent(String title, String content, InquiryType inquiryType) {
+        this.title = title;
         this.content = content;
         this.inquiryType = inquiryType;
     }
+
 
     public void reply(String answer) {
         this.answer = answer;
