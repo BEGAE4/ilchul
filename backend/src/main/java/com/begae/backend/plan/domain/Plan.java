@@ -82,6 +82,11 @@ public class Plan extends BaseEntity {
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Reply> replies = new ArrayList<>();
 
+    @Builder.Default
+    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PlanImage> planImages = new ArrayList<>();
+
+
     public void updateIsPlanVisibility() {
         this.isPlanVisible = !this.isPlanVisible;
     }
