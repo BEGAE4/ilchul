@@ -44,8 +44,11 @@ next-env.d.ts
 storybook-static
 
 # claude code 
-/.claude/*
-/cc/*
+# /.claude/*
+# /cc/*
 
 # sample
 /src/samples/*
+
+# omc
+/.omc/*

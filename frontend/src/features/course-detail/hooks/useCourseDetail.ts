@@ -17,8 +17,8 @@ export const useCourseDetail = (courseId: string) => {
         const courseData = await fetchCourseDetail(courseId);
         setCourse(courseData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : '코스 정보를 불러오는데 실패했습니다.');
-        console.error('코스 상세 정보 로드 실패:', err);
+        setError(err instanceof Error ? err.message : '플랜 정보를 불러오는데 실패했습니다.');
+        console.error('플랜 상세 정보 로드 실패:', err);
       } finally {
         setLoading(false);
       }

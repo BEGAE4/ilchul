@@ -24,7 +24,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
         {course.isVerified && (
           <div className="absolute top-2 left-2 bg-blue-500/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
             <BadgeCheck size={12} className="fill-white text-blue-500" />
-            <span>인증된 코스</span>
+            <span>인증된 플랜</span>
           </div>
         )}
         <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">

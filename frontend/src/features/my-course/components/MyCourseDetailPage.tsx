@@ -120,7 +120,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   if (!course) {
     return (
       <div className="flex items-center justify-center min-h-screen text-gray-400">
-        코스를 찾을 수 없습니다.
+        플랜을 찾을 수 없습니다.
       </div>
     );
   }
@@ -329,7 +329,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           >
             <BadgeCheck size={16} className="text-emerald-500" />
             <span className="text-xs font-bold text-emerald-600">
-              코스 완주 완료 · {course.completedAt ? formatCreatedAt(course.completedAt) : '방금 전'}
+              플랜 완주 완료 · {course.completedAt ? formatCreatedAt(course.completedAt) : '방금 전'}
             </span>
           </motion.div>
         )}
@@ -421,10 +421,10 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         )}
       </div>
 
-      {/* 코스 타임라인 */}
+      {/* 플랜 타임라인 */}
       <div className="p-5">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="font-bold text-lg text-gray-900">코스 타임라인</h2>
+          <h2 className="font-bold text-lg text-gray-900">플랜 타임라인</h2>
           {isReorderMode ? (
             <button
               onClick={() => setIsReorderMode(false)}
@@ -644,7 +644,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setIsCloneOpen(false)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-5">
-            <h3 className="font-bold text-lg mb-1">코스 복제하기</h3>
+            <h3 className="font-bold text-lg mb-1">플랜 복제하기</h3>
             <p className="text-xs text-gray-400 mb-4">새로운 날짜와 시간을 설정해주세요.</p>
             <div className="space-y-3">
               <div>
@@ -713,7 +713,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setIsRenameOpen(false)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-5">
-            <h3 className="font-bold text-lg mb-4">코스 이름 수정</h3>
+            <h3 className="font-bold text-lg mb-4">플랜 이름 수정</h3>
             <input
               type="text"
               value={renameText}
@@ -746,8 +746,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setIsDeleteConfirmOpen(false)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-5">
-            <h3 className="font-bold text-lg mb-2">코스 삭제 확인</h3>
-            <p className="text-sm text-gray-500 mb-4">이 코스를 삭제하시겠어요?</p>
+            <h3 className="font-bold text-lg mb-2">플랜 삭제 확인</h3>
+            <p className="text-sm text-gray-500 mb-4">이 플랜을 삭제하시겠어요?</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setIsDeleteConfirmOpen(false)}
@@ -786,7 +786,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
                 >
                   <Pencil size={18} className="text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">코스 이름 수정</span>
+                  <span className="text-sm font-medium text-gray-700">플랜 이름 수정</span>
                 </button>
                 <button
                   onClick={() => {
@@ -796,7 +796,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
                 >
                   <ArrowUpDown size={18} className="text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">코스 순서 편집</span>
+                  <span className="text-sm font-medium text-gray-700">플랜 순서 편집</span>
                 </button>
               </>
             )}
@@ -808,7 +808,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
             >
               <Copy size={18} className="text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">코스 복제하기</span>
+              <span className="text-sm font-medium text-gray-700">플랜 복제하기</span>
             </button>
             <button
               onClick={() => {
@@ -818,7 +818,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
             >
               <Trash2 size={18} className="text-red-500" />
-              <span className="text-sm font-medium text-red-500">코스 삭제</span>
+              <span className="text-sm font-medium text-red-500">플랜 삭제</span>
             </button>
             <button
               onClick={() => setIsMenuOpen(false)}
@@ -840,7 +840,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             className="bg-white rounded-3xl p-8 w-full max-w-xs text-center"
           >
             <div className="text-5xl mb-4">🎉</div>
-            <h2 className="text-xl font-black text-gray-900 mb-2">코스 완주!</h2>
+            <h2 className="text-xl font-black text-gray-900 mb-2">플랜 완주!</h2>
             <p className="text-sm text-gray-500 mb-1">
               <span className="font-bold text-gray-700">{course.title}</span>
             </p>

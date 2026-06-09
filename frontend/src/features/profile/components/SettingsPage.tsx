@@ -217,7 +217,7 @@ export function SettingsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium text-gray-900">마케팅 알림</div>
-                <div className="text-xs text-gray-400 mt-0.5">이벤트, 매거진, 추천 코스</div>
+                <div className="text-xs text-gray-400 mt-0.5">이벤트, 매거진, 추천 플랜</div>
               </div>
               <ToggleSwitch
                 enabled={settings.marketingNotification}
@@ -446,7 +446,7 @@ export function SettingsPage() {
             </button>
             <h2 className="font-bold text-lg text-gray-900 mb-2">정말 탈퇴하시겠어요?</h2>
             <p className="text-sm text-gray-500 mb-5 leading-relaxed">
-              탈퇴하면 모든 여행 기록과 코스가 영구 삭제되며, 복구할 수 없습니다.
+              탈퇴하면 모든 여행 기록과 플랜이 영구 삭제되며, 복구할 수 없습니다.
             </p>
             <div className="flex gap-2">
               <button

@@ -1,0 +1,1 @@
+export { PopularPlanListPage } from './component';

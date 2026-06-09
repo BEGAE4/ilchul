@@ -103,7 +103,7 @@ export default function Home() {
             </div>
             <button
               className="text-xs text-gray-400 flex items-center gap-0.5"
-              onClick={() => router.push('/search')}
+              onClick={() => router.push('/place/popular')}
             >
               더보기 <ArrowRight size={12} />
             </button>
@@ -133,7 +133,7 @@ export default function Home() {
                         e.stopPropagation();
                         handlePlaceAdd(place.id, NEARBY_POPULAR_PLACES);
                       }}
-                      aria-label="코스에 추가"
+                      aria-label="플랜에 추가"
                     >
                       <Plus size={16} strokeWidth={3} />
                     </button>
@@ -154,19 +154,19 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ───── 실시간 베스트 코스 ───── */}
+        {/* ───── 실시간 베스트 플랜 ───── */}
         <div className="mb-8">
           <div className="px-5 mb-3 flex justify-between items-center">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Flame size={16} className="text-orange-500" />
-                <h2 className="text-lg font-bold text-gray-900">실시간 베스트 코스</h2>
+                <h2 className="text-lg font-bold text-gray-900">실시간 베스트 플랜</h2>
               </div>
-              <p className="text-xs text-gray-500">지금 내 주변에서 가장 핫한 코스</p>
+              <p className="text-xs text-gray-500">지금 내 주변에서 가장 핫한 플랜</p>
             </div>
             <button
               className="text-xs text-gray-400 flex items-center gap-0.5"
-              onClick={() => router.push('/search')}
+              onClick={() => router.push('/plan/popular')}
             >
               더보기 <ArrowRight size={12} />
             </button>
@@ -238,7 +238,7 @@ export default function Home() {
             </div>
             <button
               className="text-xs text-gray-400 flex items-center gap-0.5"
-              onClick={() => router.push('/search')}
+              onClick={() => router.push('/place/popular/nationwide')}
             >
               더보기 <ArrowRight size={12} />
             </button>
@@ -267,7 +267,7 @@ export default function Home() {
                       e.stopPropagation();
                       handlePlaceAdd(place.id, NATIONWIDE_PLACES);
                     }}
-                    aria-label="코스에 추가"
+                    aria-label="플랜에 추가"
                   >
                     <Plus size={16} strokeWidth={3} />
                   </button>
@@ -287,19 +287,19 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ───── 전국 인기 코스 ───── */}
+        {/* ───── 전국 인기 플랜 ───── */}
         <div className="mb-8">
           <div className="px-5 mb-3 flex justify-between items-center">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Flame size={16} className="text-violet-500" />
-                <h2 className="text-lg font-bold text-gray-900">전국 인기 코스</h2>
+                <h2 className="text-lg font-bold text-gray-900">전국 인기 플랜</h2>
               </div>
-              <p className="text-xs text-gray-500">전국 여행자들이 선택한 베스트 코스</p>
+              <p className="text-xs text-gray-500">전국 여행자들이 선택한 베스트 플랜</p>
             </div>
             <button
               className="text-xs text-gray-400 flex items-center gap-0.5"
-              onClick={() => router.push('/search')}
+              onClick={() => router.push('/plan/popular/nationwide')}
             >
               더보기 <ArrowRight size={12} />
             </button>

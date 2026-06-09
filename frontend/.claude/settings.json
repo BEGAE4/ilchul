@@ -1,0 +1,53 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(yarn lint)",
+      "Bash(yarn lint *)",
+      "Bash(yarn format:check)",
+      "Bash(yarn build)",
+      "Bash(yarn build-storybook)",
+      "Bash(yarn tsc)",
+      "Bash(yarn tsc --noEmit)",
+      "Bash(npx tsc)",
+      "Bash(npx tsc --noEmit)"
+    ],
+    "deny": [
+      "Bash(rm:*)",
+      "Bash(rmdir:*)",
+      "Bash(shred:*)",
+      "Bash(dd:*)",
+      "Bash(mkfs:*)",
+      "Bash(sudo:*)",
+      "Bash(git init:*)",
+      "Bash(git clone:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git restore:*)",
+      "Bash(git branch:*)",
+      "Bash(git tag:*)",
+      "Bash(git stash:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git revert:*)",
+      "Bash(git rm:*)",
+      "Bash(git mv:*)",
+      "Bash(git clean:*)",
+      "Bash(git gc:*)",
+      "Bash(git config:*)",
+      "Bash(git remote:*)",
+      "Bash(git submodule:*)",
+      "Bash(git worktree:*)",
+      "Bash(git apply:*)",
+      "Bash(git am:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git update-ref:*)"
+    ]
+  }
+}

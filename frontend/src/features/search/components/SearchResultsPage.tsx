@@ -20,8 +20,8 @@ import { ScrollCarousel } from '@/shared/ui/ScrollCarousel';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
 import { SearchResultsSkeleton } from '@/shared/ui/Skeleton';
 
-type ViewTab = '전체' | '코스' | '장소';
-const VIEW_TABS: ViewTab[] = ['전체', '코스', '장소'];
+type ViewTab = '전체' | '플랜' | '장소';
+const VIEW_TABS: ViewTab[] = ['전체', '플랜', '장소'];
 
 const ALL_COURSES = [...MOCK_COURSES, ...NATIONWIDE_COURSES];
 const ALL_PLACES = [...BEST_PLACES, ...NEARBY_POPULAR_PLACES, ...NATIONWIDE_PLACES];
@@ -108,7 +108,7 @@ export const SearchResultsPage: React.FC = () => {
         <div className="px-5 flex">
           {VIEW_TABS.map((tab) => {
             const count =
-              tab === '코스'
+              tab === '플랜'
                 ? totalCourses
                 : tab === '장소'
                   ? totalPlaces
@@ -186,17 +186,17 @@ export const SearchResultsPage: React.FC = () => {
               </div>
             )}
 
-            {/* 코스 섹션 — 수직 리스트 */}
+            {/* 플랜 섹션 — 수직 리스트 */}
             {filteredCourses.length > 0 && (
               <div className="pt-4 px-4">
                 <div className="px-1 mb-3 flex justify-between items-center">
                   <h3 className="text-sm font-bold text-gray-900">
-                    코스
+                    플랜
                     <span className="ml-1.5 text-sky-500">{filteredCourses.length}</span>
                   </h3>
                   {filteredCourses.length > 3 && (
                     <button
-                      onClick={() => setActiveViewTab('코스')}
+                      onClick={() => setActiveViewTab('플랜')}
                       className="text-xs text-gray-400 font-bold flex items-center gap-0.5"
                     >
                       전체보기 <ChevronDown size={12} className="rotate-[-90deg]" />
@@ -219,12 +219,12 @@ export const SearchResultsPage: React.FC = () => {
           </div>
         )}
 
-        {/* 코스 탭 */}
-        {activeViewTab === '코스' && (
+        {/* 플랜 탭 */}
+        {activeViewTab === '플랜' && (
           <div className="p-4">
             <div className="flex items-center justify-between mb-4 ml-1">
               <p className="text-sm text-gray-500">
-                총 <span className="font-bold text-sky-500">{filteredCourses.length}</span>개의 코스
+                총 <span className="font-bold text-sky-500">{filteredCourses.length}</span>개의 플랜
               </p>
               <button
                 onClick={() => setVerifiedOnly((prev) => !prev)}
@@ -252,7 +252,7 @@ export const SearchResultsPage: React.FC = () => {
                   )}
                 </span>
                 <BadgeCheck size={13} />
-                인증된 코스
+                인증된 플랜
               </button>
             </div>
 
@@ -260,7 +260,7 @@ export const SearchResultsPage: React.FC = () => {
               <div className="text-center py-12">
                 <Route size={32} className="text-gray-200 mx-auto mb-3" />
                 <p className="text-sm text-gray-400 font-medium">
-                  {verifiedOnly ? '인증된 코스가 없어요' : '검색 결과가 없어요'}
+                  {verifiedOnly ? '인증된 플랜이 없어요' : '검색 결과가 없어요'}
                 </p>
                 {verifiedOnly && (
                   <button
