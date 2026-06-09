@@ -24,12 +24,12 @@ public class S3StorageConfig {
                 .build();
     }
 
-    @Bean
-    public S3Presigner s3Presigner() {
-        return S3Presigner.builder()
-                .region(Region.of(properties.region()))
-                .credentialsProvider(DefaultCredentialsProvider.builder().build())
-                .build();
-    }
+//    @Bean
+//    public S3Presigner s3Presigner() {
+//        return S3Presigner.builder()
+//                .region(Region.of(properties.region()))
+//                .credentialsProvider(DefaultCredentialsProvider.builder().build())
+//                .build();
+//    }
 }
 

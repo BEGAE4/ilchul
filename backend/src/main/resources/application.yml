@@ -140,4 +140,5 @@ cloud:
     s3:
       bucket: ${STORAGE_BUCKET_NAME}
       region: ${STORAGE_REGION}
-      presigned-url-duration-minutes: 30
+#      presigned-url-duration-minutes: 30
+      public-base-url: ${STORAGE_PUBLIC_URL}
