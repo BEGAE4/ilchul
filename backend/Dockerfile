@@ -1,18 +1,3 @@
-FROM eclipse-temurin:21-jdk-alpine AS builder
-
-WORKDIR /app
-
-COPY gradlew .
-COPY gradle gradle
-COPY build.gradle .
-COPY settings.gradle .
-
-RUN chmod +x ./gradlew
-RUN ./gradlew dependencies --no-daemon
-
-COPY src ./src
-RUN ./gradlew build -x test --no-daemon
-
 FROM eclipse-temurin:21-jdk-alpine 
 
 RUN apk add --no-cache wget tzdata && \
@@ -27,7 +12,7 @@ RUN addgroup -g 1001 -S spring && \
 
 WORKDIR /app
 
-COPY --from=builder /app/build/libs/*.jar app.jar
+COPY build/libs/*.jar app.jar
 
 RUN chown spring:spring app.jar /app/opentelemetry-javaagent.jar
 
