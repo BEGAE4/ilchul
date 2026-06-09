@@ -4,10 +4,7 @@ import com.begae.backend.cs_inquiry.domain.CsInquiry;
 import com.begae.backend.cs_inquiry.dto.request.CreateCsInquiryRequestDto;
 import com.begae.backend.cs_inquiry.dto.request.ReplyCsInquiryRequestDto;
 import com.begae.backend.cs_inquiry.dto.request.UpdateCsInquiryRequestDto;
-import com.begae.backend.cs_inquiry.dto.response.CsInquiryListResponseDto;
-import com.begae.backend.cs_inquiry.dto.response.CsInquiryResponseDto;
-import com.begae.backend.cs_inquiry.dto.response.InquiryTypeListResponseDto;
-import com.begae.backend.cs_inquiry.dto.response.InquiryTypeResponseDto;
+import com.begae.backend.cs_inquiry.dto.response.*;
 import com.begae.backend.cs_inquiry.enums.InquiryStatus;
 import com.begae.backend.cs_inquiry.enums.InquiryType;
 import com.begae.backend.cs_inquiry.exception.CsInquiryErrorCode;
@@ -34,21 +31,28 @@ public class CsInquiryServiceImpl implements CsInquiryService {
     private final UserRepository userRepository;
 
     @Override
-    public Integer createCsInquiry(Integer userId, CreateCsInquiryRequestDto requestDto) {
+    public CreateCsInquiryResponseDto createCsInquiry(Integer userId, CreateCsInquiryRequestDto requestDto) {
         User user = readUser(userId);
 
-        CsInquiry inquiry = CsInquiry.of(user, requestDto.content(), requestDto.inquiryType());
-
-        // TODO : 이미지 관련 로직 들어갈 부분
+        InquiryType type = requestDto.inquiryType();
+        CsInquiry inquiry = CsInquiry.of(user, requestDto.title(), requestDto.content(), type);
+        
+        // TODO: 동료가 구현 완료 시 MinIO/S3 업로드 모듈과 연동 예정 (파일 저장 및 URL 매핑)
+        // if (requestDto.images() != null && !requestDto.images().isEmpty()) {
+        //     List<String> uploadedUrls = s3Service.upload(requestDto.images());
+        //     for (String url : uploadedUrls) {
+        //         inquiry.addImage(CsInquiryImage.of(inquiry, url));
+        //     }
+        // }
 
         CsInquiry savedInquiry = csInquiryRepository.save(inquiry);
 
-        return savedInquiry.getInquiryId();
+        return CreateCsInquiryResponseDto.from(savedInquiry);
     }
 
     @Override
     @Transactional
-    public Integer updateCsInquiry(Integer userId, Integer inquiryId, UpdateCsInquiryRequestDto requestDto) {
+    public UpdateCsInquiryResponseDto updateCsInquiry(Integer userId, Integer inquiryId, UpdateCsInquiryRequestDto requestDto) {
         CsInquiry inquiry = readCsInquiry(inquiryId);
 
         checkDeleted(inquiry);
@@ -66,10 +70,18 @@ public class CsInquiryServiceImpl implements CsInquiryService {
             inquiry.getImages().removeIf(img -> requestDto.deleteImageIds().contains(img.getImageId()));
         }
 
-        // TODO : 이미지 관련 로직 들어갈 부분
+        // 2. 새로운 이미지 추가 처리 플레이스홀더
+        // TODO: 동료가 구현 완료 시 MinIO/S3 업로드 모듈과 연동 예정 (신규 이미지 추가)
+        // if (requestDto.newImages() != null && !requestDto.newImages().isEmpty()) {
+        //     List<String> uploadedUrls = s3Service.upload(requestDto.newImages());
+        //     for (String url : uploadedUrls) {
+        //         inquiry.addImage(CsInquiryImage.of(inquiry, url));
+        //     }
+        // }
 
-        inquiry.updateContent(requestDto.content(), requestDto.inquiryType());
-        return inquiry.getInquiryId();
+        InquiryType type = requestDto.inquiryType();
+        inquiry.updateContent(requestDto.title(), requestDto.content(), type);
+        return UpdateCsInquiryResponseDto.from(inquiry);
     }
 
     @Override
@@ -88,29 +100,30 @@ public class CsInquiryServiceImpl implements CsInquiryService {
 
     @Override
     @Transactional(readOnly = true)
-    public CsInquiryListResponseDto getCsInquiries(InquiryType category, String search, int size,
-            Integer lastInquiryId) {
+    public AdminCsInquiryListResponseDto getCsInquiries(InquiryType category, String search, int size, Integer lastInquiryId) {
         Pageable pageable = PageRequest.of(0, size + 1);
         List<CsInquiry> inquiries = csInquiryRepository.findByCursor(
                 lastInquiryId,
                 (category != null) ? category : null,
                 (search != null && !search.isBlank()) ? search : null,
-                pageable);
+                pageable
+        );
 
         boolean hasNext = inquiries.size() > size;
         if (hasNext) {
             inquiries = inquiries.subList(0, size);
         }
 
-        List<CsInquiryResponseDto> responseDtos = inquiries.stream()
-                .map(CsInquiryResponseDto::from)
-                .toList();
+        long totalCount = csInquiryRepository.countByFilters(
+                (category != null) ? category : null,
+                (search != null && !search.isBlank()) ? search : null
+        );
 
-        return CsInquiryListResponseDto.of(responseDtos, hasNext);
+        return AdminCsInquiryListResponseDto.of(inquiries, hasNext, totalCount);
     }
 
     @Override
-    public void replyToCsInquiry(Integer inquiryId, ReplyCsInquiryRequestDto requestDto) {
+    public ReplyCsInquiryResponseDto replyToCsInquiry(Integer inquiryId, ReplyCsInquiryRequestDto requestDto) {
         CsInquiry inquiry = readCsInquiry(inquiryId);
 
         checkDeleted(inquiry);
@@ -119,7 +132,8 @@ public class CsInquiryServiceImpl implements CsInquiryService {
             throw new CustomException(CsInquiryErrorCode.ALREADY_ANSWERED);
         }
 
-        inquiry.reply(requestDto.answer());
+        inquiry.reply(requestDto.content());
+        return ReplyCsInquiryResponseDto.from(inquiry);
     }
 
     @Override
@@ -130,26 +144,23 @@ public class CsInquiryServiceImpl implements CsInquiryService {
                 .toList();
         return InquiryTypeListResponseDto.from(categories);
     }
-
+    
     @Override
     @Transactional(readOnly = true)
-    public CsInquiryListResponseDto getUserCsInquiry(Integer userId, int size, Integer lastInquiryId) {
+    public UserCsInquiryListResponseDto getUserCsInquiry(Integer userId, int size, Integer lastInquiryId) {
         Pageable pageable = PageRequest.of(0, size + 1);
         List<CsInquiry> inquiries = csInquiryRepository.findByUserCursor(
                 userId,
                 lastInquiryId,
-                pageable);
+                pageable
+        );
 
         boolean hasNext = inquiries.size() > size;
         if (hasNext) {
             inquiries = inquiries.subList(0, size);
         }
 
-        List<CsInquiryResponseDto> responseDtos = inquiries.stream()
-                .map(CsInquiryResponseDto::from)
-                .toList();
-
-        return CsInquiryListResponseDto.of(responseDtos, hasNext);
+        return UserCsInquiryListResponseDto.of(inquiries, hasNext);
     }
 
     @Override

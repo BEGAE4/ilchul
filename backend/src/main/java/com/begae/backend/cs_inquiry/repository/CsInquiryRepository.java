@@ -36,7 +36,17 @@ public interface CsInquiryRepository extends JpaRepository<CsInquiry, Integer> {
             @Param("lastInquiryId") Integer lastInquiryId,
             Pageable pageable
     );
+
+    @Query("SELECT COUNT(ci) FROM CsInquiry ci " +
+           "WHERE ci.isDeleted = false " +
+           "AND (:category IS NULL OR ci.inquiryType = :category) " +
+           "AND (:search IS NULL OR ci.content LIKE CONCAT('%', :search, '%'))")
+    long countByFilters(
+            @Param("category") InquiryType category,
+            @Param("search") String search
+    );
 }
+
 
 
 
