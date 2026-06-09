@@ -61,6 +61,7 @@ public class CustomUserDetailsService extends DefaultOAuth2UserService {
                                         .userNickname(userInfo.get("nickname"))
                                         .userRole(UserRole.ROLE_USER)
                                         .userStatus(UserStatus.STATUS_AVAILABLE)
+                                        .userImg(userInfo.get("profile_image"))
                                         .build()
                         ));
 
