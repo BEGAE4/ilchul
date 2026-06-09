@@ -7,9 +7,14 @@ import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.exception.PlanErrorCode;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan_place.domain.PlanPlace;
+import com.begae.backend.plan_place.domain.PlanPlaceImage;
 import com.begae.backend.plan_place.dto.*;
 import com.begae.backend.plan_place.exception.PlanPlaceErrorCode;
+import com.begae.backend.plan_place.repository.PlanPlaceImageRepository;
 import com.begae.backend.plan_place.repository.PlanPlaceRepository;
+import com.begae.backend.plan_place.util.LocationUtils;
+import com.begae.backend.storage.dto.StoredImage;
+import com.begae.backend.storage.service.ImageStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -18,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -31,6 +37,9 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
     private final PlanPlaceRepository planPlaceRepository;
     private final PlanRepository planRepository;
     private final PlaceRepository placeRepository;
+    private final PlanPlaceImageRepository planPlaceImageRepository;
+
+    private final ImageStorageService imageStorageService;
 
     private final WebClient kakaoNaviWebClient;
     private final WebClient kakaoWebClient;
@@ -452,6 +461,53 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
         return places;
     }
 
+    @Transactional
+    @Override
+    public StampPlanPlaceResponseDto stampPlanPlace(Integer userId, Integer planPlaceId, StampPlanPlaceRequestDto request) {
+        PlanPlace planPlace = planPlaceRepository.findByPlanPlaceIdAndPlan_User_UserId(planPlaceId, userId).orElseThrow(
+                () -> new CustomException(PlanPlaceErrorCode.PLAN_PLACE_NOT_FOUND)
+        );
+
+        if(planPlace.getPlanPlaceImages() != null && !planPlace.getPlanPlaceImages().isEmpty()) {
+            planPlace.getPlanPlaceImages().forEach(image -> imageStorageService.delete(image.getImageKey()));
+            planPlace.getPlanPlaceImages().clear();
+        }
+
+        StoredImage storedImage = imageStorageService.upload(request.getImage(),
+                "planPlace/" + planPlace.getPlanPlaceId() + "/image");
+
+        PlanPlaceImage planPlaceImage = PlanPlaceImage.builder()
+                                .imageKey(storedImage.imageKey())
+                                .imageUrl(storedImage.imageUrl())
+                                .originalFilename(storedImage.originalFilename())
+                                .contentType(storedImage.contentType())
+                                .fileSize(storedImage.fileSize())
+                                .planPlace(planPlace)
+                                .build();
+
+        planPlaceImageRepository.save(planPlaceImage);
+
+        // request에서 x y 꺼내 planPlace의 x y 기준 범위 안에 있는지 체크
+        double distance = LocationUtils.calculateDistance(
+                request.getLocation().getY(),
+                request.getLocation().getX(),
+                planPlace.getSnapshotY(),
+                planPlace.getSnapshotX()
+        );
+
+        if(distance > 150) {
+            throw new CustomException(PlanPlaceErrorCode.OUT_OF_STAMP_RANGE);
+        }
+
+        planPlace.stamp();
+
+        return StampPlanPlaceResponseDto.builder()
+                        .planPlaceId(planPlace.getPlanPlaceId())
+                        .isStamped(planPlace.getIsStamped())
+                        .verifiedImage(planPlaceImage.getImageUrl())
+                        .stampedAt(LocalDateTime.now())
+                        .build();
+    }
 
 
 }

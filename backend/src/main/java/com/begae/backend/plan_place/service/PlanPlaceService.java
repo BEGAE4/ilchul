@@ -11,4 +11,7 @@ public interface PlanPlaceService {
 
     @Transactional
     UpdatePlanPlaceResponseDto updatePlanPlace(Integer userId, Integer planId, UpdatePlanPlaceRequestDto request);
+
+    @Transactional
+    StampPlanPlaceResponseDto stampPlanPlace(Integer userId, Integer planPlaceId, StampPlanPlaceRequestDto request);
 }

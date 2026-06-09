@@ -88,4 +88,8 @@ public class PlanPlace {
 
         return newPlanPlace;
     }
+
+    public void stamp() {
+        this.isStamped = true;
+    }
 }
