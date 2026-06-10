@@ -1,0 +1,13 @@
+ALTER TABLE `plan`
+    ADD COLUMN `is_blinded` BOOLEAN NOT NULL DEFAULT FALSE AFTER `is_plan_visible`;
+
+ALTER TABLE `reply`
+    ADD COLUMN `is_blinded` BOOLEAN NOT NULL DEFAULT FALSE AFTER `is_deleted`;
+
+ALTER TABLE `user`
+    ADD COLUMN `warning_count` INT NOT NULL DEFAULT 0 AFTER `user_img`,
+    ADD COLUMN `suspension_end_at` DATETIME NULL AFTER `warning_count`;
+
+ALTER TABLE `report`
+    ADD COLUMN `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING' AFTER `content`,
+    ADD COLUMN `update_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER `status`;

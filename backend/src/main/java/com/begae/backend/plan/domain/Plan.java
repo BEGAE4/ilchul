@@ -155,4 +155,8 @@ public class Plan extends BaseEntity {
     }
 
 
+
+    public void updateBlind() {
+        this.isBlinded = true;
+    }
 }
