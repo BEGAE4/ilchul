@@ -77,6 +77,20 @@ const MyPage: React.FC = () => {
             />
           </div>
         </div>
+
+        <div className={styles.divider} />
+
+        {/* 고객 지원 섹션 */}
+        <div className={styles.menuSection}>
+          <h2 className={styles.sectionTitle}>고객 지원</h2>
+
+          <div className={styles.menuList}>
+            <MenuItem
+              label="고객센터 / 문의"
+              onClick={() => router.push('/profile/inquiry')}
+            />
+          </div>
+        </div>
       </div>
     </PageLayout>
   );

@@ -1,108 +1,81 @@
-# 문의 API 명세 (v1)
+# 문의(CS-Inquiry) API 명세 (v1)
 
 ## 공통
 
-- Base URL: `/api/inquiry`
+- Base URL: `/api/cs-inquiry`
 - 인증: 세션 쿠키
-- Content-Type: `application/json`
+- 작성/수정: `multipart/form-data`, 그 외: `application/json`
+- 분류 체계
+  - `inquiryType` (문의 타입): `GENERAL`(일반) / `BUG`(버그) / `SUGGESTION`(제안) / `OTHER`(기타)
+  - `categoryId` (숫자) + `categoryName` (표시명). 프론트는 `inquiryType → categoryId` 고정 매핑 사용
+    (`GENERAL=1, BUG=2, SUGGESTION=3, OTHER=4`)
+- 상태값(`status`): `PENDING`(답변 대기) / `ANSWERED`(답변 완료)
+- 목록은 커서 기반 페이지네이션(`nextCursorId`, `hasNext`) 사용
+
+> 프론트엔드 BFF(`src/app/api/cs-inquiry/*`)가 백엔드(`{BASE}/api/cs-inquiry/*`)로 프록시하며,
+> `NEXT_PUBLIC_API_BASE_URL` 미설정/요청 실패 시 mock 데이터를 반환한다.
 
 ---
 
-## INQ-1. 내 문의 목록 조회
+## INQ-1. 문의 작성
 
-**GET** `/api/inquiry`
+**POST** `/api/cs-inquiry` · `multipart/form-data`
 
-### Response `200`
+### Request (form fields)
 
-```json
-{
-  "inquiries": [
-    {
-      "inquiryId": 1,
-      "userId": "me",
-      "userNickname": "김여행",
-      "category": "bug",
-      "title": "앱 실행 시 화면이 멈춥니다",
-      "content": "홈 화면에서 코스 탭을 누르면...",
-      "status": "pending",
-      "createdAt": "2026-05-14T10:30:00Z",
-      "updatedAt": "2026-05-14T10:30:00Z",
-      "answer": null
-    }
-  ]
-}
-```
-
----
-
-## INQ-2. 문의 작성
-
-**POST** `/api/inquiry`
-
-### Request Body
-
-```json
-{
-  "category": "bug",
-  "title": "앱 실행 시 화면이 멈춥니다",
-  "content": "홈 화면에서 코스 탭을 누르면..."
-}
-```
-
-### Category 값
-
-| 값 | 레이블 |
-|---|---|
-| `account` | 계정 |
-| `payment` | 결제 |
-| `bug` | 오류/버그 |
-| `feature` | 기능 제안 |
-| `content` | 콘텐츠 |
-| `other` | 기타 |
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| title | string | ✅ | 제목 |
+| content | string | ✅ | 내용 |
+| categoryId | number | ✅ | 카테고리 ID |
+| inquiryType | string | ✅ | `GENERAL`/`BUG`/`SUGGESTION`/`OTHER` |
+| images | File[] | ✗ | 첨부 이미지(여러 장, 최대 5장) |
 
 ### Response `201`
 
-생성된 `Inquiry` 객체 반환
-
----
-
-## INQ-3. 문의 상세 조회
-
-**GET** `/api/inquiry/{inquiryId}`
-
-### Response `200`
-
-`Inquiry` 객체 (answer 포함)
-
----
-
-## INQ-4. 문의 수정
-
-**PATCH** `/api/inquiry/{inquiryId}`
-
-> `status === 'pending'` 인 경우에만 수정 가능
-
-### Request Body
-
 ```json
 {
-  "category": "account",
-  "title": "수정된 제목",
-  "content": "수정된 내용"
+  "inquiryId": 123,
+  "title": "앱 오류 문의드립니다",
+  "categoryId": 2,
+  "categoryName": "버그",
+  "inquiryType": "BUG",
+  "status": "PENDING",
+  "images": [{ "imageId": 11, "url": "https://cdn.example.com/inq/11.jpg" }],
+  "createdAt": "2026-05-07T10:00:00"
 }
 ```
 
+---
+
+## INQ-2. 문의 수정
+
+**PATCH** `/api/cs-inquiry/{inquiryId}` · `multipart/form-data`
+
+> `status === PENDING` 인 경우에만 수정 가능
+
+### Request (form fields)
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| title | string | ✗ | 제목 |
+| content | string | ✗ | 내용 |
+| categoryId | number | ✗ | 카테고리 ID |
+| inquiryType | string | ✗ | 문의 타입 |
+| images | File[] | ✗ | 새로 추가할 이미지 |
+| deleteImageIds | number[] | ✗ | 삭제할 기존 이미지 ID |
+
 ### Response `200`
 
-수정된 `Inquiry` 객체 반환
+수정된 문의 상세 객체 반환
 
 ---
 
-## INQ-5. 문의 삭제
+## INQ-3. 문의 삭제
 
-**DELETE** `/api/inquiry/{inquiryId}`
+**DELETE** `/api/cs-inquiry/{inquiryId}`
 
-> `status === 'pending'` 인 경우에만 삭제 가능
+> `status === PENDING` 인 경우에만 삭제 가능
 
 ### Response `200`
 
@@ -112,15 +85,102 @@
 
 ---
 
-## INQ-6. 전체 문의 조회 (관리자)
+## INQ-4. 내 문의 조회
 
-**GET** `/api/inquiry/all`
+**GET** `/api/cs-inquiry/me`
+
+### Query
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| status | string | ✗ | `PENDING` / `ANSWERED` |
+| cursorId | number | ✗ | 커서(이전 페이지 마지막 ID) |
 
 ### Response `200`
 
 ```json
 {
-  "inquiries": [ /* 전체 유저의 Inquiry 배열 */ ]
+  "items": [
+    {
+      "inquiryId": 123,
+      "title": "앱 오류 문의드립니다",
+      "categoryName": "버그",
+      "status": "ANSWERED",
+      "hasAnswer": true,
+      "createdAt": "2026-05-07T10:00:00"
+    }
+  ],
+  "nextCursorId": 118,
+  "hasNext": true
+}
+```
+
+---
+
+## INQ-5. 전체 문의 조회 (관리자)
+
+**GET** `/api/cs-inquiry`
+
+### Query
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| category | string | ✗ | 카테고리 필터 |
+| search | string | ✗ | 검색어 |
+| status | string | ✗ | `PENDING` / `ANSWERED` |
+| lastInquiryId | number | ✗ | 커서 |
+
+### Response `200`
+
+```json
+{
+  "items": [
+    {
+      "inquiryId": 123,
+      "title": "앱 오류 문의드립니다",
+      "categoryName": "버그",
+      "status": "PENDING",
+      "hasAnswer": false,
+      "authorNickname": "여행자123",
+      "createdAt": "2026-05-07T10:00:00"
+    }
+  ],
+  "nextCursorId": 118,
+  "hasNext": true,
+  "totalCount": 342
+}
+```
+
+---
+
+## INQ-6. 문의 상세 조회
+
+**GET** `/api/cs-inquiry/{inquiryId}`
+
+> 명세에 명시되지 않았으나 상세/수정/답변 화면에 필요하여 추가
+
+### Response `200`
+
+```json
+{
+  "inquiryId": 123,
+  "title": "앱 오류 문의드립니다",
+  "content": "코스 저장 시 오류가 발생합니다.",
+  "categoryId": 2,
+  "categoryName": "버그",
+  "inquiryType": "BUG",
+  "status": "ANSWERED",
+  "images": [{ "imageId": 11, "url": "https://cdn.example.com/inq/11.jpg" }],
+  "authorNickname": "여행자123",
+  "createdAt": "2026-05-07T10:00:00",
+  "updatedAt": "2026-05-07T11:00:00",
+  "answer": {
+    "answerId": 55,
+    "inquiryId": 123,
+    "content": "안녕하세요. 문의 주신 내용에 대해 답변드립니다...",
+    "answeredBy": "관리자",
+    "answeredAt": "2026-05-07T14:00:00"
+  }
 }
 ```
 
@@ -128,48 +188,41 @@
 
 ## INQ-7. 문의 답변 작성 (관리자)
 
-**POST** `/api/inquiry/{inquiryId}/answer`
+**POST** `/api/cs-inquiry/{inquiryId}` · `application/json`
 
 ### Request Body
 
 ```json
-{
-  "content": "안녕하세요! 일출 팀입니다..."
-}
+{ "content": "안녕하세요. 문의 주신 내용에 대해 답변드립니다..." }
 ```
 
-### Response `200`
+### Response `201`
 
 ```json
 {
-  "success": true,
-  "inquiryId": 1,
-  "answer": {
-    "answerId": 101,
-    "content": "안녕하세요! 일출 팀입니다...",
-    "createdAt": "2026-05-16T10:00:00Z",
-    "adminName": "일출 운영팀"
-  }
+  "answerId": 55,
+  "inquiryId": 123,
+  "content": "안녕하세요. 문의 주신 내용에 대해 답변드립니다...",
+  "answeredBy": "관리자",
+  "answeredAt": "2026-05-07T14:00:00"
 }
 ```
 
 ---
 
-## INQ-8. 카테고리 목록 조회
+## INQ-8. 문의 카테고리(타입) 조회
 
-**GET** `/api/inquiry/categories`
+**GET** `/api/cs-inquiry/category`
 
 ### Response `200`
 
 ```json
 {
   "categories": [
-    { "id": "account", "label": "계정" },
-    { "id": "payment", "label": "결제" },
-    { "id": "bug", "label": "오류/버그" },
-    { "id": "feature", "label": "기능 제안" },
-    { "id": "content", "label": "콘텐츠" },
-    { "id": "other", "label": "기타" }
+    { "slug": "GENERAL", "name": "일반" },
+    { "slug": "BUG", "name": "버그" },
+    { "slug": "SUGGESTION", "name": "제안" },
+    { "slug": "OTHER", "name": "기타" }
   ]
 }
 ```

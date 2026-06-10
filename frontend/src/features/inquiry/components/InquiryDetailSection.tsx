@@ -1,17 +1,18 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchInquiryDetail, deleteInquiry } from '../api/inquiry.api';
-import type { Inquiry } from '../types/inquiry.types';
-import { INQUIRY_CATEGORY_LABELS, INQUIRY_STATUS_LABELS } from '../types/inquiry.types';
+import type { InquiryDetail } from '../types/inquiry.types';
+import { INQUIRY_STATUS_LABELS } from '../types/inquiry.types';
 
 interface InquiryDetailSectionProps {
   inquiryId: number;
   isAdmin?: boolean;
   onBack: () => void;
-  onEdit: (inquiry: Inquiry) => void;
+  onEdit: (inquiry: InquiryDetail) => void;
   onDeleted: () => void;
 }
 
@@ -27,7 +28,7 @@ export const InquiryDetailSection = ({
   onEdit,
   onDeleted,
 }: InquiryDetailSectionProps) => {
-  const [inquiry, setInquiry] = useState<Inquiry | null>(null);
+  const [inquiry, setInquiry] = useState<InquiryDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -53,7 +54,7 @@ export const InquiryDetailSection = ({
     }
   };
 
-  const isPending = inquiry?.status === 'pending';
+  const isPending = inquiry?.status === 'PENDING';
   const canEdit = !isAdmin && isPending;
 
   return (
@@ -103,7 +104,7 @@ export const InquiryDetailSection = ({
           <div className="p-5">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xs font-medium bg-sky-50 text-sky-600 rounded-full px-2 py-0.5">
-                {INQUIRY_CATEGORY_LABELS[inquiry.category]}
+                {inquiry.categoryName}
               </span>
               <span
                 className={`text-xs font-medium rounded-full px-2 py-0.5 ${
@@ -115,16 +116,39 @@ export const InquiryDetailSection = ({
             </div>
 
             <h2 className="font-bold text-base text-gray-900 mb-1">{inquiry.title}</h2>
-            {isAdmin && (
-              <p className="text-xs text-gray-400 mb-1">작성자: {inquiry.userNickname}</p>
+            {isAdmin && inquiry.authorNickname && (
+              <p className="text-xs text-gray-400 mb-1">작성자: {inquiry.authorNickname}</p>
             )}
             <p className="text-xs text-gray-400 mb-4">{formatDate(inquiry.createdAt)}</p>
 
-            <div className="bg-gray-50 rounded-xl p-4 mb-6">
+            <div className="bg-gray-50 rounded-xl p-4 mb-4">
               <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
                 {inquiry.content}
               </p>
             </div>
+
+            {inquiry.images.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mb-6">
+                {inquiry.images.map((img) => (
+                  <a
+                    key={img.imageId}
+                    href={img.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="relative aspect-square rounded-xl overflow-hidden bg-gray-100"
+                  >
+                    <Image
+                      src={img.url}
+                      alt="첨부 이미지"
+                      fill
+                      sizes="33vw"
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
 
             {inquiry.answer && (
               <div>
@@ -137,7 +161,7 @@ export const InquiryDetailSection = ({
                     {inquiry.answer.content}
                   </p>
                   <p className="text-xs text-gray-400">
-                    {inquiry.answer.adminName} · {formatDate(inquiry.answer.createdAt)}
+                    {inquiry.answer.answeredBy} · {formatDate(inquiry.answer.answeredAt)}
                   </p>
                 </div>
               </div>
