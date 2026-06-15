@@ -35,7 +35,7 @@ spring:
 
   # Flyway
   flyway:
-    enabled: true
+    enabled: false
     baseline-on-migrate: true
 
   # Redis
@@ -103,6 +103,7 @@ spring:
     refresh-token-validity-in-seconds: 86400 # 1일
 
 
+
 # Logging
 logging:
   level:
@@ -133,3 +134,10 @@ management:
   endpoint:
     health:
       show-details: always
+
+cloud:
+  aws:
+    s3:
+      bucket: ${STORAGE_BUCKET_NAME}
+      region: ${STORAGE_REGION}
+      presigned-url-duration-minutes: 30

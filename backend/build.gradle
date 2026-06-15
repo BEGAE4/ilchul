@@ -31,6 +31,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation("com.anthropic:anthropic-java:2.11.1")
 	compileOnly 'org.projectlombok:lombok'
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
@@ -47,6 +48,10 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-mysql'
+	implementation platform("software.amazon.awssdk:bom:2.44.12")
+	implementation "software.amazon.awssdk:s3"
+	implementation "software.amazon.awssdk:auth"
+
 }
 
 tasks.named('test') {

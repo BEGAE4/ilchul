@@ -1,13 +1,22 @@
 package com.begae.backend.plan.controller;
 
+import com.begae.backend.plan.dto.*;
+import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.global.exception.GlobalErrorCode;
 import com.begae.backend.plan.dto.PlanCopyResponseDto;
 import com.begae.backend.plan.dto.PlanDetailDto;
+import com.begae.backend.plan.dto.PopularPlanResponseDto;
 import com.begae.backend.plan.service.PlanService;
+import com.begae.backend.global.security.principal.OauthUserDetails;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+@Validated
 @RestController
 @RequestMapping("api/plan")
 @RequiredArgsConstructor
@@ -27,12 +36,74 @@ public class PlanController {
 //
     @GetMapping("/{planId}")
     public ResponseEntity<PlanDetailDto> getPlanDetail(@PathVariable Integer planId) {
-        return ResponseEntity.status(HttpStatus.OK).body(planService.getPlanDetail(planId));
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(planService.getPlanDetail(planId));
     }
 
     @PostMapping("/copy/{planId}")
-    public ResponseEntity<PlanCopyResponseDto> copyPlan(@PathVariable Integer planId) {
-        int userId = 1;
-        return ResponseEntity.status(HttpStatus.OK).body(planService.copyPlan(planId, userId));
+    public ResponseEntity<PlanCopyResponseDto> copyPlan(
+            @PathVariable @Positive Integer planId,
+            @AuthenticationPrincipal OauthUserDetails userDetails
+    ) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(planService.copyPlan(planId, userDetails.getUserId()));
     }
+
+    /**
+     * 내 주변 인기 플랜 조회
+     * @param lat
+     * @param lng
+     * @param limit
+     * @param page
+     * @return
+     */
+    @GetMapping("/popular")
+    public ResponseEntity<PopularPlanResponseDto> getPopularPlans(
+            @RequestParam Double lat,
+            @RequestParam Double lng,
+            @RequestParam(defaultValue = "5") Integer limit,
+            @RequestParam(defaultValue = "1") Integer page
+    ) {
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+            throw new CustomException(GlobalErrorCode.INVALID_INPUT_VALUE);
+        }
+        return ResponseEntity.ok(planService.getPopularPlans(lat, lng, limit, page));
+    }
+
+    /**
+     * 전국 인기 플랜 조회
+     * @param limit
+     * @param page
+     * @return
+     */
+    @GetMapping("/popular/nationwide")
+    public ResponseEntity<PopularPlanResponseDto> getNationwidePopularPlans(
+            @RequestParam(defaultValue = "3") Integer limit,
+            @RequestParam(defaultValue = "1") Integer page
+    ) {
+        return ResponseEntity.ok(planService.getNationwidePopularPlans(limit, page));
+    }
+
+    @PostMapping("/create")
+    public ResponseEntity<CreatePlanResponseDto> createPlan(@AuthenticationPrincipal OauthUserDetails user,
+                                                            @RequestBody CreatePlanRequestDto request) {
+        return ResponseEntity.ok(planService.CreatePlanWithPlaces(user.getUserId(), request));
+    }
+
+    @PatchMapping("/{planId}")
+    public ResponseEntity<Integer> updatePlan(@AuthenticationPrincipal OauthUserDetails user,
+                                           @PathVariable Integer planId,
+                                           @RequestBody UpdatePlanRequestDto request) {
+        // 이름, 사진, 공개여부, 설명은 변경가능
+        // 나머지(출발지, 여행시작/여행종료일자)는 인증 여부 검사
+        return ResponseEntity.ok(planService.updatePlan(user.getUserId(), planId, request));
+    }
+
+    @DeleteMapping("/{planId}")
+    public ResponseEntity<Void> deletePlan(@AuthenticationPrincipal OauthUserDetails user,
+                                           @PathVariable Integer planId) {
+        planService.deletePlan(user.getUserId(), planId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
 }

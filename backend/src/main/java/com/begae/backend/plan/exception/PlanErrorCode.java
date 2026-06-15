@@ -10,7 +10,10 @@ import org.springframework.http.HttpStatus;
 public enum PlanErrorCode implements ErrorCode {
 
     PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "플랜을 찾을 수 없습니다."),
-    INVALID_PLAN_STATUS(HttpStatus.BAD_REQUEST, "P002", "유효하지 않은 플랜 상태입니다.");
+    INVALID_PLAN_STATUS(HttpStatus.BAD_REQUEST, "P002", "유효하지 않은 플랜 상태입니다."),
+    PLAN_ACCESS_DENIED(HttpStatus.FORBIDDEN,"P003", "플랜 수정 권한이 없습니다."),
+    VERIFIED_PLAN_UPDATE_RESTRICTED(HttpStatus.CONFLICT, "P004", "인증된 플랜은 해당 정보를 수정할 수 없습니다."),
+    INVALID_TRIP_DATE_RANGE(HttpStatus.BAD_REQUEST, "P005", "여행 시작일은 여행 종료일보다 늦을 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
