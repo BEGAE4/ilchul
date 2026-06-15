@@ -35,6 +35,9 @@ public class Plan extends BaseEntity {
     @Column(name = "is_plan_visible")
     private Boolean isPlanVisible;
 
+    @Column(name = "is_blinded")
+    private Boolean isBlinded;
+
     @Column(name = "plan_description")
     private String planDescription;
 
@@ -154,5 +157,7 @@ public class Plan extends BaseEntity {
         }
     }
 
-
+    public void updateBlind() {
+        this.isBlinded = true;
+    }
 }
