@@ -1,9 +1,11 @@
 package com.begae.backend.plan_place.controller;
 
-import com.begae.backend.plan_place.dto.CreatePlanPreviewRequestDto;
+import com.begae.backend.global.security.principal.OauthUserDetails;
+import com.begae.backend.plan_place.dto.*;
 import com.begae.backend.plan_place.service.PlanPlaceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -13,8 +15,23 @@ public class PlanPlaceController {
 
     private final PlanPlaceService planPlaceService;
 
-    @PostMapping("/duration")
-    public ResponseEntity<?> getDuration(@RequestBody CreatePlanPreviewRequestDto request) {
+    @PostMapping("/preview")
+    public ResponseEntity<CreatePlanPreviewResponseDto> getCreatePlanPreview(@AuthenticationPrincipal OauthUserDetails user,
+                                                                             @RequestBody CreatePlanPreviewRequestDto request) {
         return ResponseEntity.ok().body(planPlaceService.createPlanPreview(request));
+    }
+
+    @PostMapping("/{planId}/preview")
+    public ResponseEntity<UpdatePlanPreviewResponseDto> getUpdatePlanPreview(@AuthenticationPrincipal OauthUserDetails user,
+                                                                             @PathVariable Integer planId,
+                                                                             @RequestBody UpdatePlanPlaceRequestDto request) {
+        return ResponseEntity.ok().body(planPlaceService.updatePlanPreview(user.getUserId(), planId, request));
+    }
+
+    @PostMapping("/{planId}/update")
+    public ResponseEntity<UpdatePlanPlaceResponseDto> updatePlanPlace(@AuthenticationPrincipal OauthUserDetails user,
+                                                                      @PathVariable Integer planId,
+                                                                      @RequestBody UpdatePlanPlaceRequestDto request) {
+        return ResponseEntity.ok().body(planPlaceService.updatePlanPlace(user.getUserId(), planId, request));
     }
 }

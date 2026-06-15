@@ -1,23 +1,31 @@
 package com.begae.backend.plan.service;
 
+import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.place.domain.Place;
+import com.begae.backend.place.exception.PlaceErrorCode;
+import com.begae.backend.place.repository.PlaceRepository;
 import com.begae.backend.plan.domain.Plan;
-import com.begae.backend.plan.dto.PlanCopyResponseDto;
-import com.begae.backend.plan.dto.PlanDetailDto;
-import com.begae.backend.plan.dto.PlanDetailFlatDto;
+import com.begae.backend.plan.exception.PlanErrorCode;
 import com.begae.backend.plan.exception.PlanNotFoundException;
+import com.begae.backend.user.exception.UserNotFoundException;
+import com.begae.backend.plan.dto.*;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan_place.domain.PlanPlace;
 import com.begae.backend.plan_place.domain.PlanPlaceImage;
+import com.begae.backend.plan_place.repository.PlanPlaceRepository;
 import com.begae.backend.user.domain.User;
-import com.begae.backend.user.exception.UserNotFoundException;
+import com.begae.backend.user.exception.UserErrorCode;
 import com.begae.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor
@@ -26,12 +34,65 @@ public class PlanServiceImpl implements PlanService{
     private final PlanRepository planRepository;
     private final RestTemplate restTemplate = new RestTemplate();
     private final UserRepository userRepository;
+    private final PlaceRepository placeRepository;
+    private final PlanPlaceRepository planPlaceRepository;
 
 //    @Value("${tmap.api.key}")
 //    private String tmapApiKey;
 
     @Override
     public void findPlanByLikeCount() {
+
+    }
+
+    @Override
+    @Transactional
+    public CreatePlanResponseDto CreatePlanWithPlaces(Integer userId, CreatePlanRequestDto request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+
+        Plan plan = Plan.builder()
+                .user(user)
+                .planTitle(request.getPlanTitle())
+                .isVerified(false)
+                .isPlanVisible(request.getIsPlanVisible())
+                .planDescription(request.getPlanDescription())
+                .requiredTime(request.getRequiredTime())
+                .totalDistance(request.getTotalDistance())
+                .departurePoint(request.getDeparturePoint())
+                .tripStartDate(request.getTripStartDate())
+                .tripEndDate(request.getTripEndDate())
+                .likeCount(0)
+                .scrapCount(0)
+                .build();
+        Plan savedPlan = planRepository.save(plan);
+
+        List<PlanPlace> planPlaces = request.getPlaces().stream()
+                .map(placeRequest -> {
+                    Place place = placeRepository.findById(placeRequest.getPlaceId())
+                            .orElseThrow(() -> new CustomException(PlaceErrorCode.PLACE_NOT_FOUND));
+
+                    return PlanPlace.builder()
+                            .plan(savedPlan)
+                            .place(place)
+                            .orderIndex(placeRequest.getOrder())
+                            .travelTime(placeRequest.getTraveltime())
+                            .stayTime(placeRequest.getStayTime())
+
+                            // 스냅샷 저장
+                            .snapshotPlaceName(place.getPlaceName())
+                            .snapshotAddressName(place.getAddressName())
+                            .snapshotRoadAddressName(place.getRoadAddressName())
+                            .snapshotCategoryName(place.getCategoryName())
+                            .snapshotX(place.getX())
+                            .snapshotY(place.getY())
+                            .build();
+                })
+                .toList();
+
+        planPlaceRepository.saveAll(planPlaces);
+
+        return CreatePlanResponseDto.builder().planId(savedPlan.getPlanId()).build();
 
     }
 
@@ -79,101 +140,142 @@ public class PlanServiceImpl implements PlanService{
 //                .build();
 //    }
 //
-    @Override
     @Transactional(readOnly = true)
+    @Override
     public PlanDetailDto getPlanDetail(Integer planId) {
         List<PlanDetailFlatDto> flats = planRepository.findPlanDetailFlat(planId);
         if (flats.isEmpty()) {
-            throw new IllegalArgumentException("plan이 없습니다.");
+            throw new CustomException(PlanErrorCode.PLAN_NOT_FOUND);
         }
-        PlanDetailFlatDto first = flats.getFirst();
-        List<PlanDetailDto.PlanPlaceDetailDto> places =
-                flats.stream()
-                        .filter(f -> f.getPlanPlaceId() != null)
-                        .map(f -> PlanDetailDto.PlanPlaceDetailDto.builder()
-                                .planPlaceId(f.getPlanPlaceId())
-                                .placeImage(f.getPlaceImage())
-                                .placeName(f.getPlaceName())
-                                .addressName(f.getAddressName())
-                                .roadAddressName(f.getRoadAddressName())
-                                .travelTime(f.getTravelTime())
-                                .orderIndex(f.getOrderIndex())
-                                .isStamped(f.getIsStamped())
-                                .categoryName(f.getCategoryName())
-                                .stayTime(f.getStayTime())
-                                .build())
-                        .toList();
 
-        return PlanDetailDto.builder()
-                .planId(first.getPlanId())
-                .planTitle(first.getPlanTitle())
-                .tripStartDate(first.getTripStartDate())
-                .tripEndDate(first.getTripEndDate())
-                .createAt(first.getCreateAt())
-                .isVerified(first.getIsVerified())
-                .isPlanVisible(first.getIsPlanVisible())
-                .planDescription(first.getPlanDescription())
-                .requiredTime(first.getRequiredTime())
-                .totalDistance(first.getTotalDistance())
-                .likeCount(first.getLikeCount())
-                .scrapCount(first.getScrapCount())
-                .planPlaceDetailDtos(places)
-                .build();
+        return PlanDetailDto.from(flats);
     }
 
+    private static final double SEARCH_RADIUS_KM = 10.0;
+
+    @Transactional(readOnly = true)
+    @Override
+    public PopularPlanResponseDto getPopularPlans(Double lat, Double lng, Integer limit, Integer page) {
+        int safeLimit = Math.min(limit, 50);
+        int offset = (page - 1) * safeLimit;
+
+        List<Integer> planIds = planRepository.findPopularPlanIds(lat, lng, SEARCH_RADIUS_KM, safeLimit, offset);
+        int totalCount = planRepository.countPopularPlans(lat, lng, SEARCH_RADIUS_KM);
+
+        if (planIds.isEmpty()) {
+            return PopularPlanResponseDto.of(List.of(), page, safeLimit, totalCount);
+        }
+
+        Map<Integer, Plan> planMap = planRepository.findByPlanIdIn(planIds)
+                .stream()
+                .collect(Collectors.toMap(Plan::getPlanId, p -> p));
+
+        List<PopularPlanItemDto> data = IntStream.range(0, planIds.size())
+                .mapToObj(i -> {
+                    Plan plan = planMap.get(planIds.get(i));
+                    if (plan == null) return null;
+                    int ranking = offset + i + 1;
+                    return PopularPlanItemDto.of(plan, ranking);
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        return PopularPlanResponseDto.of(data, page, safeLimit, totalCount);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public PopularPlanResponseDto getNationwidePopularPlans(Integer limit, Integer page) {
+        int safeLimit = Math.min(limit, 50);
+        int offset = (page - 1) * safeLimit;
+
+        List<Integer> planIds = planRepository.findNationwidePopularPlanIds(safeLimit, offset);
+        int totalCount = planRepository.countNationwidePopularPlans();
+
+        if (planIds.isEmpty()) {
+            return PopularPlanResponseDto.of(List.of(), page, safeLimit, totalCount);
+        }
+
+        Map<Integer, Plan> planMap = planRepository.findByPlanIdIn(planIds)
+                .stream()
+                .collect(Collectors.toMap(Plan::getPlanId, p -> p));
+
+        List<PopularPlanItemDto> data = IntStream.range(0, planIds.size())
+                .mapToObj(i -> {
+                    Plan plan = planMap.get(planIds.get(i));
+                    if (plan == null) return null;
+                    int ranking = offset + i + 1;
+                    return PopularPlanItemDto.of(plan, ranking);
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        return PopularPlanResponseDto.of(data, page, safeLimit, totalCount);
+    }
+
+    @Transactional
     @Override
     public PlanCopyResponseDto copyPlan(Integer planId, Integer userId) {
         Plan originPlan = planRepository.findById(planId)
-                .orElseThrow(() -> new PlanNotFoundException("PLAN_NOT_FOUND"));
+                .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
 
         User user = userRepository.findById(userId)
-                .orElseThrow(UserNotFoundException::new);
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
 
-        // 새로운 플랜 만들기
-        Plan newPlan = Plan.builder()
-                .planTitle(originPlan.getPlanTitle())
-                .requiredTime(originPlan.getRequiredTime())
-                .totalDistance(originPlan.getTotalDistance())
-                .departurePoint(originPlan.getDeparturePoint())
-                .user(user)
-                .likeCount(0)
-                .scrapCount(0)
-                .isVerified(false)
-                .isPlanVisible(false)
-                .planPlaces(new ArrayList<>())
-                .build();
+        Plan newPlan = Plan.copyOf(originPlan, user);
+        planRepository.save(newPlan);
 
-        // 새로운 플랜 장소 만들기
-        for(PlanPlace planPlace : originPlan.getPlanPlaces()) {
-            PlanPlace newPlanPlace = PlanPlace.builder()
-                    .place(planPlace.getPlace())
-                    .plan(newPlan)
-                    .orderIndex(planPlace.getOrderIndex())
-                    .travelTime(planPlace.getTravelTime())
-                    .stayTime(planPlace.getStayTime())
-                    .snapshotAddressName(planPlace.getSnapshotAddressName())
-                    .snapshotRoadAddressName(planPlace.getSnapshotRoadAddressName())
-                    .snapshotCategoryName(planPlace.getSnapshotCategoryName())
-                    .snapshotPlaceName(planPlace.getSnapshotPlaceName())
-                    .snapshotX(planPlace.getSnapshotX())
-                    .snapshotY(planPlace.getSnapshotY())
-                    .isStamped(false)
-                    .planPlaceImages(new ArrayList<>())
-                    .build();
+        return PlanCopyResponseDto.from(newPlan);
+    }
 
-            for (PlanPlaceImage planPlaceImage : planPlace.getPlanPlaceImages()) {
-                PlanPlaceImage newPlanPlaceImage = PlanPlaceImage.builder()
-                        .imageUrl(planPlaceImage.getImageUrl())
-                        .planPlace(newPlanPlace)
-                        .build();
-                newPlanPlace.getPlanPlaceImages().add(newPlanPlaceImage);
-            }
+    @Override
+    @Transactional
+    public Integer updatePlan(Integer userId, Integer planId, UpdatePlanRequestDto request) {
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
 
-            newPlan.getPlanPlaces().add(newPlanPlace);
+        validatePlanOwner(plan, userId);
+
+        if(request.hasVerificationRestrictedFields() && plan.isVerifiedPlan()) {
+            throw new CustomException(PlanErrorCode.VERIFIED_PLAN_UPDATE_RESTRICTED);
         }
 
-        planRepository.save(newPlan);
-        return new PlanCopyResponseDto(newPlan.getPlanId());
+        if (request.getTripStartDate() != null
+                && request.getTripEndDate() != null
+                && request.getTripStartDate().isAfter(request.getTripEndDate())) {
+            throw new CustomException(PlanErrorCode.INVALID_TRIP_DATE_RANGE);
+        }
+
+        plan.updateBasicInfo(
+                request.getPlanTitle(),
+                request.getIsPlanVisible(),
+                request.getPlanDescription()
+        );
+
+        plan.updateUnverifiedOnlyInfo(
+                request.getTripStartDate(),
+                request.getTripEndDate()
+        );
+
+        return plan.getPlanId();
+    }
+
+    @Override
+    @Transactional
+    public void deletePlan(Integer userId, Integer planId) {
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
+
+        validatePlanOwner(plan, userId);
+
+        planRepository.delete(plan);
+
+    }
+
+    private void validatePlanOwner(Plan plan, Integer userId) {
+        if (!plan.getUser().getUserId().equals(userId)) {
+            throw new CustomException(PlanErrorCode.PLAN_ACCESS_DENIED);
+        }
     }
 //
 //    private List<RouteSegment> calculateAllRoutes(PlanPreviewRequest request) {

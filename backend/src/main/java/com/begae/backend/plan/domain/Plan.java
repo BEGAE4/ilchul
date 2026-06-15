@@ -35,6 +35,9 @@ public class Plan extends BaseEntity {
     @Column(name = "is_plan_visible")
     private Boolean isPlanVisible;
 
+    @Column(name = "is_blinded")
+    private Boolean isBlinded;
+
     @Column(name = "plan_description")
     private String planDescription;
 
@@ -97,4 +100,64 @@ public class Plan extends BaseEntity {
     public void increaseScrappedCount() { this.scrapCount++; }
 
     public void decreaseScrappedCount() { this.scrapCount--; }
+
+    public static Plan copyOf(Plan source, User newOwner) {
+        Plan newPlan = Plan.builder()
+                .planTitle(source.getPlanTitle())
+                .requiredTime(source.getRequiredTime())
+                .totalDistance(source.getTotalDistance())
+                .departurePoint(source.getDeparturePoint())
+                .user(newOwner)
+                .likeCount(0)
+                .scrapCount(0)
+                .isVerified(false)
+                .isPlanVisible(false)
+                .planPlaces(new ArrayList<>())
+                .build();
+
+        source.getPlanPlaces().stream()
+                .map(planPlace -> PlanPlace.copyOf(planPlace, newPlan))
+                .forEach(newPlan.getPlanPlaces()::add);
+
+        return newPlan;
+    }
+
+    public void updateRouteSummary(Integer requiredTime, Integer totalDistance, String departurePoint) {
+        this.requiredTime = requiredTime;
+        this.totalDistance = totalDistance;
+        this.departurePoint = departurePoint;
+    }
+
+    public boolean isVerifiedPlan() {
+        return Boolean.TRUE.equals(this.isVerified);
+    }
+
+    public void updateBasicInfo(String planTitle, Boolean isPlanVisible, String planDescription) {
+        if (planTitle != null) {
+            this.planTitle = planTitle;
+        }
+
+        if (isPlanVisible != null) {
+            this.isPlanVisible = isPlanVisible;
+        }
+
+        if (planDescription != null) {
+            this.planDescription = planDescription;
+        }
+    }
+
+    public void updateUnverifiedOnlyInfo(LocalDateTime tripStartDate, LocalDateTime tripEndDate) {
+
+        if (tripStartDate != null) {
+            this.tripStartDate = tripStartDate;
+        }
+
+        if (tripEndDate != null) {
+            this.tripEndDate = tripEndDate;
+        }
+    }
+
+    public void updateBlind() {
+        this.isBlinded = true;
+    }
 }
