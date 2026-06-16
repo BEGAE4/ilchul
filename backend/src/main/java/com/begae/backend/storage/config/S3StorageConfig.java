@@ -18,18 +18,40 @@ public class S3StorageConfig {
 
     @Bean
     public S3Client s3Client() {
-        return S3Client.builder()
+        var builder = S3Client.builder()
                 .region(Region.of(properties.region()))
-                .credentialsProvider(DefaultCredentialsProvider.builder().build())
-                .build();
+                .credentialsProvider(DefaultCredentialsProvider.builder().build());
+
+        if (org.springframework.util.StringUtils.hasText(properties.endpoint())) {
+            builder.endpointOverride(java.net.URI.create(properties.endpoint()))
+                   .forcePathStyle(true);
+        }
+
+        return builder.build();
     }
 
     @Bean
     public S3Presigner s3Presigner() {
-        return S3Presigner.builder()
+        var builder = S3Presigner.builder()
                 .region(Region.of(properties.region()))
-                .credentialsProvider(DefaultCredentialsProvider.builder().build())
+                .credentialsProvider(DefaultCredentialsProvider.builder().build());
+
+        if (org.springframework.util.StringUtils.hasText(properties.endpoint())) {
+            // S3Presigner builder might not have forcePathStyle method directly in some versions,
+            // but endpointOverride is required. To be safe, S3Presigner inherits the configuration.
+            // Wait, S3Presigner in AWS SDK v2 does not have forcePathStyle on its builder.
+            // We need to pass S3Configuration if we want to set path style.
+            builder.endpointOverride(java.net.URI.create(properties.endpoint()));
+            
+            // Note: forcePathStyle for presigner requires s3Configuration
+            software.amazon.awssdk.services.s3.S3Configuration s3Configuration = 
+                software.amazon.awssdk.services.s3.S3Configuration.builder()
+                .pathStyleAccessEnabled(true)
                 .build();
+            builder.serviceConfiguration(s3Configuration);
+        }
+
+        return builder.build();
     }
 }
 
