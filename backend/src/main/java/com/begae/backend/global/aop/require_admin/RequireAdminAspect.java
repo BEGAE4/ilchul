@@ -2,7 +2,7 @@ package com.begae.backend.global.aop.require_admin;
 
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.global.exception.GlobalErrorCode;
-import com.begae.backend.user.auth.OauthUserDetails;
+import com.begae.backend.global.security.principal.OauthUserDetails;
 import com.begae.backend.user.common.UserRole;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
