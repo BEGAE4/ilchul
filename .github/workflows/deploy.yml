@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set lowercase variables
         id: lowercase
@@ -34,6 +36,7 @@ jobs:
         uses: dorny/paths-filter@v3
         id: filter
         with:
+          base: ${{ github.event.before }}
           filters: |
             frontend: [ 'frontend/**' ]
             backend: [ 'backend/**' ]

@@ -6,7 +6,7 @@ import com.begae.backend.cs_inquiry.dto.request.UpdateCsInquiryRequestDto;
 import com.begae.backend.cs_inquiry.dto.response.*;
 import com.begae.backend.cs_inquiry.enums.InquiryType;
 import com.begae.backend.cs_inquiry.service.CsInquiryService;
-import com.begae.backend.user.auth.OauthUserDetails;
+import com.begae.backend.global.security.principal.OauthUserDetails;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
