@@ -21,8 +21,8 @@ export async function GET(request: NextRequest) {
 
     const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {
-      console.warn(`플랜 목록 조회: 백엔드 응답 ${res.status}, mock 반환`);
+    if (!res.ok || (typeof data.status === 'number' && data.status >= 400)) {
+      console.warn(`플랜 목록 조회: 백엔드 응답 ${res.status} / body.status ${data.status}`);
       return NextResponse.json(MOCK_PLANS_RESPONSE);
     }
 

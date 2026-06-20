@@ -6,26 +6,39 @@ import Image from 'next/image';
 import { Heart, MapPin, ArrowRight, Plus, Flame, TrendingUp, Navigation } from 'lucide-react';
 import PageLayout from '@/shared/ui/PageLayout';
 import { getNavItems } from '@/shared/lib/constants/navItems';
-import {
-  NEARBY_POPULAR_PLACES,
-  NATIONWIDE_PLACES,
-  NATIONWIDE_COURSES,
-} from '@/shared/data/mockData';
-import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
 import { ScrollCarousel } from '@/shared/ui/ScrollCarousel';
 import { HomePageSkeleton } from '@/shared/ui/Skeleton';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
+import { useGeolocation } from '@/features/main/hooks/useGeolocation';
+import { useNearbyPopularPlaces } from '@/features/main/hooks/useNearbyPopularPlaces';
+import { useNearbyPopularPlans } from '@/features/main/hooks/useNearbyPopularPlans';
+import { useNationwidePopularPlaces } from '@/features/main/hooks/useNationwidePopularPlaces';
+import { useNationwidePopularPlans } from '@/features/main/hooks/useNationwidePopularPlans';
+import type { PopularPlace } from '@/features/main/types';
 import type { BestPlace } from '@/shared/types';
 
+// 위치 미허용 시 서울 기본 좌표
+const DEFAULT_COORDS = { lat: 37.5665, lng: 126.978 };
 const INTRO_SEEN_KEY = 'ilchul_intro_seen';
 
 export default function Home() {
   const router = useRouter();
   const navItems = getNavItems('home', (path) => router.push(path));
-  const { courses } = useCourseStore();
-  const [selectedPlace, setSelectedPlace] = useState<BestPlace | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [selectedPlace, setSelectedPlace] = useState<PopularPlace | null>(null);
 
+  // 위치 정보
+  const geo = useGeolocation();
+  const geoResolved = !['idle', 'loading'].includes(geo.status);
+  const effectiveLat = geo.coords?.lat ?? (geoResolved ? DEFAULT_COORDS.lat : null);
+  const effectiveLng = geo.coords?.lng ?? (geoResolved ? DEFAULT_COORDS.lng : null);
+
+  // API 훅
+  const nearbyPlaces = useNearbyPopularPlaces({ lat: effectiveLat, lng: effectiveLng, limit: 5 });
+  const nearbyPlans = useNearbyPopularPlans({ lat: effectiveLat, lng: effectiveLng, limit: 5 });
+  const nationwidePlaces = useNationwidePopularPlaces({ limit: 6 });
+  const nationwidePlans = useNationwidePopularPlans({ limit: 3 });
+
+  // 인트로 리다이렉트
   useEffect(() => {
     const hasSeenIntro = localStorage.getItem(INTRO_SEEN_KEY);
     if (hasSeenIntro !== 'true') {
@@ -33,20 +46,14 @@ export default function Home() {
     }
   }, [router]);
 
-  useEffect(() => {
-    // Mock 데이터 사용 시 즉시 로드, API 연동 시 실제 fetch 완료 기준으로 전환
-    setIsLoading(false);
-  }, []);
+  const isInitialLoading =
+    (nationwidePlaces.isLoading && nationwidePlaces.items.length === 0) ||
+    (nationwidePlans.isLoading && nationwidePlans.items.length === 0);
 
   const handleCourseClick = (id: string) => router.push(`/course/${id}`);
   const handlePlaceNavigate = (id: string) => router.push(`/place/${id}`);
 
-  const handlePlaceAdd = (placeId: string, list: BestPlace[]) => {
-    const place = list.find((p) => p.id === placeId);
-    if (place) setSelectedPlace(place);
-  };
-
-  if (isLoading) {
+  if (isInitialLoading) {
     return (
       <PageLayout bottomNavItems={navItems}>
         <HomePageSkeleton />
@@ -61,7 +68,7 @@ export default function Home() {
         {/* ───── 섹션 1: 비주얼 슬라이드 배너 ───── */}
         <div className="relative mb-2">
           <ScrollCarousel autoPlay autoPlayInterval={3500} showDots dotsPosition="overlay">
-            {NEARBY_POPULAR_PLACES.slice(0, 3).map((place) => (
+            {nearbyPlaces.items.slice(0, 3).map((place) => (
               <div
                 key={place.id}
                 className="relative h-80 w-full cursor-pointer"
@@ -110,7 +117,7 @@ export default function Home() {
           </div>
           <div className="px-4">
             <ScrollCarousel slidesToShow={2.4} gap={10}>
-              {NEARBY_POPULAR_PLACES.map((place, idx) => (
+              {nearbyPlaces.items.map((place, idx) => (
                 <div
                   key={place.id}
                   className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-transform"
@@ -131,7 +138,7 @@ export default function Home() {
                       className="absolute bottom-2 right-2 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow text-sky-500 active:scale-90 transition-transform"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handlePlaceAdd(place.id, NEARBY_POPULAR_PLACES);
+                        setSelectedPlace(place);
                       }}
                       aria-label="플랜에 추가"
                     >
@@ -173,16 +180,16 @@ export default function Home() {
           </div>
           <div className="px-4">
             <ScrollCarousel slidesToShow={1.15} gap={12}>
-              {courses.slice(0, 5).map((course, index) => (
+              {nearbyPlans.items.slice(0, 5).map((plan, index) => (
                 <div
-                  key={course.id}
+                  key={plan.id}
                   className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
-                  onClick={() => handleCourseClick(course.id)}
+                  onClick={() => handleCourseClick(plan.id)}
                 >
                   <div className="relative h-40">
                     <Image
-                      src={course.thumbnail}
-                      alt={course.title}
+                      src={plan.thumbnail}
+                      alt={plan.title}
                       fill
                       sizes="320px"
                       className="object-cover"
@@ -192,7 +199,7 @@ export default function Home() {
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
                     <div className="absolute bottom-2.5 left-3 flex gap-1.5">
-                      {course.tags.slice(0, 2).map((tag) => (
+                      {plan.tags.slice(0, 2).map((tag) => (
                         <span
                           key={tag}
                           className="text-[10px] text-white bg-white/20 backdrop-blur-sm rounded px-1.5 py-0.5"
@@ -204,19 +211,19 @@ export default function Home() {
                   </div>
                   <div className="p-3.5">
                     <h3 className="font-bold text-gray-900 text-sm line-clamp-1 mb-1.5">
-                      {course.title}
+                      {plan.title}
                     </h3>
-                    <p className="text-xs text-gray-500 line-clamp-1 mb-2">{course.description}</p>
+                    <p className="text-xs text-gray-500 line-clamp-1 mb-2">{plan.description}</p>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 text-xs text-gray-400">
                         <MapPin size={10} />
-                        <span>{course.location}</span>
+                        <span>{plan.location}</span>
                         <span className="w-0.5 h-2.5 bg-gray-200 mx-1" />
-                        <span>{course.duration}</span>
+                        <span>{plan.duration}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Heart size={10} className="text-red-400 fill-red-400" />
-                        <span className="text-xs font-bold text-gray-600">{course.likes}</span>
+                        <span className="text-xs font-bold text-gray-600">{plan.likes}</span>
                       </div>
                     </div>
                   </div>
@@ -244,7 +251,7 @@ export default function Home() {
             </button>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {NATIONWIDE_PLACES.map((place, idx) => (
+            {nationwidePlaces.items.map((place, idx) => (
               <div
                 key={place.id}
                 className="group bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer active:scale-[0.98] transition-transform"
@@ -265,7 +272,7 @@ export default function Home() {
                     className="absolute bottom-2 right-2 p-2 bg-white rounded-full shadow-md text-sky-500 active:scale-90 transition-transform"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handlePlaceAdd(place.id, NATIONWIDE_PLACES);
+                      setSelectedPlace(place);
                     }}
                     aria-label="플랜에 추가"
                   >
@@ -305,16 +312,16 @@ export default function Home() {
             </button>
           </div>
           <div className="px-5 space-y-3">
-            {NATIONWIDE_COURSES.map((course, index) => (
+            {nationwidePlans.items.map((plan, index) => (
               <div
-                key={course.id}
+                key={plan.id}
                 className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex h-28 cursor-pointer active:scale-[0.98] transition-transform"
-                onClick={() => handleCourseClick(course.id)}
+                onClick={() => handleCourseClick(plan.id)}
               >
                 <div className="relative w-28 shrink-0">
                   <Image
-                    src={course.thumbnail}
-                    alt={course.title}
+                    src={plan.thumbnail}
+                    alt={plan.title}
                     fill
                     sizes="112px"
                     className="object-cover"
@@ -326,13 +333,13 @@ export default function Home() {
                 <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
                   <div>
                     <h3 className="font-bold text-sm text-gray-900 line-clamp-1 mb-1">
-                      {course.title}
+                      {plan.title}
                     </h3>
-                    <p className="text-xs text-gray-500 line-clamp-1">{course.description}</p>
+                    <p className="text-xs text-gray-500 line-clamp-1">{plan.description}</p>
                   </div>
                   <div>
                     <div className="flex gap-1.5 mb-1.5">
-                      {course.tags.slice(0, 3).map((tag) => (
+                      {plan.tags.slice(0, 3).map((tag) => (
                         <span
                           key={tag}
                           className="text-[10px] text-sky-600 bg-sky-50 rounded px-1.5 py-0.5"
@@ -344,13 +351,13 @@ export default function Home() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 text-[10px] text-gray-400">
                         <MapPin size={9} />
-                        <span>{course.location}</span>
+                        <span>{plan.location}</span>
                         <span className="w-0.5 h-2 bg-gray-200 mx-0.5" />
-                        <span>{course.duration}</span>
+                        <span>{plan.duration}</span>
                       </div>
                       <div className="flex items-center gap-0.5">
                         <Heart size={9} className="text-red-400 fill-red-400" />
-                        <span className="text-[10px] font-bold text-gray-500">{course.likes}</span>
+                        <span className="text-[10px] font-bold text-gray-500">{plan.likes}</span>
                       </div>
                     </div>
                   </div>
@@ -380,7 +387,7 @@ export default function Home() {
         <PlaceAddSheet
           open={!!selectedPlace}
           onClose={() => setSelectedPlace(null)}
-          place={selectedPlace}
+          place={selectedPlace as BestPlace}
         />
       </div>
     </PageLayout>
