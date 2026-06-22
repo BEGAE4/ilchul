@@ -1,5 +1,6 @@
 package com.begae.backend.plan_place.domain;
 
+import com.begae.backend.global.domain.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -8,9 +9,9 @@ import lombok.*;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Table(name = "plan_place_image")
-public class PlanPlaceImage {
+public class PlanPlaceImage extends BaseEntity {
 
     @Id
     @EqualsAndHashCode.Include

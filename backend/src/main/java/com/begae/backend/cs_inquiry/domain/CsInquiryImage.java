@@ -1,5 +1,6 @@
 package com.begae.backend.cs_inquiry.domain;
 
+import com.begae.backend.global.domain.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -9,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "cs_inquiry_image")
-public class CsInquiryImage {
+public class CsInquiryImage extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

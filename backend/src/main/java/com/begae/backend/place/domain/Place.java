@@ -1,5 +1,6 @@
 package com.begae.backend.place.domain;
 
+import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.place.dto.KakaoPlaceResponseDto;
 import com.begae.backend.place.dto.PlaceSummaryDto;
 import com.begae.backend.plan_place.domain.PlanPlace;
@@ -18,7 +19,7 @@ import java.util.List;
 @NoArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Table(name = "place")
-public class Place /*extends BaseEntity*/ {
+public class Place extends BaseEntity {
 
     @Id
     @EqualsAndHashCode.Include
