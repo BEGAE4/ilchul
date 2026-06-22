@@ -72,6 +72,10 @@ const MyPage: React.FC = () => {
               onClick={() => console.log('감정 설문 다시 하기 클릭')}
             />
             <MenuItem
+              label="받은 제재"
+              onClick={() => router.push('/my-page/sanctions')}
+            />
+            <MenuItem
               label="계정 관리"
               onClick={() => console.log('계정 관리 클릭')}
             />

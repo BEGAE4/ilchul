@@ -269,6 +269,20 @@ $report-color-cancel-text: #4b5563;      // gray-600
   }
 }
 
+.reportDetailLink {
+  display: block;
+  text-align: center;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #6b7280;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: #374151;
+  }
+}
+
 .closeOnlyBtn {
   width: 100%;
   padding: 14px;
