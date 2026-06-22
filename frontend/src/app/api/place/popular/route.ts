@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildMockNearbyPlaces } from '@/features/main/utils/popular-mock';
 
-// MAIN-61. 내 주변 인기 장소 — 백엔드 프록시, 실패 시 mock 폴백
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+// MAIN-61. 내 주변 인기 장소 — 백엔드 프록시
 export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
   const lat = sp.get('lat');
@@ -9,14 +12,13 @@ export async function GET(request: NextRequest) {
   const limit = Number(sp.get('limit') ?? 5);
   const page = Number(sp.get('page') ?? 1);
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!baseUrl) {
+  if (USE_MOCK || !BASE_URL) {
     return NextResponse.json(buildMockNearbyPlaces(limit, page));
   }
 
   try {
     const cookie = request.headers.get('cookie') ?? '';
-    const url = new URL(`${baseUrl}/api/place/popular`);
+    const url = new URL(`${BASE_URL}/api/place/popular`);
     if (lat) url.searchParams.set('lat', lat);
     if (lng) url.searchParams.set('lng', lng);
     url.searchParams.set('limit', String(limit));
@@ -30,12 +32,10 @@ export async function GET(request: NextRequest) {
 
     const data = await res.json().catch(() => null);
     if (!res.ok || !data) {
-      console.warn(`내 주변 인기 장소 조회: 백엔드 응답 ${res.status}, mock 반환`);
-      return NextResponse.json(buildMockNearbyPlaces(limit, page));
+      return NextResponse.json({ error: 'upstream_error', status: res.status }, { status: 502 });
     }
     return NextResponse.json(data);
-  } catch (error) {
-    console.error('내 주변 인기 장소 조회 실패 (백엔드 미연결, mock 반환):', error);
-    return NextResponse.json(buildMockNearbyPlaces(limit, page));
+  } catch {
+    return NextResponse.json({ error: 'upstream_unavailable' }, { status: 502 });
   }
 }
