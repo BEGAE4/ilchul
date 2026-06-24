@@ -13,14 +13,16 @@ import type {
 } from '../types/inquiry.types';
 
 const BASE = '/api/cs-inquiry';
+const DEFAULT_PAGE_SIZE = 10;
 
-/** 내 문의 목록 조회 (답변 대기/완료 구분) */
+/** 내 문의 목록 조회 (답변 대기/완료 구분) — GET /api/cs-inquiry?size=&lastInquiryId= */
 export const fetchMyInquiries = async (
   status?: InquiryStatus,
-  cursorId?: number
+  lastInquiryId?: number,
+  size: number = DEFAULT_PAGE_SIZE
 ): Promise<InquiryListResponse> => {
-  const res = await axios.get<InquiryListResponse>(`${BASE}/me`, {
-    params: { status, cursorId },
+  const res = await axios.get<InquiryListResponse>(BASE, {
+    params: { status, size, lastInquiryId },
   });
   return res.data;
 };

@@ -87,14 +87,18 @@
 
 ## INQ-4. 내 문의 조회
 
-**GET** `/api/cs-inquiry/me`
+**GET** `/api/cs-inquiry?size=&lastInquiryId=`
+
+> 전체 조회(INQ-5)와 동일한 엔드포인트이며, 인증된 사용자 역할로 범위가 결정된다.
+> (프론트는 `size` 파라미터를 함께 보내 내 문의 조회임을 식별)
 
 ### Query
 
 | 파라미터 | 타입 | 필수 | 설명 |
 |---|---|---|---|
+| size | number | ✗ | 페이지 크기 |
+| lastInquiryId | number | ✗ | 커서(이전 페이지 마지막 ID) |
 | status | string | ✗ | `PENDING` / `ANSWERED` |
-| cursorId | number | ✗ | 커서(이전 페이지 마지막 ID) |
 
 ### Response `200`
 
