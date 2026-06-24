@@ -38,7 +38,9 @@ public class SecurityConfig {
                                 "/api/sign/**",
                                 "/api/exception/**",
                                 "/oauth2/**",
-                                "/login/oauth2/**"
+                                "/login/oauth2/**",
+                                "/api/place/popular/**",
+                                "/api/plan/popular/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
