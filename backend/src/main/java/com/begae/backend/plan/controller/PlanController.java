@@ -15,6 +15,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Validated
 @RestController
@@ -87,11 +90,11 @@ public class PlanController {
     @PostMapping("/create")
     public ResponseEntity<CreatePlanResponseDto> createPlan(@AuthenticationPrincipal OauthUserDetails user,
                                                             @RequestBody CreatePlanRequestDto request) {
-        return ResponseEntity.ok(planService.CreatePlanWithPlaces(user.getUserId(), request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(planService.CreatePlanWithPlaces(user.getUserId(), request));
     }
 
     @PatchMapping("/{planId}")
-    public ResponseEntity<Integer> updatePlan(@AuthenticationPrincipal OauthUserDetails user,
+    public ResponseEntity<UpdatePlanResponseDto> updatePlan(@AuthenticationPrincipal OauthUserDetails user,
                                            @PathVariable Integer planId,
                                            @RequestBody UpdatePlanRequestDto request) {
         // 이름, 사진, 공개여부, 설명은 변경가능
@@ -104,6 +107,20 @@ public class PlanController {
                                            @PathVariable Integer planId) {
         planService.deletePlan(user.getUserId(), planId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    @PostMapping("/{planId}/images")
+    public ResponseEntity<PlanDetailDto> planImagesUpload(@AuthenticationPrincipal OauthUserDetails user,
+                                                         @PathVariable Integer planId,
+                                                         @RequestParam List<MultipartFile> images) {
+        return ResponseEntity.ok(planService.uploadImages(user.getUserId(), planId, images));
+    }
+
+    @DeleteMapping("/{planId}/images")
+    public ResponseEntity<PlanDetailDto> deleteImages(@AuthenticationPrincipal OauthUserDetails user,
+                                                      @PathVariable Integer planId,
+                                                      @RequestParam List<Integer> imageIds) {
+        return ResponseEntity.ok(planService.deleteImages(user.getUserId(), planId, imageIds));
     }
 
 }

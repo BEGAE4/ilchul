@@ -34,6 +34,7 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
         pl.totalDistance,
         pl.likeCount,
         pl.scrapCount,
+        pli.imageUrl,
         ppl.planPlaceId,
         ppl.travelTime,
         ppl.stayTime,
@@ -48,6 +49,7 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
     from Plan pl
     left join pl.planPlaces ppl
     left join ppl.place plc
+    left join pl.planImages pli
     where pl.planId = :planId
     order by ppl.orderIndex
 """)

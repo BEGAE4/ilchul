@@ -1,5 +1,7 @@
 package com.begae.backend.plan_place.dto;
 
+import com.begae.backend.plan.dto.DeparturePointDto;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -14,10 +16,12 @@ public class CreatePlanPreviewRequestDto {
 
     private Boolean isPlanVisible;
 
-    private String departurePoint;
+    private DeparturePointDto departurePoint;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime tripStartDate;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime tripEndDate;
 
     private List<Place> places;

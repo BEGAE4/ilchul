@@ -27,6 +27,7 @@ public class PlanDetailDto {
     private Integer likeCount;
     private Integer scrapCount;
     private List<PlanPlaceDetailDto> planPlaceDetailDtos;
+    private List<String> planImages;
 
     public static PlanDetailDto from(List<PlanDetailFlatDto> flats) {
         PlanDetailFlatDto first = flats.getFirst();
@@ -34,6 +35,11 @@ public class PlanDetailDto {
         List<PlanPlaceDetailDto> places = flats.stream()
                 .filter(f -> f.getPlanPlaceId() != null)
                 .map(PlanPlaceDetailDto::from)
+                .toList();
+
+        List<String> planImages = flats.stream()
+                .map(PlanDetailFlatDto::getImageUrl)
+                .filter(imageUrl -> imageUrl != null)
                 .toList();
 
         return PlanDetailDto.builder()
@@ -50,6 +56,7 @@ public class PlanDetailDto {
                 .likeCount(first.getLikeCount())
                 .scrapCount(first.getScrapCount())
                 .planPlaceDetailDtos(places)
+                .planImages(planImages)
                 .build();
     }
 

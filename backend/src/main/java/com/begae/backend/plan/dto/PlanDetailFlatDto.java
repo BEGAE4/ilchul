@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @AllArgsConstructor
@@ -21,6 +22,7 @@ public class PlanDetailFlatDto {
     private int totalDistance;
     private Integer likeCount;
     private Integer scrapCount;
+    private String imageUrl;
     private Integer planPlaceId;
     private Integer travelTime;
     private Integer stayTime;
