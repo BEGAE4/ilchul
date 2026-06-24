@@ -1,17 +1,19 @@
 package com.begae.backend.plan.service;
 
 import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.like.domain.Like;
+import com.begae.backend.like.enums.LikeType;
+import com.begae.backend.like.repository.LikeRepository;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.exception.PlaceErrorCode;
 import com.begae.backend.place.repository.PlaceRepository;
 import com.begae.backend.plan.domain.Plan;
-import com.begae.backend.plan.exception.PlanErrorCode;
-import com.begae.backend.plan.exception.PlanNotFoundException;
-import com.begae.backend.user.exception.UserNotFoundException;
+import com.begae.backend.plan.domain.ScrappedPlan;
 import com.begae.backend.plan.dto.*;
+import com.begae.backend.plan.exception.PlanErrorCode;
 import com.begae.backend.plan.repository.PlanRepository;
+import com.begae.backend.plan.repository.ScrappedPlanRepository;
 import com.begae.backend.plan_place.domain.PlanPlace;
-import com.begae.backend.plan_place.domain.PlanPlaceImage;
 import com.begae.backend.plan_place.repository.PlanPlaceRepository;
 import com.begae.backend.user.domain.User;
 import com.begae.backend.user.exception.UserErrorCode;
@@ -36,6 +38,8 @@ public class PlanServiceImpl implements PlanService{
     private final UserRepository userRepository;
     private final PlaceRepository placeRepository;
     private final PlanPlaceRepository planPlaceRepository;
+    private final LikeRepository likeRepository;
+    private final ScrappedPlanRepository scrappedPlanRepository;
 
 //    @Value("${tmap.api.key}")
 //    private String tmapApiKey;
@@ -142,13 +146,24 @@ public class PlanServiceImpl implements PlanService{
 //
     @Transactional(readOnly = true)
     @Override
-    public PlanDetailDto getPlanDetail(Integer planId) {
+    public PlanDetailDto getPlanDetail(Integer planId, Integer userId) {
         List<PlanDetailFlatDto> flats = planRepository.findPlanDetailFlat(planId);
         if (flats.isEmpty()) {
             throw new CustomException(PlanErrorCode.PLAN_NOT_FOUND);
         }
 
-        return PlanDetailDto.from(flats);
+        boolean isLiked = false;
+        boolean isBookmarked = false;
+        if (userId != null) {
+            isLiked = likeRepository.findByUser_UserIdAndTypeIdAndLikeType(userId, planId, LikeType.PLAN)
+                    .map(Like::getLikeStatus)
+                    .orElse(false);
+            isBookmarked = scrappedPlanRepository.findByUser_UserIdAndPlan_PlanId(userId, planId)
+                    .map(ScrappedPlan::isScrapped)
+                    .orElse(false);
+        }
+
+        return PlanDetailDto.from(flats, isLiked, isBookmarked);
     }
 
     private static final double SEARCH_RADIUS_KM = 10.0;
@@ -215,17 +230,26 @@ public class PlanServiceImpl implements PlanService{
 
     @Transactional
     @Override
-    public PlanCopyResponseDto copyPlan(Integer planId, Integer userId) {
-        Plan originPlan = planRepository.findById(planId)
+    public PlanCopyResponseDto copyPlan(
+            Integer planId,
+            PlanCopyRequestDto planCopyRequestDto,
+            Integer userId) {
+        Plan originPlan = planRepository.findByIdWithLock(planId)
                 .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
-
+        originPlan.validateNotBlinded();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
+
+        for(Plan plan : user.getPlans()) {
+            if(originPlan.getPlanId().equals(plan.getPlanId())) {
+                throw new CustomException(PlanErrorCode.NOT_COPY_MINE);
+            }
+        }
 
         Plan newPlan = Plan.copyOf(originPlan, user);
         planRepository.save(newPlan);
 
-        return PlanCopyResponseDto.from(newPlan);
+        return PlanCopyResponseDto.of(newPlan, originPlan.getPlanId());
     }
 
     @Override

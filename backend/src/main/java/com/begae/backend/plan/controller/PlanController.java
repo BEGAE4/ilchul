@@ -8,6 +8,7 @@ import com.begae.backend.plan.dto.PlanDetailDto;
 import com.begae.backend.plan.dto.PopularPlanResponseDto;
 import com.begae.backend.plan.service.PlanService;
 import com.begae.backend.global.security.principal.OauthUserDetails;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -35,18 +36,22 @@ public class PlanController {
 //    }
 //
     @GetMapping("/{planId}")
-    public ResponseEntity<PlanDetailDto> getPlanDetail(@PathVariable Integer planId) {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(planService.getPlanDetail(planId));
-    }
-
-    @PostMapping("/copy/{planId}")
-    public ResponseEntity<PlanCopyResponseDto> copyPlan(
-            @PathVariable @Positive Integer planId,
-            @AuthenticationPrincipal OauthUserDetails userDetails
+    public ResponseEntity<PlanDetailDto> getPlanDetail(
+            @AuthenticationPrincipal OauthUserDetails userDetails,
+            @PathVariable Integer planId
     ) {
         return ResponseEntity.status(HttpStatus.OK)
-                .body(planService.copyPlan(planId, userDetails.getUserId()));
+                .body(planService.getPlanDetail(planId, userDetails.getUserId()));
+    }
+
+    @PostMapping("{planId}/clone")
+    public ResponseEntity<PlanCopyResponseDto> copyPlan(
+            @PathVariable @Positive Integer planId,
+            @Valid @RequestBody PlanCopyRequestDto planCopyRequestDto,
+            @AuthenticationPrincipal OauthUserDetails userDetails
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(planService.copyPlan(planId, planCopyRequestDto, userDetails.getUserId()));
     }
 
     /**

@@ -32,7 +32,7 @@ public class LikeServiceImpl implements LikeService {
                 () -> new CustomException(UserErrorCode.USER_NOT_FOUND)
         );
 
-        Plan plan = planRepository.findById(planId).orElseThrow(
+        Plan plan = planRepository.findByIdWithLock(planId).orElseThrow(
                 () -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND)
         );
 

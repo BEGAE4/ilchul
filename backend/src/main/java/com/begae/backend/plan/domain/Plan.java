@@ -1,6 +1,8 @@
 package com.begae.backend.plan.domain;
 
 import com.begae.backend.global.domain.BaseEntity;
+import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.plan.exception.PlanErrorCode;
 import com.begae.backend.plan_place.domain.PlanPlace;
 import com.begae.backend.reply.domain.Reply;
 import com.begae.backend.user.domain.User;
@@ -112,6 +114,7 @@ public class Plan extends BaseEntity {
                 .scrapCount(0)
                 .isVerified(false)
                 .isPlanVisible(false)
+                .isBlinded(false)
                 .planPlaces(new ArrayList<>())
                 .build();
 
@@ -159,5 +162,11 @@ public class Plan extends BaseEntity {
 
     public void updateBlind() {
         this.isBlinded = true;
+    }
+
+    public void validateNotBlinded() {
+        if (Boolean.TRUE.equals(this.isBlinded)) {
+            throw new CustomException(PlanErrorCode.PLAN_BLINDED);
+        }
     }
 }

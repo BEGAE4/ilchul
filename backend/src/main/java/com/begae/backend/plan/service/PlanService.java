@@ -10,9 +10,9 @@ public interface PlanService {
 
     CreatePlanResponseDto CreatePlanWithPlaces(Integer userId, CreatePlanRequestDto request);
 
-    PlanDetailDto getPlanDetail(Integer planId);
+    PlanDetailDto getPlanDetail(Integer planId, Integer userId);
 
-    PlanCopyResponseDto copyPlan(Integer planId, Integer userId);
+    PlanCopyResponseDto copyPlan(Integer planId, PlanCopyRequestDto planCopyRequestDto, Integer userId);
 
     PopularPlanResponseDto getPopularPlans(Double lat, Double lng, Integer limit, Integer page);
 

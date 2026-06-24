@@ -6,14 +6,18 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class PlanCopyResponseDto {
     private Integer planId;
+    private Integer originalPlanId;
+    private LocalDateTime createAt;
 
-    public static PlanCopyResponseDto from(Plan plan) {
-        return new PlanCopyResponseDto(plan.getPlanId());
+    public static PlanCopyResponseDto of(Plan plan, Integer originalPlanId) {
+        return new PlanCopyResponseDto(plan.getPlanId(), originalPlanId, plan.getCreateAt());
     }
 }

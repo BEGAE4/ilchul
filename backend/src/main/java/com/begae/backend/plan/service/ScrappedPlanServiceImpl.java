@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -31,23 +32,25 @@ public class ScrappedPlanServiceImpl implements ScrappedPlanService {
     @Transactional
     public ScrappedPlanCreateResponseDto createPlanScrapped(Integer userId, Integer planId) {
         // plan 찾아오기
-        Plan plan = planRepository.findById(planId)
+        Plan plan = planRepository.findByIdWithLock(planId)
                 .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
 
-        scrappedPlanRepository.findByUser_UserIdAndPlan_PlanId(userId, planId)
-                .ifPresentOrElse(
-                        ScrappedPlan::toggle,
-                        () -> {
-                            ScrappedPlan newScrap = ScrappedPlan.of(user, plan);
-                            plan.increaseScrappedCount();
-                            scrappedPlanRepository.save(newScrap);
-                        }
-                );
+        Optional<ScrappedPlan> existing = scrappedPlanRepository.findByUser_UserIdAndPlan_PlanId(userId, planId);
 
-        return ScrappedPlanCreateResponseDto.from(plan);
+        boolean isBookmarked;
+        if (existing.isPresent()) {
+            existing.get().toggle();
+            isBookmarked = existing.get().isScrapped();
+        } else {
+            scrappedPlanRepository.save(ScrappedPlan.of(user, plan));
+            plan.increaseScrappedCount();
+            isBookmarked = true;
+        }
+
+        return ScrappedPlanCreateResponseDto.from(plan, isBookmarked);
     }
 
     @Override

@@ -17,11 +17,14 @@ public class PlanDetailFlatDto {
     private Boolean isPlanVisible;
     private String planDescription;
     private int requiredTime;
-//    private int totalBudget;
     private int totalDistance;
     private Integer likeCount;
     private Integer scrapCount;
+    private Integer userId;
+    private String userNickname;
+    private String userImg;
     private Integer planPlaceId;
+    private Integer placeId;
     private Integer travelTime;
     private Integer stayTime;
     private String placeImage;

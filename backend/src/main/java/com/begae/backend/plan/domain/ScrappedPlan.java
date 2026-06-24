@@ -33,6 +33,7 @@ public class ScrappedPlan {
     @Column(name = "scrapped_at", updatable = false)
     private LocalDateTime scrappedAt;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "scrapped_status")
     private ScrappedStatus scrappedStatus;
 

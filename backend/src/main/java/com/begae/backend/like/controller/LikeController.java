@@ -1,9 +1,9 @@
 package com.begae.backend.like.controller;
 
+import com.begae.backend.global.security.principal.OauthUserDetails;
 import com.begae.backend.like.dto.LikeResponseDto;
 import com.begae.backend.like.service.LikeService;
 import jakarta.validation.constraints.Positive;
-import com.begae.backend.global.security.principal.OauthUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,13 +25,13 @@ public class LikeController {
     /**
      * 플랜 좋아요 토글
      * @param planId
-     * @param userDetails
+     * @param
      * @return
      */
     @PostMapping("/{planId}")
     public ResponseEntity<LikeResponseDto> toggleLike(
-            @PathVariable @Positive Integer planId,
-            @AuthenticationPrincipal OauthUserDetails userDetails) {
+            @AuthenticationPrincipal OauthUserDetails userDetails,
+            @PathVariable @Positive Integer planId) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(likeService.toggleLike(planId, userDetails.getUserId()));
     }
