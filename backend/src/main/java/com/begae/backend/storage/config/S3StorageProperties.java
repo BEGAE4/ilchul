@@ -4,7 +4,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.StringUtils;
 
 @ConfigurationProperties(prefix = "cloud.aws.s3")
-public record S3StorageProperties(String bucket,
+public record S3StorageProperties(String endpoint,
+                                  String bucket,
                                   String region,
                                   String publicBaseUrl) {
 

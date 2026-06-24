@@ -1,21 +1,20 @@
 package com.begae.backend.reply.domain;
 
-import java.util.List;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import com.begae.backend.global.domain.BaseEntity;
+import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.reply.dto.domain.Mention;
 import com.begae.backend.reply.exception.ReplyErrorCode;
-import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.util.List;
 
 @Entity
 @Getter
@@ -56,6 +55,9 @@ public class Reply extends BaseEntity {
     @Column(name = "is_deleted")
     private Boolean isDeleted;
 
+    @Column(name = "is_blinded")
+    private Boolean isBlinded;
+
     public static Reply of(User user, Plan plan, String content, Integer parentReplyId) {
         return new Reply(user, plan, content, parentReplyId);
     }
@@ -68,6 +70,7 @@ public class Reply extends BaseEntity {
         this.likeCount = 0;
         this.childCount = 0;
         this.isDeleted = false;
+        this.isBlinded = false;
     }
 
     public void update(String content, List<User> mentionedUsers) {
@@ -113,5 +116,9 @@ public class Reply extends BaseEntity {
         if (Boolean.TRUE.equals(this.isDeleted)) {
             throw new CustomException(ReplyErrorCode.REPLY_ALREADY_DELETED);
         }
+    }
+
+    public void updateBlind() {
+        this.isBlinded = true;
     }
 }

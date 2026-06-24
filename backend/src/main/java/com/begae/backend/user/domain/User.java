@@ -6,7 +6,9 @@ import com.begae.backend.like.domain.Like;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.domain.ScrappedPlan;
 import com.begae.backend.reply.domain.Reply;
+import com.begae.backend.report.domain.AdminLog;
 import com.begae.backend.report.domain.Report;
+import com.begae.backend.report.domain.Sanction;
 import com.begae.backend.user.common.SocialType;
 import com.begae.backend.user.common.UserRole;
 import com.begae.backend.user.common.UserStatus;
@@ -14,6 +16,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,6 +58,12 @@ public class User extends BaseEntity {
     @Column(name = "user_img", length = 2000)
     private String userImg;
 
+    @Column(name = "warning_count")
+    private Integer warningCount;
+
+    @Column(name = "suspension_end_at")
+    private LocalDateTime suspensionEndAt;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Plan> plans = new ArrayList<>();
 
@@ -75,6 +84,12 @@ public class User extends BaseEntity {
 
     @OneToMany(mappedBy = "reportedUser", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Report> reported = new ArrayList<>();
+
+    @OneToMany(mappedBy = "admin", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AdminLog> adminLogs = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Sanction> sanctions = new ArrayList<>();
 
     @Builder
     public User(String userEmail, SocialType socialType, String userNickname, UserRole userRole, UserStatus userStatus, String userIntro, String userImg) {
