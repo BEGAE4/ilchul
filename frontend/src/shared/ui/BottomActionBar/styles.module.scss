@@ -1,0 +1,122 @@
+.bar {
+  position: fixed;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  pointer-events: none;
+  width: min(390px, calc(100% - 40px));
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.12),
+    0 1px 4px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  pointer-events: auto;
+}
+
+.iconButton {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 1.5px solid transparent;
+  background: transparent;
+  color: rgba(80, 80, 90, 0.75);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.45);
+    color: #0ea5e9;
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
+}
+
+.iconLabel {
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.iconButtonActiveDefault {
+  color: #0ea5e9;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.iconButtonActiveLike {
+  color: #ef4444;
+  background: rgba(254, 226, 226, 0.65);
+
+  &:hover {
+    color: #ef4444;
+    background: rgba(254, 226, 226, 0.8);
+  }
+}
+
+.iconButtonActiveBookmark {
+  color: #f59e0b;
+  background: rgba(254, 243, 199, 0.65);
+
+  &:hover {
+    color: #f59e0b;
+    background: rgba(254, 243, 199, 0.8);
+  }
+}
+
+.primaryButton {
+  flex: 1;
+  min-width: 0;
+  height: 52px;
+  border: none;
+  border-radius: 9999px;
+  background: #0ea5e9;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.35);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #38bdf8;
+    box-shadow:
+      0 6px 18px rgba(56, 189, 248, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.primaryLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

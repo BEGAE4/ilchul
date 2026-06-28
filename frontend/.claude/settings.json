@@ -20,8 +20,7 @@
       "Bash(sudo:*)",
       "Bash(git init:*)",
       "Bash(git clone:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
+
       "Bash(git push:*)",
       "Bash(git pull:*)",
       "Bash(git fetch:*)",

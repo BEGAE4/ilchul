@@ -46,6 +46,7 @@ storybook-static
 # claude code 
 # /.claude/*
 # /cc/*
+/cc/input/*
 
 # sample
 /src/samples/*
