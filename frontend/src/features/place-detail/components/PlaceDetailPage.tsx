@@ -21,6 +21,7 @@ import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
+import { BottomActionBar } from '@/shared/ui/BottomActionBar';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
 import { ScrollCarousel } from '@/shared/ui/ScrollCarousel';
 import {
@@ -403,26 +404,31 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
         </div>
       )}
 
-      {/* Sticky 하단 CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-20">
-        <div className="max-w-[480px] mx-auto bg-white border-t border-gray-100 px-5 py-3 flex gap-3">
-          <button
-            onClick={handleLike}
-            className={`px-4 py-3 rounded-xl border transition-all active:scale-95 ${
-              isLiked ? 'border-red-200 bg-red-50 text-red-500' : 'border-gray-200 bg-white text-gray-500'
-            }`}
-          >
-            <Heart size={20} className={isLiked ? 'fill-red-500' : ''} />
-          </button>
-          <button
-            onClick={() => setIsAddSheetOpen(true)}
-            className="flex-1 flex items-center justify-center gap-2 bg-sky-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform"
-          >
-            <Plus size={18} strokeWidth={3} />
-            내 플랜에 담기
-          </button>
-        </div>
-      </div>
+      <BottomActionBar
+        iconActions={[
+          {
+            id: 'like',
+            icon: Heart,
+            label: '좋아요',
+            active: isLiked,
+            activeTone: 'like',
+            filled: true,
+            onClick: handleLike,
+          },
+          {
+            id: 'bookmark',
+            icon: Bookmark,
+            label: '스크랩',
+            active: bookmarked,
+            activeTone: 'bookmark',
+            filled: true,
+            onClick: handleBookmark,
+          },
+        ]}
+        primaryLabel="내 플랜에 담기"
+        primaryIcon={Plus}
+        onPrimaryClick={() => setIsAddSheetOpen(true)}
+      />
 
       <PlaceAddSheet
         open={isAddSheetOpen}
