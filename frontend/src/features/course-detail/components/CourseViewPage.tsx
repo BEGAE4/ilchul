@@ -16,18 +16,19 @@ import {
   MoreVertical,
   Trash2,
   X,
+  Plus,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
+import { BottomActionBar } from '@/shared/ui/BottomActionBar';
 import { CourseDetailSkeleton } from '@/shared/ui/Skeleton';
-import { MOCK_COMMENTS } from '@/shared/data/mockData';
 import { useReport, ReportDialog, ReportMenuItem } from '@/features/report';
 import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStorage';
 import type { CurrentUser, ReportTarget } from '@/features/report';
-import type { Comment } from '@/shared/types';
+import { useComments } from '../hooks/useComments';
 
 interface CourseViewPageProps {
   courseId: string;
@@ -63,14 +64,28 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const reportMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const reportCtx = useReport({ reporterId: currentUser.id });
 
+  const {
+    comments,
+    isLoading: isCommentsLoading,
+    hasNext,
+    isFetchingMore,
+    commentText,
+    setCommentText,
+    replyTarget,
+    setReplyTarget,
+    deleteTarget,
+    setDeleteTarget,
+    submitComment,
+    confirmDelete,
+    toggleCommentLike,
+    hideComment,
+    fetchMore,
+  } = useComments(courseId);
+
   const [shareOpen, setShareOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savedCourseId, setSavedCourseId] = useState<string | null>(null);
-  const [commentText, setCommentText] = useState('');
-  const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
-  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
-  const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null);
   // 어느 댓글의 메뉴인지 추적 — race condition 차단 (Architect C-3)
   const [commentMenuTarget, setCommentMenuTarget] = useState<ReportTarget | null>(null);
 
@@ -120,43 +135,6 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     }
     setShowSaveModal(false);
     setSavedCourseId(null);
-  };
-
-  const handleCommentSubmit = () => {
-    if (!commentText.trim()) return;
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      user: '김여행',
-      avatar: 'https://i.pravatar.cc/150?u=me',
-      text: commentText,
-      date: '방금',
-      likes: 0,
-    };
-    setComments([newComment, ...comments]);
-    setCommentText('');
-    toast.success('댓글이 등록되었어요!');
-  };
-
-  const handleLikeComment = (commentId: string) => {
-    setLikedComments((prev) => {
-      const next = new Set(prev);
-      if (next.has(commentId)) next.delete(commentId);
-      else next.add(commentId);
-      return next;
-    });
-  };
-
-  const confirmDeleteComment = () => {
-    if (!commentToDelete) return;
-    setComments((prev) => prev.filter((c) => c.id !== commentToDelete.id));
-    setLikedComments((prev) => {
-      if (!prev.has(commentToDelete.id)) return prev;
-      const next = new Set(prev);
-      next.delete(commentToDelete.id);
-      return next;
-    });
-    setCommentToDelete(null);
-    toast.success('댓글이 삭제되었어요.');
   };
 
   // 관련 플랜 — 태그 매칭 또는 같은 지역 기반 필터링
@@ -324,78 +302,184 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           <MessageCircle size={20} className="text-sky-500" /> 댓글
         </h2>
         <div className="mb-4">
+          {replyTarget && (
+            <div className="flex items-center justify-between bg-sky-50 border border-sky-200 rounded-lg px-3 py-2 mb-2 text-sm text-sky-700">
+              <span><span className="font-bold">@{replyTarget.username}</span>에게 답글</span>
+              <button onClick={() => setReplyTarget(null)} aria-label="답글 취소">
+                <X size={14} />
+              </button>
+            </div>
+          )}
           <textarea
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            placeholder="댓글을 입력하세요..."
+            placeholder={replyTarget ? `@${replyTarget.username}에게 답글...` : '댓글을 입력하세요...'}
             className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-sky-500 text-base"
             rows={2}
             maxLength={500}
           />
           <button
-            onClick={handleCommentSubmit}
+            onClick={submitComment}
             className="mt-2 w-full bg-sky-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform"
           >
-            댓글 작성
+            {replyTarget ? '답글 작성' : '댓글 작성'}
           </button>
         </div>
-        <div className="space-y-4">
-          {comments.map((comment) => (
-            <div key={comment.id} className="flex items-start gap-3">
-              <div className="relative w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
-                <Image src={comment.avatar} alt="Avatar" fill sizes="36px" className="object-cover" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-bold text-gray-900">{comment.user}</div>
-                  <div className="text-xs text-gray-500">{comment.date}</div>
-                </div>
-                <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100 mt-1">
-                  {comment.text}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <button
-                    onClick={() => handleLikeComment(comment.id)}
-                    className={`text-sm ${likedComments.has(comment.id) ? 'text-red-500' : 'text-gray-500'}`}
-                  >
-                    <ThumbsUp size={16} />
-                  </button>
-                  <span className="text-sm text-gray-500">
-                    {likedComments.has(comment.id) ? comment.likes + 1 : comment.likes}
-                  </span>
-                  {comment.user === currentUser.name ? (
-                    // 본인 댓글: 삭제 버튼 유지
-                    <button
-                      onClick={() => setCommentToDelete(comment)}
-                      aria-label="댓글 삭제"
-                      className="ml-auto text-gray-400 hover:text-red-500 active:text-red-600"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  ) : (
-                    // 타인 댓글: 신고 진입점 ⋮ 버튼 (Q6: BottomMenu 단일 트리거)
-                    <button
-                      onClick={() =>
-                        setCommentMenuTarget({
-                          type: 'comment',
-                          id: comment.id,
-                          ownerId: comment.user,
-                          courseId,
-                          snippet: comment.text.slice(0, 60),
-                          contextUrl: `/course/${courseId}#comment-${comment.id}`,
-                        })
-                      }
-                      aria-label="댓글 더보기"
-                      className="ml-auto text-gray-400 hover:text-gray-600 active:text-gray-700"
-                    >
-                      <MoreVertical size={16} />
-                    </button>
-                  )}
+        {isCommentsLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-start gap-3 animate-pulse">
+                <div className="w-9 h-9 rounded-full bg-gray-200 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 bg-gray-200 rounded w-24" />
+                  <div className="h-10 bg-gray-100 rounded-lg" />
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {comments.map((comment) => (
+              <div key={comment.replyId}>
+                {/* 부모 댓글 */}
+                <div className="flex items-start gap-3">
+                  <div className="relative w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
+                    <Image src={comment.avatar} alt="Avatar" fill sizes="36px" className="object-cover" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-bold text-gray-900">{comment.user}</div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(comment.createdAt).toLocaleDateString('ko-KR')}
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100 mt-1 whitespace-pre-wrap">
+                      {comment.content}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <button
+                        onClick={() => toggleCommentLike(comment.replyId, comment.isLiked, null)}
+                        className={`flex items-center gap-1 text-sm ${comment.isLiked ? 'text-sky-500' : 'text-gray-400'}`}
+                      >
+                        <ThumbsUp size={14} />
+                        <span>{comment.likeCount}</span>
+                      </button>
+                      <button
+                        onClick={() => setReplyTarget({ replyId: comment.replyId, username: comment.user })}
+                        className="text-xs text-gray-400 hover:text-sky-500"
+                      >
+                        답글
+                      </button>
+                      {comment.user === currentUser.name ? (
+                        <button
+                          onClick={() =>
+                            setDeleteTarget({ replyId: comment.replyId, content: comment.content, parentId: null })
+                          }
+                          aria-label="댓글 삭제"
+                          className="ml-auto text-gray-400 hover:text-red-500"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            setCommentMenuTarget({
+                              type: 'comment',
+                              id: String(comment.replyId),
+                              ownerId: comment.user,
+                              courseId,
+                              snippet: comment.content.slice(0, 60),
+                              contextUrl: `/course/${courseId}#comment-${comment.replyId}`,
+                            })
+                          }
+                          aria-label="댓글 더보기"
+                          className="ml-auto text-gray-400 hover:text-gray-600"
+                        >
+                          <MoreVertical size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 대댓글 */}
+                {comment.replies.length > 0 && (
+                  <div className="ml-12 mt-3 space-y-3 border-l-2 border-gray-100 pl-3">
+                    {comment.replies.map((reply) => (
+                      <div key={reply.replyId} className="flex items-start gap-3">
+                        <div className="relative w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+                          <Image src={reply.avatar} alt="Avatar" fill sizes="28px" className="object-cover" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs font-bold text-gray-900">{reply.user}</div>
+                            <div className="text-[10px] text-gray-400">
+                              {new Date(reply.createdAt).toLocaleDateString('ko-KR')}
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100 mt-1 whitespace-pre-wrap">
+                            {reply.content}
+                          </p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <button
+                              onClick={() => toggleCommentLike(reply.replyId, reply.isLiked, comment.replyId)}
+                              className={`flex items-center gap-1 text-xs ${reply.isLiked ? 'text-sky-500' : 'text-gray-400'}`}
+                            >
+                              <ThumbsUp size={12} />
+                              <span>{reply.likeCount}</span>
+                            </button>
+                            {reply.user === currentUser.name ? (
+                              <button
+                                onClick={() =>
+                                  setDeleteTarget({
+                                    replyId: reply.replyId,
+                                    content: reply.content,
+                                    parentId: comment.replyId,
+                                  })
+                                }
+                                aria-label="답글 삭제"
+                                className="ml-auto text-gray-400 hover:text-red-500"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() =>
+                                  setCommentMenuTarget({
+                                    type: 'comment',
+                                    id: String(reply.replyId),
+                                    ownerId: reply.user,
+                                    courseId,
+                                    snippet: reply.content.slice(0, 60),
+                                    contextUrl: `/course/${courseId}#comment-${reply.replyId}`,
+                                  })
+                                }
+                                aria-label="답글 더보기"
+                                className="ml-auto text-gray-400 hover:text-gray-600"
+                              >
+                                <MoreVertical size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {hasNext && (
+              <button
+                onClick={fetchMore}
+                disabled={isFetchingMore}
+                className="w-full py-2.5 text-sm text-sky-600 font-medium border border-sky-200 rounded-xl hover:bg-sky-50 disabled:opacity-50"
+              >
+                {isFetchingMore ? '불러오는 중...' : '댓글 더 보기'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 관련 플랜 */}
@@ -433,41 +517,37 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         </div>
       )}
 
-      {/* Sticky 하단 FAB */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 flex gap-2 justify-center max-w-[480px] mx-auto z-50">
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            toggleLike(courseId);
-            toast(liked ? '좋아요를 취소했어요.' : '좋아요를 눌렀어요!');
-          }}
-          className={`p-3.5 rounded-xl border transition-colors ${
-            liked ? 'bg-red-50 border-red-200 text-red-500' : 'bg-gray-50 border-gray-200 text-gray-400'
-          }`}
-        >
-          <Heart size={22} className={liked ? 'fill-red-500' : ''} />
-        </motion.button>
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            toggleBookmark(courseId);
-            toast.success(bookmarked ? '저장을 해제했어요.' : '플랜을 저장했어요!');
-          }}
-          className={`p-3.5 rounded-xl border transition-colors ${
-            bookmarked
-              ? 'bg-amber-50 border-amber-200 text-amber-500'
-              : 'bg-gray-50 border-gray-200 text-gray-400'
-          }`}
-        >
-          <Bookmark size={22} className={bookmarked ? 'fill-amber-500' : ''} />
-        </motion.button>
-        <button
-          onClick={handleSaveCourse}
-          className="flex-1 bg-sky-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform"
-        >
-          이 플랜으로 일정 담기
-        </button>
-      </div>
+      <BottomActionBar
+        iconActions={[
+          {
+            id: 'like',
+            icon: Heart,
+            label: '좋아요',
+            active: liked,
+            activeTone: 'like',
+            filled: true,
+            onClick: () => {
+              toggleLike(courseId);
+              toast(liked ? '좋아요를 취소했어요.' : '좋아요를 눌렀어요!');
+            },
+          },
+          {
+            id: 'bookmark',
+            icon: Bookmark,
+            label: '스크랩',
+            active: bookmarked,
+            activeTone: 'bookmark',
+            filled: true,
+            onClick: () => {
+              toggleBookmark(courseId);
+              toast.success(bookmarked ? '저장을 해제했어요.' : '플랜을 저장했어요!');
+            },
+          },
+        ]}
+        primaryLabel="이 플랜으로 일정 담기"
+        primaryIcon={Plus}
+        onPrimaryClick={handleSaveCourse}
+      />
 
       {/* ─── 모달: 일정 담기 ─── */}
       {showSaveModal && (
@@ -579,7 +659,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         onHideContent={(t) => {
           if (t.type === 'comment') {
             // 댓글 신고 후 숨기기: 해당 댓글만 페이지에서 즉시 제거 + 로컬 스토리지에도 기록
-            setComments((prev) => prev.filter((c) => c.id !== t.id));
+            hideComment(t.id);
             hiddenReportsStorage.add(t);
           } else {
             // 플랜 신고 후 숨기기: 로컬 스토리지 기록 + 페이지 이탈
@@ -620,33 +700,33 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       )}
 
       {/* ─── 댓글 삭제 확인 모달 ─── */}
-      {commentToDelete && (
+      {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setCommentToDelete(null)} />
+          <div className="absolute inset-0 bg-black/50" onClick={() => setDeleteTarget(null)} />
           <div className="relative w-full max-w-[320px] bg-white rounded-2xl p-6 shadow-lg">
             <h3 className="text-gray-900 text-lg font-bold mb-2">댓글을 삭제하시겠어요?</h3>
             <p className="text-gray-500 text-sm mb-4 leading-relaxed">
               삭제된 댓글은 복구할 수 없습니다.
             </p>
             <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100 mb-5 line-clamp-3">
-              {commentToDelete.text}
+              {deleteTarget.content}
             </p>
             <div className="flex gap-3">
               <button
-                onClick={() => setCommentToDelete(null)}
+                onClick={() => setDeleteTarget(null)}
                 className="flex-1 bg-gray-100 text-gray-700 font-bold py-2.5 px-4 rounded-xl text-sm hover:bg-gray-200"
               >
                 취소
               </button>
               <button
-                onClick={confirmDeleteComment}
+                onClick={confirmDelete}
                 className="flex-1 bg-red-500 text-white font-bold py-2.5 px-4 rounded-xl text-sm shadow-md shadow-red-200 hover:bg-red-600"
               >
                 삭제하기
               </button>
             </div>
             <button
-              onClick={() => setCommentToDelete(null)}
+              onClick={() => setDeleteTarget(null)}
               aria-label="닫기"
               className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
             >
