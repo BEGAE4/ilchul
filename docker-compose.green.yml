@@ -6,7 +6,6 @@ services:
       - "8082:8080"
     env_file:
       - .env
-    environment:
     restart: unless-stopped
     networks:
       - ilchul-network
