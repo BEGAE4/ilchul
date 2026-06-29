@@ -342,7 +342,7 @@ public class PlanServiceImpl implements PlanService{
             planImageRepository.save(planImage);
         });
 
-        return getPlanDetail(planId);
+        return getPlanDetail(planId, userId);
     }
 
     @Transactional
@@ -362,7 +362,7 @@ public class PlanServiceImpl implements PlanService{
             planImageRepository.delete(planImage);
         });
 
-        return getPlanDetail(planId);
+        return getPlanDetail(planId, userId);
     }
 
 
