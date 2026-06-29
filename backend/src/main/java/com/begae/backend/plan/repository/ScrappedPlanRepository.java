@@ -14,6 +14,6 @@ public interface ScrappedPlanRepository extends JpaRepository<ScrappedPlan, Inte
 
     Optional<ScrappedPlan> findByUser_UserIdAndPlan_PlanId(Integer userId, Integer planId);
 
-    @Query("select sp.plan.planId from ScrappedPlan sp where sp.user.userId = :userId and sp.scrappedStatus = 1")
+    @Query("select sp.plan.planId from ScrappedPlan sp where sp.user.userId = :userId and sp.scrappedStatus = Y")
     List<Integer> findPlanIdsByUserId(Integer userId);
 }
