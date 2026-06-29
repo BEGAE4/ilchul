@@ -46,8 +46,8 @@ spring:
 
   security:
     user:
-      name: ilchul-admin
-      password: begae4!
+      name: ${ADMIN_USERNAME:ilchul-admin}
+      password: ${ADMIN_PASSWORD}
     oauth2:
       client:
         registration:

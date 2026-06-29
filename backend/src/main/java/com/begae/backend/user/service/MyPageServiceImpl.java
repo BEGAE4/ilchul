@@ -82,14 +82,12 @@ public class MyPageServiceImpl implements MyPageService {
     public UserProfileSummaryResponseDto findMyPageSummary(Integer userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
-        List<Plan> plans = planRepository.findByUserUserId(user.getUserId());
-        List<Integer> planIds = plans.stream().map(Plan::getPlanId).toList();
-        Integer publicPlanCount = plans.stream().filter(Plan::getIsPlanVisible).toList().size();
-        Integer verifyPlanCount = plans.stream().filter(Plan::getIsVerified).toList().size();
-        Integer scrappedByOthersCount = planIds.isEmpty()
-                ? 0
-                : scrappedPlanRepository.countByPlan_PlanIdIn(planIds);
+
+        Integer publicPlanCount = planRepository.countByUserUserIdAndIsPlanVisibleTrue(user.getUserId());
+        Integer verifyPlanCount = planRepository.countByUserUserIdAndIsVerifiedTrue(user.getUserId());
+        Integer scrappedByOthersCount = scrappedPlanRepository.countByPlan_User_UserId(user.getUserId());
         Integer savedCourseCount = scrappedPlanRepository.countByUser_UserId(user.getUserId());
+
         return UserProfileSummaryResponseDto
                 .of(publicPlanCount, verifyPlanCount, scrappedByOthersCount, savedCourseCount);
     }

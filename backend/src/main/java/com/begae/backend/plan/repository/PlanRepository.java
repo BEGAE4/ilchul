@@ -14,6 +14,10 @@ import java.util.Optional;
 
 public interface PlanRepository extends JpaRepository<Plan, Integer> {
 
+    int countByUserUserIdAndIsPlanVisibleTrue(Integer userId);
+    int countByUserUserIdAndIsVerifiedTrue(Integer userId);
+    boolean existsByPlanIdAndUserUserId(Integer planId, Integer userId);
+
     @Query("""
     select distinct p from Plan p
     left join fetch p.planPlaces

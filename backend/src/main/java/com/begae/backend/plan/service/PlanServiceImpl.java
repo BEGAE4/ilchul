@@ -83,10 +83,18 @@ public class PlanServiceImpl implements PlanService{
                 .build();
         Plan savedPlan = planRepository.save(plan);
 
+        List<Integer> placeIds = request.getPlaces().stream()
+                .map(placeRequest -> placeRequest.getPlaceId())
+                .toList();
+        Map<Integer, Place> placeMap = placeRepository.findAllById(placeIds).stream()
+                .collect(Collectors.toMap(Place::getPlaceId, p -> p));
+
         List<PlanPlace> planPlaces = request.getPlaces().stream()
                 .map(placeRequest -> {
-                    Place place = placeRepository.findById(placeRequest.getPlaceId())
-                            .orElseThrow(() -> new CustomException(PlaceErrorCode.PLACE_NOT_FOUND));
+                    Place place = placeMap.get(placeRequest.getPlaceId());
+                    if (place == null) {
+                        throw new CustomException(PlaceErrorCode.PLACE_NOT_FOUND);
+                    }
 
                     return PlanPlace.builder()
                             .plan(savedPlan)
@@ -257,10 +265,8 @@ public class PlanServiceImpl implements PlanService{
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
 
-        for(Plan plan : user.getPlans()) {
-            if(originPlan.getPlanId().equals(plan.getPlanId())) {
-                throw new CustomException(PlanErrorCode.NOT_COPY_MINE);
-            }
+        if (originPlan.getUser().getUserId().equals(userId)) {
+            throw new CustomException(PlanErrorCode.NOT_COPY_MINE);
         }
 
         Plan newPlan = Plan.copyOf(originPlan, user);
