@@ -1,5 +1,6 @@
 package com.begae.backend.report.domain;
 
+import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.report.enums.AdminAction;
 import com.begae.backend.report.enums.ReportType;
 import com.begae.backend.user.domain.User;
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Table(name = "admin_log")
-public class AdminLog {
+public class AdminLog extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
