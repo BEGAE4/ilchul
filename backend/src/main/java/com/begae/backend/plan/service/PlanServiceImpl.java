@@ -7,8 +7,17 @@ import com.begae.backend.like.repository.LikeRepository;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.exception.PlaceErrorCode;
 import com.begae.backend.place.repository.PlaceRepository;
+import com.begae.backend.plan.domain.DeparturePoint;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.domain.ScrappedPlan;
+import com.begae.backend.plan.domain.PlanImage;
+import com.begae.backend.plan.exception.PlanErrorCode;
+import com.begae.backend.plan.exception.PlanImageErrorCode;
+import com.begae.backend.plan.exception.PlanNotFoundException;
+import com.begae.backend.plan.repository.PlanImageRepository;
+import com.begae.backend.storage.dto.StoredImage;
+import com.begae.backend.storage.service.ImageStorageService;
+import com.begae.backend.user.exception.UserNotFoundException;
 import com.begae.backend.plan.dto.*;
 import com.begae.backend.plan.exception.PlanErrorCode;
 import com.begae.backend.plan.repository.PlanRepository;
@@ -22,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -40,6 +50,8 @@ public class PlanServiceImpl implements PlanService{
     private final PlanPlaceRepository planPlaceRepository;
     private final LikeRepository likeRepository;
     private final ScrappedPlanRepository scrappedPlanRepository;
+    private final PlanImageRepository planImageRepository;
+    private final ImageStorageService imageStorageService;
 
 //    @Value("${tmap.api.key}")
 //    private String tmapApiKey;
@@ -63,7 +75,7 @@ public class PlanServiceImpl implements PlanService{
                 .planDescription(request.getPlanDescription())
                 .requiredTime(request.getRequiredTime())
                 .totalDistance(request.getTotalDistance())
-                .departurePoint(request.getDeparturePoint())
+                .departurePoint(DeparturePoint.of(request.getDeparturePoint()))
                 .tripStartDate(request.getTripStartDate())
                 .tripEndDate(request.getTripEndDate())
                 .likeCount(0)
@@ -80,9 +92,9 @@ public class PlanServiceImpl implements PlanService{
                             .plan(savedPlan)
                             .place(place)
                             .orderIndex(placeRequest.getOrder())
-                            .travelTime(placeRequest.getTraveltime())
+                            .travelTime(placeRequest.getTravelTime())
                             .stayTime(placeRequest.getStayTime())
-
+                            .isStamped(false)
                             // 스냅샷 저장
                             .snapshotPlaceName(place.getPlaceName())
                             .snapshotAddressName(place.getAddressName())
@@ -96,7 +108,12 @@ public class PlanServiceImpl implements PlanService{
 
         planPlaceRepository.saveAll(planPlaces);
 
-        return CreatePlanResponseDto.builder().planId(savedPlan.getPlanId()).build();
+        return CreatePlanResponseDto.builder()
+                .planId(savedPlan.getPlanId())
+                .planTitle(savedPlan.getPlanTitle())
+                .isPlanVisible(savedPlan.getIsPlanVisible())
+                .createAt(savedPlan.getCreateAt())
+                .build();
 
     }
 
@@ -254,7 +271,7 @@ public class PlanServiceImpl implements PlanService{
 
     @Override
     @Transactional
-    public Integer updatePlan(Integer userId, Integer planId, UpdatePlanRequestDto request) {
+    public UpdatePlanResponseDto updatePlan(Integer userId, Integer planId, UpdatePlanRequestDto request) {
         Plan plan = planRepository.findById(planId)
                 .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
 
@@ -281,7 +298,7 @@ public class PlanServiceImpl implements PlanService{
                 request.getTripEndDate()
         );
 
-        return plan.getPlanId();
+        return UpdatePlanResponseDto.builder().planId(plan.getPlanId()).build();
     }
 
     @Override
@@ -296,7 +313,55 @@ public class PlanServiceImpl implements PlanService{
 
     }
 
-    private void validatePlanOwner(Plan plan, Integer userId) {
+    @Transactional
+    @Override
+    public PlanDetailDto uploadImages(Integer userId, Integer planId, List<MultipartFile> images) {
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
+
+        validatePlanOwner(plan, userId);
+
+        images.forEach(image -> {
+            StoredImage storedImage = imageStorageService.upload(image, "plan/" + plan.getPlanId() + "/image");
+
+            PlanImage planImage = PlanImage.builder()
+                    .imageKey(storedImage.imageKey())
+                    .imageUrl(storedImage.imageUrl())
+                    .originalFilename(storedImage.originalFilename())
+                    .contentType(storedImage.contentType())
+                    .fileSize(storedImage.fileSize())
+                    .plan(plan)
+                    .build();
+
+            planImageRepository.save(planImage);
+        });
+
+        return getPlanDetail(planId);
+    }
+
+    @Transactional
+    @Override
+    public PlanDetailDto deleteImages(Integer userId, Integer planId, List<Integer> imageIds) {
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
+
+        validatePlanOwner(plan, userId);
+
+        imageIds.forEach(imageId -> {
+            PlanImage planImage = planImageRepository.findById(imageId)
+                    .orElseThrow(() -> new CustomException(PlanImageErrorCode.PLAN_IMAGE_NOT_FOUND));
+
+            imageStorageService.delete(planImage.getImageKey());
+
+            planImageRepository.delete(planImage);
+        });
+
+        return getPlanDetail(planId);
+    }
+
+
+    @Override
+    public void validatePlanOwner(Plan plan, Integer userId) {
         if (!plan.getUser().getUserId().equals(userId)) {
             throw new CustomException(PlanErrorCode.PLAN_ACCESS_DENIED);
         }

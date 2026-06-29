@@ -1,6 +1,10 @@
 package com.begae.backend.plan.service;
 
+import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.dto.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 public interface PlanService {
 
@@ -18,7 +22,13 @@ public interface PlanService {
 
     PopularPlanResponseDto getNationwidePopularPlans(Integer limit, Integer page);
 
-    Integer updatePlan(Integer userId, Integer planId, UpdatePlanRequestDto request);
+    UpdatePlanResponseDto updatePlan(Integer userId, Integer planId, UpdatePlanRequestDto request);
 
     void deletePlan(Integer userId, Integer planId);
+
+    PlanDetailDto uploadImages(Integer userId, Integer planId, List<MultipartFile> images);
+
+    PlanDetailDto deleteImages(Integer userId, Integer planId, List<Integer> imageIds);
+
+    void validatePlanOwner(Plan plan, Integer userId);
 }

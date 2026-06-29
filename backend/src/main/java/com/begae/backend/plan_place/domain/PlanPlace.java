@@ -89,4 +89,8 @@ public class PlanPlace extends BaseEntity {
 
         return newPlanPlace;
     }
+
+    public void stamp() {
+        this.isStamped = true;
+    }
 }

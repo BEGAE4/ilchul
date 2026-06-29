@@ -1,5 +1,6 @@
 package com.begae.backend.plan_place.dto;
 
+import com.begae.backend.plan.dto.DeparturePointDto;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -9,7 +10,7 @@ import java.util.List;
 @NoArgsConstructor
 public class UpdatePlanPlaceRequestDto {
 
-    private String departurePoint;
+    private DeparturePointDto departurePoint;
 
     private List<UpdatePlanPlaceItemDto> places;
 

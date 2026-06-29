@@ -52,8 +52,8 @@ public class Plan extends BaseEntity {
     @Column(name = "total_distance")
     private Integer totalDistance;
 
-    @Column(name = "departure_point")
-    private String departurePoint;
+    @Embedded
+    private DeparturePoint departurePoint;
 
     @Column(name = "trip_start_date")
     private LocalDateTime tripStartDate;
@@ -86,6 +86,11 @@ public class Plan extends BaseEntity {
     @Builder.Default
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Reply> replies = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PlanImage> planImages = new ArrayList<>();
+
 
     public void updateIsPlanVisibility() {
         this.isPlanVisible = !this.isPlanVisible;
@@ -125,7 +130,7 @@ public class Plan extends BaseEntity {
         return newPlan;
     }
 
-    public void updateRouteSummary(Integer requiredTime, Integer totalDistance, String departurePoint) {
+    public void updateRouteSummary(Integer requiredTime, Integer totalDistance, DeparturePoint departurePoint) {
         this.requiredTime = requiredTime;
         this.totalDistance = totalDistance;
         this.departurePoint = departurePoint;

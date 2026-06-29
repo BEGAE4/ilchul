@@ -3,13 +3,21 @@ package com.begae.backend.plan_place.service;
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.repository.PlaceRepository;
+import com.begae.backend.plan.domain.DeparturePoint;
 import com.begae.backend.plan.domain.Plan;
+import com.begae.backend.plan.dto.DeparturePointDto;
 import com.begae.backend.plan.exception.PlanErrorCode;
 import com.begae.backend.plan.repository.PlanRepository;
+import com.begae.backend.plan.service.PlanService;
 import com.begae.backend.plan_place.domain.PlanPlace;
+import com.begae.backend.plan_place.domain.PlanPlaceImage;
 import com.begae.backend.plan_place.dto.*;
 import com.begae.backend.plan_place.exception.PlanPlaceErrorCode;
+import com.begae.backend.plan_place.repository.PlanPlaceImageRepository;
 import com.begae.backend.plan_place.repository.PlanPlaceRepository;
+import com.begae.backend.plan_place.util.LocationUtils;
+import com.begae.backend.storage.dto.StoredImage;
+import com.begae.backend.storage.service.ImageStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -18,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -31,6 +40,10 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
     private final PlanPlaceRepository planPlaceRepository;
     private final PlanRepository planRepository;
     private final PlaceRepository placeRepository;
+    private final PlanPlaceImageRepository planPlaceImageRepository;
+
+    private final PlanService planService;
+    private final ImageStorageService imageStorageService;
 
     private final WebClient kakaoNaviWebClient;
     private final WebClient kakaoWebClient;
@@ -61,47 +74,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                 })
                 .toList();
 
-        KaKaoGeocodingResponseDto departurePoint = kakaoWebClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/v2/local/search/address")
-                        .queryParam("query", request.getDeparturePoint())
-                        .build())
-                .retrieve()
-                .bodyToMono(KaKaoGeocodingResponseDto.class)
-                .timeout(Duration.ofSeconds(10))
-                .block();
-        KaKaoGeocodingResponseDto.Document document = departurePoint.getDocuments().getFirst();
-
-        Point origin = new Point(document.getAddressName(), Double.parseDouble(document.getX()), Double.parseDouble(document.getY()));
-        Point destination = points.getLast();
-        List<Point> waypoints = (points.size() > 1) ? points.subList(0, points.size() - 1) : List.of();
-
-        KakaoNaviRequestDto naviRequest = KakaoNaviRequestDto.builder()
-                .origin(origin)
-                .destination(destination)
-                .waypoints(waypoints)
-                .priority("RECOMMEND")
-                .summary(true)
-                .build();
-
-        KakaoNaviResponseDto response = kakaoNaviWebClient.post()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/v1/waypoints/directions")
-                        .build())
-                .bodyValue(naviRequest)
-                .retrieve()
-                .bodyToMono(KakaoNaviResponseDto.class)
-                .timeout(Duration.ofSeconds(10))
-                .block();
-
-        KakaoNaviResponseDto.Route route = response.getRoutes().getFirst();
-        int totalDuration = (int) Math.round(route.getSummary().getDuration() / 60.0);
-        List<Integer> sectionDuration = route.getSections().stream()
-                .map(section -> (int) Math.round(section.getDuration() / 60.0))
-                .toList();
-
-
-        int totalDistance = (int) Math.round(route.getSummary().getDistance() / 1000.0);
+        getDurationDto duration = getDuration(request.getDeparturePoint(), points);
 
         List<CreatePlanPreviewResponseDto.PlanPlacePreview> routes = new ArrayList<>();
         for(int i = 0; i < places.size(); i++) {
@@ -113,7 +86,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                     .addressName(place.getAddressName())
                     .roadAddressName(place.getRoadAddressName())
                     .order(i + 1)
-                    .duration(i >= sectionDuration.size() ? 0 : sectionDuration.get(i))
+                    .duration(i >= duration.getSectionDuration().size() ? 0 : duration.getSectionDuration().get(i))
                     .x(place.getX())
                     .y(place.getY())
                     .build());
@@ -123,8 +96,8 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                 .planTitle(request.getPlanTitle())
                 .planDescription(request.getPlanDescription())
                 .isPlanVisible(request.getIsPlanVisible())
-                .requiredTime(totalDuration)
-                .totalDistance(totalDistance)
+                .requiredTime(duration.getTotalDuration())
+                .totalDistance(duration.getTotalDistance())
                 .departurePoint(request.getDeparturePoint())
                 .tripStartDate(request.getTripStartDate())
                 .tripEndDate(request.getTripEndDate())
@@ -140,6 +113,8 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                 () -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND)
         );
 
+        planService.validatePlanOwner(plan, userId);
+
         if(plan.isVerifiedPlan()) {
             throw new CustomException(PlanErrorCode.VERIFIED_PLAN_UPDATE_RESTRICTED);
         }
@@ -176,47 +151,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                         }
                 ).toList();
 
-        KaKaoGeocodingResponseDto departurePoint = kakaoWebClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/v2/local/search/address")
-                        .queryParam("query", request.getDeparturePoint())
-                        .build())
-                .retrieve()
-                .bodyToMono(KaKaoGeocodingResponseDto.class)
-                .timeout(Duration.ofSeconds(10))
-                .block();
-        KaKaoGeocodingResponseDto.Document document = departurePoint.getDocuments().getFirst();
-
-        Point origin = new Point(document.getAddressName(), Double.parseDouble(document.getX()), Double.parseDouble(document.getY()));
-        Point destination = points.getLast();
-        List<Point> waypoints = (points.size() > 1) ? points.subList(0, points.size() - 1) : List.of();
-
-        KakaoNaviRequestDto naviRequest = KakaoNaviRequestDto.builder()
-                .origin(origin)
-                .destination(destination)
-                .waypoints(waypoints)
-                .priority("RECOMMEND")
-                .summary(true)
-                .build();
-
-        KakaoNaviResponseDto response = kakaoNaviWebClient.post()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/v1/waypoints/directions")
-                        .build())
-                .bodyValue(naviRequest)
-                .retrieve()
-                .bodyToMono(KakaoNaviResponseDto.class)
-                .timeout(Duration.ofSeconds(10))
-                .block();
-
-        KakaoNaviResponseDto.Route route = response.getRoutes().getFirst();
-        int totalDuration = (int) Math.round(route.getSummary().getDuration() / 60.0);
-        List<Integer> sectionDuration = route.getSections().stream()
-                .map(section -> (int) Math.round(section.getDuration() / 60.0))
-                .toList();
-
-
-        int totalDistance = (int) Math.round(route.getSummary().getDistance() / 1000.0);
+        getDurationDto duration = getDuration(request.getDeparturePoint(), points);
 
         List<UpdatePlanPreviewResponseDto.PlanPlacePreview> routes = new ArrayList<>();
         for(int i = 0; i < places.size(); i++) {
@@ -230,7 +165,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                         .addressName(planPlace.getSnapshotAddressName())
                         .roadAddressName(planPlace.getSnapshotRoadAddressName())
                         .order(i + 1)
-                        .duration(i >= sectionDuration.size() ? 0 : sectionDuration.get(i))
+                        .duration(i >= duration.getSectionDuration().size() ? 0 : duration.getSectionDuration().get(i))
                         .x(planPlace.getSnapshotX())
                         .y(planPlace.getSnapshotY())
                         .stayTime(planPlace.getStayTime())
@@ -245,7 +180,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                         .addressName(place.getAddressName())
                         .roadAddressName(place.getRoadAddressName())
                         .order(i + 1)
-                        .duration(i >= sectionDuration.size() ? 0 : sectionDuration.get(i))
+                        .duration(i >= duration.getSectionDuration().size() ? 0 : duration.getSectionDuration().get(i))
                         .x(place.getX())
                         .y(place.getY())
                         .stayTime(null)
@@ -256,12 +191,13 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
         }
 
         return UpdatePlanPreviewResponseDto.builder()
+                .planId(plan.getPlanId())
                 .planTitle(plan.getPlanTitle())
                 .planDescription(plan.getPlanDescription())
                 .isPlanVisible(plan.getIsPlanVisible())
-                .requiredTime(totalDuration)
-                .totalDistance(totalDistance)
-                .departurePoint(plan.getDeparturePoint())
+                .requiredTime(duration.getTotalDuration())
+                .totalDistance(duration.getTotalDistance())
+                .departurePoint(request.getDeparturePoint())
                 .tripStartDate(plan.getTripStartDate())
                 .tripEndDate(plan.getTripEndDate())
                 .places(routes)
@@ -276,9 +212,12 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                 () -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND)
         );
 
+        planService.validatePlanOwner(plan, userId);
+
         if(plan.isVerifiedPlan()) {
             throw new CustomException(PlanErrorCode.VERIFIED_PLAN_UPDATE_RESTRICTED);
         }
+
 
         List<PlanPlace> existPlanPlaces = plan.getPlanPlaces();
 
@@ -312,47 +251,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                         }
                 ).toList();
 
-        KaKaoGeocodingResponseDto departurePoint = kakaoWebClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/v2/local/search/address")
-                        .queryParam("query", request.getDeparturePoint())
-                        .build())
-                .retrieve()
-                .bodyToMono(KaKaoGeocodingResponseDto.class)
-                .timeout(Duration.ofSeconds(10))
-                .block();
-        KaKaoGeocodingResponseDto.Document document = departurePoint.getDocuments().getFirst();
-
-        Point origin = new Point(document.getAddressName(), Double.parseDouble(document.getX()), Double.parseDouble(document.getY()));
-        Point destination = points.getLast();
-        List<Point> waypoints = (points.size() > 1) ? points.subList(0, points.size() - 1) : List.of();
-
-        KakaoNaviRequestDto naviRequest = KakaoNaviRequestDto.builder()
-                .origin(origin)
-                .destination(destination)
-                .waypoints(waypoints)
-                .priority("RECOMMEND")
-                .summary(true)
-                .build();
-
-        KakaoNaviResponseDto response = kakaoNaviWebClient.post()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/v1/waypoints/directions")
-                        .build())
-                .bodyValue(naviRequest)
-                .retrieve()
-                .bodyToMono(KakaoNaviResponseDto.class)
-                .timeout(Duration.ofSeconds(10))
-                .block();
-
-        KakaoNaviResponseDto.Route route = response.getRoutes().getFirst();
-        int totalDuration = (int) Math.round(route.getSummary().getDuration() / 60.0);
-        List<Integer> sectionDuration = route.getSections().stream()
-                .map(section -> (int) Math.round(section.getDuration() / 60.0))
-                .toList();
-
-
-        int totalDistance = (int) Math.round(route.getSummary().getDistance() / 1000.0);
+        getDurationDto duration = getDuration(request.getDeparturePoint(), points);
 
         List<PlanPlace> routes = new ArrayList<>();
         for(int i = 0; i < places.size(); i++) {
@@ -363,7 +262,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                         .place(planPlace.getPlace())
                         .plan(plan)
                         .orderIndex(i + 1)
-                        .travelTime(i >= sectionDuration.size() ? 0 : sectionDuration.get(i))
+                        .travelTime(i >= duration.getSectionDuration().size() ? 0 : duration.getSectionDuration().get(i))
                         .stayTime(planPlace.getStayTime())
                         .isStamped(planPlace.getIsStamped())
                         .snapshotPlaceName(planPlace.getSnapshotPlaceName())
@@ -380,7 +279,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                         .place(place)
                         .plan(plan)
                         .orderIndex(i + 1)
-                        .travelTime(i >= sectionDuration.size() ? 0 : sectionDuration.get(i))
+                        .travelTime(i >= duration.getSectionDuration().size() ? 0 : duration.getSectionDuration().get(i))
                         .stayTime(null)
                         .isStamped(Boolean.FALSE)
                         .snapshotPlaceName(place.getPlaceName())
@@ -399,9 +298,60 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
 
         planPlaceRepository.saveAll(routes);
 
-        plan.updateRouteSummary(totalDuration, totalDistance, request.getDeparturePoint());
+        plan.updateRouteSummary(duration.getTotalDuration(), duration.getTotalDistance(), DeparturePoint.of(request.getDeparturePoint()));
 
         return UpdatePlanPlaceResponseDto.builder().planId(plan.getPlanId()).build();
+    }
+
+    private getDurationDto getDuration(DeparturePointDto departurePoint, List<Point> points) {
+        //        KaKaoGeocodingResponseDto departurePoint = kakaoWebClient.get()
+//                .uri(uriBuilder -> uriBuilder
+//                        .path("/v2/local/search/address")
+//                        .queryParam("query", request.getDeparturePoint())
+//                        .build())
+//                .retrieve()
+//                .bodyToMono(KaKaoGeocodingResponseDto.class)
+//                .timeout(Duration.ofSeconds(10))
+//                .block();
+//        KaKaoGeocodingResponseDto.Document document = departurePoint.getDocuments().getFirst();
+//
+//        Point origin = new Point(document.getAddressName(), Double.parseDouble(document.getX()), Double.parseDouble(document.getY()));
+        Point origin = new Point(departurePoint.getName(), departurePoint.getX(), departurePoint.getY());
+        Point destination = points.getLast();
+        List<Point> waypoints = (points.size() > 1) ? points.subList(0, points.size() - 1) : List.of();
+
+        KakaoNaviRequestDto naviRequest = KakaoNaviRequestDto.builder()
+                .origin(origin)
+                .destination(destination)
+                .waypoints(waypoints)
+                .priority("RECOMMEND")
+                .summary(true)
+                .build();
+
+        KakaoNaviResponseDto response = kakaoNaviWebClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v1/waypoints/directions")
+                        .build())
+                .bodyValue(naviRequest)
+                .retrieve()
+                .bodyToMono(KakaoNaviResponseDto.class)
+                .timeout(Duration.ofSeconds(10))
+                .block();
+
+        KakaoNaviResponseDto.Route route = response.getRoutes().getFirst();
+        int totalDuration = (int) Math.round(route.getSummary().getDuration() / 60.0);
+        List<Integer> sectionDuration = route.getSections().stream()
+                .map(section -> (int) Math.round(section.getDuration() / 60.0))
+                .toList();
+
+
+        int totalDistance = (int) Math.round(route.getSummary().getDistance() / 1000.0);
+
+        return getDurationDto.builder()
+                        .totalDistance(totalDistance)
+                        .totalDuration(totalDuration)
+                        .sectionDuration(sectionDuration)
+                        .build();
     }
 
 
@@ -452,6 +402,57 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
         return places;
     }
 
+    @Transactional
+    @Override
+    public StampPlanPlaceResponseDto stampPlanPlace(Integer userId, Integer planPlaceId, StampPlanPlaceRequestDto request) {
+        PlanPlace planPlace = planPlaceRepository.findByPlanPlaceIdAndPlan_User_UserId(planPlaceId, userId).orElseThrow(
+                () -> new CustomException(PlanPlaceErrorCode.PLAN_PLACE_NOT_FOUND)
+        );
+
+        if(planPlace.getIsStamped()) {
+            throw new CustomException(PlanPlaceErrorCode.ALREADY_VERIFIED);
+        }
+
+        if(planPlace.getPlanPlaceImages() != null && !planPlace.getPlanPlaceImages().isEmpty()) {
+            planPlace.getPlanPlaceImages().forEach(image -> imageStorageService.delete(image.getImageKey()));
+            planPlace.getPlanPlaceImages().clear();
+        }
+
+        StoredImage storedImage = imageStorageService.upload(request.getImage(),
+                "planPlace/" + planPlace.getPlanPlaceId() + "/image");
+
+        PlanPlaceImage planPlaceImage = PlanPlaceImage.builder()
+                                .imageKey(storedImage.imageKey())
+                                .imageUrl(storedImage.imageUrl())
+                                .originalFilename(storedImage.originalFilename())
+                                .contentType(storedImage.contentType())
+                                .fileSize(storedImage.fileSize())
+                                .planPlace(planPlace)
+                                .build();
+
+        planPlaceImageRepository.save(planPlaceImage);
+
+        // request에서 x y 꺼내 planPlace의 x y 기준 범위 안에 있는지 체크
+        double distance = LocationUtils.calculateDistance(
+                request.getLocation().getY(),
+                request.getLocation().getX(),
+                planPlace.getSnapshotY(),
+                planPlace.getSnapshotX()
+        );
+
+        if(distance > 150) {
+            throw new CustomException(PlanPlaceErrorCode.OUT_OF_STAMP_RANGE);
+        }
+
+        planPlace.stamp();
+
+        return StampPlanPlaceResponseDto.builder()
+                        .planPlaceId(planPlace.getPlanPlaceId())
+                        .isStamped(planPlace.getIsStamped())
+                        .verifiedImage(planPlaceImage.getImageUrl())
+                        .stampedAt(LocalDateTime.now())
+                        .build();
+    }
 
 
 }
