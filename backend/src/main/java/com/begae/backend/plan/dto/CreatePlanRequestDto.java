@@ -1,5 +1,7 @@
 package com.begae.backend.plan.dto;
 
+import com.begae.backend.plan.domain.DeparturePoint;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -20,10 +22,12 @@ public class CreatePlanRequestDto {
 
     private Integer totalDistance;
 
-    private String departurePoint;
+    private DeparturePointDto departurePoint;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime tripStartDate;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime tripEndDate;
 
     private List<CreatePlanPlaceRequest> places;
@@ -33,7 +37,7 @@ public class CreatePlanRequestDto {
     public static class CreatePlanPlaceRequest {
         private Integer placeId;
         private Integer order;
-        private Integer traveltime;
+        private Integer travelTime;
         private Integer stayTime;
     }
 

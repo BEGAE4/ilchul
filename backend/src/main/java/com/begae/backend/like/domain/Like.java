@@ -1,5 +1,6 @@
 package com.begae.backend.like.domain;
 
+import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.like.enums.LikeType;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.plan.domain.Plan;
@@ -15,7 +16,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Table(name = "likes")
-public class Like {
+public class Like extends BaseEntity {
 
     @Id
     @EqualsAndHashCode.Include

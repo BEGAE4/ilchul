@@ -4,6 +4,7 @@ import com.begae.backend.global.security.principal.OauthUserDetails;
 import com.begae.backend.plan_place.dto.*;
 import com.begae.backend.plan_place.service.PlanPlaceService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -33,5 +34,17 @@ public class PlanPlaceController {
                                                                       @PathVariable Integer planId,
                                                                       @RequestBody UpdatePlanPlaceRequestDto request) {
         return ResponseEntity.ok().body(planPlaceService.updatePlanPlace(user.getUserId(), planId, request));
+    }
+
+    @PostMapping(
+            value = "/{planPlaceId}/stamp",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<StampPlanPlaceResponseDto> stampPlanPlace(@AuthenticationPrincipal OauthUserDetails user,
+                                                @PathVariable Integer planPlaceId,
+                                               @ModelAttribute StampPlanPlaceRequestDto request
+    ) {
+        ;
+        return ResponseEntity.ok().body(planPlaceService.stampPlanPlace(user.getUserId(), planPlaceId, request));
     }
 }

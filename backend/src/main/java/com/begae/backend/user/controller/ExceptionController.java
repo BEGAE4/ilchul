@@ -1,7 +1,7 @@
 package com.begae.backend.user.controller;
 
 
-import org.apache.tomcat.websocket.AuthenticationException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +18,6 @@ public class ExceptionController {
 
     @GetMapping("/entry-point")
     public void authenticateException() throws AuthenticationException {
-        throw new AuthenticationException("");
+        throw new AuthenticationException("") {};
     }
 }

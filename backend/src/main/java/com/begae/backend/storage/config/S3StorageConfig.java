@@ -42,9 +42,9 @@ public class S3StorageConfig {
             // Wait, S3Presigner in AWS SDK v2 does not have forcePathStyle on its builder.
             // We need to pass S3Configuration if we want to set path style.
             builder.endpointOverride(java.net.URI.create(properties.endpoint()));
-            
+
             // Note: forcePathStyle for presigner requires s3Configuration
-            software.amazon.awssdk.services.s3.S3Configuration s3Configuration = 
+            software.amazon.awssdk.services.s3.S3Configuration s3Configuration =
                 software.amazon.awssdk.services.s3.S3Configuration.builder()
                 .pathStyleAccessEnabled(true)
                 .build();

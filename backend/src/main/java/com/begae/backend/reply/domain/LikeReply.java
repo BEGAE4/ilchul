@@ -1,12 +1,9 @@
 package com.begae.backend.reply.domain;
 
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import com.begae.backend.global.domain.BaseEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -19,7 +16,6 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-@EntityListeners(AuditingEntityListener.class)
 @Table(name = "like_reply")
 public class LikeReply extends BaseEntity {
     

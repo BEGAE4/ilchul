@@ -33,7 +33,7 @@ public class ImageStorageServiceImpl implements ImageStorageService {
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
 
     private final S3Client s3Client;
-    private final S3Presigner s3Presigner;
+//    private final S3Presigner s3Presigner;
     private final S3StorageProperties properties;
 
     @Override
@@ -88,19 +88,14 @@ public class ImageStorageServiceImpl implements ImageStorageService {
 
     @Override
     public String getAccessibleUrl(String imageKey) {
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(properties.bucket())
-                .key(imageKey)
-                .build();
+        if (!StringUtils.hasText(imageKey)) {
+            throw new CustomException(StorageErrorCode.EMPTY_KEY);
+        }
 
-        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofMinutes(properties.presignedUrlDurationMinutes()))
-                .getObjectRequest(getObjectRequest)
-                .build();
+        String normalizedImageKey = imageKey.replaceAll("^/+", "");
 
-        return s3Presigner.presignGetObject(presignRequest)
-                .url()
-                .toString();
+        return properties.normalizedPublicBaseUrl() + "/" + normalizedImageKey;
+
     }
 
     private void validateImageFile(MultipartFile file) {

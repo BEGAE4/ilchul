@@ -12,8 +12,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ScrappedPlanCreateResponseDto {
     private Integer planId;
+    private Boolean isBookmarked;
+    private Integer bookmarkCount;
 
-    public static ScrappedPlanCreateResponseDto from(Plan plan) {
-        return new ScrappedPlanCreateResponseDto(plan.getPlanId());
+    public static ScrappedPlanCreateResponseDto from(Plan plan, Boolean isBookmarked) {
+        return new ScrappedPlanCreateResponseDto(
+                plan.getPlanId(),
+                isBookmarked,
+                plan.getScrapCount());
     }
 }
