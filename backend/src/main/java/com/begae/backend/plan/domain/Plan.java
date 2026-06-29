@@ -1,6 +1,8 @@
 package com.begae.backend.plan.domain;
 
 import com.begae.backend.global.domain.BaseEntity;
+import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.plan.exception.PlanErrorCode;
 import com.begae.backend.plan_place.domain.PlanPlace;
 import com.begae.backend.reply.domain.Reply;
 import com.begae.backend.user.domain.User;
@@ -50,8 +52,8 @@ public class Plan extends BaseEntity {
     @Column(name = "total_distance")
     private Integer totalDistance;
 
-    @Column(name = "departure_point")
-    private String departurePoint;
+    @Embedded
+    private DeparturePoint departurePoint;
 
     @Column(name = "trip_start_date")
     private LocalDateTime tripStartDate;
@@ -85,6 +87,11 @@ public class Plan extends BaseEntity {
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Reply> replies = new ArrayList<>();
 
+    @Builder.Default
+    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PlanImage> planImages = new ArrayList<>();
+
+
     public void updateIsPlanVisibility() {
         this.isPlanVisible = !this.isPlanVisible;
     }
@@ -112,6 +119,7 @@ public class Plan extends BaseEntity {
                 .scrapCount(0)
                 .isVerified(false)
                 .isPlanVisible(false)
+                .isBlinded(false)
                 .planPlaces(new ArrayList<>())
                 .build();
 
@@ -122,7 +130,7 @@ public class Plan extends BaseEntity {
         return newPlan;
     }
 
-    public void updateRouteSummary(Integer requiredTime, Integer totalDistance, String departurePoint) {
+    public void updateRouteSummary(Integer requiredTime, Integer totalDistance, DeparturePoint departurePoint) {
         this.requiredTime = requiredTime;
         this.totalDistance = totalDistance;
         this.departurePoint = departurePoint;
@@ -159,5 +167,11 @@ public class Plan extends BaseEntity {
 
     public void updateBlind() {
         this.isBlinded = true;
+    }
+
+    public void validateNotBlinded() {
+        if (Boolean.TRUE.equals(this.isBlinded)) {
+            throw new CustomException(PlanErrorCode.PLAN_BLINDED);
+        }
     }
 }

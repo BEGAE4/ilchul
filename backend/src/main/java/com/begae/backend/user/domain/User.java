@@ -14,7 +14,6 @@ import com.begae.backend.user.common.UserRole;
 import com.begae.backend.user.common.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -24,7 +23,6 @@ import java.util.List;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
-@EntityListeners(AuditingEntityListener.class)
 @Table(name = "user")
 public class User extends BaseEntity {
 

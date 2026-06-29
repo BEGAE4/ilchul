@@ -45,6 +45,9 @@ spring:
       port: 6379
 
   security:
+    user:
+      name: ${ADMIN_USERNAME:ilchul-admin}
+      password: ${ADMIN_PASSWORD}
     oauth2:
       client:
         registration:
@@ -141,3 +144,12 @@ cloud:
       bucket: ${STORAGE_BUCKET_NAME}
       region: ${STORAGE_REGION}
       presigned-url-duration-minutes: 30
+      public-base-url: ${STORAGE_PUBLIC_URL}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    groups-order: DESC
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs

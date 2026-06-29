@@ -1,5 +1,6 @@
 package com.begae.backend.report.domain;
 
+import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.report.enums.SanctionType;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
@@ -13,7 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Table(name = "sanction")
-public class Sanction {
+public class Sanction extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

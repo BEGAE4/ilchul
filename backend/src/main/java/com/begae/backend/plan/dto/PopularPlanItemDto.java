@@ -35,7 +35,7 @@ public class PopularPlanItemDto {
                 .title(plan.getPlanTitle())
                 .description(plan.getPlanDescription())
                 .thumbnail(thumbnail)
-                .location(plan.getDeparturePoint())
+                .location(plan.getDeparturePoint().getName())
                 .duration(duration)
                 .likes(plan.getLikeCount())
                 .ranking(ranking)

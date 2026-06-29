@@ -1,5 +1,6 @@
 package com.begae.backend.plan.domain;
 
+import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.plan.enums.ScrappedStatus;
 import com.begae.backend.user.domain.User;
 import jakarta.persistence.*;
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Table(name = "scrapped_plan")
-public class ScrappedPlan {
+public class ScrappedPlan extends BaseEntity {
 
     @Id
     @EqualsAndHashCode.Include
@@ -33,6 +34,7 @@ public class ScrappedPlan {
     @Column(name = "scrapped_at", updatable = false)
     private LocalDateTime scrappedAt;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "scrapped_status")
     private ScrappedStatus scrappedStatus;
 

@@ -1,5 +1,6 @@
 package com.begae.backend.plan_place.domain;
 
+import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.plan.domain.Plan;
 import jakarta.persistence.*;
@@ -13,9 +14,9 @@ import java.util.List;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true, callSuper = false)
 @Table(name = "plan_place")
-public class PlanPlace {
+public class PlanPlace extends BaseEntity {
 
     @Id
     @EqualsAndHashCode.Include
@@ -87,5 +88,9 @@ public class PlanPlace {
                 .forEach(newPlanPlace.getPlanPlaceImages()::add);
 
         return newPlanPlace;
+    }
+
+    public void stamp() {
+        this.isStamped = true;
     }
 }

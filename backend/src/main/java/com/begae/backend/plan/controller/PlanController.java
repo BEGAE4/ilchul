@@ -8,6 +8,7 @@ import com.begae.backend.plan.dto.PlanDetailDto;
 import com.begae.backend.plan.dto.PopularPlanResponseDto;
 import com.begae.backend.plan.service.PlanService;
 import com.begae.backend.global.security.principal.OauthUserDetails;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @Validated
 @RestController
@@ -35,18 +39,22 @@ public class PlanController {
 //    }
 //
     @GetMapping("/{planId}")
-    public ResponseEntity<PlanDetailDto> getPlanDetail(@PathVariable Integer planId) {
-        return ResponseEntity.status(HttpStatus.OK)
-                .body(planService.getPlanDetail(planId));
-    }
-
-    @PostMapping("/copy/{planId}")
-    public ResponseEntity<PlanCopyResponseDto> copyPlan(
-            @PathVariable @Positive Integer planId,
-            @AuthenticationPrincipal OauthUserDetails userDetails
+    public ResponseEntity<PlanDetailDto> getPlanDetail(
+            @AuthenticationPrincipal OauthUserDetails userDetails,
+            @PathVariable Integer planId
     ) {
         return ResponseEntity.status(HttpStatus.OK)
-                .body(planService.copyPlan(planId, userDetails.getUserId()));
+                .body(planService.getPlanDetail(planId, userDetails.getUserId()));
+    }
+
+    @PostMapping("{planId}/clone")
+    public ResponseEntity<PlanCopyResponseDto> copyPlan(
+            @PathVariable @Positive Integer planId,
+            @Valid @RequestBody PlanCopyRequestDto planCopyRequestDto,
+            @AuthenticationPrincipal OauthUserDetails userDetails
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(planService.copyPlan(planId, planCopyRequestDto, userDetails.getUserId()));
     }
 
     /**
@@ -87,11 +95,11 @@ public class PlanController {
     @PostMapping("/create")
     public ResponseEntity<CreatePlanResponseDto> createPlan(@AuthenticationPrincipal OauthUserDetails user,
                                                             @RequestBody CreatePlanRequestDto request) {
-        return ResponseEntity.ok(planService.CreatePlanWithPlaces(user.getUserId(), request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(planService.CreatePlanWithPlaces(user.getUserId(), request));
     }
 
     @PatchMapping("/{planId}")
-    public ResponseEntity<Integer> updatePlan(@AuthenticationPrincipal OauthUserDetails user,
+    public ResponseEntity<UpdatePlanResponseDto> updatePlan(@AuthenticationPrincipal OauthUserDetails user,
                                            @PathVariable Integer planId,
                                            @RequestBody UpdatePlanRequestDto request) {
         // 이름, 사진, 공개여부, 설명은 변경가능
@@ -104,6 +112,20 @@ public class PlanController {
                                            @PathVariable Integer planId) {
         planService.deletePlan(user.getUserId(), planId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    @PostMapping("/{planId}/images")
+    public ResponseEntity<PlanDetailDto> planImagesUpload(@AuthenticationPrincipal OauthUserDetails user,
+                                                         @PathVariable Integer planId,
+                                                         @RequestParam List<MultipartFile> images) {
+        return ResponseEntity.ok(planService.uploadImages(user.getUserId(), planId, images));
+    }
+
+    @DeleteMapping("/{planId}/images")
+    public ResponseEntity<PlanDetailDto> deleteImages(@AuthenticationPrincipal OauthUserDetails user,
+                                                      @PathVariable Integer planId,
+                                                      @RequestParam List<Integer> imageIds) {
+        return ResponseEntity.ok(planService.deleteImages(user.getUserId(), planId, imageIds));
     }
 
 }

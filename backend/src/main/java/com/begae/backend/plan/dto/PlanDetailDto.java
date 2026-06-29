@@ -18,22 +18,36 @@ public class PlanDetailDto {
     private LocalDateTime tripStartDate;
     private LocalDateTime tripEndDate;
     private LocalDateTime createAt;
-    private Boolean isVerified;
+    private Boolean planVerified;
     private Boolean isPlanVisible;
+    private Boolean isBookmarked;
+    private Boolean isLiked;
     private int requiredTime;
-    private int totalBudget;
     private int totalDistance;
     private String planDescription;
     private Integer likeCount;
-    private Integer scrapCount;
-    private List<PlanPlaceDetailDto> planPlaceDetailDtos;
+    private Integer bookmarkCount;
+    private Integer userId;
+    private String userNickName;
+    private String userAvatar;
+    private List<String> planImageUrls;
+    private List<String> tags;
+    private String thumbnailUrl;
 
-    public static PlanDetailDto from(List<PlanDetailFlatDto> flats) {
+    private List<PlanPlaceDetailDto> planPlaceDetailDtos;
+    private List<String> planImages;
+
+    public static PlanDetailDto from(List<PlanDetailFlatDto> flats, Boolean isLiked, Boolean isBookmarked) {
         PlanDetailFlatDto first = flats.getFirst();
 
         List<PlanPlaceDetailDto> places = flats.stream()
                 .filter(f -> f.getPlanPlaceId() != null)
                 .map(PlanPlaceDetailDto::from)
+                .toList();
+
+        List<String> planImages = flats.stream()
+                .map(PlanDetailFlatDto::getImageUrl)
+                .filter(imageUrl -> imageUrl != null)
                 .toList();
 
         return PlanDetailDto.builder()
@@ -42,14 +56,20 @@ public class PlanDetailDto {
                 .tripStartDate(first.getTripStartDate())
                 .tripEndDate(first.getTripEndDate())
                 .createAt(first.getCreateAt())
-                .isVerified(first.getIsVerified())
+                .planVerified(first.getIsVerified())
                 .isPlanVisible(first.getIsPlanVisible())
                 .planDescription(first.getPlanDescription())
                 .requiredTime(first.getRequiredTime())
                 .totalDistance(first.getTotalDistance())
                 .likeCount(first.getLikeCount())
-                .scrapCount(first.getScrapCount())
+                .bookmarkCount(first.getScrapCount())
+                .isLiked(isLiked)
+                .isBookmarked(isBookmarked)
+                .userId(first.getUserId())
+                .userNickName(first.getUserNickname())
+                .userAvatar(first.getUserImg())
                 .planPlaceDetailDtos(places)
+                .planImages(planImages)
                 .build();
     }
 
@@ -59,12 +79,15 @@ public class PlanDetailDto {
     @AllArgsConstructor
     public static class PlanPlaceDetailDto {
         private Integer planPlaceId;
+        private Integer placeId;
         private String placeImage;
         private String placeName;
-        private String addressName;
-        private String roadAddressName;
         private String categoryName;
+        private String address;
+        private String roadAddress;
         private Integer orderIndex;
+        private String visitTime;
+        private String stayDescription;
         private Boolean isStamped;
         private Integer travelTime;
         private Integer stayTime;
@@ -72,10 +95,11 @@ public class PlanDetailDto {
         public static PlanPlaceDetailDto from(PlanDetailFlatDto flat) {
             return PlanPlaceDetailDto.builder()
                     .planPlaceId(flat.getPlanPlaceId())
+                    .placeId(flat.getPlaceId())
                     .placeImage(flat.getPlaceImage())
                     .placeName(flat.getPlaceName())
-                    .addressName(flat.getAddressName())
-                    .roadAddressName(flat.getRoadAddressName())
+                    .address(flat.getAddressName())
+                    .roadAddress(flat.getRoadAddressName())
                     .travelTime(flat.getTravelTime())
                     .orderIndex(flat.getOrderIndex())
                     .isStamped(flat.getIsStamped())
