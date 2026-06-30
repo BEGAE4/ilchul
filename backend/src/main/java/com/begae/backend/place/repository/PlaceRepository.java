@@ -1,7 +1,8 @@
 package com.begae.backend.place.repository;
 
 import com.begae.backend.place.domain.Place;
-import org.springframework.data.jpa.repository.JpaRepository;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -12,6 +13,10 @@ import java.util.Optional;
 @Repository
 public interface PlaceRepository extends JpaRepository<Place, Integer> {
     Optional<Place> findPlaceBySourceId(String sourceId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM Place p WHERE p.placeId = :placeId")
+    Optional<Place> findByIdWithLock(@Param("placeId") Integer placeId);
 
     // plan에 얼마나 포함되어있는지 기준으로 조회
     // TODO: likes 컬럼 추가 시 ORDER BY plan_count → likes DESC 로 변경

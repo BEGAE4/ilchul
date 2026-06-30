@@ -1,6 +1,7 @@
 package com.begae.backend.place.service;
 
 import com.begae.backend.place.dto.*;
+import com.begae.backend.plan.dto.PopularPlanItemDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import reactor.core.publisher.Mono;
 
@@ -17,4 +18,6 @@ public interface PlaceService {
     PopularPlaceResponseDto getPopularPlaces(Double lat, Double lng, Integer limit, Integer page);
 
     PopularPlaceResponseDto getNationwidePopularPlaces(Integer limit, Integer page);
+
+    List<PopularPlanItemDto> getPlansContainingPlace(Integer placeId);
 }
