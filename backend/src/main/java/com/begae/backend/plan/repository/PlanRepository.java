@@ -67,6 +67,22 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
 
     List<Plan> findByPlanIdIn(List<Integer> planIds);
 
+    @Query("""
+    select distinct p
+    from Plan p
+    join fetch p.planPlaces pp
+    join fetch pp.place
+    where p.planId in (
+        select p2.planId
+        from Plan p2
+        join p2.planPlaces pp2
+        where pp2.place.placeId = :placeId
+          and p2.isPlanVisible = true
+          and p2.isBlinded = false
+    )
+    """)
+    List<Plan> findPlansContainingPlace(@Param("placeId") Integer placeId);
+
     @Query(value = """
             SELECT p.plan_id
             FROM plan p
