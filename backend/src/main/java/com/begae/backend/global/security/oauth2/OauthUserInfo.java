@@ -8,53 +8,56 @@ import java.util.Map;
 
 public class OauthUserInfo {
 
-    public static String OAUTH_ACCOUNT = "";
     public static final String EMAIL = "email";
     public static final String NICKNAME = "nickname";
     public static final String PROFILE_IMAGE = "profile_image";
-    public static String CLIENT = "";
 
+    private final Map<String, Object> attributes;
+    private final String oauthAccountKey;
+    private final String client;
 
-    private Map<String, Object> attributes;
-
-    public OauthUserInfo(Map<String, Object> attributes, String account, String client) {
-        OAUTH_ACCOUNT = account;
-        CLIENT = client;
+    public OauthUserInfo(Map<String, Object> attributes, String oauthAccountKey, String client) {
         this.attributes = attributes;
+        this.oauthAccountKey = oauthAccountKey;
+        this.client = client;
     }
 
     public Map<String, String> getUserInfo() {
         ObjectMapper objectMapper = new ObjectMapper();
         TypeReference<Map<String, Object>> typeReferencer = new TypeReference<Map<String, Object>>() {
-        }; // 정확한 타입 변환 정보 제공
+        };
 
         Map<String, String> userInfo = new HashMap<>();
 
-        Object oauthAccount = attributes.get(OAUTH_ACCOUNT);
+        // 구글처럼 최상위에 정보가 있는 경우 attributes 자체를 사용하고,
+        // 카카오/네이버처럼 특정 키(kakao_account, response) 아래에 정보가 있는 경우 해당 객체를 꺼냅니다.
+        Object oauthAccount = (oauthAccountKey == null || oauthAccountKey.isEmpty()) 
+                ? attributes 
+                : attributes.get(oauthAccountKey);
+                
         Map<String, Object> account = objectMapper.convertValue(oauthAccount, typeReferencer);
-        // Object 타입 캐스팅 안정성을 높이기 위해 Mapper를 이용해 변환
-        if(account != null) {
-            switch (CLIENT) {
+
+        if (account != null) {
+            switch (client) {
                 case "kakao":
-                    Map<String, Object> kakaoAccount = objectMapper.convertValue(account.get("kakao_account"), typeReferencer);
-                    userInfo.put(NICKNAME, (String) kakaoAccount.get(NICKNAME));
-                    userInfo.put(PROFILE_IMAGE, (String) kakaoAccount.get("profile_image_url"));
+                    Map<String, Object> kakaoProfile = objectMapper.convertValue(account.get("profile"), typeReferencer);
+                    if (kakaoProfile != null) {
+                        userInfo.put(NICKNAME, (String) kakaoProfile.get("nickname"));
+                        userInfo.put(PROFILE_IMAGE, (String) kakaoProfile.get("profile_image_url"));
+                    }
                     break;
                 case "naver":
-                    userInfo.put(NICKNAME, (String) account.get(NICKNAME));
+                    userInfo.put(NICKNAME, (String) account.get("nickname"));
                     userInfo.put(PROFILE_IMAGE, (String) account.get("profile_image"));
                     break;
                 case "google":
-                    userInfo.put(NICKNAME, (String) account.get(NICKNAME));
+                    userInfo.put(NICKNAME, (String) account.get("name"));
                     userInfo.put(PROFILE_IMAGE, (String) account.get("picture"));
                     break;
             }
             userInfo.put(EMAIL, (String) account.get(EMAIL));
-            return userInfo;
         }
-        userInfo.put(NICKNAME, (String) attributes.get("name"));
-        userInfo.put(EMAIL, (String) attributes.get(EMAIL));
+        
         return userInfo;
     }
-
 }
