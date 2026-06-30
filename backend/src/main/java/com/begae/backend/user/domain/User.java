@@ -57,7 +57,7 @@ public class User extends BaseEntity {
     private String userImg;
 
     @Column(name = "warning_count")
-    private Integer warningCount;
+    private Integer warningCount = 0;
 
     @Column(name = "suspension_end_at")
     private LocalDateTime suspensionEndAt;
@@ -98,6 +98,7 @@ public class User extends BaseEntity {
         this.userStatus = userStatus;
         this.userIntro = userIntro;
         this.userImg = userImg;
+        this.warningCount = 0;
     }
 
     public void updateUserProfile(String userNickname, String userIntro, String userImg) {
