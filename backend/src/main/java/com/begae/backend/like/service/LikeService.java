@@ -4,5 +4,8 @@ import com.begae.backend.like.dto.LikeResponseDto;
 
 public interface LikeService {
 
-    LikeResponseDto toggleLike(Integer planId, Integer userId);
+    LikeResponseDto likePlan(Integer planId, Integer userId);
+    LikeResponseDto unlikePlan(Integer planId, Integer userId);
+    LikeResponseDto likePlace(Integer placeId, Integer userId);
+    LikeResponseDto unlikePlace(Integer placeId, Integer userId);
 }
