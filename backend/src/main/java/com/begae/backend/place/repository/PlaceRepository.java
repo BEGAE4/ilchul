@@ -2,6 +2,7 @@ package com.begae.backend.place.repository;
 
 import com.begae.backend.place.domain.Place;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
