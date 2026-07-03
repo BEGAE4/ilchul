@@ -10,6 +10,10 @@ import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.dto.*;
 import com.begae.backend.place.exception.PlaceErrorCode;
 import com.begae.backend.place.repository.PlaceRepository;
+import com.begae.backend.plan.domain.Plan;
+import com.begae.backend.plan.dto.PopularPlanItemDto;
+import com.begae.backend.plan.repository.PlanRepository;
+import com.begae.backend.plan_place.domain.PlanPlace;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
@@ -45,6 +49,7 @@ public class PlaceServiceImpl implements PlaceService {
     private final WebClient kakaoWebClient;
     private final WebClient googleWebClient;
     private final PlaceRepository placeRepository;
+    private final PlanRepository planRepository;
     private final PromptRegistry promptRegistry;
 
     @Override
@@ -183,8 +188,14 @@ public class PlaceServiceImpl implements PlaceService {
                     .lastFetchedAt(now)
                     .lastSeenAt(now)
                     .build();
-            placeRepository.save(newPlace);
-            return newPlace.getPlaceId();
+            try {
+                placeRepository.save(newPlace);
+                return newPlace.getPlaceId();
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                return placeRepository.findPlaceBySourceId(sourceId)
+                        .map(Place::getPlaceId)
+                        .orElseThrow(() -> e);
+            }
         }
 
         Place place = existing.get();
@@ -318,5 +329,38 @@ public class PlaceServiceImpl implements PlaceService {
                 .toList();
 
         return PopularPlaceResponseDto.of(data, page, safeLimit, totalCount);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public List<PopularPlanItemDto> getPlansContainingPlace(Integer placeId) {
+        List<Plan> plans = planRepository.findPlansContainingPlace(placeId);
+
+        return plans.stream()
+                .map(plan -> {
+                    String thumbnail = plan.getPlanPlaces().stream()
+                            .filter(pp -> pp.getOrderIndex() != null)
+                            .min((a, b) -> a.getOrderIndex().compareTo(b.getOrderIndex()))
+                            .map(PlanPlace::getPlace)
+                            .map(place -> place != null ? place.getPlaceImageUrl() : null)
+                            .orElse(null);
+
+                    String duration = plan.getRequiredTime() != null
+                            ? plan.getRequiredTime() + "시간"
+                            : null;
+
+                    String locationName = plan.getDeparturePoint() != null ? plan.getDeparturePoint().getName() : null;
+
+                    return PopularPlanItemDto.builder()
+                            .id(plan.getPlanId())
+                            .title(plan.getPlanTitle())
+                            .description(plan.getPlanDescription())
+                            .thumbnail(thumbnail)
+                            .location(locationName)
+                            .duration(duration)
+                            .likes(plan.getLikeCount())
+                            .build();
+                })
+                .toList();
     }
 }
