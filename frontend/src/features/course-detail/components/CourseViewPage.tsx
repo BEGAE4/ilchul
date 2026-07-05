@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
-import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { BottomActionBar } from '@/shared/ui/BottomActionBar';
@@ -28,6 +27,7 @@ import { CourseDetailSkeleton } from '@/shared/ui/Skeleton';
 import { useReport, ReportDialog, ReportMenuItem } from '@/features/report';
 import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStorage';
 import type { CurrentUser, ReportTarget } from '@/features/report';
+import { usePlanDetail, usePlanActions, planApi } from '@/features/plan';
 import { useComments } from '../hooks/useComments';
 
 interface CourseViewPageProps {
@@ -36,23 +36,10 @@ interface CourseViewPageProps {
 
 export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const router = useRouter();
-  const {
-    getCourseById,
-    courses,
-    toggleBookmark,
-    toggleLike,
-    isBookmarked,
-    isLiked,
-    getLikeCount,
-    cloneCourseToMy,
-  } = useCourseStore();
 
-  const course = getCourseById(courseId);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    setIsLoading(false);
-  }, []);
+  // 플랜 상세는 서버에서만 조회한다. 실패 시 에러 UI를 렌더링한다.
+  const { plan, isLoading: isPlanLoading, error: planError, refetch } = usePlanDetail(courseId);
+  const planActions = usePlanActions(plan);
 
   const { user, isLoggedIn } = useUserStore();
   const currentUser: CurrentUser = {
@@ -89,31 +76,60 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   // 어느 댓글의 메뉴인지 추적 — race condition 차단 (Architect C-3)
   const [commentMenuTarget, setCommentMenuTarget] = useState<ReportTarget | null>(null);
 
-  if (isLoading) {
+  if (isPlanLoading) {
     return <CourseDetailSkeleton />;
   }
 
-  if (!course) {
+  // 에러 UI — 데이터 로드 실패 또는 존재하지 않는 플랜
+  if (!plan) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-gray-500">
-        <p className="mb-4">플랜을 찾을 수 없습니다.</p>
-        <button onClick={() => router.back()} className="text-blue-500 font-medium">
-          돌아가기
-        </button>
+      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+          <X size={28} className="text-gray-400" />
+        </div>
+        <p className="text-gray-900 font-bold mb-1">
+          {planError ?? '플랜 정보를 불러오지 못했어요.'}
+        </p>
+        <p className="text-sm text-gray-500 mb-6">잠시 후 다시 시도해주세요.</p>
+        <div className="flex gap-2 w-full max-w-xs">
+          <button
+            onClick={() => router.back()}
+            className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm"
+          >
+            돌아가기
+          </button>
+          <button
+            onClick={refetch}
+            className="flex-1 py-3 bg-sky-500 text-white font-bold rounded-xl text-sm shadow-md shadow-sky-200"
+          >
+            다시 시도
+          </button>
+        </div>
       </div>
     );
   }
 
-  const bookmarked = isBookmarked(courseId);
-  const liked = isLiked(courseId);
-  const likeCount = getLikeCount(courseId);
+  const bookmarked = planActions.isScrapped;
+  const liked = planActions.isLiked;
+  const likeCount = planActions.likeCount;
+  const scrapCount = planActions.scrapCount;
 
-  // course가 truthy로 확인된 이후 courseTarget을 구성 (null 케이스는 위에서 early return)
+  const places = [...plan.planPlaceDetailDtos].sort((a, b) => a.orderIndex - b.orderIndex);
+  const heroImage =
+    plan.thumbnailUrl ||
+    plan.planImageUrls[0] ||
+    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1080&auto=format&fit=crop';
+  const locationLabel = places[0]?.address?.split(' ').slice(0, 2).join(' ') || '';
+  const durationLabel =
+    plan.requiredTime >= 60
+      ? `${Math.floor(plan.requiredTime / 60)}시간${plan.requiredTime % 60 ? ` ${plan.requiredTime % 60}분` : ''}`
+      : `${plan.requiredTime}분`;
+
   const courseTarget: ReportTarget = {
     type: 'course',
     id: courseId,
-    ownerId: course.author, // A7: 닉네임 best-effort 매칭
-    title: course.title,
+    ownerId: plan.userNickName, // A7: 닉네임 best-effort 매칭
+    title: plan.planTitle,
     contextUrl: `/course/${courseId}`,
   };
 
@@ -121,47 +137,31 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     setShowSaveModal(true);
   };
 
-  const confirmSave = () => {
-    const cloned = cloneCourseToMy(courseId);
-    if (cloned) {
-      setSavedCourseId(cloned.id);
+  const confirmSave = async () => {
+    try {
+      const res = await planApi.clonePlan(plan.planId);
+      setSavedCourseId(String(res.planId));
       toast.success('내 일정에 담았어요!');
+    } catch {
+      toast.error('일정 담기에 실패했어요. 잠시 후 다시 시도해주세요.');
     }
   };
 
   const goToMyCourse = () => {
     if (savedCourseId) {
-      router.push(`/my-course/${savedCourseId}`);
+      router.push(`/course/${savedCourseId}`);
     }
     setShowSaveModal(false);
     setSavedCourseId(null);
   };
-
-  // 관련 플랜 — 태그 매칭 또는 같은 지역 기반 필터링
-  const relatedCourses = courses
-    .filter((c) => c.id !== courseId)
-    .filter(
-      (c) =>
-        c.tags?.some((t) => course.tags?.includes(t)) ||
-        c.location === course.location
-    )
-    .slice(0, 3);
-
-  // 태그/지역 매칭 결과가 3개 미만이면 다른 플랜으로 채움
-  if (relatedCourses.length < 3) {
-    const remaining = courses
-      .filter((c) => c.id !== courseId && !relatedCourses.some((r) => r.id === c.id))
-      .slice(0, 3 - relatedCourses.length);
-    relatedCourses.push(...remaining);
-  }
 
   return (
     <div className="bg-white pb-24 min-h-screen relative">
       {/* 히어로 이미지 */}
       <div className="relative h-64 w-full">
         <Image
-          src={course.thumbnail}
-          alt={course.title}
+          src={heroImage}
+          alt={plan.planTitle}
           fill
           sizes="100vw"
           className="object-cover"
@@ -191,15 +191,15 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/70 to-transparent text-white">
           <div className="flex gap-2 mb-2">
-            {course.tags.map((tag, idx) => (
+            {plan.tags.map((tag, idx) => (
               <span key={idx} className="bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded text-xs">
                 {tag}
               </span>
             ))}
           </div>
-          <h1 className="text-2xl font-bold leading-tight mb-1">{course.title}</h1>
+          <h1 className="text-2xl font-bold leading-tight mb-1">{plan.planTitle}</h1>
           <div className="flex items-center text-sm opacity-90">
-            <MapPin size={14} className="mr-1" /> {course.location}
+            <MapPin size={14} className="mr-1" /> {locationLabel}
           </div>
         </div>
       </div>
@@ -208,28 +208,25 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div
           className="flex items-center gap-3 cursor-pointer active:opacity-70"
-          onClick={() => router.push(`/profile/${course.author}`)}
+          onClick={() => router.push(`/profile/${plan.userId}`)}
         >
           <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-200">
             <Image
-              src={course.authorAvatar}
-              alt={course.author}
+              src={plan.userAvatar || `https://i.pravatar.cc/150?u=${plan.userId}`}
+              alt={plan.userNickName}
               fill
               sizes="40px"
               className="object-cover"
             />
           </div>
           <div>
-            <div className="text-sm font-bold text-gray-900">{course.author}</div>
+            <div className="text-sm font-bold text-gray-900">{plan.userNickName}</div>
             <div className="text-xs text-gray-500">여행 크리에이터</div>
           </div>
         </div>
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            toggleLike(courseId);
-            toast(liked ? '좋아요를 취소했어요.' : '좋아요를 눌렀어요!');
-          }}
+          onClick={planActions.toggleLike}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-full border-2 font-bold text-sm transition-all ${
             liked
               ? 'bg-red-50 border-red-400 text-red-500'
@@ -245,16 +242,16 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       <div className="grid grid-cols-3 gap-1 p-4 text-center">
         <div className="bg-gray-50 p-3 rounded-lg">
           <div className="text-xs text-gray-500 mb-1">소요시간</div>
-          <div className="font-bold text-gray-900">{course.duration}</div>
+          <div className="font-bold text-gray-900">{durationLabel}</div>
         </div>
         <div className="bg-gray-50 p-3 rounded-lg">
           <div className="text-xs text-gray-500 mb-1">스크랩</div>
           <div className="font-bold text-gray-900 flex items-center justify-center gap-1">
-            <Bookmark size={14} className="text-sky-500" /> {course.bookmarks}
+            <Bookmark size={14} className="text-sky-500" /> {scrapCount}
           </div>
         </div>
         <button
-          onClick={() => toggleLike(courseId)}
+          onClick={planActions.toggleLike}
           className="bg-gray-50 p-3 rounded-lg active:bg-gray-100 transition-colors"
         >
           <div className="text-xs text-gray-500 mb-1">좋아요</div>
@@ -267,7 +264,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
 
       {/* 설명 */}
       <div className="px-5 py-2 mb-6">
-        <p className="text-gray-600 text-sm leading-relaxed">{course.description}</p>
+        <p className="text-gray-600 text-sm leading-relaxed">{plan.planDescription}</p>
       </div>
 
       {/* 타임라인 */}
@@ -276,20 +273,20 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           <Clock size={20} className="text-sky-500" /> 여행 플랜 타임라인
         </h2>
         <div className="relative pl-2 space-y-8 before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-sky-200 before:to-gray-100 before:content-['']">
-          {course.stops.map((stop) => (
-            <div key={stop.id} className="relative pl-8">
+          {places.map((stop) => (
+            <div key={stop.planPlaceId} className="relative pl-8">
               <span className="absolute left-0 top-1.5 -ml-px h-4 w-4 rounded-full border-2 border-white bg-sky-500 shadow-sm z-10" />
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1">
                 <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded w-fit mb-1">
-                  {stop.time}
+                  {stop.visitTime}
                 </span>
                 <span className="text-xs text-gray-400 font-medium ml-auto sm:ml-2">
-                  {stop.category}
+                  {stop.categoryName}
                 </span>
               </div>
-              <h3 className="text-base font-bold text-gray-900 mb-1">{stop.name}</h3>
+              <h3 className="text-base font-bold text-gray-900 mb-1">{stop.placeName}</h3>
               <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                {stop.description}
+                {stop.stayDescription || stop.address}
               </p>
             </div>
           ))}
@@ -482,41 +479,6 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         )}
       </div>
 
-      {/* 관련 플랜 */}
-      {relatedCourses.length > 0 && (
-        <div className="px-5 py-6 border-t border-gray-100 bg-gray-50">
-          <h2 className="font-bold text-lg mb-4">이런 플랜도 좋아하실 거예요</h2>
-          <div className="space-y-3">
-            {relatedCourses.map((rc) => (
-              <div
-                key={rc.id}
-                onClick={() => router.push(`/course/${rc.id}`)}
-                className="flex gap-3 bg-white rounded-xl p-3 border border-gray-100 shadow-sm cursor-pointer active:scale-[0.99] transition-transform"
-              >
-                <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                  <Image src={rc.thumbnail} alt={rc.title} fill sizes="80px" className="object-cover" />
-                </div>
-                <div className="flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-bold text-sm text-gray-900 line-clamp-1 mb-1">{rc.title}</h3>
-                    <p className="text-xs text-gray-500 line-clamp-1">{rc.description}</p>
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-1">
-                    <span className="flex items-center gap-0.5">
-                      <MapPin size={10} /> {rc.location}
-                    </span>
-                    <span>·</span>
-                    <span className="flex items-center gap-0.5">
-                      <Heart size={10} className="text-red-400" /> {rc.likes}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       <BottomActionBar
         iconActions={[
           {
@@ -526,10 +488,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
             active: liked,
             activeTone: 'like',
             filled: true,
-            onClick: () => {
-              toggleLike(courseId);
-              toast(liked ? '좋아요를 취소했어요.' : '좋아요를 눌렀어요!');
-            },
+            onClick: planActions.toggleLike,
           },
           {
             id: 'bookmark',
@@ -538,10 +497,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
             active: bookmarked,
             activeTone: 'bookmark',
             filled: true,
-            onClick: () => {
-              toggleBookmark(courseId);
-              toast.success(bookmarked ? '저장을 해제했어요.' : '플랜을 저장했어요!');
-            },
+            onClick: planActions.toggleScrap,
           },
         ]}
         primaryLabel="이 플랜으로 일정 담기"
@@ -558,7 +514,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
               <>
                 <h3 className="font-bold text-lg mb-2 text-gray-900">내 일정으로 담기</h3>
                 <p className="text-sm text-gray-500 mb-1">
-                  <span className="font-bold text-gray-700">&ldquo;{course.title}&rdquo;</span>
+                  <span className="font-bold text-gray-700">&ldquo;{plan.planTitle}&rdquo;</span>
                 </p>
                 <p className="text-sm text-gray-500 mb-5">
                   이 플랜을 내 일정에 추가하시겠어요?
@@ -622,7 +578,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
             <button
               onClick={() => {
-                toggleBookmark(courseId);
+                planActions.toggleScrap();
                 setIsMenuOpen(false);
               }}
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
@@ -736,7 +692,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         </div>
       )}
 
-      <ShareBottomSheet isOpen={shareOpen} onClose={() => setShareOpen(false)} title={course.title} />
+      <ShareBottomSheet isOpen={shareOpen} onClose={() => setShareOpen(false)} title={plan.planTitle} />
     </div>
   );
 }
