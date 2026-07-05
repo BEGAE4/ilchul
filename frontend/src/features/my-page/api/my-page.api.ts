@@ -13,7 +13,7 @@ export const fetchMyPlans = async (): Promise<MyPlan[]> => {
   return response.data.plans ?? [];
 };
 
-// 내 플랜 공개 여부 설정 API
+// 내 플랜 공개 여부 토글 API (v5: POST /api/mypage/plan/visibility/{planId}, 본문 없음)
 export const setMyPlanVisibility = async (
   planId: number
 ): Promise<{ status: number }> => {

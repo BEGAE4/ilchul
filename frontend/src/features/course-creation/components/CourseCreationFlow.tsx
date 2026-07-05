@@ -26,7 +26,7 @@ import { LogoLoader } from '@/shared/ui/LogoLoader';
 import { StepIndicator } from '@/shared/ui/StepIndicator';
 import { RouteMap } from './RouteMap';
 import { useSurveyStore, type SurveyStep } from '@/shared/lib/stores/useSurveyStore';
-import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
+import { planApi, type PlanPreviewResponse } from '@/features/plan';
 import {
   RECOMMENDED_PLACES,
   PLACE_COORDS,
@@ -109,7 +109,6 @@ function formatMinutes(min: number): string {
 
 export const CourseCreationFlow: React.FC = () => {
   const router = useRouter();
-  const { addMyCourse } = useCourseStore();
   const {
     step,
     previousStep,
@@ -136,6 +135,10 @@ export const CourseCreationFlow: React.FC = () => {
   const [isDirectInput, setIsDirectInput] = useState(false);
   const [directInputValue, setDirectInputValue] = useState('');
   const [showExitModal, setShowExitModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  // 최종 플랜 단계의 서버 계산 프리뷰 (소요시간/이동거리)
+  const [serverPreview, setServerPreview] = useState<PlanPreviewResponse | null>(null);
+  const [previewFailed, setPreviewFailed] = useState(false);
 
   // ── 네비게이션 ──
   const handleNext = () => {
@@ -150,45 +153,91 @@ export const CourseCreationFlow: React.FC = () => {
       const selected = RECOMMENDED_PLACES.filter((p) => selectedPlaceIds.includes(p.id));
       setFinalStops(selected);
       setStep('finalPlan');
+      // 서버 계산 프리뷰 조회 (POST /api/plan-place/preview) — 실패해도 화면 진행은 유지
+      setServerPreview(null);
+      setPreviewFailed(false);
+      void (async () => {
+        try {
+          const numericPlaces = selected
+            .map((p, i) => ({ placeId: Number(p.id), order: i + 1 }))
+            .filter((p) => Number.isInteger(p.placeId));
+          if (numericPlaces.length === 0) {
+            setPreviewFailed(true);
+            return;
+          }
+          const preview = await planApi.createPlanPreview({
+            planTitle: `${(surveyData.mindState ?? '').slice(0, 10)} 힐링 플랜`,
+            isPlanVisible: false,
+            ...(startingPoint.address
+              ? {
+                  departurePoint: {
+                    name: startingPoint.address,
+                    address: startingPoint.address,
+                    x: startingPoint.coord.lng,
+                    y: startingPoint.coord.lat,
+                  },
+                }
+              : {}),
+            ...(surveyData.startDate
+              ? {
+                  tripStartDate: `${surveyData.startDate}T${surveyData.startTime || '00:00'}:00`,
+                  tripEndDate: `${surveyData.startDate}T${surveyData.endTime || '23:59'}:00`,
+                }
+              : {}),
+            places: numericPlaces,
+          });
+          setServerPreview(preview);
+        } catch (err) {
+          console.error('플랜 생성 프리뷰 실패:', err);
+          setPreviewFailed(true);
+        }
+      })();
     } else if (step === 'finalPlan') {
-      const newCourse = {
-        id: `my-${Date.now()}`,
-        title: `${(surveyData.mindState ?? '').slice(0, 10)} 힐링 플랜`,
-        description: `${surveyData.transport ?? ''}으로 떠나는 나만의 힐링 여행`,
-        author: '김여행',
-        authorAvatar: 'https://i.pravatar.cc/150?u=me',
-        thumbnail:
-          finalStops[0]?.image ||
-          'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1080&auto=format&fit=crop',
-        location: finalStops[0]?.address?.split(' ').slice(0, 2).join(' ') || '서울',
-        duration: `${finalStops.length}시간`,
-        tags: finalStops.slice(0, 3).map((s) => `#${s.category}`),
-        bookmarks: 0,
-        likes: 0,
-        isVerified: false,
-        isPublic: false,
-        ownerId: 'me',
-        scheduledDate: surveyData.startDate ?? '',
-        scheduledStartTime: surveyData.startTime ?? '',
-        scheduledEndTime: surveyData.endTime ?? '',
-        createdAt: new Date().toISOString(),
-        review: '',
-        stops: finalStops.map((s, i) => ({
-          id: s.id,
-          name: s.name,
-          category: s.category,
-          time: i === 0 ? surveyData.startTime || '10:00' : `${10 + i}:00`,
-          description: s.description,
-          isVerified: false,
-        })),
-      };
-      addMyCourse(newCourse);
-      const savedId = newCourse.id;
-      reset();
-      toast.success('힐링 플랜이 생성되었어요!', {
-        description: '내 플랜에서 확인해보세요.',
-      });
-      router.push(`/my-course/${savedId}`);
+      // v5: POST /api/plan/create 한 번으로 출발지/일정/장소까지 일괄 등록.
+      // 실패 시 에러 토스트를 노출하고 현재 화면을 유지한다.
+      if (isSaving) return;
+      void (async () => {
+        setIsSaving(true);
+        try {
+          const numericPlaces = finalStops
+            .map((s, i) => ({ placeId: Number(s.id), order: i + 1 }))
+            .filter((p) => Number.isInteger(p.placeId));
+          const created = await planApi.createPlan({
+            planTitle: `${(surveyData.mindState ?? '').slice(0, 10)} 힐링 플랜`,
+            planDescription: `${surveyData.transport ?? ''}으로 떠나는 나만의 힐링 여행`,
+            isPlanVisible: false,
+            ...(startingPoint.address
+              ? {
+                  departurePoint: {
+                    name: startingPoint.address,
+                    address: startingPoint.address,
+                    x: startingPoint.coord.lng,
+                    y: startingPoint.coord.lat,
+                  },
+                }
+              : {}),
+            ...(surveyData.startDate
+              ? {
+                  tripStartDate: `${surveyData.startDate}T${surveyData.startTime || '00:00'}:00`,
+                  tripEndDate: `${surveyData.startDate}T${surveyData.endTime || '23:59'}:00`,
+                }
+              : {}),
+            places: numericPlaces,
+          });
+          reset();
+          toast.success('힐링 플랜이 생성되었어요!', {
+            description: '내 플랜에서 확인해보세요.',
+          });
+          router.push(`/course/${created.planId}`);
+        } catch (err) {
+          console.error('플랜 생성 실패:', err);
+          toast.error('플랜 저장에 실패했어요.', {
+            description: '네트워크 상태를 확인한 뒤 다시 시도해주세요.',
+          });
+        } finally {
+          setIsSaving(false);
+        }
+      })();
     }
   };
 
@@ -1151,6 +1200,18 @@ export const CourseCreationFlow: React.FC = () => {
               <span>{startingPoint.address}</span>
             </div>
           </div>
+          {serverPreview && (
+            <div className="mt-2 flex items-center gap-3 text-xs font-bold text-sky-600 bg-sky-50 px-3 py-2 rounded-lg">
+              <span>예상 소요 {formatMinutes(serverPreview.requiredTime)}</span>
+              <span className="text-sky-300">|</span>
+              <span>총 이동 {serverPreview.totalDistance}km</span>
+            </div>
+          )}
+          {previewFailed && (
+            <div className="mt-2 text-[11px] text-gray-400 bg-gray-50 px-3 py-2 rounded-lg">
+              경로 예상 정보를 불러오지 못했어요. 저장에는 영향이 없어요.
+            </div>
+          )}
         </div>
 
         <div className="px-4 pt-3 pb-1">
