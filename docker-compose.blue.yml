@@ -11,6 +11,7 @@ services:
     restart: unless-stopped
     networks:
       - ilchul-network
+      - monitoring_net
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${BACKEND_SERVER_PORT}/actuator/health || exit 1"]
       interval: 20s
@@ -32,6 +33,7 @@ services:
     restart: unless-stopped
     networks:
       - ilchul-network
+      - monitoring_net
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:${FRONTEND_SERVER_PORT} || exit 1"]
       interval: 10s
@@ -43,3 +45,6 @@ networks:
   ilchul-network:
     external: true
     name: ilchul-network
+  monitoring_net:
+    external: true
+    name: monitoring_net
