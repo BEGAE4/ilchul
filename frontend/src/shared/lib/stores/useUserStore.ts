@@ -6,6 +6,7 @@ interface UserProfile {
   avatar: string;
   title: string; // 한줄 소개 (샘플 호환)
   level: number;
+  isAdmin?: boolean; // 관리자 여부 (문의 답변 등 관리자 기능 게이트)
   // 기존 User 타입 호환 필드
   bio?: string;
   travelType?: string;

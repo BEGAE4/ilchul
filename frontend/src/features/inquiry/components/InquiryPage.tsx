@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
-import type { Inquiry, InquirySection } from '../types/inquiry.types';
+import type { InquiryDetail, InquirySection } from '../types/inquiry.types';
 import { InquiryListSection } from './InquiryListSection';
 import { InquiryDetailSection } from './InquiryDetailSection';
 import { InquiryFormSection } from './InquiryFormSection';
@@ -14,12 +14,12 @@ import { AdminAnswerFormSection } from './AdminAnswerFormSection';
 export const InquiryPage = () => {
   const router = useRouter();
   const { user } = useUserStore();
-  const isAdmin = (user as { isAdmin?: boolean }).isAdmin ?? false;
+  const isAdmin = user.isAdmin ?? false;
 
   const defaultSection: InquirySection = isAdmin ? 'adminList' : 'list';
   const [section, setSection] = useState<InquirySection>(defaultSection);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [editTarget, setEditTarget] = useState<Inquiry | null>(null);
+  const [editTarget, setEditTarget] = useState<InquiryDetail | null>(null);
   const prevSection = useRef<InquirySection>(defaultSection);
 
   const navigate = (next: InquirySection) => {
