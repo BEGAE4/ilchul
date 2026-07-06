@@ -3,7 +3,7 @@ services:
     image: ${BACKEND_IMAGE}
     container_name: ilchul-backend-blue
     ports:
-      - "8081:${BACKEND_SERVER_PORT}"
+      - "0.0.0.0:8081:${BACKEND_SERVER_PORT}"
     env_file:
       - .env
     environment:
@@ -23,7 +23,7 @@ services:
     image: ${FRONTEND_IMAGE}
     container_name: ilchul-frontend-blue
     ports:
-      - "3001:${FRONTEND_SERVER_PORT}"
+      - "0.0.0.0:3001:${FRONTEND_SERVER_PORT}"
     env_file:
       - .env
     environment:
