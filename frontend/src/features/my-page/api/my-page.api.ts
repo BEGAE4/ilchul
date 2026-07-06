@@ -10,7 +10,7 @@ import { MyPageSummary } from '../types/summary.types';
 // 내 플랜 목록 조회 API
 export const fetchMyPlans = async (): Promise<MyPlan[]> => {
   const response = await axios.get<MyPlansResponse>('/api/mypage/plans');
-  return response.data.plans;
+  return response.data.plans ?? [];
 };
 
 // 내 플랜 공개 여부 설정 API

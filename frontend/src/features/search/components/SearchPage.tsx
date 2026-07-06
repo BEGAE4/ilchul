@@ -10,24 +10,14 @@ import {
   NEARBY_POPULAR_PLACES,
   NATIONWIDE_PLACES,
 } from '@/shared/data/mockData';
+import {
+  fetchRecentSearches,
+  addRecentSearch,
+  deleteRecentSearches,
+} from '@/features/search/api/search.api';
+import type { RecentSearch } from '@/features/search/types/search.types';
 
-const RECENT_SEARCHES_KEY = 'ilchul_recent_searches';
 const MAX_RECENT = 8;
-
-function getRecentSearches(): string[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || '[]');
-  } catch {
-    return [];
-  }
-}
-
-function saveRecentSearch(query: string) {
-  const prev = getRecentSearches().filter((q) => q !== query);
-  const next = [query, ...prev].slice(0, MAX_RECENT);
-  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
-}
 
 // 트렌딩 데이터 (likes 기준 정렬)
 const ALL_PLACES = [...NEARBY_POPULAR_PLACES, ...NATIONWIDE_PLACES];
@@ -51,14 +41,23 @@ export const SearchPage: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isAutocompleting, setIsAutocompleting] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    setRecentSearches(getRecentSearches());
+  const loadRecentSearches = useCallback(async () => {
+    try {
+      const data = await fetchRecentSearches();
+      setRecentSearches(data.slice(0, MAX_RECENT));
+    } catch {
+      setRecentSearches([]);
+    }
   }, []);
+
+  useEffect(() => {
+    loadRecentSearches();
+  }, [loadRecentSearches]);
 
   const buildSuggestions = useCallback((query: string) => {
     if (!query.trim()) {
@@ -98,11 +97,13 @@ export const SearchPage: React.FC = () => {
 
   const handleSearch = (query: string) => {
     if (!query.trim()) return;
-    saveRecentSearch(query.trim());
-    setRecentSearches(getRecentSearches());
+    const trimmed = query.trim();
+    addRecentSearch(trimmed)
+      .then(loadRecentSearches)
+      .catch(() => {});
     setSuggestions([]);
     setInputValue('');
-    router.push(`/search/results?q=${encodeURIComponent(query.trim())}`);
+    router.push(`/search/results?q=${encodeURIComponent(trimmed)}`);
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -247,40 +248,28 @@ export const SearchPage: React.FC = () => {
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
-                localStorage.removeItem(RECENT_SEARCHES_KEY);
-                setRecentSearches([]);
+                deleteRecentSearches()
+                  .then(() => setRecentSearches([]))
+                  .catch(() => {});
               }}
               className="text-[11px] text-gray-400 active:text-gray-600"
             >
               전체 삭제
             </button>
           </div>
-          {recentSearches.map((keyword) => (
+          {recentSearches.map((item) => (
             <div
-              key={keyword}
+              key={`${item.name}-${item.createdAt}`}
               className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition"
             >
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => handleSearch(keyword)}
+                onClick={() => handleSearch(item.name)}
                 className="flex items-center gap-3 flex-1 text-left"
               >
                 <ClockIcon size={14} className="text-gray-300 flex-shrink-0" />
-                <span className="text-sm text-gray-700">{keyword}</span>
-              </button>
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  const next = recentSearches.filter((q) => q !== keyword);
-                  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next));
-                  setRecentSearches(next);
-                }}
-                className="p-1 text-gray-300 active:text-gray-500"
-                aria-label={`${keyword} 삭제`}
-              >
-                <X size={14} />
+                <span className="text-sm text-gray-700">{item.name}</span>
               </button>
             </div>
           ))}
