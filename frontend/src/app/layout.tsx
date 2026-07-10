@@ -12,6 +12,10 @@ export const metadata: Metadata = {
     userScalable: false,
   },
   themeColor: "#000000",
+  // favicon 교체 시 브라우저 캐시 무효화용 버전 쿼리 — 아이콘 변경 시 v를 올릴 것
+  icons: {
+    icon: "/favicon.ico?v=2",
+  },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
