@@ -1,4 +1,4 @@
--- V260608221023__refactor_plan_place_image.sql
+-- V260710214731__refactor_plan_place_image.sql
 
 -- plan_place_image 테이블 확장
 ALTER TABLE `plan_place_image`
