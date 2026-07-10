@@ -1,4 +1,4 @@
--- V260621142020__refactor_plan.sql
+-- V260710214733__refactor_plan.sql
 
 -- plan 테이블 수정
 ALTER TABLE `plan`
