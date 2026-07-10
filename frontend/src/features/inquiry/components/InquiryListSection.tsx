@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { PenLine } from 'lucide-react';
 import { fetchMyInquiries } from '../api/inquiry.api';
-import type { Inquiry, InquiryStatus } from '../types/inquiry.types';
+import type { InquiryListItem, InquiryStatus } from '../types/inquiry.types';
 import { InquiryCard } from './InquiryCard';
 
 interface InquiryListSectionProps {
@@ -12,22 +12,29 @@ interface InquiryListSectionProps {
 }
 
 const TABS: { id: InquiryStatus; label: string }[] = [
-  { id: 'pending', label: '답변 대기' },
-  { id: 'answered', label: '답변 완료' },
+  { id: 'PENDING', label: '답변 대기' },
+  { id: 'ANSWERED', label: '답변 완료' },
 ];
 
 export const InquiryListSection = ({ onSelectInquiry, onCreateNew }: InquiryListSectionProps) => {
-  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
-  const [activeTab, setActiveTab] = useState<InquiryStatus>('pending');
+  const [inquiries, setInquiries] = useState<InquiryListItem[]>([]);
+  const [activeTab, setActiveTab] = useState<InquiryStatus>('PENDING');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchMyInquiries()
-      .then(setInquiries)
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  const filtered = inquiries.filter((i) => i.status === activeTab);
+    let alive = true;
+    setIsLoading(true);
+    fetchMyInquiries(activeTab)
+      .then((res) => {
+        if (alive) setInquiries(res.items);
+      })
+      .finally(() => {
+        if (alive) setIsLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [activeTab]);
 
   return (
     <div className="flex flex-col flex-1">
@@ -62,16 +69,16 @@ export const InquiryListSection = ({ onSelectInquiry, onCreateNew }: InquiryList
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : inquiries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
             <span className="text-4xl mb-3">📭</span>
             <p className="text-sm">
-              {activeTab === 'pending' ? '답변 대기 중인 문의가 없어요' : '답변 완료된 문의가 없어요'}
+              {activeTab === 'PENDING' ? '답변 대기 중인 문의가 없어요' : '답변 완료된 문의가 없어요'}
             </p>
           </div>
         ) : (
           <div>
-            {filtered.map((inquiry) => (
+            {inquiries.map((inquiry) => (
               <InquiryCard
                 key={inquiry.inquiryId}
                 inquiry={inquiry}
