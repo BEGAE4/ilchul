@@ -63,6 +63,12 @@ public class Place extends BaseEntity {
     @Column(name = "last_seen_at")
     private LocalDateTime lastSeenAt;
 
+    @Column(name = "like_count")
+    private Integer likeCount = 0;
+
+    @Column(name = "scrap_count")
+    private Integer scrapCount = 0;
+
     @OneToMany(mappedBy = "place", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanPlace> planPlaces = new ArrayList<>();
 
@@ -82,6 +88,8 @@ public class Place extends BaseEntity {
         this.y = y;
         this.lastFetchedAt = lastFetchedAt;
         this.lastSeenAt = lastSeenAt;
+        this.likeCount = 0;
+        this.scrapCount = 0;
     }
 
     public void mergeFrom(KakaoPlaceResponseDto.Document doc, PlaceSummaryDto dto) {
@@ -103,6 +111,26 @@ public class Place extends BaseEntity {
 
     public void markSeen() {
         this.lastSeenAt = LocalDateTime.now();
+    }
+
+    public void increaseLikeCount() {
+        this.likeCount++;
+    }
+
+    public void decreaseLikeCount() {
+        if (this.likeCount > 0) {
+            this.likeCount--;
+        }
+    }
+
+    public void increaseScrappedCount() {
+        this.scrapCount++;
+    }
+
+    public void decreaseScrappedCount() {
+        if (this.scrapCount > 0) {
+            this.scrapCount--;
+        }
     }
 
     private static Boolean hasText(String s) {

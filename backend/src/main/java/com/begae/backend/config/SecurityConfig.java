@@ -16,6 +16,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -37,7 +38,10 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                .httpBasic(Customizer.withDefaults())
+                .httpBasic(basic -> basic.authenticationEntryPoint((request, response, authException) -> {
+                    response.setHeader("WWW-Authenticate", "Basic realm=\"Swagger UI\"");
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                }))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .build();
     }
@@ -51,6 +55,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests((auth) -> auth
                         .requestMatchers(
                                 "/",
+                                "/actuator/health",
                                 "/api/sign/**",
                                 "/api/exception/**",
                                 "/oauth2/**",
