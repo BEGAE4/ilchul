@@ -3,8 +3,8 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "일출 - 모바일 웹앱",
-  description: "일출을 감상하고 기록하는 모바일 웹앱",
+  title: "일출 - 맞춤형 당일치기 힐링 플래너",
+  description: "맞춤형 당일치기 힐링 플래너",
   viewport: {
     width: "device-width",
     initialScale: 1,
