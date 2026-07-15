@@ -302,7 +302,7 @@ export const SearchPage: React.FC = () => {
                 <p className="text-[11px] text-gray-400">{place.category} · {place.location}</p>
               </div>
               <Heart size={12} className="text-gray-300 fill-gray-300" />
-              <span className="text-[11px] text-gray-400">{place.likes.toLocaleString()}</span>
+              <span className="text-[11px] text-gray-400">{(place.likes ?? 0).toLocaleString()}</span>
             </button>
           ))}
         </div>
@@ -336,7 +336,7 @@ export const SearchPage: React.FC = () => {
                 </p>
               </div>
               <Heart size={12} className="text-gray-300 fill-gray-300" />
-              <span className="text-[11px] text-gray-400">{course.likes.toLocaleString()}</span>
+              <span className="text-[11px] text-gray-400">{(course.likes ?? 0).toLocaleString()}</span>
             </button>
           ))}
         </div>
