@@ -25,14 +25,24 @@ interface UserSettings {
   privateProfile: boolean;
 }
 
+// 로그인 여부 확인(GET /api/sign/userinfo) 결과
+interface AuthResult {
+  isLoggedIn: boolean;
+  email?: string | null;
+  isAdmin?: boolean;
+}
+
 interface UserState {
   user: UserProfile;
   isLoggedIn: boolean;
+  authChecked: boolean; // 로그인 여부 확인 API 완료 여부 (가드/리다이렉트 판단용)
+  email: string | null; // 로그인 계정 이메일 (userinfo 응답)
   followingIds: Set<string>;
   settings: UserSettings;
 
   setUser: (user: Partial<UserProfile>) => void;
   setLoggedIn: (val: boolean) => void;
+  setAuthResult: (result: AuthResult) => void;
   toggleFollow: (userId: string) => void;
   isFollowing: (userId: string) => boolean;
   updateSettings: (key: keyof UserSettings, value: boolean | string) => void;
@@ -56,7 +66,9 @@ export const useUserStore = create<UserState>((set, get) => ({
     followerCount: 156,
     followingCount: 89,
   },
-  isLoggedIn: true,
+  isLoggedIn: false,
+  authChecked: false,
+  email: null,
   followingIds: new Set<string>(),
   settings: {
     pushNotification: true,
@@ -70,6 +82,16 @@ export const useUserStore = create<UserState>((set, get) => ({
     set((state) => ({ user: { ...state.user, ...updates } })),
 
   setLoggedIn: (isLoggedIn) => set({ isLoggedIn }),
+
+  setAuthResult: ({ isLoggedIn, email, isAdmin }) =>
+    set((state) => ({
+      isLoggedIn,
+      authChecked: true,
+      ...(email !== undefined ? { email } : {}),
+      ...(isAdmin !== undefined
+        ? { user: { ...state.user, isAdmin } }
+        : {}),
+    })),
 
   toggleFollow: (userId) =>
     set((state) => {
@@ -94,5 +116,5 @@ export const useUserStore = create<UserState>((set, get) => ({
       user: { ...state.user, ...updates },
     })),
 
-  logout: () => set({ isLoggedIn: false }),
+  logout: () => set({ isLoggedIn: false, email: null }),
 }));
