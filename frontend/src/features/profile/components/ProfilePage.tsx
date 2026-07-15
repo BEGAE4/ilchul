@@ -3,20 +3,20 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Settings, Plus, Eye, EyeOff, Trash2, X } from 'lucide-react';
+import { Settings, Plus, Eye, EyeOff, Trash2, X, Bookmark, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
+import { useRequireAuth } from '@/features/authentication/hooks';
 import {
   fetchMyPlans,
+  fetchScrappedPlans,
   fetchMyPageProfile,
   fetchMyPageSummary,
   setMyPlanVisibility,
 } from '@/features/my-page/api';
-import { planApi } from '@/features/plan';
-import type { PlanSummary } from '@/features/plan';
-import type { MyPlan } from '@/features/my-page/types/plan.types';
+import type { MyPlan, ScrappedPlan } from '@/features/my-page/types/plan.types';
 import type { MyPageSummary } from '@/features/my-page/types/summary.types';
 
 type MainTab = 'courses' | 'bookmarks' | 'plans';
@@ -24,8 +24,9 @@ type CourseFilter = 'all' | 'public' | 'private';
 
 export const ProfilePage: React.FC = () => {
   const router = useRouter();
-  const { user, updateProfile } = useUserStore();
-  const { myCourses, courses, deleteMyCourse, toggleVisibility } = useCourseStore();
+  const { ready } = useRequireAuth();
+  const { user, email, updateProfile } = useUserStore();
+  const { myCourses, deleteMyCourse, toggleVisibility } = useCourseStore();
   const [mainTab, setMainTab] = useState<MainTab>('courses');
   const [courseFilter, setCourseFilter] = useState<CourseFilter>('all');
   const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
@@ -43,9 +44,9 @@ export const ProfilePage: React.FC = () => {
   const [summary, setSummary] = useState<MyPageSummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
-  const [scrapsLoading, setScrapsLoading] = useState(true);
-  const [scrappedPlans, setScrappedPlans] = useState<PlanSummary[]>([]);
-  const [scrapsError, setScrapsError] = useState<string | null>(null);
+  const [scrappedLoading, setScrappedLoading] = useState(true);
+  const [scrappedPlans, setScrappedPlans] = useState<ScrappedPlan[]>([]);
+  const [scrappedError, setScrappedError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -107,21 +108,21 @@ export const ProfilePage: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
 
-    const loadScraps = async () => {
+    const loadScrappedPlans = async () => {
       try {
-        setScrapsLoading(true);
-        setScrapsError(null);
-        const data = await planApi.fetchMyScraps();
-        if (isMounted) setScrappedPlans(data.scrappedPlans ?? []);
+        setScrappedLoading(true);
+        setScrappedError(null);
+        const data = await fetchScrappedPlans();
+        if (isMounted) setScrappedPlans(data);
       } catch (err) {
-        console.error('저장 플랜 목록 로드 실패:', err);
-        if (isMounted) setScrapsError('저장한 플랜을 불러오지 못했어요.');
+        console.error('저장한 플랜 로드 실패:', err);
+        if (isMounted) setScrappedError('저장한 플랜을 불러오지 못했어요.');
       } finally {
-        if (isMounted) setScrapsLoading(false);
+        if (isMounted) setScrappedLoading(false);
       }
     };
 
-    loadScraps();
+    loadScrappedPlans();
     return () => {
       isMounted = false;
     };
@@ -158,7 +159,6 @@ export const ProfilePage: React.FC = () => {
     if (courseFilter === 'private') return !course.isPublic;
     return true;
   });
-
 
   const STATS: { label: string; value: number | string; color: string }[] = [
     {
@@ -210,6 +210,25 @@ export const ProfilePage: React.FC = () => {
     });
   };
 
+  // 여행 기간 표시 (시작~종료). 시작만 있으면 시작일만, 없으면 '일정 미정'
+  const formatTripPeriod = (start: string | null, end: string | null) => {
+    if (!start) return '일정 미정';
+    const startText = formatIsoDate(start);
+    if (!end) return startText;
+    const endText = formatIsoDate(end);
+    return startText === endText ? startText : `${startText} ~ ${endText}`;
+  };
+
+  // 소요 시간(분) → 'N시간 M분'
+  const formatRequiredTime = (minutes: number) => {
+    if (!minutes || minutes <= 0) return '소요 시간 미정';
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h > 0 && m > 0) return `${h}시간 ${m}분`;
+    if (h > 0) return `${h}시간`;
+    return `${m}분`;
+  };
+
   const handleTogglePlanVisibility = async (planId: number) => {
     const current = planVisibility[planId];
     const next = current === undefined ? true : !current;
@@ -248,6 +267,15 @@ export const ProfilePage: React.FC = () => {
     { key: 'plans', label: '내 플랜', count: plans.length },
   ];
 
+  // 로그인 확인 전 / 미로그인(리다이렉트 대기) 시 보호 콘텐츠 노출 방지
+  if (!ready) {
+    return (
+      <div className="flex items-center justify-center min-h-full py-32 text-sm text-gray-400">
+        로그인 확인 중...
+      </div>
+    );
+  }
+
   return (
     <div className="pb-24 bg-gray-50 min-h-full">
       {/* ─── 프로필 헤더 ─── */}
@@ -277,6 +305,9 @@ export const ProfilePage: React.FC = () => {
             <div className="font-bold text-lg text-gray-900">
               {user?.name ?? '김여행'}
             </div>
+            {email && (
+              <div className="text-xs text-gray-400 mt-0.5">{email}</div>
+            )}
             <div className="text-sm text-gray-500 mt-0.5">
               여행 레벨 {user?.level ?? 3} · {user?.travelType ?? '힐링 마스터'}
             </div>
@@ -451,15 +482,15 @@ export const ProfilePage: React.FC = () => {
 
           {mainTab === 'bookmarks' && (
             <div className="p-4">
-              {scrapsLoading && (
-                <div className="py-10 text-center text-gray-500">저장 플랜을 불러오는 중...</div>
+              {scrappedLoading && (
+                <div className="py-10 text-center text-gray-500">저장한 플랜을 불러오는 중...</div>
               )}
 
-              {!scrapsLoading && scrapsError && (
-                <div className="py-10 text-center text-red-500">{scrapsError}</div>
+              {!scrappedLoading && scrappedError && (
+                <div className="py-10 text-center text-red-500">{scrappedError}</div>
               )}
 
-              {!scrapsLoading && !scrapsError && scrappedPlans.length > 0 && (
+              {!scrappedLoading && !scrappedError && scrappedPlans.length > 0 && (
                 <div className="space-y-4">
                   {scrappedPlans.map((plan) => (
                     <div
@@ -474,21 +505,34 @@ export const ProfilePage: React.FC = () => {
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 bg-white/90 backdrop-blur-sm rounded-full shadow">
+                          <Bookmark size={12} fill="#3b82f6" className="text-blue-500" />
+                          <span className="text-[10px] font-bold text-blue-500">저장됨</span>
+                        </div>
+                        {!plan.isPlanVisible && (
+                          <span className="absolute top-2.5 left-2.5 text-[10px] text-white bg-black/50 backdrop-blur-sm rounded px-1.5 py-0.5">
+                            비공개
+                          </span>
+                        )}
                         <div className="absolute bottom-3 left-3 right-3">
-                          <h3 className="font-bold text-white text-sm line-clamp-1">
-                            {plan.planTitle}
-                          </h3>
+                          <h3 className="font-bold text-white text-sm line-clamp-1">{plan.planTitle}</h3>
                           <p className="text-xs text-white/90 mt-0.5">
-                            여행일정 {formatIsoDate(plan.tripStartDate)}
+                            여행일정 {formatTripPeriod(plan.tripStartDate, plan.tripEndDate)}
                           </p>
                         </div>
+                      </div>
+                      <div className="bg-white p-3 flex items-center justify-between text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <MapPin size={10} /> 소요 {formatRequiredTime(plan.requiredTime)}
+                        </span>
+                        <span>저장일 {formatIsoDate(plan.createAt)}</span>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              {!scrapsLoading && !scrapsError && scrappedPlans.length === 0 && (
+              {!scrappedLoading && !scrappedError && scrappedPlans.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <div className="text-4xl mb-4">🔖</div>
                   <p className="text-gray-500 font-medium mb-1">저장한 플랜이 없어요</p>

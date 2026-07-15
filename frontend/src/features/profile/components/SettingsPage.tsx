@@ -19,6 +19,7 @@ import {
 import { motion } from 'motion/react';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { updateMyPageProfile } from '@/features/my-page/api';
+import { logout } from '@/features/authentication/api';
 
 type SettingsSection = 'main' | 'editProfile' | 'notification' | 'privacy' | 'about';
 
@@ -62,11 +63,17 @@ export function SettingsPage() {
     }
   };
 
-  const handleLogout = () => {
-    setLoggedIn(false);
-    setShowLogoutModal(false);
-    toast.success('로그아웃 되었어요.');
-    router.push('/');
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.error('로그아웃 실패:', err);
+    } finally {
+      setLoggedIn(false);
+      setShowLogoutModal(false);
+      toast.success('로그아웃 되었어요.');
+      router.push('/');
+    }
   };
 
   const SectionHeader = ({ title, onBack }: { title: string; onBack: () => void }) => (
