@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
-import OrganicBlob from '@/shared/ui/OrganicBlob/component';
 import { LogoLoader } from '@/shared/ui/LogoLoader';
 import { StepIndicator } from '@/shared/ui/StepIndicator';
 import { RouteMap } from './RouteMap';
@@ -408,23 +407,53 @@ export const CourseCreationFlow: React.FC = () => {
         <Header onBack={handleBack} />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-violet-50 via-blue-50 to-white -z-10" />
-          <OrganicBlob state="idle" className="mb-6" />
-          <h1 className="text-2xl font-bold mb-4 text-gray-900">
+
+          {/* 일출 모션: 수평선 위로 떠오르는 해 */}
+          <div className="relative w-40 h-24 mb-8 overflow-hidden" aria-hidden>
+            <motion.div
+              initial={{ y: 72, scale: 0.85, opacity: 0.6 }}
+              animate={{ y: 8, scale: 1, opacity: 1 }}
+              transition={{ duration: 1.4, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute left-1/2 -translate-x-1/2 bottom-0"
+            >
+              <motion.div
+                animate={{ scale: [1, 1.06, 1] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 1.4 }}
+                className="w-16 h-16 rounded-full bg-gradient-to-b from-amber-300 to-orange-400 shadow-[0_0_40px_12px_rgba(251,191,36,0.35)]"
+              />
+            </motion.div>
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-sky-200" />
+          </div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="text-2xl font-bold mb-4 text-gray-900"
+          >
             지금 나에게 필요한
             <br />
             힐링 방법을 알아볼까요?
-          </h1>
-          <p className="text-gray-500 mb-12 leading-relaxed">
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.75 }}
+            className="text-gray-500 mb-12 leading-relaxed"
+          >
             먼저 간단한 설문을 통해
             <br />
             맞춤 여행 플랜을 추천해드릴게요.
-          </p>
-          <button
+          </motion.p>
+          <motion.button
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 1 }}
             onClick={handleNext}
             className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform"
           >
             시작하기
-          </button>
+          </motion.button>
         </div>
         {exitModal}
       </div>

@@ -14,6 +14,7 @@ import { useNearbyPopularPlaces } from '@/features/main/hooks/useNearbyPopularPl
 import { useNearbyPopularPlans } from '@/features/main/hooks/useNearbyPopularPlans';
 import { useNationwidePopularPlaces } from '@/features/main/hooks/useNationwidePopularPlaces';
 import { useNationwidePopularPlans } from '@/features/main/hooks/useNationwidePopularPlans';
+import { getSafeImageSrc } from '@/features/main/utils/image';
 import type { PopularPlace } from '@/features/main/types';
 import type { BestPlace } from '@/shared/types';
 
@@ -75,7 +76,7 @@ export default function Home() {
                 onClick={() => handlePlaceNavigate(place.id)}
               >
                 <Image
-                  src={place.image}
+                  src={getSafeImageSrc(place.image)}
                   alt={place.name}
                   fill
                   sizes="100vw"
@@ -93,7 +94,7 @@ export default function Home() {
                     <span>{place.location}</span>
                     <span className="mx-1 opacity-50">|</span>
                     <Heart size={12} className="fill-white" />
-                    <span>{place.likes.toLocaleString()}</span>
+                    <span>{(place.likes ?? 0).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -125,7 +126,7 @@ export default function Home() {
                 >
                   <div className="relative h-28 overflow-hidden">
                     <Image
-                      src={place.image}
+                      src={getSafeImageSrc(place.image)}
                       alt={place.name}
                       fill
                       sizes="160px"
@@ -151,7 +152,7 @@ export default function Home() {
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-[10px] text-gray-400">{place.location}</span>
                       <div className="flex items-center gap-0.5 text-[10px] text-gray-400">
-                        <Heart size={9} /> {place.likes.toLocaleString()}
+                        <Heart size={9} /> {(place.likes ?? 0).toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -188,7 +189,7 @@ export default function Home() {
                 >
                   <div className="relative h-40">
                     <Image
-                      src={plan.thumbnail}
+                      src={getSafeImageSrc(plan.thumbnail)}
                       alt={plan.title}
                       fill
                       sizes="320px"
@@ -199,7 +200,7 @@ export default function Home() {
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
                     <div className="absolute bottom-2.5 left-3 flex gap-1.5">
-                      {plan.tags.slice(0, 2).map((tag) => (
+                      {(plan.tags ?? []).slice(0, 2).map((tag) => (
                         <span
                           key={tag}
                           className="text-[10px] text-white bg-white/20 backdrop-blur-sm rounded px-1.5 py-0.5"
@@ -259,7 +260,7 @@ export default function Home() {
               >
                 <div className="relative h-32 overflow-hidden">
                   <Image
-                    src={place.image}
+                    src={getSafeImageSrc(place.image)}
                     alt={place.name}
                     fill
                     sizes="160px"
@@ -285,7 +286,7 @@ export default function Home() {
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-400">{place.location}</span>
                     <div className="flex items-center gap-0.5 text-xs text-gray-400">
-                      <Heart size={10} /> {place.likes.toLocaleString()}
+                      <Heart size={10} /> {(place.likes ?? 0).toLocaleString()}
                     </div>
                   </div>
                 </div>
@@ -320,7 +321,7 @@ export default function Home() {
               >
                 <div className="relative w-28 shrink-0">
                   <Image
-                    src={plan.thumbnail}
+                    src={getSafeImageSrc(plan.thumbnail)}
                     alt={plan.title}
                     fill
                     sizes="112px"
@@ -339,7 +340,7 @@ export default function Home() {
                   </div>
                   <div>
                     <div className="flex gap-1.5 mb-1.5">
-                      {plan.tags.slice(0, 3).map((tag) => (
+                      {(plan.tags ?? []).slice(0, 3).map((tag) => (
                         <span
                           key={tag}
                           className="text-[10px] text-sky-600 bg-sky-50 rounded px-1.5 py-0.5"
