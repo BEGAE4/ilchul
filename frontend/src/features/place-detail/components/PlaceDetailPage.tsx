@@ -313,7 +313,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
             size={20}
             className={`transition-colors ${liked ? 'text-red-500 fill-red-500' : 'text-gray-400'}`}
           />
-          <span className="text-xs font-bold text-gray-600">{displayLikeCount.toLocaleString()}</span>
+          <span className="text-xs font-bold text-gray-600">{(displayLikeCount ?? 0).toLocaleString()}</span>
         </button>
         <button
           onClick={handleBookmark}

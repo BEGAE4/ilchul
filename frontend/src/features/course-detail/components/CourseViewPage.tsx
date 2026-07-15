@@ -234,7 +234,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           }`}
         >
           <Heart size={16} className={liked ? 'fill-red-400 text-red-400' : ''} />
-          {likeCount.toLocaleString()}
+          {(likeCount ?? 0).toLocaleString()}
         </motion.button>
       </div>
 
