@@ -131,6 +131,7 @@ export default function Home() {
                       fill
                       sizes="160px"
                       className="object-cover"
+                      priority={idx < 3}
                     />
                     <div className="absolute top-2 left-2 w-5 h-5 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded text-[10px] text-white font-bold">
                       {idx + 1}

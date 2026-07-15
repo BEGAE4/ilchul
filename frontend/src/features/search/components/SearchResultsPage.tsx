@@ -410,7 +410,7 @@ const PlaceCardSmall: React.FC<{
       <div className="flex items-center justify-between mt-1">
         <span className="text-[10px] text-gray-400 truncate">{place.location}</span>
         <div className="flex items-center gap-0.5 text-[10px] text-gray-400 shrink-0">
-          <Heart size={9} /> {place.likes.toLocaleString()}
+          <Heart size={9} /> {(place.likes ?? 0).toLocaleString()}
         </div>
       </div>
     </div>
@@ -447,7 +447,7 @@ const PlaceCardGrid: React.FC<{
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-400">{place.location}</span>
         <div className="flex items-center gap-0.5 text-xs text-gray-400">
-          <Heart size={10} /> {place.likes.toLocaleString()}
+          <Heart size={10} /> {(place.likes ?? 0).toLocaleString()}
         </div>
       </div>
     </div>
