@@ -20,6 +20,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 @Tag(name = "장소", description = "장소 조회, 추천, 좋아요, 스크랩 및 후기 관련 API")
 @Slf4j
@@ -51,7 +52,7 @@ public class PlaceController {
     public ResponseEntity<?> recommendPlace(
             @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
             @RequestBody SurveyResultDto survey
-    ) {
+    ) throws JsonProcessingException {
         List<RecommendPlaceResponseDto> result =
                 placeService.generateKeyword(survey)
                         .getRecommendations()
