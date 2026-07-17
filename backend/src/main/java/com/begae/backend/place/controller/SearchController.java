@@ -33,47 +33,23 @@ public class SearchController {
     @ApiResponse(responseCode = "200", description = "최근 검색어 목록이 성공적으로 조회되었습니다.")
     @GetMapping
     public ResponseEntity<List<SearchLog>> getRecentSearchLog(@Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user) {
-        try {
-            List<SearchLog> logs = searchLogService.findRecentSearchLogs(user.getUserId());
-            return ResponseEntity.ok().body(logs);
-        } catch (UserNotFoundException e) {
-            log.error(e.getMessage());
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            log.error(e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+        List<SearchLog> logs = searchLogService.findRecentSearchLogs(user.getUserId());
+        return ResponseEntity.ok().body(logs);
     }
 
     @Operation(summary = "최근 검색어 저장", description = "새로운 최근 검색어를 저장합니다.")
     @ApiResponse(responseCode = "200", description = "최근 검색어가 성공적으로 저장되었습니다.")
     @PostMapping
     public ResponseEntity<Void> addRecentSearchLogs(@Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user, @RequestBody SearchLogSaveRequest request) {
-        try {
-            searchLogService.saveRecentSearchLog(user.getUserId(), request);
-            return ResponseEntity.ok().build();
-        } catch (UserNotFoundException e) {
-            log.error(e.getMessage());
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            log.error(e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+        searchLogService.saveRecentSearchLog(user.getUserId(), request);
+        return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "최근 검색어 삭제", description = "특정 최근 검색어 기록을 삭제합니다.")
     @ApiResponse(responseCode = "204", description = "최근 검색어가 성공적으로 삭제되었습니다.")
     @DeleteMapping
     public ResponseEntity<Void> removeRecentSearchLog(@Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user, @RequestBody SearchLogDeleteRequest request) {
-        try {
-            searchLogService.deleteRecentSearchLog(user.getUserId(), request);
-            return ResponseEntity.noContent().build();
-        } catch (UserNotFoundException | SearchLogNotExistException e) {
-            log.error(e.getMessage());
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            log.error(e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+        searchLogService.deleteRecentSearchLog(user.getUserId(), request);
+        return ResponseEntity.noContent().build();
     }
 }
