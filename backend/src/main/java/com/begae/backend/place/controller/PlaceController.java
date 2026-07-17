@@ -34,56 +34,59 @@ public class PlaceController {
     private final PlaceReviewService placeReviewService;
 
     @GetMapping("/search")
-    public ResponseEntity<List<SearchPlaceResponseDto>> searchPlace(@AuthenticationPrincipal OauthUserDetails user,
-                                                                    @RequestParam String keyword) {
-        try {
-            log.info("api request : {}", keyword);
-            List<SearchPlaceResponseDto> places = placeService.searchPlaceByKeyword(keyword);
-            return ResponseEntity.ok().body(places);
-        } catch (Exception e) {
-            log.error(e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    @Operation(summary = "장소 검색", description = "키워드를 기반으로 장소 목록을 검색합니다.")
+    @ApiResponse(responseCode = "200", description = "장소 검색 결과가 성공적으로 조회되었습니다.")
+    public ResponseEntity<List<SearchPlaceResponseDto>> searchPlace(
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
+            @Parameter(description = "검색 키워드", example = "카페") @RequestParam String keyword
+    ) {
+        log.info("api request : {}", keyword);
+        List<SearchPlaceResponseDto> places = placeService.searchPlaceByKeyword(keyword);
+        return ResponseEntity.ok().body(places);
     }
 
     @PostMapping("/recommend")
-    public ResponseEntity<?> recommendPlace(@AuthenticationPrincipal OauthUserDetails user,
-                                            @RequestBody SurveyResultDto survey) {
-        try {
-            List<RecommendPlaceResponseDto> result =
-                    placeService.generateKeyword(survey)
-                            .getRecommendations()
-                            .stream()
-                            .map(recommendation -> {
-                                SearchPlaceRequestDto requestDto = SearchPlaceRequestDto.builder()
-                                        .keyword(recommendation.getKeyword())
-                                        .radiusM(recommendation.getRadiusM())
-                                        .x(String.valueOf(survey.getLocation().getX()))
-                                        .y(String.valueOf(survey.getLocation().getY()))
-                                        .build();
+    @Operation(summary = "장소 추천", description = "사용자 설문 결과를 기반으로 추천 장소 목록을 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "추천 장소 목록이 성공적으로 조회되었습니다.")
+    public ResponseEntity<?> recommendPlace(
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
+            @RequestBody SurveyResultDto survey
+    ) {
+        List<RecommendPlaceResponseDto> result =
+                placeService.generateKeyword(survey)
+                        .getRecommendations()
+                        .stream()
+                        .map(recommendation -> {
+                            SearchPlaceRequestDto requestDto = SearchPlaceRequestDto.builder()
+                                    .keyword(recommendation.getKeyword())
+                                    .radiusM(recommendation.getRadiusM())
+                                    .x(String.valueOf(survey.getLocation().getX()))
+                                    .y(String.valueOf(survey.getLocation().getY()))
+                                    .build();
 
-                                List<SearchPlaceResponseDto> places =
-                                        placeService.searchPlaceForRecommend(requestDto);
+                            List<SearchPlaceResponseDto> places =
+                                    placeService.searchPlaceForRecommend(requestDto);
 
-                                return RecommendPlaceResponseDto.builder()
-                                        .keyword(recommendation.getKeyword())
-                                        .radiusM(recommendation.getRadiusM())
-                                        .places(places)
-                                        .build();
-                            })
-                            .toList();
-            return ResponseEntity.ok().body(result);
-        } catch (Exception e) {
-            log.error("recommendPlace error", e);
-            return ResponseEntity.internalServerError().build();
-        }
+                            return RecommendPlaceResponseDto.builder()
+                                    .keyword(recommendation.getKeyword())
+                                    .radiusM(recommendation.getRadiusM())
+                                    .places(places)
+                                    .build();
+                        })
+                        .toList();
+        return ResponseEntity.ok().body(result);
     }
 
     @GetMapping("/{placeId}")
-    public ResponseEntity<PlaceDetailResponseDto> getPlaceDetail(@AuthenticationPrincipal OauthUserDetails user,
-                                                                 @PathVariable Integer placeId) {
+    @Operation(summary = "장소 상세 조회", description = "특정 장소의 상세 정보를 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "장소 상세 정보가 성공적으로 조회되었습니다.")
+    public ResponseEntity<PlaceDetailResponseDto> getPlaceDetail(
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
+            @Parameter(description = "장소 ID", example = "1") @PathVariable Integer placeId
+    ) {
         return ResponseEntity.ok().body(placeService.getPlaceDetail(placeId));
     }
+
 
     /**
      * 전국 인기 장소 조회

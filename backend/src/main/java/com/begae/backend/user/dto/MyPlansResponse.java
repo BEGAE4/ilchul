@@ -1,6 +1,7 @@
 package com.begae.backend.user.dto;
 
 import com.begae.backend.plan.domain.Plan;
+import com.begae.backend.plan_place.domain.PlanPlaceImage;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -39,10 +40,17 @@ public class MyPlansResponse {
         private List<String> planImages = new ArrayList<>();
 
         public static PlanSummary from(Plan plan) {
-            List<String> images = plan.getPlanPlaces().stream()
-                    .map(planPlace -> planPlace.getPlace().getPlaceImageUrl())
+
+            String firstImage = plan.getPlanPlaces().stream()
+                    .flatMap(planPlace -> planPlace.getPlanPlaceImages().stream())
+                    .map(PlanPlaceImage::getImageUrl)
                     .filter(url -> url != null && !url.isBlank())
-                    .toList();
+                    .findFirst()
+                    .orElse(null);
+
+            List<String> planImages = firstImage != null
+                    ? List.of(firstImage)
+                    : List.of();
 
             return new PlanSummary(
                     plan.getPlanId(),
@@ -52,7 +60,7 @@ public class MyPlansResponse {
                     plan.getTripEndDate(),
                     plan.getIsPlanVisible(),
                     plan.getRequiredTime(),
-                    images
+                    planImages
             );
         }
     }
