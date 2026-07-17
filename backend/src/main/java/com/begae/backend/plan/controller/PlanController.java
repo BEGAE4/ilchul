@@ -84,39 +84,61 @@ public class PlanController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<CreatePlanResponseDto> createPlan(@AuthenticationPrincipal OauthUserDetails user,
-                                                            @RequestBody CreatePlanRequestDto request) {
+    @Operation(summary = "플랜 생성", description = "장소 목록을 포함한 새로운 플랜을 생성합니다.")
+    @ApiResponse(responseCode = "201", description = "플랜이 성공적으로 생성되었습니다.")
+    public ResponseEntity<CreatePlanResponseDto> createPlan(
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
+            @RequestBody CreatePlanRequestDto request
+    ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(planService.CreatePlanWithPlaces(user.getUserId(), request));
     }
 
+
     @PatchMapping("/{planId}")
-    public ResponseEntity<UpdatePlanResponseDto> updatePlan(@AuthenticationPrincipal OauthUserDetails user,
-                                           @PathVariable Integer planId,
-                                           @RequestBody UpdatePlanRequestDto request) {
-        // 이름, 사진, 공개여부, 설명은 변경가능
-        // 나머지(출발지, 여행시작/여행종료일자)는 인증 여부 검사
+    @Operation(summary = "플랜 수정", description = "플랜의 기본 정보 및 수정 가능한 여행 정보를 변경합니다.")
+    @ApiResponse(responseCode = "200", description = "플랜이 성공적으로 수정되었습니다.")
+    public ResponseEntity<UpdatePlanResponseDto> updatePlan(
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
+            @Parameter(description = "수정할 플랜 ID", example = "1") @PathVariable Integer planId,
+            @RequestBody UpdatePlanRequestDto request
+    ) {
         return ResponseEntity.ok(planService.updatePlan(user.getUserId(), planId, request));
     }
 
+
     @DeleteMapping("/{planId}")
-    public ResponseEntity<Void> deletePlan(@AuthenticationPrincipal OauthUserDetails user,
-                                           @PathVariable Integer planId) {
+    @Operation(summary = "플랜 삭제", description = "현재 로그인한 사용자가 작성한 플랜을 삭제합니다.")
+    @ApiResponse(responseCode = "204", description = "플랜이 성공적으로 삭제되었습니다.")
+    public ResponseEntity<Void> deletePlan(
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
+            @Parameter(description = "삭제할 플랜 ID", example = "1") @PathVariable Integer planId
+    ) {
         planService.deletePlan(user.getUserId(), planId);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
+
     @PostMapping("/{planId}/images")
-    public ResponseEntity<PlanDetailDto> planImagesUpload(@AuthenticationPrincipal OauthUserDetails user,
-                                                         @PathVariable Integer planId,
-                                                         @RequestParam List<MultipartFile> images) {
+    @Operation(summary = "플랜 이미지 업로드", description = "특정 플랜에 이미지를 업로드합니다.")
+    @ApiResponse(responseCode = "200", description = "플랜 이미지가 성공적으로 업로드되었습니다.")
+    public ResponseEntity<PlanDetailDto> planImagesUpload(
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
+            @Parameter(description = "플랜 ID", example = "1") @PathVariable Integer planId,
+            @Parameter(description = "업로드할 이미지 목록") @RequestParam List<MultipartFile> images
+    ) {
         return ResponseEntity.ok(planService.uploadImages(user.getUserId(), planId, images));
     }
 
     @DeleteMapping("/{planId}/images")
-    public ResponseEntity<PlanDetailDto> deleteImages(@AuthenticationPrincipal OauthUserDetails user,
-                                                      @PathVariable Integer planId,
-                                                      @RequestParam List<Integer> imageIds) {
+    @Operation(summary = "플랜 이미지 삭제", description = "특정 플랜에 등록된 이미지들을 삭제합니다.")
+    @ApiResponse(responseCode = "200", description = "플랜 이미지가 성공적으로 삭제되었습니다.")
+    public ResponseEntity<PlanDetailDto> deleteImages(
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
+            @Parameter(description = "플랜 ID", example = "1") @PathVariable Integer planId,
+            @Parameter(description = "삭제할 이미지 ID 목록", example = "1") @RequestParam List<Integer> imageIds
+    ) {
         return ResponseEntity.ok(planService.deleteImages(user.getUserId(), planId, imageIds));
     }
+
 
 }
