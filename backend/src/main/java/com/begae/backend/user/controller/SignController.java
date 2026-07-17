@@ -3,6 +3,7 @@ package com.begae.backend.user.controller;
 import com.begae.backend.global.security.principal.OauthUserDetails;
 import com.begae.backend.global.security.jwt.JwtManager;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,7 +32,9 @@ public class SignController {
     @GetMapping("/userinfo")
     @Operation(summary = "사용자 정보 조회", description = "현재 로그인한 사용자의 이메일과 권한 정보를 조회합니다.")
     @ApiResponse(responseCode = "200", description = "사용자 정보가 성공적으로 조회되었습니다.")
-    public ResponseEntity<?> userInfo(@AuthenticationPrincipal OauthUserDetails oauthUserDetails) {
+    public ResponseEntity<?> userInfo(
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails oauthUserDetails
+    ) {
         if(oauthUserDetails == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -41,11 +44,15 @@ public class SignController {
         ));
     }
 
+
     @PostMapping("/logout")
     @Operation(summary = "로그아웃", description = "사용자의 리프레시 토큰을 삭제하고 인증 정보를 만료 처리합니다.")
     @ApiResponse(responseCode = "204", description = "로그아웃이 성공적으로 처리되었습니다.")
-    public ResponseEntity<Void> logout(Authentication authentication,
-                                       HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<Void> logout(
+            @Parameter(hidden = true) Authentication authentication,
+            @Parameter(hidden = true) HttpServletRequest request,
+            @Parameter(hidden = true) HttpServletResponse response
+    ) {
         jwtManager.deleteRefreshToken(request, "RefreshToken");
 
         new SecurityContextLogoutHandler().logout(request, response, authentication);
@@ -78,6 +85,7 @@ public class SignController {
     public ResponseEntity<String> reissueToken() {
         return new ResponseEntity<>("토큰 재발급 성공", HttpStatus.OK);
     }
+
 
     @DeleteMapping("/delete")
     public ResponseEntity<Void> deleteUser(@AuthenticationPrincipal OauthUserDetails user) {

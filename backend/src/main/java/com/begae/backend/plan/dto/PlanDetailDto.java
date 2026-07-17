@@ -1,5 +1,7 @@
 package com.begae.backend.plan.dto;
 
+import com.begae.backend.plan.domain.Plan;
+import com.begae.backend.plan.domain.PlanImage;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -28,26 +30,20 @@ public class PlanDetailDto {
     private Integer likeCount;
     private Integer bookmarkCount;
     private Integer userId;
-    private String userNickName;
+    private String userNickname;
     private String userAvatar;
     private List<String> planImageUrls;
     private List<String> tags;
     private String thumbnailUrl;
 
     private List<PlanPlaceDetailDto> planPlaceDetailDtos;
-    private List<String> planImages;
 
-    public static PlanDetailDto from(List<PlanDetailFlatDto> flats, Boolean isLiked, Boolean isBookmarked) {
+    public static PlanDetailDto from(List<PlanDetailFlatDto> flats, Boolean isLiked, Boolean isBookmarked, Plan plan) {
         PlanDetailFlatDto first = flats.getFirst();
 
         List<PlanPlaceDetailDto> places = flats.stream()
                 .filter(f -> f.getPlanPlaceId() != null)
                 .map(PlanPlaceDetailDto::from)
-                .toList();
-
-        List<String> planImages = flats.stream()
-                .map(PlanDetailFlatDto::getImageUrl)
-                .filter(imageUrl -> imageUrl != null)
                 .toList();
 
         return PlanDetailDto.builder()
@@ -66,10 +62,11 @@ public class PlanDetailDto {
                 .isLiked(isLiked)
                 .isBookmarked(isBookmarked)
                 .userId(first.getUserId())
-                .userNickName(first.getUserNickname())
+                .userNickname(first.getUserNickname())
                 .userAvatar(first.getUserImg())
                 .planPlaceDetailDtos(places)
-                .planImages(planImages)
+                .thumbnailUrl(first.getImageUrl())
+                .planImageUrls(plan.getPlanImages().stream().map(PlanImage::getImageUrl).toList())
                 .build();
     }
 
@@ -105,6 +102,7 @@ public class PlanDetailDto {
                     .isStamped(flat.getIsStamped())
                     .categoryName(flat.getCategoryName())
                     .stayTime(flat.getStayTime())
+                    .stayDescription(flat.getPlanDescription())
                     .build();
         }
     }

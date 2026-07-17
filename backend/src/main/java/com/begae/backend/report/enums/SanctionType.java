@@ -6,9 +6,10 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public enum SanctionType {
-    BLINDED      ("블라인드"),
-    WARNED       ("경고"),
-    BANNED       ("정지");
+    CONTENT_BLINDED      ("블라인드"),
+    WARNING              ("경고"),
+    PERMANENT_BAN        ("정지"),
+    TEMP_BAN             ("임시 정지");
 
     private final String description;
 }
