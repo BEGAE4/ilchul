@@ -106,5 +106,19 @@ public class User extends BaseEntity {
         this.userIntro = userIntro;
         this.userImg = userImg;
     }
+
+    public void increaseWarningCount() {
+        this.warningCount = this.warningCount == null ? 1 : this.warningCount + 1;
+    }
+
+    public void applySuspension(LocalDateTime endAt) {
+        this.suspensionEndAt = endAt;
+        this.userStatus = UserStatus.STATUS_UNAVAILABLE;
+    }
+
+    public void applyPermanentBan() {
+        this.userStatus = UserStatus.STATUS_UNAVAILABLE;
+        this.suspensionEndAt = null;
+    }
 }
 

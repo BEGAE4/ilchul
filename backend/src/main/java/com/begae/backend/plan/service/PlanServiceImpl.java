@@ -9,21 +9,18 @@ import com.begae.backend.place.exception.PlaceErrorCode;
 import com.begae.backend.place.repository.PlaceRepository;
 import com.begae.backend.plan.domain.DeparturePoint;
 import com.begae.backend.plan.domain.Plan;
-import com.begae.backend.plan.domain.ScrappedPlan;
 import com.begae.backend.plan.domain.PlanImage;
-import com.begae.backend.plan.exception.PlanErrorCode;
-import com.begae.backend.plan.exception.PlanImageErrorCode;
-import com.begae.backend.plan.exception.PlanNotFoundException;
-import com.begae.backend.plan.repository.PlanImageRepository;
-import com.begae.backend.storage.dto.StoredImage;
-import com.begae.backend.storage.service.ImageStorageService;
-import com.begae.backend.user.exception.UserNotFoundException;
+import com.begae.backend.plan.domain.ScrappedPlan;
 import com.begae.backend.plan.dto.*;
 import com.begae.backend.plan.exception.PlanErrorCode;
+import com.begae.backend.plan.exception.PlanImageErrorCode;
+import com.begae.backend.plan.repository.PlanImageRepository;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan.repository.ScrappedPlanRepository;
 import com.begae.backend.plan_place.domain.PlanPlace;
 import com.begae.backend.plan_place.repository.PlanPlaceRepository;
+import com.begae.backend.storage.dto.StoredImage;
+import com.begae.backend.storage.service.ImageStorageService;
 import com.begae.backend.user.domain.User;
 import com.begae.backend.user.exception.UserErrorCode;
 import com.begae.backend.user.repository.UserRepository;
@@ -177,6 +174,9 @@ public class PlanServiceImpl implements PlanService{
             throw new CustomException(PlanErrorCode.PLAN_NOT_FOUND);
         }
 
+        Plan plan = planRepository.findById(planId)
+                .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
+
         boolean isLiked = false;
         boolean isBookmarked = false;
         if (userId != null) {
@@ -188,7 +188,7 @@ public class PlanServiceImpl implements PlanService{
                     .orElse(false);
         }
 
-        return PlanDetailDto.from(flats, isLiked, isBookmarked);
+        return PlanDetailDto.from(flats, isLiked, isBookmarked, plan);
     }
 
     private static final double SEARCH_RADIUS_KM = 10.0;
@@ -393,7 +393,7 @@ public class PlanServiceImpl implements PlanService{
 //                routes.add(route);
 //
 //            } catch (Exception e) {
-//                e.printStackTrace();
+//                // ignore
 //            }
 //        }
 //

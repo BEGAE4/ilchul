@@ -1,9 +1,6 @@
 package com.begae.backend.report.service;
 
-import com.begae.backend.report.dto.AdminReportDetailResponseDto;
-import com.begae.backend.report.dto.AdminReportRequestDto;
-import com.begae.backend.report.dto.AdminReportResponseDto;
-import com.begae.backend.report.dto.AdminReportStatusChangeRequestDto;
+import com.begae.backend.report.dto.*;
 
 public interface ReportAdminService {
 
@@ -12,7 +9,8 @@ public interface ReportAdminService {
     AdminReportDetailResponseDto findReportDetail(Integer reportId);
 
     AdminReportDetailResponseDto changeReportStatus(
-            Integer adminId,
-            Integer reportId,
-            AdminReportStatusChangeRequestDto adminReportStatusChangeRequestDto);
+            Integer adminId, Integer reportId, AdminReportStatusChangeRequestDto adminReportStatusChangeRequestDto);
+
+    AdminReportSanctionResponseDto issueSanction(
+            AdminReportSanctionRequestDto adminReportSanctionRequestDto, Integer adminId, Integer reportId);
 }
