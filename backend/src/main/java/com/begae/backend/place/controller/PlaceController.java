@@ -34,6 +34,8 @@ public class PlaceController {
     private final PlaceReviewService placeReviewService;
 
     @GetMapping("/search")
+    @Operation(summary = "장소 검색", description = "키워드를 기반으로 장소 목록을 검색합니다.")
+    @ApiResponse(responseCode = "200", description = "장소 검색 결과가 성공적으로 조회되었습니다.")
     public ResponseEntity<List<SearchPlaceResponseDto>> searchPlace(@AuthenticationPrincipal OauthUserDetails user,
                                                                     @RequestParam String keyword) {
         try {
@@ -47,6 +49,8 @@ public class PlaceController {
     }
 
     @PostMapping("/recommend")
+    @Operation(summary = "장소 추천", description = "사용자 설문 결과를 기반으로 추천 장소 목록을 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "추천 장소 목록이 성공적으로 조회되었습니다.")
     public ResponseEntity<?> recommendPlace(@AuthenticationPrincipal OauthUserDetails user,
                                             @RequestBody SurveyResultDto survey) {
         try {
@@ -80,6 +84,8 @@ public class PlaceController {
     }
 
     @GetMapping("/{placeId}")
+    @Operation(summary = "장소 상세 조회", description = "특정 장소의 상세 정보를 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "장소 상세 정보가 성공적으로 조회되었습니다.")
     public ResponseEntity<PlaceDetailResponseDto> getPlaceDetail(@AuthenticationPrincipal OauthUserDetails user,
                                                                  @PathVariable Integer placeId) {
         return ResponseEntity.ok().body(placeService.getPlaceDetail(placeId));

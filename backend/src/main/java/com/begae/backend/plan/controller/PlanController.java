@@ -8,6 +8,9 @@ import com.begae.backend.plan.dto.PlanDetailDto;
 import com.begae.backend.plan.dto.PopularPlanResponseDto;
 import com.begae.backend.plan.service.PlanService;
 import com.begae.backend.global.security.principal.OauthUserDetails;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+@Tag(name = "플랜", description = "플랜 생성, 조회, 수정, 삭제, 복사, 이미지 및 인기 플랜 관련 API")
 @Validated
 @RestController
 @RequestMapping("api/plan")
@@ -93,12 +97,16 @@ public class PlanController {
     }
 
     @PostMapping("/create")
+    @Operation(summary = "플랜 생성", description = "장소 목록을 포함한 새로운 플랜을 생성합니다.")
+    @ApiResponse(responseCode = "201", description = "플랜이 성공적으로 생성되었습니다.")
     public ResponseEntity<CreatePlanResponseDto> createPlan(@AuthenticationPrincipal OauthUserDetails user,
                                                             @RequestBody CreatePlanRequestDto request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(planService.CreatePlanWithPlaces(user.getUserId(), request));
     }
 
     @PatchMapping("/{planId}")
+    @Operation(summary = "플랜 수정", description = "플랜의 기본 정보 및 수정 가능한 여행 정보를 변경합니다.")
+    @ApiResponse(responseCode = "200", description = "플랜이 성공적으로 수정되었습니다.")
     public ResponseEntity<UpdatePlanResponseDto> updatePlan(@AuthenticationPrincipal OauthUserDetails user,
                                            @PathVariable Integer planId,
                                            @RequestBody UpdatePlanRequestDto request) {
@@ -108,6 +116,8 @@ public class PlanController {
     }
 
     @DeleteMapping("/{planId}")
+    @Operation(summary = "플랜 삭제", description = "현재 로그인한 사용자가 작성한 플랜을 삭제합니다.")
+    @ApiResponse(responseCode = "204", description = "플랜이 성공적으로 삭제되었습니다.")
     public ResponseEntity<Void> deletePlan(@AuthenticationPrincipal OauthUserDetails user,
                                            @PathVariable Integer planId) {
         planService.deletePlan(user.getUserId(), planId);
@@ -115,6 +125,8 @@ public class PlanController {
     }
 
     @PostMapping("/{planId}/images")
+    @Operation(summary = "플랜 이미지 업로드", description = "특정 플랜에 이미지를 업로드합니다.")
+    @ApiResponse(responseCode = "200", description = "플랜 이미지가 성공적으로 업로드되었습니다.")
     public ResponseEntity<PlanDetailDto> planImagesUpload(@AuthenticationPrincipal OauthUserDetails user,
                                                          @PathVariable Integer planId,
                                                          @RequestParam List<MultipartFile> images) {
@@ -122,6 +134,8 @@ public class PlanController {
     }
 
     @DeleteMapping("/{planId}/images")
+    @Operation(summary = "플랜 이미지 삭제", description = "특정 플랜에 등록된 이미지들을 삭제합니다.")
+    @ApiResponse(responseCode = "200", description = "플랜 이미지가 성공적으로 삭제되었습니다.")
     public ResponseEntity<PlanDetailDto> deleteImages(@AuthenticationPrincipal OauthUserDetails user,
                                                       @PathVariable Integer planId,
                                                       @RequestParam List<Integer> imageIds) {
