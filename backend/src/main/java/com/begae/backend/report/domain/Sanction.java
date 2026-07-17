@@ -59,7 +59,7 @@ public class Sanction extends BaseEntity {
     public static Sanction warned(User user, Report report, User admin, String note) {
         return Sanction.builder()
                 .user(user)
-                .type(SanctionType.WARNED)
+                .type(SanctionType.WARNING)
                 .report(report)
                 .admin(admin)
                 .reasonLabel(report != null ? report.getReportReason().getDescription() : null)
@@ -69,11 +69,26 @@ public class Sanction extends BaseEntity {
                 .build();
     }
 
-    public static Sanction banned(User user, Report report, User admin, String note,
+    public static Sanction permanentBan(User user, Report report, User admin, String note,
                                   LocalDateTime endAt) {
         return Sanction.builder()
                 .user(user)
-                .type(SanctionType.BANNED)
+                .type(SanctionType.PERMANENT_BAN)
+                .report(report)
+                .admin(admin)
+                .reasonLabel(report != null ? report.getReportReason().getDescription() : null)
+                .note(note)
+                .appliedAt(LocalDateTime.now())
+                .suspensionEndAt(endAt)
+                .isReleased(false)
+                .build();
+    }
+
+    public static Sanction tempBan(User user, Report report, User admin, String note,
+                                  LocalDateTime endAt) {
+        return Sanction.builder()
+                .user(user)
+                .type(SanctionType.TEMP_BAN)
                 .report(report)
                 .admin(admin)
                 .reasonLabel(report != null ? report.getReportReason().getDescription() : null)
@@ -87,7 +102,7 @@ public class Sanction extends BaseEntity {
     public static Sanction blinded(User user, Report report, User admin, String note) {
         return Sanction.builder()
                 .user(user)
-                .type(SanctionType.BLINDED)
+                .type(SanctionType.CONTENT_BLINDED)
                 .report(report)
                 .admin(admin)
                 .reasonLabel(report != null ? report.getReportReason().getDescription() : null)

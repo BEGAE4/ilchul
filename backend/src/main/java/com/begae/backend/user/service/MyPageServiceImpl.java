@@ -46,6 +46,7 @@ public class MyPageServiceImpl implements MyPageService {
     @Override
     public MyPlansResponse findMyPlans(Integer userId) {
         List<Plan> plans = planRepository.findByUserUserId(userId);
+
         return MyPlansResponse.from(plans);
     }
 
