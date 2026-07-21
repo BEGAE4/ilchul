@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Settings, Plus, Eye, EyeOff, Trash2, X, Heart, Bookmark, MapPin } from 'lucide-react';
+import { Settings, Plus, Eye, EyeOff, Trash2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
@@ -14,6 +14,8 @@ import {
   fetchMyPageSummary,
   setMyPlanVisibility,
 } from '@/features/my-page/api';
+import { planApi } from '@/features/plan';
+import type { PlanSummary } from '@/features/plan';
 import type { MyPlan } from '@/features/my-page/types/plan.types';
 import type { MyPageSummary } from '@/features/my-page/types/summary.types';
 
@@ -23,7 +25,7 @@ type CourseFilter = 'all' | 'public' | 'private';
 export const ProfilePage: React.FC = () => {
   const router = useRouter();
   const { user, updateProfile } = useUserStore();
-  const { myCourses, courses, deleteMyCourse, toggleVisibility, getBookmarkedCourses, toggleBookmark, bookmarkedIds } = useCourseStore();
+  const { myCourses, courses, deleteMyCourse, toggleVisibility } = useCourseStore();
   const [mainTab, setMainTab] = useState<MainTab>('courses');
   const [courseFilter, setCourseFilter] = useState<CourseFilter>('all');
   const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
@@ -40,6 +42,10 @@ export const ProfilePage: React.FC = () => {
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summary, setSummary] = useState<MyPageSummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  const [scrapsLoading, setScrapsLoading] = useState(true);
+  const [scrappedPlans, setScrappedPlans] = useState<PlanSummary[]>([]);
+  const [scrapsError, setScrapsError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -101,6 +107,29 @@ export const ProfilePage: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
 
+    const loadScraps = async () => {
+      try {
+        setScrapsLoading(true);
+        setScrapsError(null);
+        const data = await planApi.fetchMyScraps();
+        if (isMounted) setScrappedPlans(data.scrappedPlans ?? []);
+      } catch (err) {
+        console.error('저장 플랜 목록 로드 실패:', err);
+        if (isMounted) setScrapsError('저장한 플랜을 불러오지 못했어요.');
+      } finally {
+        if (isMounted) setScrapsLoading(false);
+      }
+    };
+
+    loadScraps();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
     const loadProfile = async () => {
       try {
         const data = await fetchMyPageProfile();
@@ -130,7 +159,6 @@ export const ProfilePage: React.FC = () => {
     return true;
   });
 
-  const savedCourses = getBookmarkedCourses();
 
   const STATS: { label: string; value: number | string; color: string }[] = [
     {
@@ -216,7 +244,7 @@ export const ProfilePage: React.FC = () => {
 
   const TABS: { key: MainTab; label: string; count: number }[] = [
     { key: 'courses', label: '내 플랜', count: myCourses.length },
-    { key: 'bookmarks', label: '저장 플랜', count: savedCourses.length },
+    { key: 'bookmarks', label: '저장 플랜', count: scrappedPlans.length },
     { key: 'plans', label: '내 플랜', count: plans.length },
   ];
 
@@ -423,74 +451,44 @@ export const ProfilePage: React.FC = () => {
 
           {mainTab === 'bookmarks' && (
             <div className="p-4">
-              {savedCourses.length > 0 ? (
+              {scrapsLoading && (
+                <div className="py-10 text-center text-gray-500">저장 플랜을 불러오는 중...</div>
+              )}
+
+              {!scrapsLoading && scrapsError && (
+                <div className="py-10 text-center text-red-500">{scrapsError}</div>
+              )}
+
+              {!scrapsLoading && !scrapsError && scrappedPlans.length > 0 && (
                 <div className="space-y-4">
-                  {savedCourses.map((course) => (
+                  {scrappedPlans.map((plan) => (
                     <div
-                      key={course.id}
-                      onClick={() => router.push(`/course/${course.id}`)}
+                      key={plan.planId}
+                      onClick={() => router.push(`/course/${plan.planId}`)}
                       className="relative rounded-xl overflow-hidden shadow-sm border border-gray-100 active:scale-[0.99] transition-transform cursor-pointer"
                     >
                       <div className="relative h-36">
-                        <Image
-                          src={course.thumbnail}
-                          alt={course.title}
-                          fill
-                          sizes="100vw"
-                          className="object-cover"
+                        <img
+                          src={plan.planImages?.[0] ?? '/images/course-plan.png'}
+                          alt={plan.planTitle}
+                          className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleBookmark(course.id);
-                            toast(bookmarkedIds.has(course.id) ? '저장을 해제했어요.' : '저장했어요!');
-                          }}
-                          className="absolute top-2.5 right-2.5 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow"
-                        >
-                          <Bookmark
-                            size={16}
-                            fill={bookmarkedIds.has(course.id) ? '#3b82f6' : 'none'}
-                            className="text-blue-500"
-                          />
-                        </button>
                         <div className="absolute bottom-3 left-3 right-3">
-                          <div className="flex gap-1.5 mb-1">
-                            {course.tags?.slice(0, 2).map((tag) => (
-                              <span key={tag} className="text-[10px] text-white bg-white/20 backdrop-blur-sm rounded px-1.5 py-0.5">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                          <h3 className="font-bold text-white text-sm line-clamp-1">{course.title}</h3>
-                        </div>
-                      </div>
-                      <div className="bg-white p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="relative w-5 h-5 rounded-full overflow-hidden">
-                            <Image
-                              src={course.authorAvatar ?? 'https://i.pravatar.cc/40'}
-                              alt={course.author ?? ''}
-                              fill
-                              sizes="20px"
-                              className="object-cover"
-                            />
-                          </div>
-                          <span className="text-xs text-gray-500">{course.author}</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-400">
-                          <span className="flex items-center gap-0.5">
-                            <Heart size={10} /> {course.likes}
-                          </span>
-                          <span className="flex items-center gap-0.5">
-                            <Bookmark size={10} /> {course.bookmarks}
-                          </span>
+                          <h3 className="font-bold text-white text-sm line-clamp-1">
+                            {plan.planTitle}
+                          </h3>
+                          <p className="text-xs text-white/90 mt-0.5">
+                            여행일정 {formatIsoDate(plan.tripStartDate)}
+                          </p>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
-              ) : (
+              )}
+
+              {!scrapsLoading && !scrapsError && scrappedPlans.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <div className="text-4xl mb-4">🔖</div>
                   <p className="text-gray-500 font-medium mb-1">저장한 플랜이 없어요</p>

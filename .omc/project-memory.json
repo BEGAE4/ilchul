@@ -1,0 +1,96 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1784121875610,
+  "projectRoot": "/Users/jaidy/Documents/develop/ilchul/ilchul-02/ilchul",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [],
+    "gitBranches": {
+      "defaultBranch": "dev",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "backend": {
+      "path": "backend",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1784121875594,
+      "keyFiles": [
+        "Dockerfile",
+        "build.gradle",
+        "gradlew",
+        "gradlew.bat",
+        "settings.gradle"
+      ]
+    },
+    "frontend": {
+      "path": "frontend",
+      "purpose": null,
+      "fileCount": 14,
+      "lastAccessed": 1784121875595,
+      "keyFiles": [
+        "CLAUDE.md",
+        "Dockerfile",
+        "README.md",
+        "eslint.config.mjs",
+        "next.config.ts"
+      ]
+    },
+    "backend/src": {
+      "path": "backend/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1784121875595,
+      "keyFiles": []
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "frontend/src/features/search/components/SearchPage.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1784123078691,
+      "type": "file"
+    },
+    {
+      "path": "frontend/src/features/search/components/SearchResultsPage.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1784123082018,
+      "type": "file"
+    },
+    {
+      "path": "frontend/src/features/course-detail/components/CourseViewPage.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1784123083461,
+      "type": "file"
+    },
+    {
+      "path": "frontend/src/features/place-detail/components/PlaceDetailPage.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1784123084728,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}
