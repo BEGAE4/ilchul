@@ -18,20 +18,66 @@ import {
   RotateCcw,
   AlertCircle,
   Timer,
+  Bus,
+  Footprints,
+  Car,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { LogoLoader } from '@/shared/ui/LogoLoader';
 import { StepIndicator } from '@/shared/ui/StepIndicator';
 import { RouteMap } from './RouteMap';
+import { SelectField, DateField } from './SurveyPickers';
 import { useSurveyStore, type SurveyStep } from '@/shared/lib/stores/useSurveyStore';
 import { planApi, type PlanPreviewResponse } from '@/features/plan';
+import { recommendPlaces } from '@/features/place/api/place.api';
 import {
   RECOMMENDED_PLACES,
   PLACE_COORDS,
   MOCK_ADDRESSES,
 } from '@/shared/data/mockData';
 import type { Place } from '@/shared/types';
+
+// 장소 추천 응답(POST /api/place/recommend)은 서버 스키마가 아직 확정되지 않아
+// 방어적으로 파싱하고, 실패/빈 배열이면 기본 추천 목록(RECOMMENDED_PLACES)으로 대체한다.
+function mapRecommendedPlaces(data: unknown): Place[] {
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((raw): Place | null => {
+      if (!raw || typeof raw !== 'object') return null;
+      const item = raw as Record<string, unknown>;
+      const id = item.placeId ?? item.id;
+      const name = item.placeName ?? item.name;
+      if (id === undefined || id === null || typeof name !== 'string') return null;
+      return {
+        id: String(id),
+        name,
+        category:
+          typeof item.categoryName === 'string'
+            ? item.categoryName
+            : typeof item.category === 'string'
+              ? item.category
+              : '추천 장소',
+        time: typeof item.time === 'string' ? item.time : '60분',
+        description: typeof item.description === 'string' ? item.description : '',
+        image:
+          typeof item.placeImageUrl === 'string'
+            ? item.placeImageUrl
+            : typeof item.image === 'string'
+              ? item.image
+              : '',
+        address:
+          typeof item.addressName === 'string'
+            ? item.addressName
+            : typeof item.address === 'string'
+              ? item.address
+              : '',
+        phone: typeof item.phone === 'string' ? item.phone : '',
+        tags: Array.isArray(item.tags) ? item.tags.filter((t): t is string => typeof t === 'string') : [],
+      };
+    })
+    .filter((p): p is Place => p !== null);
+}
 
 // ── Survey 1: 마음 상태 ──
 const MIND_STATES = [
@@ -45,8 +91,13 @@ const MIND_STATES = [
 ];
 
 // ── Survey 2: 이동수단 ──
-const TRANSPORTS = ['대중교통', '도보', '자가용'];
-const TRANSPORT_TIMES = ['1시간 이내', '상관없어요', '직접입력'];
+const TRANSPORTS: { label: string; icon: typeof Bus }[] = [
+  { label: '대중교통', icon: Bus },
+  { label: '도보', icon: Footprints },
+  { label: '자가용', icon: Car },
+];
+// 이동수단마다 체감 이동 한도가 달라 도보 기준 짧은 구간부터 자가용 기준 장거리까지 단계별로 제공
+const TRANSPORT_TIMES = ['30분 이내', '1시간 이내', '2시간 이내', '상관없어요', '직접입력'];
 
 // 30분 단위 이동 시간 옵션
 const CUSTOM_TIME_OPTIONS = Array.from({ length: 24 }, (_, i) => {
@@ -138,6 +189,8 @@ export const CourseCreationFlow: React.FC = () => {
   // 최종 플랜 단계의 서버 계산 프리뷰 (소요시간/이동거리)
   const [serverPreview, setServerPreview] = useState<PlanPreviewResponse | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
+  // 설문 기반 장소 추천 결과 (POST /api/place/recommend), 실패 시 기본 목록 유지
+  const [recommendedPlaces, setRecommendedPlaces] = useState<Place[]>(RECOMMENDED_PLACES);
 
   // ── 네비게이션 ──
   const handleNext = () => {
@@ -147,9 +200,30 @@ export const CourseCreationFlow: React.FC = () => {
     else if (step === 'survey3') setStep('startPoint');
     else if (step === 'startPoint') {
       setStep('generating');
-      setTimeout(() => setStep('placeSelect'), 3000);
+      const minDelay = new Promise((resolve) => setTimeout(resolve, 1500));
+      void (async () => {
+        try {
+          const [result] = await Promise.all([
+            recommendPlaces({
+              emotion: surveyData.mindState ?? '',
+              startTime: surveyData.startTime ?? '',
+              endTime: surveyData.endTime ?? '',
+              transport: surveyData.transport ?? '',
+              location: { x: startingPoint.coord.lng, y: startingPoint.coord.lat },
+            }),
+            minDelay,
+          ]);
+          const mapped = mapRecommendedPlaces(result);
+          if (mapped.length > 0) setRecommendedPlaces(mapped);
+        } catch (err) {
+          console.error('장소 추천 실패, 기본 추천 목록으로 대체합니다:', err);
+          await minDelay;
+        } finally {
+          setStep('placeSelect');
+        }
+      })();
     } else if (step === 'placeSelect') {
-      const selected = RECOMMENDED_PLACES.filter((p) => selectedPlaceIds.includes(p.id));
+      const selected = recommendedPlaces.filter((p) => selectedPlaceIds.includes(p.id));
       setFinalStops(selected);
       setStep('finalPlan');
       // 서버 계산 프리뷰 조회 (POST /api/plan-place/preview) — 실패해도 화면 진행은 유지
@@ -313,7 +387,7 @@ export const CourseCreationFlow: React.FC = () => {
 
   // ── 장소 선택 시간 예상 ──
   const estimatedTotalMin = useMemo(() => {
-    const selected = RECOMMENDED_PLACES.filter((p) => selectedPlaceIds.includes(p.id));
+    const selected = recommendedPlaces.filter((p) => selectedPlaceIds.includes(p.id));
     const stayTotal = selected.reduce((sum, p) => sum + parseStayMinutes(p.time), 0);
     const travelTotal = Math.max(0, selected.length - 1) * 15;
     return stayTotal + travelTotal;
@@ -465,14 +539,17 @@ export const CourseCreationFlow: React.FC = () => {
   // ════════════════════════════════════════════
   if (step === 'survey1') {
     return (
-      <div className="flex flex-col h-full bg-white">
-        <Header onBack={handleBack} title="나의 상태 확인" showStep />
-        <div className="flex-1 px-5 pt-5 pb-4 overflow-y-auto">
-          <h2 className="text-xl font-bold mb-1 text-gray-900">요즘 마음 상태는 어떤가요?</h2>
-          <p className="text-sm text-gray-400 mb-5">
-            현재 상태가 없다면 직접 입력할 수 있어요.
-          </p>
-
+      <div className="fixed inset-0 z-40 h-dvh flex flex-col bg-white">
+        <div className="shrink-0">
+          <Header onBack={handleBack} title="나의 상태 확인" showStep />
+          <div className="px-5 pt-5 pb-2">
+            <h2 className="text-xl font-bold mb-1 text-gray-900">요즘 마음 상태는 어떤가요?</h2>
+            <p className="text-sm text-gray-400">
+              현재 상태가 없다면 직접 입력할 수 있어요.
+            </p>
+          </div>
+        </div>
+        <div className="flex-1 px-5 pt-3 pb-4 overflow-y-auto">
           <div className="flex flex-col gap-2.5">
             {MIND_STATES.map((state) => {
               const isActive = surveyData.mindState === state.label;
@@ -518,6 +595,12 @@ export const CourseCreationFlow: React.FC = () => {
                     setDirectInputValue(e.target.value);
                     updateSurvey('mindState', e.target.value);
                   }}
+                  onFocus={(e) => {
+                    setTimeout(
+                      () => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+                      150
+                    );
+                  }}
                   placeholder="지금 느끼는 감정을 적어주세요"
                   maxLength={30}
                   autoFocus
@@ -533,7 +616,7 @@ export const CourseCreationFlow: React.FC = () => {
             )}
           </div>
         </div>
-        <div className="p-4 border-t border-gray-100">
+        <div className="shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-white">
           <button
             onClick={handleNext}
             disabled={!surveyData.mindState}
@@ -558,29 +641,33 @@ export const CourseCreationFlow: React.FC = () => {
       isCustomTime && !['1시간 이내', '상관없어요', ''].includes(surveyData.transportTime ?? '');
 
     return (
-      <div className="flex flex-col h-full bg-white">
-        <Header onBack={handleBack} title="이동 수단 및 시간" showStep />
-        <div className="flex-1 p-6 overflow-y-auto">
-          <h2 className="text-xl font-bold mb-6">
-            Q2. 희망하는 이동 수단과
-            <br />
-            이동 시간을 선택해주세요.
-          </h2>
-
+      <div className="fixed inset-0 z-40 h-dvh flex flex-col bg-white">
+        <div className="shrink-0">
+          <Header onBack={handleBack} title="이동 수단 및 시간" showStep />
+          <div className="px-6 pt-5 pb-2">
+            <h2 className="text-xl font-bold">
+              Q2. 희망하는 이동 수단과
+              <br />
+              이동 시간을 선택해주세요.
+            </h2>
+          </div>
+        </div>
+        <div className="flex-1 px-6 pt-3 pb-4 overflow-y-auto">
           <div className="mb-8">
             <h3 className="text-sm font-bold text-gray-500 mb-3">이동 수단</h3>
             <div className="flex flex-wrap gap-2">
-              {TRANSPORTS.map((t) => (
+              {TRANSPORTS.map(({ label, icon: Icon }) => (
                 <button
-                  key={t}
-                  onClick={() => updateSurvey('transport', t)}
-                  className={`px-4 py-3 rounded-lg border font-medium text-sm transition-all ${
-                    surveyData.transport === t
+                  key={label}
+                  onClick={() => updateSurvey('transport', label)}
+                  className={`flex items-center gap-1.5 px-4 py-3 rounded-lg border font-medium text-sm transition-all ${
+                    surveyData.transport === label
                       ? 'border-sky-500 bg-sky-50 text-sky-700'
                       : 'border-gray-200 text-gray-600'
                   }`}
                 >
-                  {t}
+                  <Icon size={16} />
+                  {label}
                 </button>
               ))}
             </div>
@@ -614,27 +701,25 @@ export const CourseCreationFlow: React.FC = () => {
                 >
                   <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                     <p className="text-xs text-gray-400 mb-2">30분 단위로 선택 (최대 12시간)</p>
-                    <select
+                    <SelectField
+                      title="이동 시간 선택"
+                      placeholder="시간을 선택해주세요"
                       value={
                         CUSTOM_TIME_OPTIONS.some((o) => o.value === surveyData.transportTime)
-                          ? surveyData.transportTime
+                          ? (surveyData.transportTime as string)
                           : ''
                       }
-                      onChange={(e) => updateSurvey('transportTime', e.target.value)}
-                      className="w-full p-3 border border-gray-200 rounded-xl bg-white text-base appearance-none cursor-pointer outline-none focus:border-sky-500 transition-colors"
-                    >
-                      <option value="" disabled>시간을 선택해주세요</option>
-                      {CUSTOM_TIME_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
+                      options={CUSTOM_TIME_OPTIONS}
+                      onChange={(v) => updateSurvey('transportTime', v)}
+                      className="bg-white"
+                    />
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         </div>
-        <div className="p-4 border-t border-gray-100">
+        <div className="shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-white">
           <button
             onClick={handleNext}
             disabled={
@@ -656,16 +741,19 @@ export const CourseCreationFlow: React.FC = () => {
   // ════════════════════════════════════════════
   if (step === 'survey3') {
     return (
-      <div className="flex flex-col h-full bg-white">
-        <Header onBack={handleBack} title="일정 선택" showStep />
-        <div className="flex-1 p-6 overflow-y-auto">
-          <h2 className="text-xl font-bold mb-2">
-            Q3. 당일치기 여행 일정을
-            <br />
-            설정해주세요.
-          </h2>
-          <p className="text-sm text-gray-400 mb-6">최대 24시간 이내의 당일치기 일정을 선택해주세요.</p>
-
+      <div className="fixed inset-0 z-40 h-dvh flex flex-col bg-white">
+        <div className="shrink-0">
+          <Header onBack={handleBack} title="일정 선택" showStep />
+          <div className="px-6 pt-5 pb-2">
+            <h2 className="text-xl font-bold mb-2">
+              Q3. 당일치기 여행 일정을
+              <br />
+              설정해주세요.
+            </h2>
+            <p className="text-sm text-gray-400">최대 24시간 이내의 당일치기 일정을 선택해주세요.</p>
+          </div>
+        </div>
+        <div className="flex-1 px-6 pt-3 pb-4 overflow-y-auto">
           <div className="space-y-6">
             <div className="space-y-2">
               <div className="flex items-center gap-1.5 text-sm font-bold text-gray-700">
@@ -673,29 +761,24 @@ export const CourseCreationFlow: React.FC = () => {
                 여행 시작
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="date"
+                <DateField
+                  title="여행 시작일 선택"
                   value={surveyData.startDate ?? ''}
                   min={today}
-                  onChange={(e) => {
-                    const newStart = e.target.value;
+                  onChange={(newStart) => {
                     updateSurvey('startDate', newStart);
                     if (!surveyData.endDate || surveyData.endDate < newStart) {
                       updateSurvey('endDate', newStart);
                     }
                   }}
-                  className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-base focus:border-sky-500 outline-none transition-colors"
                 />
-                <select
+                <SelectField
+                  title="여행 시작 시간 선택"
+                  placeholder="시간 선택"
                   value={surveyData.startTime ?? ''}
-                  onChange={(e) => updateSurvey('startTime', e.target.value)}
-                  className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-base appearance-none cursor-pointer focus:border-sky-500 outline-none transition-colors"
-                >
-                  <option value="">시간 선택</option>
-                  {HALF_HOURS.map((h) => (
-                    <option key={h.value} value={h.value}>{h.label}</option>
-                  ))}
-                </select>
+                  options={HALF_HOURS}
+                  onChange={(v) => updateSurvey('startTime', v)}
+                />
               </div>
             </div>
 
@@ -705,23 +788,19 @@ export const CourseCreationFlow: React.FC = () => {
                 여행 종료
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="date"
+                <DateField
+                  title="여행 종료일 선택"
                   value={surveyData.endDate ?? ''}
                   min={surveyData.startDate || today}
-                  onChange={(e) => updateSurvey('endDate', e.target.value)}
-                  className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-base focus:border-sky-500 outline-none transition-colors"
+                  onChange={(v) => updateSurvey('endDate', v)}
                 />
-                <select
+                <SelectField
+                  title="여행 종료 시간 선택"
+                  placeholder="시간 선택"
                   value={surveyData.endTime ?? ''}
-                  onChange={(e) => updateSurvey('endTime', e.target.value)}
-                  className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-base appearance-none cursor-pointer focus:border-sky-500 outline-none transition-colors"
-                >
-                  <option value="">시간 선택</option>
-                  {HALF_HOURS.map((h) => (
-                    <option key={h.value} value={h.value}>{h.label}</option>
-                  ))}
-                </select>
+                  options={HALF_HOURS}
+                  onChange={(v) => updateSurvey('endTime', v)}
+                />
               </div>
             </div>
 
@@ -757,7 +836,7 @@ export const CourseCreationFlow: React.FC = () => {
             )}
           </div>
         </div>
-        <div className="p-4 border-t border-gray-100">
+        <div className="shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-white">
           <button
             onClick={handleNext}
             disabled={!survey3Validation.valid}
@@ -997,7 +1076,7 @@ export const CourseCreationFlow: React.FC = () => {
         <div className="px-4 pt-3 pb-1">
           <RouteMap
             startingPoint={startingPoint}
-            stops={RECOMMENDED_PLACES.filter((p) => selectedPlaceIds.includes(p.id))}
+            stops={recommendedPlaces.filter((p) => selectedPlaceIds.includes(p.id))}
             showRoute={false}
             className="h-44"
           />
@@ -1009,7 +1088,7 @@ export const CourseCreationFlow: React.FC = () => {
         </div>
 
         <div className="flex-1 p-4 overflow-y-auto space-y-3 pb-32">
-          {RECOMMENDED_PLACES.map((place) => {
+          {recommendedPlaces.map((place) => {
             const isSelected = selectedPlaceIds.includes(place.id);
             return (
               <div
@@ -1104,7 +1183,7 @@ export const CourseCreationFlow: React.FC = () => {
   // (8) Place Detail
   // ════════════════════════════════════════════
   if (step === 'placeDetail') {
-    const place = RECOMMENDED_PLACES.find((p) => p.id === viewingPlaceId);
+    const place = recommendedPlaces.find((p) => p.id === viewingPlaceId);
     if (!place) {
       handleBack();
       return null;
