@@ -19,7 +19,7 @@ import {
 import { motion } from 'motion/react';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { updateMyPageProfile } from '@/features/my-page/api';
-import { logout } from '@/features/authentication/api';
+import { logout, deleteUser } from '@/features/authentication/api';
 
 type SettingsSection = 'main' | 'editProfile' | 'notification' | 'privacy' | 'about';
 
@@ -33,6 +33,7 @@ export function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSaveProfile = async () => {
     if (!editName.trim()) return;
@@ -73,6 +74,21 @@ export function SettingsPage() {
       setShowLogoutModal(false);
       toast.success('로그아웃 되었어요.');
       router.push('/');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setIsDeleting(true);
+      await deleteUser();
+      setLoggedIn(false);
+      setShowDeleteModal(false);
+      toast.success('회원 탈퇴가 완료되었어요.');
+      router.push('/');
+    } catch (err) {
+      console.error('회원 탈퇴 실패:', err);
+      toast.error('회원 탈퇴에 실패했어요. 다시 시도해 주세요.');
+      setIsDeleting(false);
     }
   };
 
@@ -458,18 +474,17 @@ export function SettingsPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="flex-1 py-3 bg-gray-100 font-bold rounded-xl text-sm text-gray-600"
+                disabled={isDeleting}
+                className="flex-1 py-3 bg-gray-100 font-bold rounded-xl text-sm text-gray-600 disabled:opacity-50"
               >
                 돌아가기
               </button>
               <button
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  router.push('/');
-                }}
-                className="flex-1 py-3 bg-red-500 font-bold rounded-xl text-sm text-white"
+                onClick={handleDeleteAccount}
+                disabled={isDeleting}
+                className="flex-1 py-3 bg-red-500 font-bold rounded-xl text-sm text-white disabled:opacity-50"
               >
-                탈퇴하기
+                {isDeleting ? '탈퇴 중...' : '탈퇴하기'}
               </button>
             </div>
           </div>

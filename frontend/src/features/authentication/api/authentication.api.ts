@@ -30,3 +30,16 @@ export const fetchUserInfo = async (): Promise<UserInfo> => {
 export const logout = async (): Promise<void> => {
   await axios.post('/api/sign/logout');
 };
+
+// ── 토큰 재발급 ─────────────────────────────────────────────
+// 리프레시 토큰(쿠키) 기반으로 액세스 토큰을 재발급받는다. (반환: 액세스 토큰)
+export const reissueToken = async (): Promise<string> => {
+  const response = await axios.get<string>('/api/sign/reissue');
+  return response.data;
+};
+
+// ── 회원 탈퇴 ───────────────────────────────────────────────
+// 현재 로그인한 사용자의 계정을 영구 삭제한다.
+export const deleteUser = async (): Promise<void> => {
+  await axios.delete('/api/sign/delete');
+};
