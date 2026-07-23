@@ -19,6 +19,19 @@ import type { Course, BestPlace } from '@/shared/types';
 import { ScrollCarousel } from '@/shared/ui/ScrollCarousel';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
 import { SearchResultsSkeleton } from '@/shared/ui/Skeleton';
+import { searchPlaces } from '@/features/place/api/place.api';
+import type { SearchPlaceItem } from '@/features/place/types/place.types';
+
+function mapSearchPlaceItemToBestPlace(item: SearchPlaceItem): BestPlace {
+  return {
+    id: String(item.placeId),
+    name: item.placeName,
+    category: item.categoryName,
+    location: '',
+    image: item.placeImageUrl,
+    likes: 0,
+  };
+}
 
 type ViewTab = '전체' | '플랜' | '장소';
 const VIEW_TABS: ViewTab[] = ['전체', '플랜', '장소'];
@@ -36,9 +49,36 @@ export const SearchResultsPage: React.FC = () => {
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<BestPlace | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [apiPlaces, setApiPlaces] = useState<BestPlace[] | null>(null);
+  const [placesLoading, setPlacesLoading] = useState(false);
 
   React.useEffect(() => {
     setIsLoading(false);
+  }, [query]);
+
+  // 장소 검색 — GET /api/place/search (플랜/코스 검색은 서버 API가 없어 목데이터 유지)
+  React.useEffect(() => {
+    if (!query) {
+      setApiPlaces(null);
+      return;
+    }
+    let cancelled = false;
+    setPlacesLoading(true);
+    searchPlaces(query)
+      .then((items) => {
+        if (cancelled) return;
+        setApiPlaces(items.map(mapSearchPlaceItemToBestPlace));
+      })
+      .catch((err) => {
+        console.error('장소 검색 실패:', err);
+        if (!cancelled) setApiPlaces([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPlacesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [query]);
 
   const { toggleBookmark, toggleLike, isBookmarked, isLiked } = useCourseStore();
@@ -61,6 +101,9 @@ export const SearchResultsPage: React.FC = () => {
   }, [query, verifiedOnly]);
 
   const filteredPlaces = useMemo(() => {
+    if (apiPlaces !== null) {
+      return [...apiPlaces].sort((a, b) => b.likes - a.likes);
+    }
     const unique = ALL_PLACES.filter(
       (p, idx, arr) => arr.findIndex((x) => x.id === p.id) === idx
     );
@@ -73,7 +116,7 @@ export const SearchResultsPage: React.FC = () => {
           p.category.includes(query)
       )
       .sort((a, b) => b.likes - a.likes);
-  }, [query]);
+  }, [query, apiPlaces]);
 
   const totalCourses = filteredCourses.length;
   const totalPlaces = filteredPlaces.length;
@@ -155,6 +198,9 @@ export const SearchResultsPage: React.FC = () => {
             )}
 
             {/* 장소 섹션 — 수평 스크롤 */}
+            {placesLoading && apiPlaces === null && (
+              <p className="px-5 pt-4 text-xs text-gray-400">장소를 검색하는 중...</p>
+            )}
             {filteredPlaces.length > 0 && (
               <div className="pt-4 pb-2">
                 <div className="px-5 mb-2.5 flex justify-between items-center">
@@ -296,7 +342,11 @@ export const SearchResultsPage: React.FC = () => {
               </p>
             </div>
 
-            {filteredPlaces.length === 0 && (
+            {placesLoading && apiPlaces === null && (
+              <p className="text-center py-4 text-xs text-gray-400">장소를 검색하는 중...</p>
+            )}
+
+            {!placesLoading && filteredPlaces.length === 0 && (
               <div className="text-center py-12">
                 <MapPin size={32} className="text-gray-200 mx-auto mb-3" />
                 <p className="text-sm text-gray-400 font-medium">검색 결과가 없어요</p>
@@ -410,7 +460,7 @@ const PlaceCardSmall: React.FC<{
       <div className="flex items-center justify-between mt-1">
         <span className="text-[10px] text-gray-400 truncate">{place.location}</span>
         <div className="flex items-center gap-0.5 text-[10px] text-gray-400 shrink-0">
-          <Heart size={9} /> {place.likes.toLocaleString()}
+          <Heart size={9} /> {(place.likes ?? 0).toLocaleString()}
         </div>
       </div>
     </div>
@@ -447,7 +497,7 @@ const PlaceCardGrid: React.FC<{
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-400">{place.location}</span>
         <div className="flex items-center gap-0.5 text-xs text-gray-400">
-          <Heart size={10} /> {place.likes.toLocaleString()}
+          <Heart size={10} /> {(place.likes ?? 0).toLocaleString()}
         </div>
       </div>
     </div>
