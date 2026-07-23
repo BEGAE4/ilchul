@@ -18,6 +18,7 @@ export const fetchMyPlans = async (): Promise<MyPlan[]> => {
   return response.data.plans ?? [];
 };
 
+// 내 플랜 공개 여부 토글 API (v5: POST /api/mypage/plan/visibility/{planId}, 본문 없음)
 // 저장(스크랩)한 플랜 목록 조회 API
 export const fetchScrappedPlans = async (): Promise<ScrappedPlan[]> => {
   const response = await axios.get<ScrappedPlansResponse>(
@@ -26,7 +27,7 @@ export const fetchScrappedPlans = async (): Promise<ScrappedPlan[]> => {
   return response.data.scrappedPlans ?? [];
 };
 
-// 내 플랜 공개 여부 토글 API (v5: POST /api/mypage/plan/visibility/{planId}, 본문 없음)
+// 내 플랜 공개 여부 설정 API
 export const setMyPlanVisibility = async (
   planId: number
 ): Promise<{ status: number }> => {
