@@ -57,7 +57,6 @@ public class SecurityConfig {
                                 "/",
                                 "/actuator/health",
                                 "/api/sign/**",
-                                "/api/exception/**",
                                 "/oauth2/**",
                                 "/login/oauth2/**",
                                 "/api/place/popular/**",

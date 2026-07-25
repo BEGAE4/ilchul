@@ -115,6 +115,10 @@ logging:
 
 server:
   port: 8080
+  # 리버스 프록시(Cloudflare 등) 뒤에서 X-Forwarded-* 헤더를 신뢰하도록 한다.
+  # 이 설정이 없으면 HTTPS 요청도 백엔드가 http로 인식해서
+  # springdoc 서버 URL과 리다이렉트 Location이 http://로 생성되고, 브라우저가 mixed content로 차단한다.
+  forward-headers-strategy: framework
 
 kakao:
   rest-api-key: ${KAKAO_REST_API_KEY}
@@ -151,5 +155,7 @@ springdoc:
     path: /swagger-ui.html
     groups-order: DESC
     operations-sorter: alpha
+    # 인증이 쿠키 기반이므로 Try it out 요청에 인증 쿠키를 함께 싣는다.
+    with-credentials: true
   api-docs:
     path: /v3/api-docs
