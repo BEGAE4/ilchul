@@ -155,5 +155,7 @@ springdoc:
     path: /swagger-ui.html
     groups-order: DESC
     operations-sorter: alpha
+    # 인증이 쿠키 기반이므로 Try it out 요청에 인증 쿠키를 함께 싣는다.
+    with-credentials: true
   api-docs:
     path: /v3/api-docs

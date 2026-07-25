@@ -23,6 +23,8 @@ import java.io.IOException;
 public class JwtFilter extends OncePerRequestFilter {
     private static final String ACCESS_COOKIE = "AccessToken";
     private static final String REFRESH_COOKIE = "RefreshToken";
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtManager jwtManager;
     
@@ -40,7 +42,7 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        String accessToken = getCookieValue(request, ACCESS_COOKIE);
+        String accessToken = resolveAccessToken(request);
 
         if (accessToken == null) {
             filterChain.doFilter(request, response);
@@ -73,6 +75,20 @@ public class JwtFilter extends OncePerRequestFilter {
 
         SecurityContextHolder.clearContext();
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * 액세스 토큰은 쿠키로 전달되는 것이 기본이지만,
+     * Swagger UI의 Authorize 처럼 Authorization 헤더로 보내는 클라이언트도 지원한다.
+     */
+    private String resolveAccessToken(HttpServletRequest request) {
+        String authorization = request.getHeader(AUTHORIZATION_HEADER);
+
+        if (authorization != null && authorization.startsWith(BEARER_PREFIX)) {
+            return authorization.substring(BEARER_PREFIX.length());
+        }
+
+        return getCookieValue(request, ACCESS_COOKIE);
     }
 
     private String getCookieValue(HttpServletRequest request, String name) {
