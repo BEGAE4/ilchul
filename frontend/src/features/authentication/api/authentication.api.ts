@@ -30,3 +30,9 @@ export const fetchUserInfo = async (): Promise<UserInfo> => {
 export const logout = async (): Promise<void> => {
   await axios.post('/api/sign/logout');
 };
+
+// ── 회원 탈퇴 ───────────────────────────────────────────────
+// 현재 로그인한 사용자의 계정을 영구 삭제한다.
+export const deleteUser = async (): Promise<void> => {
+  await axios.delete('/api/sign/delete');
+};
