@@ -989,10 +989,10 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-gray-900">플랜 사진 관리</h3>
-              <span className="text-xs text-gray-400">{plan.planImages.length}장</span>
+              <span className="text-xs text-gray-400">{plan.planImageUrls.length}장</span>
             </div>
             <div className="grid grid-cols-3 gap-1.5 mb-4">
-              {plan.planImages.map((url, i) => (
+              {plan.planImageUrls.map((url, i) => (
                 <div
                   key={`${url}-${i}`}
                   className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer"

@@ -8,34 +8,25 @@ const MOCK_PROFILE = {
   userIntro: '힐링 여행을 좋아하는 여행자입니다 🌿',
 };
 
-// 사용자 프로필 조회
+// 사용자 프로필 조회 — 백엔드 에러를 mock으로 위장하지 않는다 (Architect C-1)
 export async function GET(request: NextRequest) {
   const baseUrl = BASE_URL;
   if (!baseUrl) {
-    return NextResponse.json(MOCK_PROFILE);
-  }
-
-  try {
-    const cookie = request.headers.get('cookie') ?? '';
-
-    const res = await fetch(`${baseUrl}/api/mypage/profile`, {
-      method: 'GET',
-      headers: cookie ? { cookie } : undefined,
-      cache: 'no-store',
-    });
-
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      console.warn(`프로필 조회: 백엔드 응답 ${res.status}, mock 반환`);
-      return NextResponse.json(MOCK_PROFILE);
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
     }
-
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error('사용자 프로필 조회 실패 (백엔드 미연결, mock 반환):', error);
     return NextResponse.json(MOCK_PROFILE);
   }
+
+  const cookie = request.headers.get('cookie') ?? '';
+  const res = await fetch(`${baseUrl}/api/mypage/profile`, {
+    method: 'GET',
+    headers: cookie ? { cookie } : undefined,
+    cache: 'no-store',
+  });
+
+  const data = await res.json().catch(() => ({}));
+  return NextResponse.json(data, { status: res.status });
 }
 
 // 사용자 프로필 수정

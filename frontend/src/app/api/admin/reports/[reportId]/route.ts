@@ -54,7 +54,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     const data = await res.json().catch(() => ({}));
     return NextResponse.json(data, { status: res.status });
   }
-  const allowed = ['REVIEWING', 'REJECTED'];
+  const allowed = ['PENDING', 'REVIEWING', 'RESOLVED', 'REJECTED'];
   if (!body?.status || !allowed.includes(body.status)) {
     return NextResponse.json({ error: 'invalid status' }, { status: 400 });
   }

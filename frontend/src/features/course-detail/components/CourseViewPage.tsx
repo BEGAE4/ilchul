@@ -49,7 +49,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   };
 
   const reportMenuTriggerRef = useRef<HTMLButtonElement>(null);
-  const reportCtx = useReport({ reporterId: currentUser.id });
+  const reportCtx = useReport();
 
   const {
     comments,
@@ -128,7 +128,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const courseTarget: ReportTarget = {
     type: 'course',
     id: courseId,
-    ownerId: plan.userNickName, // A7: 닉네임 best-effort 매칭
+    ownerId: plan.userNickname, // A7: 닉네임 best-effort 매칭
     title: plan.planTitle,
     contextUrl: `/course/${courseId}`,
   };
@@ -139,7 +139,9 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
 
   const confirmSave = async () => {
     try {
-      const res = await planApi.clonePlan(plan.planId);
+      // 빠른 담기 플로우 — scheduledDate 미선택이므로 오늘 날짜(YYYY-MM-DD)를 기본값으로 전송
+      const scheduledDate = new Date().toISOString().slice(0, 10);
+      const res = await planApi.clonePlan(plan.planId, { scheduledDate });
       setSavedCourseId(String(res.planId));
       toast.success('내 일정에 담았어요!');
     } catch {
@@ -213,14 +215,14 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-200">
             <Image
               src={plan.userAvatar || `https://i.pravatar.cc/150?u=${plan.userId}`}
-              alt={plan.userNickName}
+              alt={plan.userNickname}
               fill
               sizes="40px"
               className="object-cover"
             />
           </div>
           <div>
-            <div className="text-sm font-bold text-gray-900">{plan.userNickName}</div>
+            <div className="text-sm font-bold text-gray-900">{plan.userNickname}</div>
             <div className="text-xs text-gray-500">여행 크리에이터</div>
           </div>
         </div>
@@ -351,8 +353,9 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                       </div>
                     </div>
                     <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100 mt-1 whitespace-pre-wrap">
-                      {comment.content}
+                      {comment.isDeleted ? '삭제된 댓글입니다.' : comment.content}
                     </p>
+                    {!comment.isDeleted && (
                     <div className="flex items-center gap-3 mt-1.5">
                       <button
                         onClick={() => toggleCommentLike(comment.replyId, comment.isLiked, null)}
@@ -362,7 +365,13 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                         <span>{comment.likeCount}</span>
                       </button>
                       <button
-                        onClick={() => setReplyTarget({ replyId: comment.replyId, username: comment.user })}
+                        onClick={() =>
+                          setReplyTarget({
+                            replyId: comment.replyId,
+                            username: comment.user,
+                            userId: comment.userId,
+                          })
+                        }
                         className="text-xs text-gray-400 hover:text-sky-500"
                       >
                         답글
@@ -396,13 +405,14 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                         </button>
                       )}
                     </div>
+                    )}
                   </div>
                 </div>
 
                 {/* 대댓글 */}
-                {comment.replies.length > 0 && (
+                {comment.replies.replies.length > 0 && (
                   <div className="ml-12 mt-3 space-y-3 border-l-2 border-gray-100 pl-3">
-                    {comment.replies.map((reply) => (
+                    {comment.replies.replies.map((reply) => (
                       <div key={reply.replyId} className="flex items-start gap-3">
                         <div className="relative w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
                           <Image src={reply.avatar} alt="Avatar" fill sizes="28px" className="object-cover" />
@@ -415,8 +425,9 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                             </div>
                           </div>
                           <p className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100 mt-1 whitespace-pre-wrap">
-                            {reply.content}
+                            {reply.isDeleted ? '삭제된 댓글입니다.' : reply.content}
                           </p>
+                          {!reply.isDeleted && (
                           <div className="flex items-center gap-3 mt-1">
                             <button
                               onClick={() => toggleCommentLike(reply.replyId, reply.isLiked, comment.replyId)}
@@ -458,6 +469,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                               </button>
                             )}
                           </div>
+                          )}
                         </div>
                       </div>
                     ))}

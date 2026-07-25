@@ -46,7 +46,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
 
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const reportCtx = useReport({ reporterId: currentUser.id });
+  const reportCtx = useReport();
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 600);
