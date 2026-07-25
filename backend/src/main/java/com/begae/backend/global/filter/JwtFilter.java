@@ -32,8 +32,9 @@ public class JwtFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
 
-        return path.startsWith("/api/sign")
-                || path.startsWith("/oauth2")
+        // /api/sign 은 제외하지 않는다. permitAll 이지만 로그인한 사용자 정보를 필요로 하기 때문.
+        // 이 필터는 토큰이 없거나 유효하지 않아도 요청을 차단하지 않고 그대로 통과시킨다.
+        return path.startsWith("/oauth2")
                 || path.startsWith("/login/oauth2")
                 || path.equals("/");
     }
