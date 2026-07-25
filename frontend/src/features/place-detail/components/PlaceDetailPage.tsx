@@ -33,6 +33,8 @@ import {
 } from '@/shared/data/mockData';
 import type { BestPlace, Course } from '@/shared/types';
 import { usePlaceDetail, usePlaceActions } from '@/features/place';
+import { Map as KakaoMap, MapMarker } from 'react-kakao-maps-sdk';
+import { useKakaoMapLoader } from '@/shared/lib/kakao';
 
 // 카테고리별 장소 상세 정보
 const PLACE_DETAILS: Record<
@@ -158,6 +160,8 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
     isLoading: isServerLoading,
   } = usePlaceDetail(placeId);
   const [reviewInput, setReviewInput] = useState('');
+  // 위치 미니맵용 카카오맵 SDK 로드 상태
+  const [isKakaoLoading, kakaoError] = useKakaoMapLoader();
   const placeActions = usePlaceActions(placeId, {
     onLocalLike: () => {
       setIsLiked((prev) => !prev);
@@ -326,7 +330,15 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
           <span className="text-xs font-bold text-gray-600">스크랩</span>
         </button>
         <button
-          onClick={() => window.open(`https://map.kakao.com/link/to/${encodeURIComponent(place.name)},${place.location}`, '_blank')}
+          onClick={() =>
+            window.open(
+              // kakao link/to 형식: 이름,위도,경도 — 서버 장소만 좌표가 있으므로 없으면 검색 링크로 폴백
+              serverPlace
+                ? `https://map.kakao.com/link/to/${encodeURIComponent(place.name)},${serverPlace.y},${serverPlace.x}`
+                : `https://map.kakao.com/link/search/${encodeURIComponent(place.name)}`,
+              '_blank'
+            )
+          }
           className="flex flex-col items-center py-4 gap-1 active:bg-gray-50 transition-colors"
         >
           <Navigation size={20} className="text-sky-500" />
@@ -388,6 +400,25 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
             지도 <ExternalLink size={10} />
           </button>
         </div>
+
+        {/* 위치 미니맵 — 서버 장소(좌표 보유)만 표시 */}
+        {serverPlace && !kakaoError && (
+          <div className="rounded-xl overflow-hidden border border-gray-100">
+            {isKakaoLoading ? (
+              <div className="h-40 bg-gray-100 animate-pulse" />
+            ) : (
+              <KakaoMap
+                center={{ lat: serverPlace.y, lng: serverPlace.x }}
+                style={{ width: '100%', height: 160 }}
+                level={4}
+                draggable={false}
+                zoomable={false}
+              >
+                <MapMarker position={{ lat: serverPlace.y, lng: serverPlace.x }} />
+              </KakaoMap>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 방문자 후기 */}
