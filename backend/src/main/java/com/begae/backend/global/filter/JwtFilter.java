@@ -31,7 +31,6 @@ public class JwtFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
 
         return path.startsWith("/api/sign")
-                || path.startsWith("/api/exception")
                 || path.startsWith("/oauth2")
                 || path.startsWith("/login/oauth2")
                 || path.equals("/");
