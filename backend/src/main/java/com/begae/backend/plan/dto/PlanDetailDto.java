@@ -1,5 +1,6 @@
 package com.begae.backend.plan.dto;
 
+import com.begae.backend.plan.domain.DeparturePoint;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.domain.PlanImage;
 import lombok.AllArgsConstructor;
@@ -35,6 +36,7 @@ public class PlanDetailDto {
     private List<String> planImageUrls;
     private List<String> tags;
     private String thumbnailUrl;
+    private DeparturePoint departurePoint;
 
     private List<PlanPlaceDetailDto> planPlaceDetailDtos;
 
@@ -67,6 +69,7 @@ public class PlanDetailDto {
                 .planPlaceDetailDtos(places)
                 .thumbnailUrl(first.getImageUrl())
                 .planImageUrls(plan.getPlanImages().stream().map(PlanImage::getImageUrl).toList())
+                .departurePoint(plan.getDeparturePoint())
                 .build();
     }
 
