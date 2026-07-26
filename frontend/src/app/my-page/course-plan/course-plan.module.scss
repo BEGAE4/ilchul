@@ -343,7 +343,7 @@
 
   &:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: var(--color-primary-500);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
 
@@ -408,7 +408,7 @@
 }
 
 .toggleInput:checked + .toggleLabel {
-  background-color: #3b82f6;
+  background-color: var(--color-primary-500);
 }
 
 .toggleInput:checked + .toggleLabel:before {
@@ -431,9 +431,9 @@
 .closeButton {
   width: 100%;
   padding: 12px 20px;
-  border: 1px solid #3b82f6;
+  border: 1px solid var(--color-primary-500);
   background-color: #ffffff;
-  color: #3b82f6;
+  color: var(--color-primary-500);
   border-radius: 8px;
   font-size: 16px;
   font-weight: 500;

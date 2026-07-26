@@ -89,11 +89,11 @@ export const SelectField: React.FC<SelectFieldProps> = ({
                   setOpen(false);
                 }}
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-left text-sm font-medium transition-colors ${
-                  opt.value === value ? 'bg-sky-50 text-sky-700' : 'text-gray-700 active:bg-gray-50'
+                  opt.value === value ? 'bg-primary-50 text-primary-700' : 'text-gray-700 active:bg-gray-50'
                 }`}
               >
                 {opt.label}
-                {opt.value === value && <Check size={16} className="text-sky-500" />}
+                {opt.value === value && <Check size={16} className="text-primary-500" />}
               </button>
             ))}
           </div>
@@ -225,10 +225,10 @@ export const DateField: React.FC<DateFieldProps> = ({
                       }}
                       className={`w-9 h-9 rounded-full text-sm font-medium transition-colors ${
                         isSelected
-                          ? 'bg-sky-500 text-white'
+                          ? 'bg-primary-500 text-white'
                           : disabled
                             ? 'text-gray-200'
-                            : 'text-gray-700 active:bg-sky-50'
+                            : 'text-gray-700 active:bg-primary-50'
                       }`}
                     >
                       {day}

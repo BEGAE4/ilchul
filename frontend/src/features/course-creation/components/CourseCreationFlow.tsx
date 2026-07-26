@@ -516,7 +516,7 @@ export const CourseCreationFlow: React.FC = () => {
               reset();
               router.push('/');
             }}
-            className="flex-1 py-3 bg-sky-500 font-bold rounded-xl text-sm text-white"
+            className="flex-1 py-3 bg-primary-500 font-bold rounded-xl text-sm text-white"
           >
             나가기
           </button>
@@ -546,7 +546,7 @@ export const CourseCreationFlow: React.FC = () => {
                 className="w-16 h-16 rounded-full bg-gradient-to-b from-amber-300 to-orange-400 shadow-[0_0_40px_12px_rgba(251,191,36,0.35)]"
               />
             </motion.div>
-            <div className="absolute bottom-0 left-0 right-0 h-px bg-sky-200" />
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-primary-200" />
           </div>
 
           <motion.h1
@@ -574,7 +574,7 @@ export const CourseCreationFlow: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 1 }}
             onClick={handleNext}
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform"
+            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary-200 active:scale-[0.98] transition-transform"
           >
             시작하기
           </motion.button>
@@ -613,7 +613,7 @@ export const CourseCreationFlow: React.FC = () => {
                   }}
                   className={`w-full py-3.5 px-5 rounded-full border-2 text-center transition-all ${
                     isActive
-                      ? 'border-sky-400 bg-sky-50 text-sky-700'
+                      ? 'border-primary-400 bg-primary-50 text-primary-700'
                       : 'border-gray-100 bg-white text-gray-600'
                   }`}
                 >
@@ -654,7 +654,7 @@ export const CourseCreationFlow: React.FC = () => {
                   placeholder="지금 느끼는 감정을 적어주세요"
                   maxLength={30}
                   autoFocus
-                  className="w-full py-3.5 px-5 rounded-full border-2 border-sky-400 bg-sky-50 text-sky-700 text-center outline-none placeholder:text-sky-300"
+                  className="w-full py-3.5 px-5 rounded-full border-2 border-primary-400 bg-primary-50 text-primary-700 text-center outline-none placeholder:text-primary-300"
                 />
                 <div className="flex items-start gap-1.5 px-2">
                   <AlertCircle size={12} className="text-gray-300 mt-0.5 shrink-0" />
@@ -670,7 +670,7 @@ export const CourseCreationFlow: React.FC = () => {
           <button
             onClick={handleNext}
             disabled={!surveyData.mindState}
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
+            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
           >
             선택 완료
           </button>
@@ -712,7 +712,7 @@ export const CourseCreationFlow: React.FC = () => {
                   onClick={() => updateSurvey('transport', label)}
                   className={`flex items-center gap-1.5 px-4 py-3 rounded-lg border font-medium text-sm transition-all ${
                     surveyData.transport === label
-                      ? 'border-sky-500 bg-sky-50 text-sky-700'
+                      ? 'border-primary-500 bg-primary-50 text-primary-700'
                       : 'border-gray-200 text-gray-600'
                   }`}
                 >
@@ -732,7 +732,7 @@ export const CourseCreationFlow: React.FC = () => {
                   onClick={() => updateSurvey('transportTime', time)}
                   className={`px-4 py-3 rounded-lg border font-medium text-left text-sm transition-all ${
                     (time === '직접입력' && isCustomTime) || surveyData.transportTime === time
-                      ? 'border-sky-500 bg-sky-50 text-sky-700'
+                      ? 'border-primary-500 bg-primary-50 text-primary-700'
                       : 'border-gray-200 text-gray-600'
                   }`}
                 >
@@ -777,7 +777,7 @@ export const CourseCreationFlow: React.FC = () => {
               !surveyData.transportTime ||
               surveyData.transportTime === '직접입력'
             }
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
+            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
           >
             선택 완료
           </button>
@@ -807,7 +807,7 @@ export const CourseCreationFlow: React.FC = () => {
           <div className="space-y-6">
             <div className="space-y-2">
               <div className="flex items-center gap-1.5 text-sm font-bold text-gray-700">
-                <Calendar size={15} className="text-sky-500" />
+                <Calendar size={15} className="text-primary-500" />
                 여행 시작
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -858,12 +858,12 @@ export const CourseCreationFlow: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-sky-50 p-4 rounded-xl border border-sky-100"
+                className="bg-primary-50 p-4 rounded-xl border border-primary-100"
               >
-                <div className="flex items-center gap-2 text-sky-700 font-bold text-sm mb-1">
+                <div className="flex items-center gap-2 text-primary-700 font-bold text-sm mb-1">
                   <Timer size={16} />총 여행 시간
                 </div>
-                <div className="text-sky-600 text-lg font-bold">
+                <div className="text-primary-600 text-lg font-bold">
                   {(() => {
                     const start = new Date(`${surveyData.startDate}T${surveyData.startTime}`);
                     const end = new Date(`${surveyData.endDate}T${surveyData.endTime}`);
@@ -890,7 +890,7 @@ export const CourseCreationFlow: React.FC = () => {
           <button
             onClick={handleNext}
             disabled={!survey3Validation.valid}
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shadow-lg shadow-sky-100"
+            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shadow-lg shadow-primary-100"
           >
             다음으로
           </button>
@@ -1142,7 +1142,7 @@ export const CourseCreationFlow: React.FC = () => {
           <button
             onClick={handleNext}
             disabled={!startingPoint.address}
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shadow-lg shadow-sky-100"
+            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shadow-lg shadow-primary-100"
           >
             다음으로
           </button>
@@ -1182,20 +1182,20 @@ export const CourseCreationFlow: React.FC = () => {
                 onClick={() => togglePlaceSelection(place.id)}
                 className={`relative bg-white p-4 rounded-xl border-2 transition-all cursor-pointer ${
                   isSelected
-                    ? 'border-sky-500 shadow-md ring-1 ring-sky-500'
+                    ? 'border-primary-500 shadow-md ring-1 ring-primary-500'
                     : 'border-gray-100 shadow-sm'
                 }`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded mb-1 inline-block">
+                    <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded mb-1 inline-block">
                       {place.category}
                     </span>
                     <h3 className="font-bold text-gray-900">{place.name}</h3>
                   </div>
                   <div
                     className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                      isSelected ? 'bg-sky-500 border-sky-500' : 'border-gray-300'
+                      isSelected ? 'bg-primary-500 border-primary-500' : 'border-gray-300'
                     }`}
                   >
                     {isSelected && <Check size={14} className="text-white" />}
@@ -1255,7 +1255,7 @@ export const CourseCreationFlow: React.FC = () => {
             <button
               onClick={handleNext}
               disabled={selectedPlaceIds.length === 0}
-              className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
+              className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
             >
               선택 완료 ({selectedPlaceIds.length})
             </button>
@@ -1298,7 +1298,7 @@ export const CourseCreationFlow: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto">
           <div className="p-5">
-            <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded mb-2 inline-block">
+            <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded mb-2 inline-block">
               {place.category}
             </span>
             <h1 className="text-2xl font-bold text-gray-900 mb-3">{place.name}</h1>
@@ -1354,7 +1354,7 @@ export const CourseCreationFlow: React.FC = () => {
               className={`w-full py-4 rounded-xl font-bold transition-all active:scale-[0.98] ${
                 isSelected
                   ? 'bg-red-50 text-red-500 border border-red-100'
-                  : 'bg-sky-500 text-white shadow-lg shadow-sky-200'
+                  : 'bg-primary-500 text-white shadow-lg shadow-primary-200'
               }`}
             >
               {isSelected ? '선택 해제하기' : '이 장소 선택하기'}
@@ -1377,7 +1377,7 @@ export const CourseCreationFlow: React.FC = () => {
         <div className="bg-white p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-2">
             <h2 className="font-bold text-lg">플랜 일정표</h2>
-            <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-1 rounded">
+            <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-1 rounded">
               총 {finalStops.length}개 장소
             </span>
           </div>
@@ -1396,9 +1396,9 @@ export const CourseCreationFlow: React.FC = () => {
             </div>
           </div>
           {serverPreview && (
-            <div className="mt-2 flex items-center gap-3 text-xs font-bold text-sky-600 bg-sky-50 px-3 py-2 rounded-lg">
+            <div className="mt-2 flex items-center gap-3 text-xs font-bold text-primary-600 bg-primary-50 px-3 py-2 rounded-lg">
               <span>예상 소요 {formatMinutes(serverPreview.requiredTime)}</span>
-              <span className="text-sky-300">|</span>
+              <span className="text-primary-300">|</span>
               <span>총 이동 {serverPreview.totalDistance}km</span>
             </div>
           )}
@@ -1421,7 +1421,7 @@ export const CourseCreationFlow: React.FC = () => {
         <div className="flex-1 p-4 overflow-y-auto relative">
           {isRecalculating && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
-              <Loader2 className="animate-spin text-sky-500 mb-2" size={32} />
+              <Loader2 className="animate-spin text-primary-500 mb-2" size={32} />
               <p className="text-sm font-bold text-gray-600">최적 경로 재계산 중...</p>
             </div>
           )}
@@ -1470,18 +1470,18 @@ export const CourseCreationFlow: React.FC = () => {
                   onClick={() => openPlaceDetail(stop.id)}
                 >
                   <div className="flex flex-col items-center pt-1">
-                    <div className="w-6 h-6 rounded-full bg-sky-500 flex items-center justify-center text-white text-xs font-bold z-10 shadow-sm">
+                    <div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-bold z-10 shadow-sm">
                       {index + 1}
                     </div>
                     {index < finalStops.length - 1 && (
-                      <div className="w-0.5 flex-1 bg-sky-200 my-1" />
+                      <div className="w-0.5 flex-1 bg-primary-200 my-1" />
                     )}
                   </div>
 
                   <div className="flex-1 bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-2">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <div className="text-xs text-sky-600 font-bold mb-0.5">
+                        <div className="text-xs text-primary-600 font-bold mb-0.5">
                           {index === 0
                             ? `${surveyData.startTime || '10:00'} 이후 도착`
                             : `${travelFromPrev}분 이동 후 도착`}
@@ -1492,14 +1492,14 @@ export const CourseCreationFlow: React.FC = () => {
                         <button
                           onClick={() => moveStop(index, 'up')}
                           disabled={index === 0}
-                          className="p-1 text-gray-400 hover:text-sky-500 disabled:opacity-30"
+                          className="p-1 text-gray-400 hover:text-primary-500 disabled:opacity-30"
                         >
                           <ArrowUp size={16} />
                         </button>
                         <button
                           onClick={() => moveStop(index, 'down')}
                           disabled={index === finalStops.length - 1}
-                          className="p-1 text-gray-400 hover:text-sky-500 disabled:opacity-30"
+                          className="p-1 text-gray-400 hover:text-primary-500 disabled:opacity-30"
                         >
                           <ArrowDown size={16} />
                         </button>
@@ -1527,7 +1527,7 @@ export const CourseCreationFlow: React.FC = () => {
         <div className="p-4 bg-white border-t border-gray-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
           <button
             onClick={handleNext}
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             <Check size={20} />
             힐링 플랜 생성 완료

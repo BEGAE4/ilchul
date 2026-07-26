@@ -107,8 +107,8 @@ export function RouteMap({
         {/* 출발지 마커 */}
         <CustomOverlayMap position={startingPoint.coord} yAnchor={0.5} zIndex={2}>
           <div className="relative flex items-center justify-center">
-            <div className="absolute w-6 h-6 rounded-full bg-blue-500/20" />
-            <div className="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow" />
+            <div className="absolute w-6 h-6 rounded-full bg-primary-500/20" />
+            <div className="w-4 h-4 rounded-full bg-primary-500 border-2 border-white shadow" />
           </div>
         </CustomOverlayMap>
 
@@ -138,7 +138,7 @@ export function RouteMap({
         <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-3 py-2 z-10 pointer-events-none">
           <div className="flex items-center gap-2 text-xs text-gray-600">
             <div className="flex items-center gap-1">
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+              <div className="w-2.5 h-2.5 rounded-full bg-primary-500" />
               <span>출발</span>
             </div>
             {stops.slice(0, 4).map((stop, i) => (
@@ -160,7 +160,7 @@ export function RouteMap({
       {/* 출발지 미선택 힌트 (출발지 설정 화면) */}
       {stops.length === 0 && !startingPoint.address && (
         <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-3 py-2 z-10 pointer-events-none">
-          <div className="flex items-center gap-1.5 text-xs text-blue-500">
+          <div className="flex items-center gap-1.5 text-xs text-primary-500">
             <Navigation size={12} />
             <span>
               {onSelectCoord

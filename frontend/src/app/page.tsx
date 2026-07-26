@@ -85,7 +85,7 @@ export default function Home() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                 <div className="absolute bottom-12 left-5 right-5 text-white">
-                  <span className="inline-block px-2 py-0.5 mb-2 text-[10px] font-bold bg-sky-500 rounded text-white">
+                  <span className="inline-block px-2 py-0.5 mb-2 text-[10px] font-bold bg-primary-500 rounded text-white">
                     {place.category}
                   </span>
                   <h2 className="text-2xl font-bold leading-tight mb-1">{place.name}</h2>
@@ -106,7 +106,7 @@ export default function Home() {
         <div className="mb-8">
           <div className="px-5 pt-5 pb-3 flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <Navigation size={16} className="text-sky-500" />
+              <Navigation size={16} className="text-primary-500" />
               <h2 className="text-lg font-bold text-gray-900">주변 인기 장소</h2>
             </div>
             <button
@@ -136,7 +136,7 @@ export default function Home() {
                       {idx + 1}
                     </div>
                     <button
-                      className="absolute bottom-2 right-2 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow text-sky-500 active:scale-90 transition-transform"
+                      className="absolute bottom-2 right-2 p-2 bg-white/90 backdrop-blur-sm rounded-full shadow text-primary-500 active:scale-90 transition-transform"
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedPlace(place);
@@ -147,7 +147,7 @@ export default function Home() {
                     </button>
                   </div>
                   <div className="p-2.5">
-                    <div className="text-[10px] font-bold text-sky-600 mb-0.5">{place.category}</div>
+                    <div className="text-[10px] font-bold text-primary-600 mb-0.5">{place.category}</div>
                     <h3 className="font-bold text-xs text-gray-900 line-clamp-1">{place.name}</h3>
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-[10px] text-gray-400">{place.location}</span>
@@ -270,7 +270,7 @@ export default function Home() {
                     {idx + 1}
                   </div>
                   <button
-                    className="absolute bottom-2 right-2 p-2 bg-white rounded-full shadow-md text-sky-500 active:scale-90 transition-transform"
+                    className="absolute bottom-2 right-2 p-2 bg-white rounded-full shadow-md text-primary-500 active:scale-90 transition-transform"
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedPlace(place);
@@ -281,7 +281,7 @@ export default function Home() {
                   </button>
                 </div>
                 <div className="p-3">
-                  <div className="text-[10px] font-bold text-sky-600 mb-0.5">{place.category}</div>
+                  <div className="text-[10px] font-bold text-primary-600 mb-0.5">{place.category}</div>
                   <h3 className="font-bold text-sm text-gray-900 mb-1 line-clamp-1">{place.name}</h3>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-400">{place.location}</span>
@@ -343,7 +343,7 @@ export default function Home() {
                       {(plan.tags ?? []).slice(0, 3).map((tag) => (
                         <span
                           key={tag}
-                          className="text-[10px] text-sky-600 bg-sky-50 rounded px-1.5 py-0.5"
+                          className="text-[10px] text-primary-600 bg-primary-50 rounded px-1.5 py-0.5"
                         >
                           {tag}
                         </span>

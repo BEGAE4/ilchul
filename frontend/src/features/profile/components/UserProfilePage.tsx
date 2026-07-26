@@ -90,7 +90,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-gray-500">
         <p className="text-lg font-bold mb-2">사용자를 찾을 수 없습니다</p>
-        <button onClick={() => router.back()} className="text-sky-500 font-medium">
+        <button onClick={() => router.back()} className="text-primary-500 font-medium">
           돌아가기
         </button>
       </div>
@@ -113,7 +113,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
   );
 
   const STATS = [
-    { label: '공개 플랜', value: userCourses.length, color: 'text-sky-500' },
+    { label: '공개 플랜', value: userCourses.length, color: 'text-primary-500' },
     { label: '받은 좋아요', value: totalLikes, color: 'text-red-500' },
     { label: '받은 저장', value: totalBookmarks, color: 'text-violet-500' },
   ];
@@ -224,8 +224,8 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
                   >
                     <Bookmark
                       size={16}
-                      fill={bookmarkedIds.has(course.id) ? '#3b82f6' : 'none'}
-                      className="text-blue-500"
+                      fill={bookmarkedIds.has(course.id) ? 'var(--color-primary-500)' : 'none'}
+                      className="text-primary-500"
                     />
                   </button>
                   <div className="absolute bottom-3 left-3 right-3">

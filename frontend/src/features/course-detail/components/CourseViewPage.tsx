@@ -100,7 +100,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           </button>
           <button
             onClick={refetch}
-            className="flex-1 py-3 bg-sky-500 text-white font-bold rounded-xl text-sm shadow-md shadow-sky-200"
+            className="flex-1 py-3 bg-primary-500 text-white font-bold rounded-xl text-sm shadow-md shadow-primary-200"
           >
             다시 시도
           </button>
@@ -249,7 +249,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         <div className="bg-gray-50 p-3 rounded-lg">
           <div className="text-xs text-gray-500 mb-1">스크랩</div>
           <div className="font-bold text-gray-900 flex items-center justify-center gap-1">
-            <Bookmark size={14} className="text-sky-500" /> {scrapCount}
+            <Bookmark size={14} className="text-primary-500" /> {scrapCount}
           </div>
         </div>
         <button
@@ -272,14 +272,14 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       {/* 타임라인 */}
       <div className="px-5">
         <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <Clock size={20} className="text-sky-500" /> 여행 플랜 타임라인
+          <Clock size={20} className="text-primary-500" /> 여행 플랜 타임라인
         </h2>
-        <div className="relative pl-2 space-y-8 before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-sky-200 before:to-gray-100 before:content-['']">
+        <div className="relative pl-2 space-y-8 before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-primary-200 before:to-gray-100 before:content-['']">
           {places.map((stop) => (
             <div key={stop.planPlaceId} className="relative pl-8">
-              <span className="absolute left-0 top-1.5 -ml-px h-4 w-4 rounded-full border-2 border-white bg-sky-500 shadow-sm z-10" />
+              <span className="absolute left-0 top-1.5 -ml-px h-4 w-4 rounded-full border-2 border-white bg-primary-500 shadow-sm z-10" />
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1">
-                <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded w-fit mb-1">
+                <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded w-fit mb-1">
                   {stop.visitTime}
                 </span>
                 <span className="text-xs text-gray-400 font-medium ml-auto sm:ml-2">
@@ -298,11 +298,11 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       {/* 댓글 */}
       <div className="px-5 py-4 border-t border-gray-100 mt-6">
         <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <MessageCircle size={20} className="text-sky-500" /> 댓글
+          <MessageCircle size={20} className="text-primary-500" /> 댓글
         </h2>
         <div className="mb-4">
           {replyTarget && (
-            <div className="flex items-center justify-between bg-sky-50 border border-sky-200 rounded-lg px-3 py-2 mb-2 text-sm text-sky-700">
+            <div className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-lg px-3 py-2 mb-2 text-sm text-primary-700">
               <span><span className="font-bold">@{replyTarget.username}</span>에게 답글</span>
               <button onClick={() => setReplyTarget(null)} aria-label="답글 취소">
                 <X size={14} />
@@ -313,13 +313,13 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
             placeholder={replyTarget ? `@${replyTarget.username}에게 답글...` : '댓글을 입력하세요...'}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-sky-500 text-base"
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-500 text-base"
             rows={2}
             maxLength={500}
           />
           <button
             onClick={submitComment}
-            className="mt-2 w-full bg-sky-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform"
+            className="mt-2 w-full bg-primary-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-primary-200 active:scale-[0.98] transition-transform"
           >
             {replyTarget ? '답글 작성' : '댓글 작성'}
           </button>
@@ -359,7 +359,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                     <div className="flex items-center gap-3 mt-1.5">
                       <button
                         onClick={() => toggleCommentLike(comment.replyId, comment.isLiked, null)}
-                        className={`flex items-center gap-1 text-sm ${comment.isLiked ? 'text-sky-500' : 'text-gray-400'}`}
+                        className={`flex items-center gap-1 text-sm ${comment.isLiked ? 'text-primary-500' : 'text-gray-400'}`}
                       >
                         <ThumbsUp size={14} />
                         <span>{comment.likeCount}</span>
@@ -372,7 +372,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                             userId: comment.userId,
                           })
                         }
-                        className="text-xs text-gray-400 hover:text-sky-500"
+                        className="text-xs text-gray-400 hover:text-primary-500"
                       >
                         답글
                       </button>
@@ -431,7 +431,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                           <div className="flex items-center gap-3 mt-1">
                             <button
                               onClick={() => toggleCommentLike(reply.replyId, reply.isLiked, comment.replyId)}
-                              className={`flex items-center gap-1 text-xs ${reply.isLiked ? 'text-sky-500' : 'text-gray-400'}`}
+                              className={`flex items-center gap-1 text-xs ${reply.isLiked ? 'text-primary-500' : 'text-gray-400'}`}
                             >
                               <ThumbsUp size={12} />
                               <span>{reply.likeCount}</span>
@@ -482,7 +482,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
               <button
                 onClick={fetchMore}
                 disabled={isFetchingMore}
-                className="w-full py-2.5 text-sm text-sky-600 font-medium border border-sky-200 rounded-xl hover:bg-sky-50 disabled:opacity-50"
+                className="w-full py-2.5 text-sm text-primary-600 font-medium border border-primary-200 rounded-xl hover:bg-primary-50 disabled:opacity-50"
               >
                 {isFetchingMore ? '불러오는 중...' : '댓글 더 보기'}
               </button>
@@ -542,7 +542,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   </button>
                   <button
                     onClick={confirmSave}
-                    className="flex-1 py-3 bg-sky-500 font-bold rounded-xl text-sm text-white shadow-md shadow-sky-200"
+                    className="flex-1 py-3 bg-primary-500 font-bold rounded-xl text-sm text-white shadow-md shadow-primary-200"
                   >
                     담기
                   </button>
@@ -571,7 +571,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   </button>
                   <button
                     onClick={goToMyCourse}
-                    className="flex-1 py-3 bg-sky-500 font-bold rounded-xl text-sm text-white shadow-md shadow-sky-200"
+                    className="flex-1 py-3 bg-primary-500 font-bold rounded-xl text-sm text-white shadow-md shadow-primary-200"
                   >
                     플랜 보기
                   </button>

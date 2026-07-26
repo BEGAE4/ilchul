@@ -168,7 +168,7 @@ export const ProfilePage: React.FC = () => {
         : summaryError
         ? '—'
         : summary?.publicPlanCount ?? 0,
-      color: 'text-sky-500',
+      color: 'text-primary-500',
     },
     {
       label: '인증 플랜',
@@ -345,7 +345,7 @@ export const ProfilePage: React.FC = () => {
             >
               {tab.label}
               <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${
-                mainTab === tab.key ? 'bg-sky-100 text-sky-600' : 'bg-gray-100 text-gray-400'
+                mainTab === tab.key ? 'bg-primary-100 text-primary-600' : 'bg-gray-100 text-gray-400'
               }`}>
                 {tab.count}
               </span>
@@ -429,7 +429,7 @@ export const ProfilePage: React.FC = () => {
                                   onClick={(e) => handleToggleVisibility(course.id, e)}
                                   className={`p-2.5 rounded-lg transition-colors ${
                                     course.isPublic
-                                      ? 'bg-sky-50 text-sky-500'
+                                      ? 'bg-primary-50 text-primary-500'
                                       : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                                   }`}
                                   aria-label={course.isPublic ? '비공개로 전환' : '공개로 전환'}
@@ -469,7 +469,7 @@ export const ProfilePage: React.FC = () => {
                     {courseFilter === 'all' && (
                       <button
                         onClick={() => router.push('/create')}
-                        className="bg-sky-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-sky-200 active:scale-95 transition-transform"
+                        className="bg-primary-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary-200 active:scale-95 transition-transform"
                       >
                         플랜 생성하기
                       </button>
@@ -506,8 +506,8 @@ export const ProfilePage: React.FC = () => {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                         <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 bg-white/90 backdrop-blur-sm rounded-full shadow">
-                          <Bookmark size={12} fill="#3b82f6" className="text-blue-500" />
-                          <span className="text-[10px] font-bold text-blue-500">저장됨</span>
+                          <Bookmark size={12} fill="var(--color-primary-500)" className="text-primary-500" />
+                          <span className="text-[10px] font-bold text-primary-500">저장됨</span>
                         </div>
                         {!plan.isPlanVisible && (
                           <span className="absolute top-2.5 left-2.5 text-[10px] text-white bg-black/50 backdrop-blur-sm rounded px-1.5 py-0.5">
