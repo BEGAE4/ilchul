@@ -183,7 +183,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           </button>
           <button
             onClick={refetch}
-            className="flex-1 py-3 bg-sky-500 text-white font-bold rounded-xl text-sm shadow-md shadow-sky-200"
+            className="flex-1 py-3 bg-primary-500 text-white font-bold rounded-xl text-sm shadow-md shadow-primary-200"
           >
             다시 시도
           </button>
@@ -287,6 +287,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     setIsPreviewLoading(true);
     try {
       const preview = await planApi.updatePlanPreview(plan.planId, {
+        // 백엔드가 요청의 출발지로 이동시간을 계산하므로 상세 응답의 출발지를 그대로 재전송
+        departurePoint: plan.departurePoint ?? undefined,
         places: buildPlacesBody(orderedPlaces),
       });
       setReorderPreview(preview);
@@ -302,7 +304,10 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     if (!orderedPlaces) return;
     setIsSavingOrder(true);
     try {
-      await planApi.updatePlanPlaces(plan.planId, { places: buildPlacesBody(orderedPlaces) });
+      await planApi.updatePlanPlaces(plan.planId, {
+        departurePoint: plan.departurePoint ?? undefined,
+        places: buildPlacesBody(orderedPlaces),
+      });
       toast.success('플랜 순서가 저장되었어요!');
       setReorderPreview(null);
       setOrderedPlaces(null);
@@ -447,7 +452,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             </span>
             <span
               className={`backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 ${
-                plan.isPlanVisible ? 'bg-sky-500/80' : 'bg-gray-800/80'
+                plan.isPlanVisible ? 'bg-primary-500/80' : 'bg-gray-800/80'
               }`}
             >
               {plan.isPlanVisible ? <Eye size={10} /> : <EyeOff size={10} />}
@@ -479,11 +484,11 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
         {scheduledDate && (
           <div className="flex items-center gap-3 mb-3 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-            <Calendar size={14} className="text-sky-500" />
+            <Calendar size={14} className="text-primary-500" />
             <span>{scheduledDate}</span>
             {startTime && endTime && (
               <>
-                <Clock size={14} className="text-sky-500" />
+                <Clock size={14} className="text-primary-500" />
                 <span>
                   {startTime} ~ {endTime}
                 </span>
@@ -494,7 +499,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
         <div className="flex items-center justify-between mb-2">
           <div className="text-xs font-bold text-gray-400">
-            진행률 <span className="text-sky-500 text-sm ml-1">{Math.round(progress)}%</span>
+            진행률 <span className="text-primary-500 text-sm ml-1">{Math.round(progress)}%</span>
           </div>
           {availableMin > 0 && (
             <div className="text-xs text-gray-400">
@@ -505,7 +510,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         </div>
         <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-sky-500"
+            className="h-full bg-primary-500"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 1, ease: 'easeOut' }}
@@ -539,7 +544,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         </div>
 
         {isEditingReview ? (
-          <div className="bg-white p-2 rounded-xl border border-sky-200 shadow-sm">
+          <div className="bg-white p-2 rounded-xl border border-primary-200 shadow-sm">
             <textarea
               value={reviewText}
               onChange={(e) => setReviewText(e.target.value)}
@@ -564,7 +569,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               {reviewPhotos.length < 6 && (
                 <button
                   onClick={() => reviewPhotoInputRef.current?.click()}
-                  className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-sky-400 hover:text-sky-400 transition-colors"
+                  className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-primary-400 hover:text-primary-400 transition-colors"
                 >
                   <ImagePlus size={18} />
                   <span className="text-[9px] mt-0.5">{reviewPhotos.length}/6</span>
@@ -580,7 +585,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               </button>
               <button
                 onClick={handleSaveReview}
-                className="text-xs font-bold bg-sky-500 text-white px-3 py-1.5 rounded-lg shadow-sm"
+                className="text-xs font-bold bg-primary-500 text-white px-3 py-1.5 rounded-lg shadow-sm"
               >
                 저장
               </button>
@@ -618,7 +623,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             <button
               onClick={handleFinishReorder}
               disabled={isPreviewLoading}
-              className="flex items-center gap-1 text-xs font-bold text-sky-600 bg-sky-50 px-3 py-1.5 rounded-full disabled:opacity-50"
+              className="flex items-center gap-1 text-xs font-bold text-primary-600 bg-primary-50 px-3 py-1.5 rounded-full disabled:opacity-50"
             >
               <Check size={14} /> {isPreviewLoading ? '계산 중...' : '완료'}
             </button>
@@ -635,12 +640,12 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         </div>
 
         {startTime && endTime && (
-          <div className="flex items-center gap-2 mb-2 text-xs text-sky-600 bg-sky-50 px-3 py-2 rounded-lg">
+          <div className="flex items-center gap-2 mb-2 text-xs text-primary-600 bg-primary-50 px-3 py-2 rounded-lg">
             <Timer size={14} />
             <span className="font-bold">{startTime}</span>
             <span>~</span>
             <span className="font-bold">{endTime}</span>
-            <span className="text-sky-400 ml-1">· 예상 완료 {formatMinutes(estimatedTotalMin)}</span>
+            <span className="text-primary-400 ml-1">· 예상 완료 {formatMinutes(estimatedTotalMin)}</span>
           </div>
         )}
 
@@ -660,15 +665,15 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             <div key={stop.planPlaceId} className="relative pl-6">
               <div
                 className={`absolute -left-[21px] top-0 w-4 h-4 rounded-full border-2 z-10 bg-white ${
-                  stop.isStamped ? 'border-sky-500' : 'border-gray-300'
+                  stop.isStamped ? 'border-primary-500' : 'border-gray-300'
                 }`}
               >
-                {stop.isStamped && <div className="w-2 h-2 bg-sky-500 rounded-full m-0.5" />}
+                {stop.isStamped && <div className="w-2 h-2 bg-primary-500 rounded-full m-0.5" />}
               </div>
 
               <div
                 className={`relative bg-white rounded-xl border p-4 transition-all ${
-                  stop.isStamped ? 'border-sky-200 shadow-md shadow-sky-50' : 'border-gray-100 shadow-sm'
+                  stop.isStamped ? 'border-primary-200 shadow-md shadow-primary-50' : 'border-gray-100 shadow-sm'
                 }`}
               >
                 {stop.isStamped && (
@@ -687,13 +692,13 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded mb-1 inline-block">
+                    <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded mb-1 inline-block">
                       {stop.categoryName}
                     </span>
                     <h3 className="font-bold text-gray-900">{stop.placeName}</h3>
                   </div>
                   {stop.isStamped ? (
-                    <div className="flex items-center gap-1 text-sky-600 text-xs font-bold bg-sky-50 px-2 py-1 rounded-full">
+                    <div className="flex items-center gap-1 text-primary-600 text-xs font-bold bg-primary-50 px-2 py-1 rounded-full">
                       <BadgeCheck size={14} /> 인증됨
                     </div>
                   ) : (
@@ -761,9 +766,9 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             <div className="flex flex-col items-center text-center">
               {isVerifying ? (
                 <>
-                  <div className="w-16 h-16 bg-sky-50 rounded-full flex items-center justify-center mb-4 relative">
-                    <div className="absolute inset-0 border-4 border-sky-100 rounded-full animate-ping" />
-                    <MapPin size={32} className="text-sky-500 animate-bounce" />
+                  <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mb-4 relative">
+                    <div className="absolute inset-0 border-4 border-primary-100 rounded-full animate-ping" />
+                    <MapPin size={32} className="text-primary-500 animate-bounce" />
                   </div>
                   <h3 className="font-bold text-lg text-gray-900 mb-1">인증 중...</h3>
                   <p className="text-sm text-gray-500">사진과 현재 위치를 확인하고 있어요.</p>
@@ -781,7 +786,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   </p>
                   <button
                     onClick={() => stampInputRef.current?.click()}
-                    className="w-full bg-sky-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-200 active:scale-95 transition-transform mb-3"
+                    className="w-full bg-primary-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary-200 active:scale-95 transition-transform mb-3"
                   >
                     카메라 켜기
                   </button>
@@ -810,14 +815,14 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                 <span className="text-gray-500">예상 소요시간</span>
                 <span className="font-bold text-gray-900">
                   {formatMinutes(estimatedTotalMin)}
-                  <span className="text-sky-500"> → {formatMinutes(reorderPreview.requiredTime)}</span>
+                  <span className="text-primary-500"> → {formatMinutes(reorderPreview.requiredTime)}</span>
                 </span>
               </div>
               <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg text-sm">
                 <span className="text-gray-500">총 이동 거리</span>
                 <span className="font-bold text-gray-900">
                   {plan.totalDistance}km
-                  <span className="text-sky-500"> → {reorderPreview.totalDistance}km</span>
+                  <span className="text-primary-500"> → {reorderPreview.totalDistance}km</span>
                 </span>
               </div>
             </div>
@@ -831,7 +836,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               <button
                 onClick={confirmReorder}
                 disabled={isSavingOrder}
-                className="flex-1 py-2.5 bg-sky-500 text-white font-bold rounded-lg text-sm disabled:opacity-50"
+                className="flex-1 py-2.5 bg-primary-500 text-white font-bold rounded-lg text-sm disabled:opacity-50"
               >
                 {isSavingOrder ? '저장 중...' : '저장하기'}
               </button>
@@ -917,7 +922,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               <button
                 onClick={handleClone}
                 disabled={isCloning}
-                className="flex-1 py-2.5 bg-sky-500 text-white font-bold rounded-lg text-sm disabled:opacity-50"
+                className="flex-1 py-2.5 bg-primary-500 text-white font-bold rounded-lg text-sm disabled:opacity-50"
               >
                 {isCloning ? '복제 중...' : '복제하기'}
               </button>
@@ -947,7 +952,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               </button>
               <button
                 onClick={handleRename}
-                className="flex-1 py-2.5 bg-sky-500 text-white font-bold rounded-lg text-sm"
+                className="flex-1 py-2.5 bg-primary-500 text-white font-bold rounded-lg text-sm"
               >
                 확인
               </button>
@@ -989,10 +994,10 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-gray-900">플랜 사진 관리</h3>
-              <span className="text-xs text-gray-400">{plan.planImages.length}장</span>
+              <span className="text-xs text-gray-400">{plan.planImageUrls.length}장</span>
             </div>
             <div className="grid grid-cols-3 gap-1.5 mb-4">
-              {plan.planImages.map((url, i) => (
+              {plan.planImageUrls.map((url, i) => (
                 <div
                   key={`${url}-${i}`}
                   className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer"
@@ -1004,7 +1009,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               <button
                 onClick={() => planImageInputRef.current?.click()}
                 disabled={isUploadingImages}
-                className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-sky-400 hover:text-sky-400 transition-colors disabled:opacity-50"
+                className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-primary-400 hover:text-primary-400 transition-colors disabled:opacity-50"
               >
                 <ImagePlus size={20} />
                 <span className="text-[9px] mt-0.5">{isUploadingImages ? '업로드 중...' : '추가'}</span>
@@ -1116,7 +1121,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                 setShowCelebration(false);
                 scrollToReview();
               }}
-              className="w-full bg-sky-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-200 active:scale-95 transition-transform"
+              className="w-full bg-primary-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary-200 active:scale-95 transition-transform"
             >
               여행 기록 남기기
             </button>

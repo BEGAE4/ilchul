@@ -1,10 +1,10 @@
 // ReportDialog 색상 토큰
-// 주의: 라디오 선택 상태(sky 계열)와 제출 버튼(red 계열)이 의도적으로 다름.
+// 주의: 라디오 선택 상태(primary 계열)와 제출 버튼(red 계열)이 의도적으로 다름.
 // 선택 상태는 "선택됨" 피드백(정보성), 제출 버튼은 "destructive 액션" 시각 신호.
 $report-color-destructive: #ef4444;      // red-500
 $report-color-destructive-hover: #dc2626; // red-600
-$report-color-selected-bg: #f0f9ff;      // sky-50
-$report-color-selected-border: #38bdf8;  // sky-400
+$report-color-selected-bg: var(--color-primary-50);       // primary-50
+$report-color-selected-border: var(--color-primary-400);  // primary-400
 $report-color-disabled-bg: #d1d5db;      // gray-300
 $report-color-disabled-text: #6b7280;    // gray-500
 $report-color-cancel-bg: #f3f4f6;        // gray-100
@@ -141,7 +141,7 @@ $report-color-cancel-text: #4b5563;      // gray-600
   box-sizing: border-box;
 
   &:focus {
-    border-color: #93c5fd; // blue-300
+    border-color: var(--color-primary-300);
   }
 
   &::placeholder {

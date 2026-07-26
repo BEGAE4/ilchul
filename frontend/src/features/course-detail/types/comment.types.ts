@@ -1,6 +1,14 @@
+// 댓글 API 타입 — 기준 명세: cc/api/v6/260723-v6-006-comment.md (swagger api-docs.json 대조)
+// 응답은 wrapper 없이 raw 반환: 목록 → ReplyListResponse, 작성/수정/삭제/좋아요 → number
+
 export interface ReplyMention {
   userId: number;
-  username: string;
+  userNickname: string;
+}
+
+export interface ReplyListResponse {
+  replies: ReplyItem[];
+  hasNext: boolean;
 }
 
 export interface ReplyItem {
@@ -14,36 +22,18 @@ export interface ReplyItem {
   createdAt: string;
   likeCount: number;
   isLiked: boolean;
-}
-
-export interface ParentReplyItem extends ReplyItem {
   replyCount: number;
-  replies: ReplyItem[];
+  isDeleted: boolean;
+  replies: ReplyListResponse;
 }
 
-export interface GetRepliesResponse {
-  status: 200;
-  data: ParentReplyItem[];
-  hasNext: boolean;
-}
+/** @deprecated 명세상 부모/대댓글 구분 없이 ReplyItem 단일 타입. 하위 호환용 alias. */
+export type ParentReplyItem = ReplyItem;
 
 export interface PostCommentBody {
   content: string;
   parentReplyId?: number;
   mentions?: number[];
-}
-
-export interface PostCommentResponse {
-  savedReplyId: number;
-}
-
-export interface LikeCommentResponse {
-  status: 200;
-  data: {
-    replyId: number;
-    likeCount: number;
-    isLiked: boolean;
-  };
 }
 
 export interface DeleteTarget {

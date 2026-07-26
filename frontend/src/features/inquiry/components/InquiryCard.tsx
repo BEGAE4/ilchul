@@ -26,7 +26,7 @@ export const InquiryCard = ({ inquiry, showUser = false, onClick, onAnswer }: In
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs font-medium bg-sky-50 text-sky-600 rounded-full px-2 py-0.5">
+              <span className="text-xs font-medium bg-primary-50 text-primary-600 rounded-full px-2 py-0.5">
                 {inquiry.categoryName}
               </span>
               <span
@@ -53,7 +53,7 @@ export const InquiryCard = ({ inquiry, showUser = false, onClick, onAnswer }: In
             e.stopPropagation();
             onAnswer();
           }}
-          className="mt-3 w-full py-2 border border-sky-400 text-sky-500 text-sm font-semibold rounded-xl active:bg-sky-50 transition-colors"
+          className="mt-3 w-full py-2 border border-primary-400 text-primary-500 text-sm font-semibold rounded-xl active:bg-primary-50 transition-colors"
         >
           답변하기
         </button>

@@ -1,12 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { submitReport } from '../api/report.api';
 import { markReported } from '../utils/hiddenReportsStorage';
 import type { ReportReasonCode, ReportResponse, ReportTarget } from '../types';
-
-interface UseReportOptions {
-  // 호출부에서 주입 — useUserStore 직접 결합 회피 (Architect C-2)
-  reporterId: string;
-}
 
 interface UseReportResult {
   isOpen: boolean;
@@ -21,20 +16,10 @@ interface UseReportResult {
   ) => Promise<ReportResponse>;
 }
 
-export function useReport({ reporterId }: UseReportOptions): UseReportResult {
+export function useReport(): UseReportResult {
   const [isOpen, setIsOpen] = useState(false);
   const [target, setTarget] = useState<ReportTarget | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // 훅 마운트 시 1회 생성. idempotency-key 용도라 보안 강도는 중요치 않음.
-  // crypto.randomUUID()는 secure context(HTTPS/localhost)에서만 동작하므로 폴백 제공.
-  const attemptId = useMemo<string>(() => {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-      return crypto.randomUUID();
-    }
-    // secure context 외 환경(HTTP dev) 폴백 — idempotency-key 용도라 충분
-    return Math.random().toString(36).slice(2) + Date.now().toString(36);
-  }, []);
 
   function open(newTarget: ReportTarget): void {
     setTarget(newTarget);
@@ -62,10 +47,7 @@ export function useReport({ reporterId }: UseReportOptions): UseReportResult {
 
     setIsSubmitting(true);
     try {
-      const response = await submitReport(
-        { target: submitTarget, reasonCode, detail },
-        { reporterId, attemptId }
-      );
+      const response = await submitReport({ target: submitTarget, reasonCode, detail });
 
       // 성공 시 단일 소스(hiddenReportsStorage) 갱신 (Architect M-3)
       markReported(submitTarget);

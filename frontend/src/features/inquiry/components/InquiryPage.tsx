@@ -61,7 +61,7 @@ export const InquiryPage = () => {
             {isAdmin && section === 'list' && (
               <button
                 onClick={() => navigate('adminList')}
-                className="ml-auto text-xs text-sky-500 font-semibold px-3 py-1.5 rounded-full bg-sky-50 active:bg-sky-100"
+                className="ml-auto text-xs text-primary-500 font-semibold px-3 py-1.5 rounded-full bg-primary-50 active:bg-primary-100"
               >
                 전체 보기
               </button>

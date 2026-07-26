@@ -1,5 +1,10 @@
 import axios from 'axios';
-import { MyPlan, MyPlansResponse } from '../types/plan.types';
+import {
+  MyPlan,
+  MyPlansResponse,
+  ScrappedPlan,
+  ScrappedPlansResponse,
+} from '../types/plan.types';
 import {
   MyPageProfile,
   UpdateProfileRequest,
@@ -14,6 +19,15 @@ export const fetchMyPlans = async (): Promise<MyPlan[]> => {
 };
 
 // 내 플랜 공개 여부 토글 API (v5: POST /api/mypage/plan/visibility/{planId}, 본문 없음)
+// 저장(스크랩)한 플랜 목록 조회 API
+export const fetchScrappedPlans = async (): Promise<ScrappedPlan[]> => {
+  const response = await axios.get<ScrappedPlansResponse>(
+    '/api/mypage/scrapped'
+  );
+  return response.data.scrappedPlans ?? [];
+};
+
+// 내 플랜 공개 여부 설정 API
 export const setMyPlanVisibility = async (
   planId: number
 ): Promise<{ status: number }> => {
