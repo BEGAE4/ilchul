@@ -530,7 +530,7 @@ export const CourseCreationFlow: React.FC = () => {
       <div className="flex flex-col h-full bg-white">
         <Header onBack={handleBack} />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-violet-50 via-blue-50 to-white -z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-violet-50 via-primary-50 to-white -z-10" />
 
           {/* 일출 모션: 수평선 위로 떠오르는 해 */}
           <div className="relative w-40 h-24 mb-8 overflow-hidden" aria-hidden>
@@ -905,7 +905,7 @@ export const CourseCreationFlow: React.FC = () => {
   if (step === 'generating') {
     return (
       <div className="flex flex-col h-full items-center justify-center p-6 text-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-orange-50 via-blue-50 to-white -z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-orange-50 via-primary-50 to-white -z-10" />
         <div className="mb-8">
           <LogoLoader />
         </div>
