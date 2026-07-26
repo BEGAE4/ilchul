@@ -287,6 +287,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     setIsPreviewLoading(true);
     try {
       const preview = await planApi.updatePlanPreview(plan.planId, {
+        // 백엔드가 요청의 출발지로 이동시간을 계산하므로 상세 응답의 출발지를 그대로 재전송
+        departurePoint: plan.departurePoint ?? undefined,
         places: buildPlacesBody(orderedPlaces),
       });
       setReorderPreview(preview);
@@ -302,7 +304,10 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     if (!orderedPlaces) return;
     setIsSavingOrder(true);
     try {
-      await planApi.updatePlanPlaces(plan.planId, { places: buildPlacesBody(orderedPlaces) });
+      await planApi.updatePlanPlaces(plan.planId, {
+        departurePoint: plan.departurePoint ?? undefined,
+        places: buildPlacesBody(orderedPlaces),
+      });
       toast.success('플랜 순서가 저장되었어요!');
       setReorderPreview(null);
       setOrderedPlaces(null);

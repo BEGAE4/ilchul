@@ -42,10 +42,18 @@
 1. **인기 항목 `id:string→number` 교정은 보류**: 프론트 도메인(`BestPlace`/`Course`)·mock catalog가 string id에 결합돼 있어(usePaginatedList 제네릭 제약, page.tsx 핸들러·`BestPlace` 캐스트, 목 생성기까지 연쇄) 도메인 타입 동반 리팩터가 필요 → 별도 작업으로 분리. 타입에 NOTE 주석 추가(런타임은 문자열 강제라 무해). 인기 API의 **dead code 제거·단일화 자체는 완료**.
 2. **삭제하지 못한 orphan 2개** (`rm` 권한 차단): `src/features/report/utils/buildIdempotencyKey.ts`, `src/app/api/reports/route.ts`. 모든 참조는 제거 완료(inert) — **수동 `git rm` 필요**.
 
-## 미착수 (백엔드 답변 대기)
+## 작업 3 (플랜 장소) — 백엔드 답변 후 부분 반영
 
-- **작업 3 (플랜 장소)**: `departurePoint` 생략 시 동작·PlanDetailDto 추가 가능 여부(Q1), 스탬프 `location` 필수 여부(Q2) 확정 후 진행.
-- 작업 2의 유보분: `totalDistance` 단위(km 표기 1000배 여부) 확정 후 라벨 수정, 본인 댓글 판별 userId 전환(userinfo userId 수급 선행).
+- **출발지(departurePoint) 해결·반영 완료**: 백엔드 확인 결과 "수정 요청에 담긴 출발지로 이동시간을 계산"(생략 불가) + "상세 응답에 departurePoint 추가하기로 결정". 이에 따라 프론트 배선 완료 —
+  - `plan.types.ts` `PlanDetail`에 `departurePoint?: DeparturePoint | null` 추가.
+  - `MyCourseDetailPage`의 순서 편집 미리보기·저장 요청에 `departurePoint: plan.departurePoint ?? undefined` 포함.
+  - forward-compatible: 백엔드 필드 배포 전엔 undefined(현행 동일), 배포 후 자동 동작. tsc 0 에러.
+  - 남은 것: 백엔드가 상세 응답에 departurePoint를 실제 배포하면 end-to-end 동작(배포 후 수동 확인).
+- **미결(스탬프 location)**: "위치 없으면 프론트 block" 방향으로 논의 중 — 실내·timeout 사용자도 막히는 UX 확정 후 반영 예정.
+
+## 미착수 / 유보
+
+- 작업 2의 유보분: `totalDistance` 단위(km 표기 1000배 여부) 사용자 데이터 확인 후 라벨 수정, 본인 댓글 판별 userId 전환(userinfo userId 수급 선행).
 
 ## 검증
 

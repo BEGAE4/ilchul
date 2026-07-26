@@ -37,6 +37,8 @@ export interface PlanDetail {
   isLiked: boolean;
   requiredTime: number;
   totalDistance: number;
+  // 수정 시 이동시간 계산에 필요 — 백엔드가 상세 응답에 추가 예정(배포 전엔 undefined일 수 있음)
+  departurePoint?: DeparturePoint | null;
   planDescription: string;
   likeCount: number;
   bookmarkCount: number;
