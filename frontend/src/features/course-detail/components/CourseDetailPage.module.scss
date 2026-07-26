@@ -56,7 +56,7 @@
     transition: background-color 0.2s;
 
     &:hover {
-      background: #0052a3;
+      background: var(--color-primary-800);
     }
   }
 }
@@ -366,7 +366,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 102, 204, 0.3);
+  box-shadow: 0 2px 8px rgba(47, 87, 196, 0.3);
   padding: 6px;
   overflow: visible;
   position: relative;
