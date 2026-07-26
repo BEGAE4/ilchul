@@ -33,6 +33,8 @@ import {
 } from '@/shared/data/mockData';
 import type { BestPlace, Course } from '@/shared/types';
 import { usePlaceDetail, usePlaceActions } from '@/features/place';
+import { Map as KakaoMap, MapMarker } from 'react-kakao-maps-sdk';
+import { useKakaoMapLoader } from '@/shared/lib/kakao';
 
 // 카테고리별 장소 상세 정보
 const PLACE_DETAILS: Record<
@@ -158,6 +160,8 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
     isLoading: isServerLoading,
   } = usePlaceDetail(placeId);
   const [reviewInput, setReviewInput] = useState('');
+  // 위치 미니맵용 카카오맵 SDK 로드 상태
+  const [isKakaoLoading, kakaoError] = useKakaoMapLoader();
   const placeActions = usePlaceActions(placeId, {
     onLocalLike: () => {
       setIsLiked((prev) => !prev);
@@ -292,7 +296,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
 
         {/* 하단 정보 */}
         <div className="absolute bottom-0 left-0 right-0 p-5">
-          <span className="inline-block px-2.5 py-1 mb-2 text-[10px] font-bold bg-sky-500 rounded text-white">
+          <span className="inline-block px-2.5 py-1 mb-2 text-[10px] font-bold bg-primary-500 rounded text-white">
             {place.category}
           </span>
           <h1 className="text-2xl font-bold text-white leading-tight mb-1">{place.name}</h1>
@@ -313,7 +317,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
             size={20}
             className={`transition-colors ${liked ? 'text-red-500 fill-red-500' : 'text-gray-400'}`}
           />
-          <span className="text-xs font-bold text-gray-600">{displayLikeCount.toLocaleString()}</span>
+          <span className="text-xs font-bold text-gray-600">{(displayLikeCount ?? 0).toLocaleString()}</span>
         </button>
         <button
           onClick={handleBookmark}
@@ -321,15 +325,23 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
         >
           <Bookmark
             size={20}
-            className={`transition-colors ${bookmarked ? 'text-sky-500 fill-sky-500' : 'text-gray-400'}`}
+            className={`transition-colors ${bookmarked ? 'text-primary-500 fill-primary-500' : 'text-gray-400'}`}
           />
           <span className="text-xs font-bold text-gray-600">스크랩</span>
         </button>
         <button
-          onClick={() => window.open(`https://map.kakao.com/link/to/${encodeURIComponent(place.name)},${place.location}`, '_blank')}
+          onClick={() =>
+            window.open(
+              // kakao link/to 형식: 이름,위도,경도 — 서버 장소만 좌표가 있으므로 없으면 검색 링크로 폴백
+              serverPlace
+                ? `https://map.kakao.com/link/to/${encodeURIComponent(place.name)},${serverPlace.y},${serverPlace.x}`
+                : `https://map.kakao.com/link/search/${encodeURIComponent(place.name)}`,
+              '_blank'
+            )
+          }
           className="flex flex-col items-center py-4 gap-1 active:bg-gray-50 transition-colors"
         >
-          <Navigation size={20} className="text-sky-500" />
+          <Navigation size={20} className="text-primary-500" />
           <span className="text-xs font-bold text-gray-600">길찾기</span>
         </button>
       </div>
@@ -341,7 +353,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
           {detail.tags.map((tag) => (
             <span
               key={tag}
-              className="px-2.5 py-1 bg-sky-50 text-sky-600 text-[11px] font-bold rounded-full"
+              className="px-2.5 py-1 bg-primary-50 text-primary-600 text-[11px] font-bold rounded-full"
             >
               #{tag}
             </span>
@@ -367,7 +379,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
             <div className="text-[10px] text-gray-400 mb-0.5">전화번호</div>
             <div className="text-sm font-bold text-gray-900">{phone}</div>
           </div>
-          <a href={`tel:${phone}`} className="text-sky-500 text-xs font-bold active:text-sky-700">전화하기</a>
+          <a href={`tel:${phone}`} className="text-primary-500 text-xs font-bold active:text-primary-700">전화하기</a>
         </div>
         <div className="flex items-center gap-3 p-3.5 bg-gray-50 rounded-xl">
           <MapPin size={16} className="text-gray-400 shrink-0" />
@@ -383,11 +395,30 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
                 '_blank'
               )
             }
-            className="text-sky-500 text-xs font-bold flex items-center gap-0.5 active:text-sky-700"
+            className="text-primary-500 text-xs font-bold flex items-center gap-0.5 active:text-primary-700"
           >
             지도 <ExternalLink size={10} />
           </button>
         </div>
+
+        {/* 위치 미니맵 — 서버 장소(좌표 보유)만 표시 */}
+        {serverPlace && !kakaoError && (
+          <div className="rounded-xl overflow-hidden border border-gray-100">
+            {isKakaoLoading ? (
+              <div className="h-40 bg-gray-100 animate-pulse" />
+            ) : (
+              <KakaoMap
+                center={{ lat: serverPlace.y, lng: serverPlace.x }}
+                style={{ width: '100%', height: 160 }}
+                level={4}
+                draggable={false}
+                zoomable={false}
+              >
+                <MapMarker position={{ lat: serverPlace.y, lng: serverPlace.x }} />
+              </KakaoMap>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 방문자 후기 */}
@@ -404,7 +435,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
               value={reviewInput}
               onChange={(e) => setReviewInput(e.target.value)}
               placeholder="이 장소는 어땠나요? 후기를 남겨보세요."
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-sky-500 text-base"
+              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-500 text-base"
               rows={2}
               maxLength={1000}
             />
@@ -416,7 +447,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
                   if (ok) setReviewInput('');
                 }}
                 disabled={isSubmittingReview || !reviewInput.trim()}
-                className="px-4 py-2 bg-sky-500 text-white text-sm font-bold rounded-lg shadow-sm shadow-sky-200 active:scale-[0.98] transition-transform disabled:opacity-40"
+                className="px-4 py-2 bg-primary-500 text-white text-sm font-bold rounded-lg shadow-sm shadow-primary-200 active:scale-[0.98] transition-transform disabled:opacity-40"
               >
                 {isSubmittingReview ? '등록 중...' : '후기 작성'}
               </button>
@@ -469,7 +500,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
             <button
               onClick={fetchMoreReviews}
               disabled={isFetchingMoreReviews}
-              className="w-full py-2.5 text-sm text-sky-600 font-medium border border-sky-200 rounded-xl hover:bg-sky-50 disabled:opacity-50"
+              className="w-full py-2.5 text-sm text-primary-600 font-medium border border-primary-200 rounded-xl hover:bg-primary-50 disabled:opacity-50"
             >
               {isFetchingMoreReviews ? '불러오는 중...' : '후기 더 보기'}
             </button>

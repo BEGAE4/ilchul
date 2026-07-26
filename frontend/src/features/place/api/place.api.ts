@@ -2,7 +2,6 @@ import apiClient from '@/shared/lib/api/apiClient';
 import type {
   PlaceDetail,
   SearchPlaceItem,
-  PopularPlaceResponse,
   SurveyResult,
   PlaceLikeResponse,
   PlaceScrapResponse,
@@ -26,29 +25,7 @@ export async function searchPlaces(keyword: string): Promise<SearchPlaceItem[]> 
   return data;
 }
 
-// 내 주변 인기 장소
-export async function fetchPopularPlaces(
-  lat: number,
-  lng: number,
-  limit = 5,
-  page = 1
-): Promise<PopularPlaceResponse> {
-  const { data } = await apiClient.get<PopularPlaceResponse>('/api/place/popular', {
-    params: { lat, lng, limit, page },
-  });
-  return data;
-}
-
-// 전국 인기 장소
-export async function fetchNationwidePopularPlaces(
-  limit = 6,
-  page = 1
-): Promise<PopularPlaceResponse> {
-  const { data } = await apiClient.get<PopularPlaceResponse>('/api/place/popular/nationwide', {
-    params: { limit, page },
-  });
-  return data;
-}
+// 인기 장소(내 주변/전국)는 main feature(main.api.ts + BFF popular 라우트)에서 담당한다.
 
 // 장소 추천 (설문 기반) — 응답 스키마 서버 미확정
 export async function recommendPlaces(body: SurveyResult): Promise<unknown> {

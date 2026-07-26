@@ -32,15 +32,15 @@
   border-color: #dedede;
   
   &:focus {
-    border-color: #5188f1;
+    border-color: var(--color-primary-500);
   }
 }
 
 .success {
-  border-color: #5188f1;
+  border-color: var(--color-primary-500);
   
   &:focus {
-    border-color: #5188f1;
+    border-color: var(--color-primary-500);
   }
 }
 
@@ -62,7 +62,7 @@
   }
   
   &.successText {
-    color: #5188f1;
+    color: var(--color-primary-500);
   }
   
   &.errorText {

@@ -44,12 +44,12 @@ export const InquiryListSection = ({ onSelectInquiry, onCreateNew }: InquiryList
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
-              activeTab === tab.id ? 'text-sky-500' : 'text-gray-400'
+              activeTab === tab.id ? 'text-primary-500' : 'text-gray-400'
             }`}
           >
             {tab.label}
             {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500 rounded-full" />
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500 rounded-full" />
             )}
           </button>
         ))}
@@ -92,7 +92,7 @@ export const InquiryListSection = ({ onSelectInquiry, onCreateNew }: InquiryList
       <div className="sticky bottom-0 p-4 bg-white border-t border-gray-100">
         <button
           onClick={onCreateNew}
-          className="w-full flex items-center justify-center gap-2 bg-sky-500 text-white font-bold py-4 rounded-xl active:scale-[0.98] transition-all text-sm"
+          className="w-full flex items-center justify-center gap-2 bg-primary-500 text-white font-bold py-4 rounded-xl active:scale-[0.98] transition-all text-sm"
         >
           <PenLine size={16} />
           문의하기

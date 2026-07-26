@@ -1,4 +1,4 @@
-// v5 관리자 신고 DTO ↔ 프론트 타입 매핑 (cc/api/v5/260705-v5-008-report.md)
+// v6 관리자 신고 DTO ↔ 프론트 타입 매핑 (cc/api/v6/260723-v6-008-report.md)
 import type { ReportTarget, ReportTargetType, ReportReasonCode, ReportStatus } from '@/features/report/types/report';
 import type {
   AdminReportListItem,
@@ -6,6 +6,7 @@ import type {
   AdminReportListResponse,
   AdminReportSort,
   ReportResolution,
+  IssueSanctionResponse,
 } from '../types';
 
 export type ServerTargetType = 'PLAN' | 'REPLY' | 'USER';
@@ -133,5 +134,18 @@ export function mapServerList(res: ServerAdminReportListResponse): AdminReportLi
     page: res.page,
     size: res.size,
     hasNext: res.hasNext,
+  };
+}
+
+// 제재 등록 응답 (AdminReportSanctionResponseDto) → 프론트 IssueSanctionResponse
+export interface ServerSanctionResponse {
+  sanctionId: number;
+  adminReportDetailResponseDto: ServerAdminReportDetail;
+}
+
+export function mapServerSanction(res: ServerSanctionResponse): IssueSanctionResponse {
+  return {
+    sanctionId: String(res.sanctionId),
+    report: mapServerDetail(res.adminReportDetailResponseDto),
   };
 }

@@ -42,6 +42,8 @@ export const PlaceSchema = StopSchema.extend({
   address: z.string(),
   phone: z.string(),
   tags: z.array(z.string()),
+  // 지도 표시용 좌표 (서버 응답 x=경도, y=위도를 lat/lng로 변환해 담는다)
+  coord: z.object({ lat: z.number(), lng: z.number() }).optional(),
 });
 
 // --- Survey Schemas ---

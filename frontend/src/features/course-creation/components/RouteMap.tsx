@@ -1,194 +1,173 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
+import { Map, CustomOverlayMap, Polyline, useMap } from 'react-kakao-maps-sdk';
 import { MapPin, Navigation } from 'lucide-react';
 import type { Place } from '@/shared/types';
 import type { StartingPoint } from '@/shared/types';
 import { PLACE_COORDS } from '@/shared/data/mockData';
+import { useKakaoMapLoader, type Coord } from '@/shared/lib/kakao';
 
 interface RouteMapProps {
   startingPoint: StartingPoint;
   stops: Place[];
   showRoute?: boolean;
   className?: string;
+  // 지도 탭으로 좌표를 선택할 수 있게 한다 (출발지 설정 화면용)
+  onSelectCoord?: (coord: Coord) => void;
 }
 
-// 좌표를 SVG 뷰포트 좌표로 변환
-function coordToSvg(
-  coord: { lat: number; lng: number },
-  bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number },
-  width: number,
-  height: number,
-  padding: number = 32
-) {
-  const latRange = bounds.maxLat - bounds.minLat || 0.01;
-  const lngRange = bounds.maxLng - bounds.minLng || 0.01;
-
-  const x =
-    padding + ((coord.lng - bounds.minLng) / lngRange) * (width - padding * 2);
-  const y =
-    padding + (1 - (coord.lat - bounds.minLat) / latRange) * (height - padding * 2);
-
-  return { x, y };
+// 장소 좌표: 서버 응답 좌표 우선, 목데이터 장소는 PLACE_COORDS 폴백
+export function getStopCoord(stop: Place): Coord | null {
+  return stop.coord ?? PLACE_COORDS[stop.id] ?? null;
 }
 
-export function RouteMap({ startingPoint, stops, showRoute = false, className = '' }: RouteMapProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const SVG_W = 340;
-  const SVG_H = 200;
+// 마커들이 모두 보이도록 지도 범위를 맞춘다
+function FitBounds({ points }: { points: Coord[] }) {
+  const map = useMap();
+  const key = points.map((p) => `${p.lat},${p.lng}`).join('|');
+  useEffect(() => {
+    if (points.length === 0) return;
+    if (points.length === 1) {
+      map.setCenter(new kakao.maps.LatLng(points[0].lat, points[0].lng));
+      map.setLevel(5);
+      return;
+    }
+    const bounds = new kakao.maps.LatLngBounds();
+    points.forEach((p) => bounds.extend(new kakao.maps.LatLng(p.lat, p.lng)));
+    map.setBounds(bounds, 40, 40, 40, 40);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, key]);
+  return null;
+}
 
-  // 좌표 수집
-  const allCoords: { lat: number; lng: number }[] = [startingPoint.coord];
-  stops.forEach((stop) => {
-    const coord = PLACE_COORDS[stop.id];
-    if (coord) allCoords.push(coord);
-  });
+export function RouteMap({
+  startingPoint,
+  stops,
+  showRoute = false,
+  className = '',
+  onSelectCoord,
+}: RouteMapProps) {
+  const [loading, error] = useKakaoMapLoader();
 
-  // 바운딩 박스
-  const bounds = {
-    minLat: Math.min(...allCoords.map((c) => c.lat)),
-    maxLat: Math.max(...allCoords.map((c) => c.lat)),
-    minLng: Math.min(...allCoords.map((c) => c.lng)),
-    maxLng: Math.max(...allCoords.map((c) => c.lng)),
-  };
+  const stopPoints = useMemo(
+    () =>
+      stops
+        .map((stop) => ({ stop, coord: getStopCoord(stop) }))
+        .filter((s): s is { stop: Place; coord: Coord } => s.coord !== null),
+    [stops]
+  );
 
-  const startSvg = coordToSvg(startingPoint.coord, bounds, SVG_W, SVG_H);
-  const stopSvgPoints = stops
-    .map((stop) => {
-      const coord = PLACE_COORDS[stop.id];
-      if (!coord) return null;
-      return { ...coordToSvg(coord, bounds, SVG_W, SVG_H), stop };
-    })
-    .filter(Boolean) as { x: number; y: number; stop: Place }[];
+  const allPoints = useMemo(
+    () => [startingPoint.coord, ...stopPoints.map((s) => s.coord)],
+    [startingPoint.coord, stopPoints]
+  );
 
-  const routePoints = [startSvg, ...stopSvgPoints];
-  const pathD = routePoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  // SDK 로드 실패 (앱 키 누락/도메인 미등록 등)
+  if (error) {
+    return (
+      <div
+        className={`relative bg-slate-100 rounded-2xl overflow-hidden flex flex-col items-center justify-center gap-1 ${className}`}
+        style={{ minHeight: 200 }}
+      >
+        <MapPin size={24} className="text-gray-300" />
+        <p className="text-xs text-gray-400">지도를 불러오지 못했어요</p>
+        <p className="text-[10px] text-gray-300">카카오맵 앱 키와 도메인 등록을 확인해주세요</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div
+        className={`relative bg-slate-100 rounded-2xl overflow-hidden animate-pulse ${className}`}
+        style={{ minHeight: 200 }}
+      />
+    );
+  }
 
   return (
-    <div
-      className={`relative bg-slate-100 rounded-2xl overflow-hidden ${className}`}
-      style={{ minHeight: 200 }}
-    >
-      {/* 배경 격자 패턴 */}
-      <svg
-        width="100%"
-        height="100%"
-        viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-        className="absolute inset-0"
-        preserveAspectRatio="xMidYMid slice"
+    <div className={`relative rounded-2xl overflow-hidden ${className}`} style={{ minHeight: 200 }}>
+      <Map
+        center={startingPoint.coord}
+        level={6}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+        onClick={
+          onSelectCoord
+            ? (_map, mouseEvent) =>
+                onSelectCoord({
+                  lat: mouseEvent.latLng.getLat(),
+                  lng: mouseEvent.latLng.getLng(),
+                })
+            : undefined
+        }
       >
-        {/* 배경 */}
-        <rect width={SVG_W} height={SVG_H} fill="#e8f0fe" />
-
-        {/* 격자 */}
-        {Array.from({ length: 8 }).map((_, i) => (
-          <line
-            key={`v${i}`}
-            x1={(SVG_W / 8) * i}
-            y1={0}
-            x2={(SVG_W / 8) * i}
-            y2={SVG_H}
-            stroke="#c5d4f0"
-            strokeWidth={0.5}
-          />
-        ))}
-        {Array.from({ length: 5 }).map((_, i) => (
-          <line
-            key={`h${i}`}
-            x1={0}
-            y1={(SVG_H / 5) * i}
-            x2={SVG_W}
-            y2={(SVG_H / 5) * i}
-            stroke="#c5d4f0"
-            strokeWidth={0.5}
-          />
-        ))}
-
-        {/* 도로 느낌 선 */}
-        <path
-          d={`M 0 ${SVG_H * 0.4} Q ${SVG_W * 0.3} ${SVG_H * 0.5} ${SVG_W * 0.6} ${SVG_H * 0.35} T ${SVG_W} ${SVG_H * 0.45}`}
-          stroke="#d4e0f5"
-          strokeWidth={8}
-          fill="none"
-          strokeLinecap="round"
-        />
-        <path
-          d={`M 0 ${SVG_H * 0.7} Q ${SVG_W * 0.4} ${SVG_H * 0.6} ${SVG_W * 0.7} ${SVG_H * 0.7}`}
-          stroke="#d4e0f5"
-          strokeWidth={6}
-          fill="none"
-          strokeLinecap="round"
-        />
-
-        {/* 경로 선 */}
-        {showRoute && stopSvgPoints.length > 0 && (
-          <>
-            <path
-              d={pathD}
-              stroke="#f97316"
-              strokeWidth={3}
-              fill="none"
-              strokeDasharray="6 4"
-              strokeLinecap="round"
-            />
-          </>
-        )}
+        <FitBounds points={allPoints} />
 
         {/* 출발지 마커 */}
-        <g transform={`translate(${startSvg.x}, ${startSvg.y})`}>
-          <circle r={10} fill="#3b82f6" opacity={0.2} />
-          <circle r={6} fill="#3b82f6" />
-          <circle r={2} fill="white" />
-        </g>
-
-        {/* 정거장 마커들 */}
-        {stopSvgPoints.map((pt, i) => (
-          <g key={pt.stop.id} transform={`translate(${pt.x}, ${pt.y})`}>
-            <circle r={12} fill="white" opacity={0.8} />
-            <circle r={9} fill="#f97316" />
-            <text
-              x={0}
-              y={4}
-              textAnchor="middle"
-              fontSize={9}
-              fill="white"
-              fontWeight="bold"
-            >
-              {i + 1}
-            </text>
-          </g>
-        ))}
-      </svg>
-
-      {/* 오버레이 레이블 */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-3 py-2">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <div className="flex items-center gap-1">
-            <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-            <span>출발</span>
+        <CustomOverlayMap position={startingPoint.coord} yAnchor={0.5} zIndex={2}>
+          <div className="relative flex items-center justify-center">
+            <div className="absolute w-6 h-6 rounded-full bg-primary-500/20" />
+            <div className="w-4 h-4 rounded-full bg-primary-500 border-2 border-white shadow" />
           </div>
-          {stops.slice(0, 4).map((stop, i) => (
-            <React.Fragment key={stop.id}>
-              <span className="text-gray-300">→</span>
-              <div className="flex items-center gap-1">
-                <div className="w-2.5 h-2.5 rounded-full bg-orange-500 flex items-center justify-center">
-                  <span className="text-[7px] text-white font-bold">{i + 1}</span>
-                </div>
-                <span className="truncate max-w-[60px]">{stop.name}</span>
-              </div>
-            </React.Fragment>
-          ))}
-          {stops.length > 4 && (
-            <span className="text-gray-400">+{stops.length - 4}</span>
-          )}
-        </div>
-      </div>
+        </CustomOverlayMap>
 
-      {/* 빈 상태 */}
-      {stops.length === 0 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pb-8">
-          <Navigation size={28} className="text-blue-300 mb-2" />
-          <p className="text-xs text-blue-400">출발지를 선택하면 지도가 표시됩니다</p>
+        {/* 정거장 순번 마커 */}
+        {stopPoints.map((pt, i) => (
+          <CustomOverlayMap key={pt.stop.id} position={pt.coord} yAnchor={0.5} zIndex={3}>
+            <div className="w-6 h-6 rounded-full bg-orange-500 border-2 border-white shadow flex items-center justify-center">
+              <span className="text-[10px] text-white font-bold">{i + 1}</span>
+            </div>
+          </CustomOverlayMap>
+        ))}
+
+        {/* 경로 선 */}
+        {showRoute && stopPoints.length > 0 && (
+          <Polyline
+            path={allPoints}
+            strokeWeight={3}
+            strokeColor="#f97316"
+            strokeOpacity={0.9}
+            strokeStyle="shortdash"
+          />
+        )}
+      </Map>
+
+      {/* 하단 경로 요약 레이블 */}
+      {stops.length > 0 && (
+        <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-3 py-2 z-10 pointer-events-none">
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <div className="flex items-center gap-1">
+              <div className="w-2.5 h-2.5 rounded-full bg-primary-500" />
+              <span>출발</span>
+            </div>
+            {stops.slice(0, 4).map((stop, i) => (
+              <React.Fragment key={stop.id}>
+                <span className="text-gray-300">→</span>
+                <div className="flex items-center gap-1">
+                  <div className="w-2.5 h-2.5 rounded-full bg-orange-500 flex items-center justify-center">
+                    <span className="text-[7px] text-white font-bold">{i + 1}</span>
+                  </div>
+                  <span className="truncate max-w-[60px]">{stop.name}</span>
+                </div>
+              </React.Fragment>
+            ))}
+            {stops.length > 4 && <span className="text-gray-400">+{stops.length - 4}</span>}
+          </div>
+        </div>
+      )}
+
+      {/* 출발지 미선택 힌트 (출발지 설정 화면) */}
+      {stops.length === 0 && !startingPoint.address && (
+        <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-3 py-2 z-10 pointer-events-none">
+          <div className="flex items-center gap-1.5 text-xs text-primary-500">
+            <Navigation size={12} />
+            <span>
+              {onSelectCoord
+                ? '지도를 탭하거나 검색해서 출발지를 선택해주세요'
+                : '출발지를 선택하면 경로가 표시됩니다'}
+            </span>
+          </div>
         </div>
       )}
     </div>

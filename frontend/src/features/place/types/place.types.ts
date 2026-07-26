@@ -24,25 +24,7 @@ export interface SearchPlaceItem {
   y: number;
 }
 
-// 인기 장소 (PopularPlaceItemDto / PopularPlaceResponseDto)
-export interface PopularPlaceItem {
-  id: number;
-  name: string;
-  category: string;
-  location: string;
-  image: string;
-  ranking: number;
-}
-
-export interface PopularPlaceResponse {
-  status: number;
-  message: string;
-  data: PopularPlaceItem[];
-  page: number;
-  limit: number;
-  hasNext: boolean;
-  totalCount: number;
-}
+// 인기 장소 타입은 main feature(popular-place.types.ts)에서 담당한다.
 
 // 장소 추천 요청 (SurveyResultDto)
 export interface SurveyResult {

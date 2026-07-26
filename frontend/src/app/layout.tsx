@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
+import { AuthProvider } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -40,7 +41,7 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
       </head>
       <body className="mobile-optimized">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
         <Toaster
           position="top-center"
           toastOptions={{

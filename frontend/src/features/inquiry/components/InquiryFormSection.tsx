@@ -163,7 +163,7 @@ export const InquiryFormSection = ({
                 onClick={() => setInquiryType(cat.slug)}
                 className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   inquiryType === cat.slug
-                    ? 'bg-sky-500 text-white'
+                    ? 'bg-primary-500 text-white'
                     : 'bg-gray-100 text-gray-600 active:bg-gray-200'
                 }`}
               >
@@ -181,7 +181,7 @@ export const InquiryFormSection = ({
             onChange={(e) => setTitle(e.target.value)}
             maxLength={MAX_TITLE}
             placeholder="문의 제목을 입력해 주세요"
-            className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-sky-400"
+            className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-primary-400"
           />
           <div className="text-xs text-gray-400 mt-1 text-right">
             {title.length}/{MAX_TITLE}
@@ -196,7 +196,7 @@ export const InquiryFormSection = ({
             maxLength={MAX_CONTENT}
             placeholder="문의 내용을 자세히 입력해 주세요"
             rows={7}
-            className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-sky-400 resize-none"
+            className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-primary-400 resize-none"
           />
           <div className="text-xs text-gray-400 mt-1 text-right">
             {content.length}/{MAX_CONTENT}
@@ -258,7 +258,7 @@ export const InquiryFormSection = ({
         <button
           onClick={handleSubmit}
           disabled={!isValid || isSubmitting}
-          className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all text-sm"
+          className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all text-sm"
         >
           {isSubmitting ? '처리 중...' : mode === 'create' ? '문의 등록하기' : '수정 완료'}
         </button>

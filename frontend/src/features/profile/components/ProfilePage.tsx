@@ -3,18 +3,20 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Settings, Plus, Eye, EyeOff, Trash2, X, Heart, Bookmark, MapPin } from 'lucide-react';
+import { Settings, Plus, Eye, EyeOff, Trash2, X, Bookmark, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
+import { useRequireAuth } from '@/features/authentication/hooks';
 import {
   fetchMyPlans,
+  fetchScrappedPlans,
   fetchMyPageProfile,
   fetchMyPageSummary,
   setMyPlanVisibility,
 } from '@/features/my-page/api';
-import type { MyPlan } from '@/features/my-page/types/plan.types';
+import type { MyPlan, ScrappedPlan } from '@/features/my-page/types/plan.types';
 import type { MyPageSummary } from '@/features/my-page/types/summary.types';
 
 type MainTab = 'courses' | 'bookmarks' | 'plans';
@@ -22,8 +24,9 @@ type CourseFilter = 'all' | 'public' | 'private';
 
 export const ProfilePage: React.FC = () => {
   const router = useRouter();
-  const { user, updateProfile } = useUserStore();
-  const { myCourses, courses, deleteMyCourse, toggleVisibility, getBookmarkedCourses, toggleBookmark, bookmarkedIds } = useCourseStore();
+  const { ready } = useRequireAuth();
+  const { user, email, updateProfile } = useUserStore();
+  const { myCourses, deleteMyCourse, toggleVisibility } = useCourseStore();
   const [mainTab, setMainTab] = useState<MainTab>('courses');
   const [courseFilter, setCourseFilter] = useState<CourseFilter>('all');
   const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
@@ -40,6 +43,10 @@ export const ProfilePage: React.FC = () => {
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [summary, setSummary] = useState<MyPageSummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  const [scrappedLoading, setScrappedLoading] = useState(true);
+  const [scrappedPlans, setScrappedPlans] = useState<ScrappedPlan[]>([]);
+  const [scrappedError, setScrappedError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -101,6 +108,29 @@ export const ProfilePage: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
 
+    const loadScrappedPlans = async () => {
+      try {
+        setScrappedLoading(true);
+        setScrappedError(null);
+        const data = await fetchScrappedPlans();
+        if (isMounted) setScrappedPlans(data);
+      } catch (err) {
+        console.error('저장한 플랜 로드 실패:', err);
+        if (isMounted) setScrappedError('저장한 플랜을 불러오지 못했어요.');
+      } finally {
+        if (isMounted) setScrappedLoading(false);
+      }
+    };
+
+    loadScrappedPlans();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
     const loadProfile = async () => {
       try {
         const data = await fetchMyPageProfile();
@@ -130,8 +160,6 @@ export const ProfilePage: React.FC = () => {
     return true;
   });
 
-  const savedCourses = getBookmarkedCourses();
-
   const STATS: { label: string; value: number | string; color: string }[] = [
     {
       label: '공개 플랜',
@@ -140,7 +168,7 @@ export const ProfilePage: React.FC = () => {
         : summaryError
         ? '—'
         : summary?.publicPlanCount ?? 0,
-      color: 'text-sky-500',
+      color: 'text-primary-500',
     },
     {
       label: '인증 플랜',
@@ -182,6 +210,25 @@ export const ProfilePage: React.FC = () => {
     });
   };
 
+  // 여행 기간 표시 (시작~종료). 시작만 있으면 시작일만, 없으면 '일정 미정'
+  const formatTripPeriod = (start: string | null, end: string | null) => {
+    if (!start) return '일정 미정';
+    const startText = formatIsoDate(start);
+    if (!end) return startText;
+    const endText = formatIsoDate(end);
+    return startText === endText ? startText : `${startText} ~ ${endText}`;
+  };
+
+  // 소요 시간(분) → 'N시간 M분'
+  const formatRequiredTime = (minutes: number) => {
+    if (!minutes || minutes <= 0) return '소요 시간 미정';
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h > 0 && m > 0) return `${h}시간 ${m}분`;
+    if (h > 0) return `${h}시간`;
+    return `${m}분`;
+  };
+
   const handleTogglePlanVisibility = async (planId: number) => {
     const current = planVisibility[planId];
     const next = current === undefined ? true : !current;
@@ -216,9 +263,18 @@ export const ProfilePage: React.FC = () => {
 
   const TABS: { key: MainTab; label: string; count: number }[] = [
     { key: 'courses', label: '내 플랜', count: myCourses.length },
-    { key: 'bookmarks', label: '저장 플랜', count: savedCourses.length },
+    { key: 'bookmarks', label: '저장 플랜', count: scrappedPlans.length },
     { key: 'plans', label: '내 플랜', count: plans.length },
   ];
+
+  // 로그인 확인 전 / 미로그인(리다이렉트 대기) 시 보호 콘텐츠 노출 방지
+  if (!ready) {
+    return (
+      <div className="flex items-center justify-center min-h-full py-32 text-sm text-gray-400">
+        로그인 확인 중...
+      </div>
+    );
+  }
 
   return (
     <div className="pb-24 bg-gray-50 min-h-full">
@@ -249,6 +305,9 @@ export const ProfilePage: React.FC = () => {
             <div className="font-bold text-lg text-gray-900">
               {user?.name ?? '김여행'}
             </div>
+            {email && (
+              <div className="text-xs text-gray-400 mt-0.5">{email}</div>
+            )}
             <div className="text-sm text-gray-500 mt-0.5">
               여행 레벨 {user?.level ?? 3} · {user?.travelType ?? '힐링 마스터'}
             </div>
@@ -286,7 +345,7 @@ export const ProfilePage: React.FC = () => {
             >
               {tab.label}
               <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${
-                mainTab === tab.key ? 'bg-sky-100 text-sky-600' : 'bg-gray-100 text-gray-400'
+                mainTab === tab.key ? 'bg-primary-100 text-primary-600' : 'bg-gray-100 text-gray-400'
               }`}>
                 {tab.count}
               </span>
@@ -370,7 +429,7 @@ export const ProfilePage: React.FC = () => {
                                   onClick={(e) => handleToggleVisibility(course.id, e)}
                                   className={`p-2.5 rounded-lg transition-colors ${
                                     course.isPublic
-                                      ? 'bg-sky-50 text-sky-500'
+                                      ? 'bg-primary-50 text-primary-500'
                                       : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                                   }`}
                                   aria-label={course.isPublic ? '비공개로 전환' : '공개로 전환'}
@@ -410,7 +469,7 @@ export const ProfilePage: React.FC = () => {
                     {courseFilter === 'all' && (
                       <button
                         onClick={() => router.push('/create')}
-                        className="bg-sky-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-sky-200 active:scale-95 transition-transform"
+                        className="bg-primary-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary-200 active:scale-95 transition-transform"
                       >
                         플랜 생성하기
                       </button>
@@ -423,74 +482,57 @@ export const ProfilePage: React.FC = () => {
 
           {mainTab === 'bookmarks' && (
             <div className="p-4">
-              {savedCourses.length > 0 ? (
+              {scrappedLoading && (
+                <div className="py-10 text-center text-gray-500">저장한 플랜을 불러오는 중...</div>
+              )}
+
+              {!scrappedLoading && scrappedError && (
+                <div className="py-10 text-center text-red-500">{scrappedError}</div>
+              )}
+
+              {!scrappedLoading && !scrappedError && scrappedPlans.length > 0 && (
                 <div className="space-y-4">
-                  {savedCourses.map((course) => (
+                  {scrappedPlans.map((plan) => (
                     <div
-                      key={course.id}
-                      onClick={() => router.push(`/course/${course.id}`)}
+                      key={plan.planId}
+                      onClick={() => router.push(`/course/${plan.planId}`)}
                       className="relative rounded-xl overflow-hidden shadow-sm border border-gray-100 active:scale-[0.99] transition-transform cursor-pointer"
                     >
                       <div className="relative h-36">
-                        <Image
-                          src={course.thumbnail}
-                          alt={course.title}
-                          fill
-                          sizes="100vw"
-                          className="object-cover"
+                        <img
+                          src={plan.planImages?.[0] ?? '/images/course-plan.png'}
+                          alt={plan.planTitle}
+                          className="w-full h-full object-cover"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleBookmark(course.id);
-                            toast(bookmarkedIds.has(course.id) ? '저장을 해제했어요.' : '저장했어요!');
-                          }}
-                          className="absolute top-2.5 right-2.5 p-1.5 bg-white/90 backdrop-blur-sm rounded-full shadow"
-                        >
-                          <Bookmark
-                            size={16}
-                            fill={bookmarkedIds.has(course.id) ? '#3b82f6' : 'none'}
-                            className="text-blue-500"
-                          />
-                        </button>
+                        <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 bg-white/90 backdrop-blur-sm rounded-full shadow">
+                          <Bookmark size={12} fill="var(--color-primary-500)" className="text-primary-500" />
+                          <span className="text-[10px] font-bold text-primary-500">저장됨</span>
+                        </div>
+                        {!plan.isPlanVisible && (
+                          <span className="absolute top-2.5 left-2.5 text-[10px] text-white bg-black/50 backdrop-blur-sm rounded px-1.5 py-0.5">
+                            비공개
+                          </span>
+                        )}
                         <div className="absolute bottom-3 left-3 right-3">
-                          <div className="flex gap-1.5 mb-1">
-                            {course.tags?.slice(0, 2).map((tag) => (
-                              <span key={tag} className="text-[10px] text-white bg-white/20 backdrop-blur-sm rounded px-1.5 py-0.5">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                          <h3 className="font-bold text-white text-sm line-clamp-1">{course.title}</h3>
+                          <h3 className="font-bold text-white text-sm line-clamp-1">{plan.planTitle}</h3>
+                          <p className="text-xs text-white/90 mt-0.5">
+                            여행일정 {formatTripPeriod(plan.tripStartDate, plan.tripEndDate)}
+                          </p>
                         </div>
                       </div>
-                      <div className="bg-white p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="relative w-5 h-5 rounded-full overflow-hidden">
-                            <Image
-                              src={course.authorAvatar ?? 'https://i.pravatar.cc/40'}
-                              alt={course.author ?? ''}
-                              fill
-                              sizes="20px"
-                              className="object-cover"
-                            />
-                          </div>
-                          <span className="text-xs text-gray-500">{course.author}</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-400">
-                          <span className="flex items-center gap-0.5">
-                            <Heart size={10} /> {course.likes}
-                          </span>
-                          <span className="flex items-center gap-0.5">
-                            <Bookmark size={10} /> {course.bookmarks}
-                          </span>
-                        </div>
+                      <div className="bg-white p-3 flex items-center justify-between text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <MapPin size={10} /> 소요 {formatRequiredTime(plan.requiredTime)}
+                        </span>
+                        <span>저장일 {formatIsoDate(plan.createAt)}</span>
                       </div>
                     </div>
                   ))}
                 </div>
-              ) : (
+              )}
+
+              {!scrappedLoading && !scrappedError && scrappedPlans.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <div className="text-4xl mb-4">🔖</div>
                   <p className="text-gray-500 font-medium mb-1">저장한 플랜이 없어요</p>

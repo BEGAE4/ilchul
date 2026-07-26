@@ -1,4 +1,4 @@
-// PLAN API (v5) 타입 정의 — cc/api/v5/260705-v5-004-plan.md, 005-plan-place.md, 002-mypage.md 기준
+// PLAN API (v6) 타입 정의 — cc/api/v6/260723-v6-004-plan.md, 005-plan-place.md, 002-mypage.md 기준
 
 export interface DeparturePoint {
   name: string;
@@ -37,33 +37,36 @@ export interface PlanDetail {
   isLiked: boolean;
   requiredTime: number;
   totalDistance: number;
+  // 수정 시 이동시간 계산에 필요 — 백엔드가 상세 응답에 추가 예정(배포 전엔 undefined일 수 있음)
+  departurePoint?: DeparturePoint | null;
   planDescription: string;
   likeCount: number;
   bookmarkCount: number;
   userId: number;
-  userNickName: string;
+  userNickname: string;
   userAvatar: string;
   planImageUrls: string[];
   tags: string[];
   thumbnailUrl: string;
   planPlaceDetailDtos: PlanPlaceDetail[];
-  planImages: string[];
 }
 
 // 플랜 생성 (POST /api/plan/create) — 출발지/일정/장소까지 일괄 등록
 export interface CreatePlanPlaceRequest {
   placeId: number;
   order: number;
-  travelTime?: number;
-  stayTime?: number;
+  // 명세 필수 — 생성 프리뷰(CreatePlanPreviewResponseDto)의 duration/stayTime에서 채운다
+  travelTime: number;
+  stayTime: number;
 }
 
 export interface CreatePlanBody {
   planTitle: string;
   isPlanVisible?: boolean;
   planDescription?: string;
-  requiredTime?: number;
-  totalDistance?: number;
+  // 명세 필수 — 생성 프리뷰 응답에서 채운다
+  requiredTime: number;
+  totalDistance: number;
   departurePoint?: DeparturePoint;
   tripStartDate?: string;
   tripEndDate?: string;

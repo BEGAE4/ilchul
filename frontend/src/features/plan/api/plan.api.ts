@@ -13,8 +13,6 @@ import type {
   StampPlanPlaceResponse,
   LikeResponse,
   ScrapPlanResponse,
-  MyPlansResponse,
-  ScrappedPlansResponse,
 } from '../types/plan.types';
 
 // 플랜 생성 — 출발지/일정/장소까지 일괄 등록
@@ -110,10 +108,11 @@ export async function uploadPlanImages(planId: number, images: File[]): Promise<
   return data;
 }
 
-// 플랜 이미지 삭제
+// 플랜 이미지 삭제 — 명세 query int[]. 반복 파라미터(imageIds=1&imageIds=2)로 직렬화
 export async function deletePlanImages(planId: number, imageIds: number[]): Promise<PlanDetail> {
   const { data } = await apiClient.delete<PlanDetail>(`/api/plan/${planId}/images`, {
-    params: { imageIds: imageIds.join(',') },
+    params: { imageIds },
+    paramsSerializer: { indexes: null },
   });
   return data;
 }
@@ -149,14 +148,4 @@ export async function togglePlanScrap(planId: number): Promise<ScrapPlanResponse
   return data;
 }
 
-// 내 플랜 목록 조회
-export async function fetchMyPlans(): Promise<MyPlansResponse> {
-  const { data } = await apiClient.get<MyPlansResponse>('/api/mypage/plans');
-  return data;
-}
-
-// 내 스크랩 목록 조회
-export async function fetchMyScraps(): Promise<ScrappedPlansResponse> {
-  const { data } = await apiClient.get<ScrappedPlansResponse>('/api/mypage/scrapped');
-  return data;
-}
+// 내 플랜 / 스크랩 목록은 my-page feature(fetchMyPlans/fetchScrappedPlans)에서 담당한다.

@@ -46,12 +46,12 @@ export const AdminInquiryListSection = ({
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
-              activeTab === tab.id ? 'text-sky-500' : 'text-gray-400'
+              activeTab === tab.id ? 'text-primary-500' : 'text-gray-400'
             }`}
           >
             {tab.label}
             {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500 rounded-full" />
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500 rounded-full" />
             )}
           </button>
         ))}

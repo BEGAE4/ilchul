@@ -1,15 +1,19 @@
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import * as commentApi from '../api/comment.api';
-import type { ParentReplyItem, DeleteTarget } from '../types/comment.types';
+import type { ReplyItem, DeleteTarget } from '../types/comment.types';
 
 export function useComments(planId: string) {
-  const [comments, setComments] = useState<ParentReplyItem[]>([]);
+  const [comments, setComments] = useState<ReplyItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasNext, setHasNext] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [commentText, setCommentText] = useState('');
-  const [replyTarget, setReplyTarget] = useState<{ replyId: number; username: string } | null>(null);
+  const [replyTarget, setReplyTarget] = useState<{
+    replyId: number;
+    username: string;
+    userId: number;
+  } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   const loadComments = useCallback(
@@ -18,7 +22,7 @@ export function useComments(planId: string) {
         if (append) setIsFetchingMore(true);
         else setIsLoading(true);
         const res = await commentApi.fetchComments(planId, lastReplyId);
-        setComments((prev) => (append ? [...prev, ...res.data] : res.data));
+        setComments((prev) => (append ? [...prev, ...res.replies] : res.replies));
         setHasNext(res.hasNext);
       } catch {
         toast.error('댓글을 불러오지 못했어요.');
@@ -45,7 +49,7 @@ export function useComments(planId: string) {
     if (!content) return;
     try {
       const body = replyTarget
-        ? { content, parentReplyId: replyTarget.replyId }
+        ? { content, parentReplyId: replyTarget.replyId, mentions: [replyTarget.userId] }
         : { content };
       await commentApi.postComment(planId, body);
       setCommentText('');
@@ -69,7 +73,10 @@ export function useComments(planId: string) {
             c.replyId === deleteTarget.parentId
               ? {
                   ...c,
-                  replies: c.replies.filter((r) => r.replyId !== deleteTarget.replyId),
+                  replies: {
+                    ...c.replies,
+                    replies: c.replies.replies.filter((r) => r.replyId !== deleteTarget.replyId),
+                  },
                   replyCount: c.replyCount - 1,
                 }
               : c
@@ -85,15 +92,20 @@ export function useComments(planId: string) {
 
   const toggleLike = useCallback(
     async (replyId: number, isLiked: boolean, parentId: number | null) => {
+      // 서버 응답(number)에는 likeCount/isLiked가 없으므로 로컬 토글로 계산한다.
+      const newIsLiked = !isLiked;
+      const delta = newIsLiked ? 1 : -1;
       try {
-        const res = isLiked
-          ? await commentApi.unlikeComment(replyId)
-          : await commentApi.likeComment(replyId);
-        const { likeCount, isLiked: newIsLiked } = res.data;
+        if (isLiked) await commentApi.unlikeComment(replyId);
+        else await commentApi.likeComment(replyId);
 
         if (parentId === null) {
           setComments((prev) =>
-            prev.map((c) => (c.replyId === replyId ? { ...c, likeCount, isLiked: newIsLiked } : c))
+            prev.map((c) =>
+              c.replyId === replyId
+                ? { ...c, likeCount: c.likeCount + delta, isLiked: newIsLiked }
+                : c
+            )
           );
         } else {
           setComments((prev) =>
@@ -101,9 +113,14 @@ export function useComments(planId: string) {
               c.replyId === parentId
                 ? {
                     ...c,
-                    replies: c.replies.map((r) =>
-                      r.replyId === replyId ? { ...r, likeCount, isLiked: newIsLiked } : r
-                    ),
+                    replies: {
+                      ...c.replies,
+                      replies: c.replies.replies.map((r) =>
+                        r.replyId === replyId
+                          ? { ...r, likeCount: r.likeCount + delta, isLiked: newIsLiked }
+                          : r
+                      ),
+                    },
                   }
                 : c
             )

@@ -103,7 +103,7 @@ export const InquiryDetailSection = ({
         ) : (
           <div className="p-5">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-medium bg-sky-50 text-sky-600 rounded-full px-2 py-0.5">
+              <span className="text-xs font-medium bg-primary-50 text-primary-600 rounded-full px-2 py-0.5">
                 {inquiry.categoryName}
               </span>
               <span
@@ -153,10 +153,10 @@ export const InquiryDetailSection = ({
             {inquiry.answer && (
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-1 h-4 bg-sky-500 rounded-full" />
+                  <div className="w-1 h-4 bg-primary-500 rounded-full" />
                   <span className="text-sm font-bold text-gray-700">운영팀 답변</span>
                 </div>
-                <div className="bg-sky-50 rounded-xl p-4">
+                <div className="bg-primary-50 rounded-xl p-4">
                   <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap mb-3">
                     {inquiry.answer.content}
                   </p>

@@ -142,7 +142,7 @@ export const SearchPage: React.FC = () => {
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 200)}
           placeholder="장소, 플랜, 지역명 검색"
-          className="w-full bg-gray-100 border-none rounded-2xl py-4 pl-12 pr-10 text-base text-gray-900 font-medium focus:ring-2 focus:ring-sky-500 focus:bg-white transition-all shadow-sm"
+          className="w-full bg-gray-100 border-none rounded-2xl py-4 pl-12 pr-10 text-base text-gray-900 font-medium focus:ring-2 focus:ring-primary-500 focus:bg-white transition-all shadow-sm"
         />
         <Search
           className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
@@ -183,8 +183,8 @@ export const SearchPage: React.FC = () => {
                       onClick={() => handlePlaceClick(item.id)}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition text-left"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0">
-                        <MapPin size={14} className="text-sky-500" />
+                      <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
+                        <MapPin size={14} className="text-primary-500" />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900">{item.label}</p>
@@ -302,7 +302,7 @@ export const SearchPage: React.FC = () => {
                 <p className="text-[11px] text-gray-400">{place.category} · {place.location}</p>
               </div>
               <Heart size={12} className="text-gray-300 fill-gray-300" />
-              <span className="text-[11px] text-gray-400">{place.likes.toLocaleString()}</span>
+              <span className="text-[11px] text-gray-400">{(place.likes ?? 0).toLocaleString()}</span>
             </button>
           ))}
         </div>
@@ -336,7 +336,7 @@ export const SearchPage: React.FC = () => {
                 </p>
               </div>
               <Heart size={12} className="text-gray-300 fill-gray-300" />
-              <span className="text-[11px] text-gray-400">{course.likes.toLocaleString()}</span>
+              <span className="text-[11px] text-gray-400">{(course.likes ?? 0).toLocaleString()}</span>
             </button>
           ))}
         </div>
