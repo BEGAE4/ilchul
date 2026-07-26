@@ -116,7 +116,7 @@ export function SettingsPage() {
     <button
       onClick={onToggle}
       className={`relative w-11 h-6 rounded-full transition-colors ${
-        enabled ? 'bg-sky-500' : 'bg-gray-300'
+        enabled ? 'bg-primary-500' : 'bg-gray-300'
       }`}
     >
       <motion.div
@@ -170,7 +170,7 @@ export function SettingsPage() {
                   className="object-cover"
                 />
               </div>
-              <button className="absolute bottom-0 right-0 w-8 h-8 bg-sky-500 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white">
+              <button className="absolute bottom-0 right-0 w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white">
                 <Camera size={14} />
               </button>
             </div>
@@ -183,7 +183,7 @@ export function SettingsPage() {
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 maxLength={12}
-                className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-base focus:outline-none focus:border-sky-400"
+                className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-base focus:outline-none focus:border-primary-400"
               />
               <div className="text-xs text-gray-400 mt-1 text-right">{editName.length}/12</div>
             </div>
@@ -195,7 +195,7 @@ export function SettingsPage() {
                 onChange={(e) => setEditTitle(e.target.value)}
                 maxLength={20}
                 placeholder="나를 소개하는 한줄"
-                className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-base focus:outline-none focus:border-sky-400"
+                className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-base focus:outline-none focus:border-primary-400"
               />
               <div className="text-xs text-gray-400 mt-1 text-right">
                 {editTitle.length}/20
@@ -207,7 +207,7 @@ export function SettingsPage() {
           <button
             onClick={handleSaveProfile}
             disabled={!editName.trim() || isSaving}
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
+            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
           >
             {isSaving ? '저장 중...' : '저장하기'}
           </button>
@@ -292,7 +292,7 @@ export function SettingsPage() {
         <SectionHeader title="앱 정보" onBack={() => setSection('main')} />
         <div className="flex-1 p-5">
           <div className="text-center mb-8 mt-6">
-            <div className="w-20 h-20 bg-sky-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <div className="w-20 h-20 bg-primary-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <span className="text-3xl">🗺️</span>
             </div>
             <h2 className="font-bold text-lg text-gray-900 mb-1">일출</h2>
@@ -448,7 +448,7 @@ export function SettingsPage() {
               </button>
               <button
                 onClick={handleLogout}
-                className="flex-1 py-3 bg-sky-500 font-bold rounded-xl text-sm text-white"
+                className="flex-1 py-3 bg-primary-500 font-bold rounded-xl text-sm text-white"
               >
                 로그아웃
               </button>

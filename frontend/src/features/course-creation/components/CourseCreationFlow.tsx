@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -26,16 +26,18 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { LogoLoader } from '@/shared/ui/LogoLoader';
 import { StepIndicator } from '@/shared/ui/StepIndicator';
-import { RouteMap } from './RouteMap';
+import { RouteMap, getStopCoord } from './RouteMap';
 import { SelectField, DateField } from './SurveyPickers';
 import { useSurveyStore, type SurveyStep } from '@/shared/lib/stores/useSurveyStore';
 import { planApi, type PlanPreviewResponse } from '@/features/plan';
 import { recommendPlaces } from '@/features/place/api/place.api';
+import { RECOMMENDED_PLACES, MOCK_ADDRESSES } from '@/shared/data/mockData';
 import {
-  RECOMMENDED_PLACES,
-  PLACE_COORDS,
-  MOCK_ADDRESSES,
-} from '@/shared/data/mockData';
+  useKakaoMapLoader,
+  coordToAddress,
+  searchPlacesByKeyword,
+  type KeywordPlaceResult,
+} from '@/shared/lib/kakao';
 import type { Place } from '@/shared/types';
 
 // 장소 추천 응답(POST /api/place/recommend)은 서버 스키마가 아직 확정되지 않아
@@ -49,6 +51,13 @@ function mapRecommendedPlaces(data: unknown): Place[] {
       const id = item.placeId ?? item.id;
       const name = item.placeName ?? item.name;
       if (id === undefined || id === null || typeof name !== 'string') return null;
+      // 좌표: 응답이 location { x, y } 또는 평면 x/y 어느 쪽이든 수용 (x=경도, y=위도)
+      const loc =
+        item.location && typeof item.location === 'object'
+          ? (item.location as Record<string, unknown>)
+          : undefined;
+      const x = typeof item.x === 'number' ? item.x : typeof loc?.x === 'number' ? loc.x : undefined;
+      const y = typeof item.y === 'number' ? item.y : typeof loc?.y === 'number' ? loc.y : undefined;
       return {
         id: String(id),
         name,
@@ -74,6 +83,7 @@ function mapRecommendedPlaces(data: unknown): Place[] {
               : '',
         phone: typeof item.phone === 'string' ? item.phone : '',
         tags: Array.isArray(item.tags) ? item.tags.filter((t): t is string => typeof t === 'string') : [],
+        ...(x !== undefined && y !== undefined ? { coord: { lat: y, lng: x } } : {}),
       };
     })
     .filter((p): p is Place => p !== null);
@@ -191,6 +201,30 @@ export const CourseCreationFlow: React.FC = () => {
   const [previewFailed, setPreviewFailed] = useState(false);
   // 설문 기반 장소 추천 결과 (POST /api/place/recommend), 실패 시 기본 목록 유지
   const [recommendedPlaces, setRecommendedPlaces] = useState<Place[]>(RECOMMENDED_PLACES);
+  // 카카오맵 SDK 로드 상태 — 출발지 검색/역지오코딩에 services 라이브러리 사용
+  const [isKakaoLoading, kakaoError] = useKakaoMapLoader();
+  // 출발지 키워드 검색 결과 (카카오 로컬 Places.keywordSearch)
+  const [addressResults, setAddressResults] = useState<KeywordPlaceResult[]>([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+
+  // 출발지 검색어 디바운스 → 카카오 키워드 장소 검색
+  useEffect(() => {
+    if (step !== 'startPoint') return;
+    const query = customAddress.trim();
+    if (!query || isKakaoLoading || kakaoError) {
+      setAddressResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      void (async () => {
+        setIsSearchingAddress(true);
+        const results = await searchPlacesByKeyword(query);
+        setAddressResults(results);
+        setIsSearchingAddress(false);
+      })();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [customAddress, step, isKakaoLoading, kakaoError]);
 
   // ── 네비게이션 ──
   const handleNext = () => {
@@ -240,6 +274,7 @@ export const CourseCreationFlow: React.FC = () => {
           }
           const preview = await planApi.createPlanPreview({
             planTitle: `${(surveyData.mindState ?? '').slice(0, 10)} 힐링 플랜`,
+            planDescription: `${surveyData.transport ?? ''}으로 떠나는 나만의 힐링 여행`,
             isPlanVisible: false,
             ...(startingPoint.address
               ? {
@@ -272,13 +307,28 @@ export const CourseCreationFlow: React.FC = () => {
       void (async () => {
         setIsSaving(true);
         try {
+          // 프리뷰 응답(장소별 duration/stayTime)을 order 기준으로 조인해 명세 필수 필드를 채운다.
+          const previewByOrder = new Map(
+            (serverPreview?.places ?? []).map((p) => [p.order, p])
+          );
           const numericPlaces = finalStops
-            .map((s, i) => ({ placeId: Number(s.id), order: i + 1 }))
+            .map((s, i) => {
+              const order = i + 1;
+              const pv = previewByOrder.get(order);
+              return {
+                placeId: Number(s.id),
+                order,
+                travelTime: pv?.duration ?? 0,
+                stayTime: pv?.stayTime ?? 0,
+              };
+            })
             .filter((p) => Number.isInteger(p.placeId));
           const created = await planApi.createPlan({
             planTitle: `${(surveyData.mindState ?? '').slice(0, 10)} 힐링 플랜`,
             planDescription: `${surveyData.transport ?? ''}으로 떠나는 나만의 힐링 여행`,
             isPlanVisible: false,
+            requiredTime: serverPreview?.requiredTime ?? 0,
+            totalDistance: serverPreview?.totalDistance ?? 0,
             ...(startingPoint.address
               ? {
                   departurePoint: {
@@ -391,7 +441,7 @@ export const CourseCreationFlow: React.FC = () => {
     const stayTotal = selected.reduce((sum, p) => sum + parseStayMinutes(p.time), 0);
     const travelTotal = Math.max(0, selected.length - 1) * 15;
     return stayTotal + travelTotal;
-  }, [selectedPlaceIds]);
+  }, [selectedPlaceIds, recommendedPlaces]);
 
   const availableMin = useMemo(() => {
     const { startDate, startTime, endDate, endTime } = surveyData;
@@ -466,7 +516,7 @@ export const CourseCreationFlow: React.FC = () => {
               reset();
               router.push('/');
             }}
-            className="flex-1 py-3 bg-sky-500 font-bold rounded-xl text-sm text-white"
+            className="flex-1 py-3 bg-primary-500 font-bold rounded-xl text-sm text-white"
           >
             나가기
           </button>
@@ -480,7 +530,7 @@ export const CourseCreationFlow: React.FC = () => {
       <div className="flex flex-col h-full bg-white">
         <Header onBack={handleBack} />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-violet-50 via-blue-50 to-white -z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-violet-50 via-primary-50 to-white -z-10" />
 
           {/* 일출 모션: 수평선 위로 떠오르는 해 */}
           <div className="relative w-40 h-24 mb-8 overflow-hidden" aria-hidden>
@@ -496,7 +546,7 @@ export const CourseCreationFlow: React.FC = () => {
                 className="w-16 h-16 rounded-full bg-gradient-to-b from-amber-300 to-orange-400 shadow-[0_0_40px_12px_rgba(251,191,36,0.35)]"
               />
             </motion.div>
-            <div className="absolute bottom-0 left-0 right-0 h-px bg-sky-200" />
+            <div className="absolute bottom-0 left-0 right-0 h-px bg-primary-200" />
           </div>
 
           <motion.h1
@@ -524,7 +574,7 @@ export const CourseCreationFlow: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 1 }}
             onClick={handleNext}
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform"
+            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary-200 active:scale-[0.98] transition-transform"
           >
             시작하기
           </motion.button>
@@ -563,7 +613,7 @@ export const CourseCreationFlow: React.FC = () => {
                   }}
                   className={`w-full py-3.5 px-5 rounded-full border-2 text-center transition-all ${
                     isActive
-                      ? 'border-sky-400 bg-sky-50 text-sky-700'
+                      ? 'border-primary-400 bg-primary-50 text-primary-700'
                       : 'border-gray-100 bg-white text-gray-600'
                   }`}
                 >
@@ -604,7 +654,7 @@ export const CourseCreationFlow: React.FC = () => {
                   placeholder="지금 느끼는 감정을 적어주세요"
                   maxLength={30}
                   autoFocus
-                  className="w-full py-3.5 px-5 rounded-full border-2 border-sky-400 bg-sky-50 text-sky-700 text-center outline-none placeholder:text-sky-300"
+                  className="w-full py-3.5 px-5 rounded-full border-2 border-primary-400 bg-primary-50 text-primary-700 text-center outline-none placeholder:text-primary-300"
                 />
                 <div className="flex items-start gap-1.5 px-2">
                   <AlertCircle size={12} className="text-gray-300 mt-0.5 shrink-0" />
@@ -620,7 +670,7 @@ export const CourseCreationFlow: React.FC = () => {
           <button
             onClick={handleNext}
             disabled={!surveyData.mindState}
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
+            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
           >
             선택 완료
           </button>
@@ -662,7 +712,7 @@ export const CourseCreationFlow: React.FC = () => {
                   onClick={() => updateSurvey('transport', label)}
                   className={`flex items-center gap-1.5 px-4 py-3 rounded-lg border font-medium text-sm transition-all ${
                     surveyData.transport === label
-                      ? 'border-sky-500 bg-sky-50 text-sky-700'
+                      ? 'border-primary-500 bg-primary-50 text-primary-700'
                       : 'border-gray-200 text-gray-600'
                   }`}
                 >
@@ -682,7 +732,7 @@ export const CourseCreationFlow: React.FC = () => {
                   onClick={() => updateSurvey('transportTime', time)}
                   className={`px-4 py-3 rounded-lg border font-medium text-left text-sm transition-all ${
                     (time === '직접입력' && isCustomTime) || surveyData.transportTime === time
-                      ? 'border-sky-500 bg-sky-50 text-sky-700'
+                      ? 'border-primary-500 bg-primary-50 text-primary-700'
                       : 'border-gray-200 text-gray-600'
                   }`}
                 >
@@ -727,7 +777,7 @@ export const CourseCreationFlow: React.FC = () => {
               !surveyData.transportTime ||
               surveyData.transportTime === '직접입력'
             }
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
+            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
           >
             선택 완료
           </button>
@@ -757,7 +807,7 @@ export const CourseCreationFlow: React.FC = () => {
           <div className="space-y-6">
             <div className="space-y-2">
               <div className="flex items-center gap-1.5 text-sm font-bold text-gray-700">
-                <Calendar size={15} className="text-sky-500" />
+                <Calendar size={15} className="text-primary-500" />
                 여행 시작
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -808,12 +858,12 @@ export const CourseCreationFlow: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-sky-50 p-4 rounded-xl border border-sky-100"
+                className="bg-primary-50 p-4 rounded-xl border border-primary-100"
               >
-                <div className="flex items-center gap-2 text-sky-700 font-bold text-sm mb-1">
+                <div className="flex items-center gap-2 text-primary-700 font-bold text-sm mb-1">
                   <Timer size={16} />총 여행 시간
                 </div>
-                <div className="text-sky-600 text-lg font-bold">
+                <div className="text-primary-600 text-lg font-bold">
                   {(() => {
                     const start = new Date(`${surveyData.startDate}T${surveyData.startTime}`);
                     const end = new Date(`${surveyData.endDate}T${surveyData.endTime}`);
@@ -840,7 +890,7 @@ export const CourseCreationFlow: React.FC = () => {
           <button
             onClick={handleNext}
             disabled={!survey3Validation.valid}
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shadow-lg shadow-sky-100"
+            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shadow-lg shadow-primary-100"
           >
             다음으로
           </button>
@@ -855,7 +905,7 @@ export const CourseCreationFlow: React.FC = () => {
   if (step === 'generating') {
     return (
       <div className="flex flex-col h-full items-center justify-center p-6 text-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-orange-50 via-blue-50 to-white -z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-orange-50 via-primary-50 to-white -z-10" />
         <div className="mb-8">
           <LogoLoader />
         </div>
@@ -880,9 +930,20 @@ export const CourseCreationFlow: React.FC = () => {
   // (6) Starting Point Selection
   // ════════════════════════════════════════════
   if (step === 'startPoint') {
-    const filteredAddresses = customAddress.trim()
+    // SDK 로드 실패 시에만 쓰는 정적 폴백 목록
+    const fallbackAddresses = customAddress.trim()
       ? MOCK_ADDRESSES.filter((a) => a.label.includes(customAddress.trim()))
       : MOCK_ADDRESSES;
+
+    const selectStartingPoint = (
+      type: 'current' | 'custom',
+      address: string,
+      coord: { lat: number; lng: number }
+    ) => {
+      setCustomAddress(address);
+      setShowAddressList(false);
+      setStartingPoint({ type, address, coord });
+    };
 
     return (
       <div className="flex flex-col h-full bg-white">
@@ -912,6 +973,16 @@ export const CourseCreationFlow: React.FC = () => {
                 stops={[]}
                 showRoute={false}
                 className="h-48"
+                onSelectCoord={(coord) => {
+                  void (async () => {
+                    const address = await coordToAddress(coord);
+                    selectStartingPoint(
+                      'custom',
+                      address ?? `지도 선택 위치 (${coord.lat.toFixed(4)}, ${coord.lng.toFixed(4)})`,
+                      coord
+                    );
+                  })();
+                }}
               />
               <div className="absolute top-3 left-3 right-3 z-10">
                 <div className="bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-gray-100">
@@ -936,14 +1007,13 @@ export const CourseCreationFlow: React.FC = () => {
                 if (navigator.geolocation) {
                   navigator.geolocation.getCurrentPosition(
                     (pos) => {
-                      const mockAddress = '서울 용산구 한강대로 405 서울역';
-                      setGeoStatus('success');
-                      setCustomAddress(mockAddress);
-                      setStartingPoint({
-                        type: 'current',
-                        address: mockAddress,
-                        coord: { lat: pos.coords.latitude, lng: pos.coords.longitude },
-                      });
+                      const coord = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                      // 카카오 역지오코딩으로 실제 주소 라벨을 얻는다 (실패 시 '현재 위치')
+                      void (async () => {
+                        const address = await coordToAddress(coord);
+                        setGeoStatus('success');
+                        selectStartingPoint('current', address ?? '현재 위치', coord);
+                      })();
                     },
                     () => {
                       setGeoStatus('error');
@@ -996,28 +1066,51 @@ export const CourseCreationFlow: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-2 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden"
                 >
-                  {filteredAddresses.length > 0 ? (
-                    filteredAddresses.map((addr) => (
+                  {kakaoError ? (
+                    // SDK 로드 실패 시 정적 목록으로 폴백
+                    fallbackAddresses.length > 0 ? (
+                      fallbackAddresses.map((addr) => (
+                        <button
+                          key={addr.label}
+                          onClick={() => selectStartingPoint('custom', addr.label, addr.coord)}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-indigo-50 border-b border-gray-50 last:border-b-0"
+                        >
+                          <MapPin size={14} className="text-indigo-400 shrink-0" />
+                          <span className="text-sm text-gray-700">{addr.label}</span>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-6 text-center text-sm text-gray-400">
+                        검색 결과가 없습니다
+                      </div>
+                    )
+                  ) : addressResults.length > 0 ? (
+                    addressResults.map((result) => (
                       <button
-                        key={addr.label}
-                        onClick={() => {
-                          setCustomAddress(addr.label);
-                          setStartingPoint({
-                            type: 'custom',
-                            address: addr.label,
-                            coord: addr.coord,
-                          });
-                          setShowAddressList(false);
-                        }}
+                        key={result.id}
+                        onClick={() =>
+                          selectStartingPoint(
+                            'custom',
+                            result.address || result.name,
+                            result.coord
+                          )
+                        }
                         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-indigo-50 border-b border-gray-50 last:border-b-0"
                       >
                         <MapPin size={14} className="text-indigo-400 shrink-0" />
-                        <span className="text-sm text-gray-700">{addr.label}</span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-sm text-gray-700 truncate">{result.name}</span>
+                          {result.address && (
+                            <span className="block text-xs text-gray-400 truncate">
+                              {result.address}
+                            </span>
+                          )}
+                        </span>
                       </button>
                     ))
                   ) : (
                     <div className="px-4 py-6 text-center text-sm text-gray-400">
-                      검색 결과가 없습니다
+                      {isSearchingAddress || isKakaoLoading ? '검색 중...' : '검색 결과가 없습니다'}
                     </div>
                   )}
                 </motion.div>
@@ -1030,14 +1123,7 @@ export const CourseCreationFlow: React.FC = () => {
                     {MOCK_ADDRESSES.slice(0, 4).map((addr) => (
                       <button
                         key={addr.label}
-                        onClick={() => {
-                          setCustomAddress(addr.label);
-                          setStartingPoint({
-                            type: 'custom',
-                            address: addr.label,
-                            coord: addr.coord,
-                          });
-                        }}
+                        onClick={() => selectStartingPoint('custom', addr.label, addr.coord)}
                         className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 border border-gray-100 text-left hover:bg-indigo-50 hover:border-indigo-200 transition-colors"
                       >
                         <MapPin size={12} className="text-gray-400 shrink-0" />
@@ -1056,7 +1142,7 @@ export const CourseCreationFlow: React.FC = () => {
           <button
             onClick={handleNext}
             disabled={!startingPoint.address}
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shadow-lg shadow-sky-100"
+            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shadow-lg shadow-primary-100"
           >
             다음으로
           </button>
@@ -1096,20 +1182,20 @@ export const CourseCreationFlow: React.FC = () => {
                 onClick={() => togglePlaceSelection(place.id)}
                 className={`relative bg-white p-4 rounded-xl border-2 transition-all cursor-pointer ${
                   isSelected
-                    ? 'border-sky-500 shadow-md ring-1 ring-sky-500'
+                    ? 'border-primary-500 shadow-md ring-1 ring-primary-500'
                     : 'border-gray-100 shadow-sm'
                 }`}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded mb-1 inline-block">
+                    <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded mb-1 inline-block">
                       {place.category}
                     </span>
                     <h3 className="font-bold text-gray-900">{place.name}</h3>
                   </div>
                   <div
                     className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                      isSelected ? 'bg-sky-500 border-sky-500' : 'border-gray-300'
+                      isSelected ? 'bg-primary-500 border-primary-500' : 'border-gray-300'
                     }`}
                   >
                     {isSelected && <Check size={14} className="text-white" />}
@@ -1169,7 +1255,7 @@ export const CourseCreationFlow: React.FC = () => {
             <button
               onClick={handleNext}
               disabled={selectedPlaceIds.length === 0}
-              className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
+              className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
             >
               선택 완료 ({selectedPlaceIds.length})
             </button>
@@ -1212,7 +1298,7 @@ export const CourseCreationFlow: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto">
           <div className="p-5">
-            <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded mb-2 inline-block">
+            <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded mb-2 inline-block">
               {place.category}
             </span>
             <h1 className="text-2xl font-bold text-gray-900 mb-3">{place.name}</h1>
@@ -1268,7 +1354,7 @@ export const CourseCreationFlow: React.FC = () => {
               className={`w-full py-4 rounded-xl font-bold transition-all active:scale-[0.98] ${
                 isSelected
                   ? 'bg-red-50 text-red-500 border border-red-100'
-                  : 'bg-sky-500 text-white shadow-lg shadow-sky-200'
+                  : 'bg-primary-500 text-white shadow-lg shadow-primary-200'
               }`}
             >
               {isSelected ? '선택 해제하기' : '이 장소 선택하기'}
@@ -1283,6 +1369,7 @@ export const CourseCreationFlow: React.FC = () => {
   // (9) Final Plan
   // ════════════════════════════════════════════
   if (step === 'finalPlan') {
+    const firstStopCoord = finalStops.length > 0 ? getStopCoord(finalStops[0]) : null;
     return (
       <div className="flex flex-col h-full bg-gray-50 relative">
         <Header onBack={handleBack} title="나만의 힐링 플랜" showStep />
@@ -1290,7 +1377,7 @@ export const CourseCreationFlow: React.FC = () => {
         <div className="bg-white p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-2">
             <h2 className="font-bold text-lg">플랜 일정표</h2>
-            <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-1 rounded">
+            <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-1 rounded">
               총 {finalStops.length}개 장소
             </span>
           </div>
@@ -1309,9 +1396,9 @@ export const CourseCreationFlow: React.FC = () => {
             </div>
           </div>
           {serverPreview && (
-            <div className="mt-2 flex items-center gap-3 text-xs font-bold text-sky-600 bg-sky-50 px-3 py-2 rounded-lg">
+            <div className="mt-2 flex items-center gap-3 text-xs font-bold text-primary-600 bg-primary-50 px-3 py-2 rounded-lg">
               <span>예상 소요 {formatMinutes(serverPreview.requiredTime)}</span>
-              <span className="text-sky-300">|</span>
+              <span className="text-primary-300">|</span>
               <span>총 이동 {serverPreview.totalDistance}km</span>
             </div>
           )}
@@ -1334,7 +1421,7 @@ export const CourseCreationFlow: React.FC = () => {
         <div className="flex-1 p-4 overflow-y-auto relative">
           {isRecalculating && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
-              <Loader2 className="animate-spin text-sky-500 mb-2" size={32} />
+              <Loader2 className="animate-spin text-primary-500 mb-2" size={32} />
               <p className="text-sm font-bold text-gray-600">최적 경로 재계산 중...</p>
             </div>
           )}
@@ -1353,11 +1440,11 @@ export const CourseCreationFlow: React.FC = () => {
                 <div className="text-xs text-gray-500">
                   {startingPoint.address} · {surveyData.startTime} 출발
                 </div>
-                {finalStops.length > 0 && PLACE_COORDS[finalStops[0].id] && (
+                {firstStopCoord && (
                   <div className="mt-1 flex items-center gap-1 text-[11px] text-indigo-400">
                     <Truck size={10} />
                     <span>
-                      {getTravelMinutes(startingPoint.coord, PLACE_COORDS[finalStops[0].id])}분 소요 예상
+                      {getTravelMinutes(startingPoint.coord, firstStopCoord)}분 소요 예상
                     </span>
                   </div>
                 )}
@@ -1369,9 +1456,10 @@ export const CourseCreationFlow: React.FC = () => {
               const prevCoord =
                 index === 0
                   ? startingPoint.coord
-                  : PLACE_COORDS[finalStops[index - 1].id] || startingPoint.coord;
-              const currCoord = PLACE_COORDS[stop.id];
-              const nextCoord = index < finalStops.length - 1 ? PLACE_COORDS[finalStops[index + 1].id] : null;
+                  : getStopCoord(finalStops[index - 1]) || startingPoint.coord;
+              const currCoord = getStopCoord(stop);
+              const nextCoord =
+                index < finalStops.length - 1 ? getStopCoord(finalStops[index + 1]) : null;
               const travelFromPrev = currCoord ? getTravelMinutes(prevCoord, currCoord) : 15;
               const travelToNext = nextCoord && currCoord ? getTravelMinutes(currCoord, nextCoord) : null;
 
@@ -1382,18 +1470,18 @@ export const CourseCreationFlow: React.FC = () => {
                   onClick={() => openPlaceDetail(stop.id)}
                 >
                   <div className="flex flex-col items-center pt-1">
-                    <div className="w-6 h-6 rounded-full bg-sky-500 flex items-center justify-center text-white text-xs font-bold z-10 shadow-sm">
+                    <div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-bold z-10 shadow-sm">
                       {index + 1}
                     </div>
                     {index < finalStops.length - 1 && (
-                      <div className="w-0.5 flex-1 bg-sky-200 my-1" />
+                      <div className="w-0.5 flex-1 bg-primary-200 my-1" />
                     )}
                   </div>
 
                   <div className="flex-1 bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-2">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <div className="text-xs text-sky-600 font-bold mb-0.5">
+                        <div className="text-xs text-primary-600 font-bold mb-0.5">
                           {index === 0
                             ? `${surveyData.startTime || '10:00'} 이후 도착`
                             : `${travelFromPrev}분 이동 후 도착`}
@@ -1404,14 +1492,14 @@ export const CourseCreationFlow: React.FC = () => {
                         <button
                           onClick={() => moveStop(index, 'up')}
                           disabled={index === 0}
-                          className="p-1 text-gray-400 hover:text-sky-500 disabled:opacity-30"
+                          className="p-1 text-gray-400 hover:text-primary-500 disabled:opacity-30"
                         >
                           <ArrowUp size={16} />
                         </button>
                         <button
                           onClick={() => moveStop(index, 'down')}
                           disabled={index === finalStops.length - 1}
-                          className="p-1 text-gray-400 hover:text-sky-500 disabled:opacity-30"
+                          className="p-1 text-gray-400 hover:text-primary-500 disabled:opacity-30"
                         >
                           <ArrowDown size={16} />
                         </button>
@@ -1439,7 +1527,7 @@ export const CourseCreationFlow: React.FC = () => {
         <div className="p-4 bg-white border-t border-gray-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
           <button
             onClick={handleNext}
-            className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             <Check size={20} />
             힐링 플랜 생성 완료

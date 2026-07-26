@@ -26,7 +26,7 @@ export function PopularPlaceCard({ place, onClick }: PopularPlaceCardProps) {
         </div>
       </div>
       <div className="p-3">
-        <div className="text-[10px] font-bold text-sky-600 mb-0.5">
+        <div className="text-[10px] font-bold text-primary-600 mb-0.5">
           {place.category}
         </div>
         <h3 className="font-bold text-sm text-gray-900 mb-1 line-clamp-1">

@@ -55,8 +55,8 @@
 }
 
 .status__reviewing {
-  background: #eff6ff;
-  color: #3b82f6;
+  background: var(--color-primary-50);
+  color: var(--color-primary-500);
 }
 
 .status__resolved {
@@ -154,8 +154,8 @@
   z-index: 1;
 
   &--active {
-    background: #3b82f6;
-    box-shadow: 0 0 0 3px #eff6ff;
+    background: var(--color-primary-500);
+    box-shadow: 0 0 0 3px var(--color-primary-50);
   }
 }
 

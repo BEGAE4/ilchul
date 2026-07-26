@@ -169,7 +169,7 @@ export const SearchResultsPage: React.FC = () => {
                 {tab}
                 <span
                   className={`ml-1 text-xs ${
-                    activeViewTab === tab ? 'text-sky-500' : 'text-gray-300'
+                    activeViewTab === tab ? 'text-primary-500' : 'text-gray-300'
                   }`}
                 >
                   {count}
@@ -206,7 +206,7 @@ export const SearchResultsPage: React.FC = () => {
                 <div className="px-5 mb-2.5 flex justify-between items-center">
                   <h3 className="text-sm font-bold text-gray-900">
                     장소
-                    <span className="ml-1.5 text-sky-500">{filteredPlaces.length}</span>
+                    <span className="ml-1.5 text-primary-500">{filteredPlaces.length}</span>
                   </h3>
                   {filteredPlaces.length > 3 && (
                     <button
@@ -238,7 +238,7 @@ export const SearchResultsPage: React.FC = () => {
                 <div className="px-1 mb-3 flex justify-between items-center">
                   <h3 className="text-sm font-bold text-gray-900">
                     플랜
-                    <span className="ml-1.5 text-sky-500">{filteredCourses.length}</span>
+                    <span className="ml-1.5 text-primary-500">{filteredCourses.length}</span>
                   </h3>
                   {filteredCourses.length > 3 && (
                     <button
@@ -270,19 +270,19 @@ export const SearchResultsPage: React.FC = () => {
           <div className="p-4">
             <div className="flex items-center justify-between mb-4 ml-1">
               <p className="text-sm text-gray-500">
-                총 <span className="font-bold text-sky-500">{filteredCourses.length}</span>개의 플랜
+                총 <span className="font-bold text-primary-500">{filteredCourses.length}</span>개의 플랜
               </p>
               <button
                 onClick={() => setVerifiedOnly((prev) => !prev)}
                 className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-all active:scale-95 ${
                   verifiedOnly
-                    ? 'bg-blue-50 border-blue-300 text-blue-600'
+                    ? 'bg-primary-50 border-primary-300 text-primary-600'
                     : 'bg-white border-gray-200 text-gray-500'
                 }`}
               >
                 <span
                   className={`w-4 h-4 rounded flex items-center justify-center shrink-0 transition-all ${
-                    verifiedOnly ? 'bg-blue-500 text-white' : 'border border-gray-300 bg-white'
+                    verifiedOnly ? 'bg-primary-500 text-white' : 'border border-gray-300 bg-white'
                   }`}
                 >
                   {verifiedOnly && (
@@ -311,7 +311,7 @@ export const SearchResultsPage: React.FC = () => {
                 {verifiedOnly && (
                   <button
                     onClick={() => setVerifiedOnly(false)}
-                    className="mt-3 text-xs font-bold text-sky-500 underline"
+                    className="mt-3 text-xs font-bold text-primary-500 underline"
                   >
                     필터 해제
                   </button>
@@ -338,7 +338,7 @@ export const SearchResultsPage: React.FC = () => {
           <div className="p-4">
             <div className="flex items-center justify-between mb-4 ml-1">
               <p className="text-sm text-gray-500">
-                총 <span className="font-bold text-sky-500">{filteredPlaces.length}</span>개의 장소
+                총 <span className="font-bold text-primary-500">{filteredPlaces.length}</span>개의 장소
               </p>
             </div>
 
@@ -403,7 +403,7 @@ function CourseCard({ course, isLiked, isBookmarked, onLike, onBookmark, onClick
           className="object-cover"
         />
         {course.isVerified && (
-          <span className="absolute top-2.5 left-2.5 bg-blue-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+          <span className="absolute top-2.5 left-2.5 bg-primary-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
             인증
           </span>
         )}
@@ -449,13 +449,13 @@ const PlaceCardSmall: React.FC<{
       <Image src={place.image} alt={place.name} fill sizes="144px" className="object-cover" />
       <button
         onClick={(e) => { e.stopPropagation(); onAdd(); }}
-        className="absolute bottom-1.5 right-1.5 p-1 bg-white/90 backdrop-blur-sm rounded-full shadow text-sky-500 active:scale-90 transition-transform"
+        className="absolute bottom-1.5 right-1.5 p-1 bg-white/90 backdrop-blur-sm rounded-full shadow text-primary-500 active:scale-90 transition-transform"
       >
         <Plus size={14} strokeWidth={3} />
       </button>
     </div>
     <div className="p-2.5">
-      <div className="text-[10px] font-bold text-sky-600 mb-0.5">{place.category}</div>
+      <div className="text-[10px] font-bold text-primary-600 mb-0.5">{place.category}</div>
       <h3 className="font-bold text-xs text-gray-900 line-clamp-1">{place.name}</h3>
       <div className="flex items-center justify-between mt-1">
         <span className="text-[10px] text-gray-400 truncate">{place.location}</span>
@@ -486,13 +486,13 @@ const PlaceCardGrid: React.FC<{
       />
       <button
         onClick={(e) => { e.stopPropagation(); onAdd(); }}
-        className="absolute bottom-2 right-2 p-1.5 bg-white rounded-full shadow-md text-sky-500 active:scale-90 transition-transform"
+        className="absolute bottom-2 right-2 p-1.5 bg-white rounded-full shadow-md text-primary-500 active:scale-90 transition-transform"
       >
         <Plus size={16} strokeWidth={3} />
       </button>
     </div>
     <div className="p-3">
-      <div className="text-[10px] font-bold text-sky-600 mb-0.5">{place.category}</div>
+      <div className="text-[10px] font-bold text-primary-600 mb-0.5">{place.category}</div>
       <h3 className="font-bold text-sm text-gray-900 mb-1 line-clamp-1">{place.name}</h3>
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-400">{place.location}</span>

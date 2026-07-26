@@ -42,7 +42,7 @@
 
   &:hover {
     background: rgba(255, 255, 255, 0.45);
-    color: #0ea5e9;
+    color: var(--color-primary-500);
   }
 
   &:active {
@@ -57,6 +57,6 @@
 }
 
 .navIconActive {
-  color: #0ea5e9;
+  color: var(--color-primary-500);
   background: rgba(255, 255, 255, 0.45);
 }
