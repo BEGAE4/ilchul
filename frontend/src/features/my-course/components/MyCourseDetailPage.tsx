@@ -240,6 +240,10 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     setIsVerifying(true);
     try {
       const location = await getCurrentLocation();
+      if (!location) {
+        // 위치 권한 거부/미지원/timeout 시에도 인증은 진행 — 위치 없이 전송됨을 안내만 한다
+        toast.info('현재 위치를 확인할 수 없어 위치 정보 없이 인증했어요.');
+      }
       await planApi.stampPlanPlace(verifyingStopId, file, location);
       toast.success('정거장 인증 완료!');
       setVerifyingStopId(null);
