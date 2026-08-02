@@ -519,7 +519,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
 
       {/* ─── 모달: 일정 담기 ─── */}
       {showSaveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowSaveModal(false)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-6">
             {!savedCourseId ? (
@@ -584,7 +584,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
 
       {/* ─── 더보기 메뉴 ─── */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-50 flex items-end">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsMenuOpen(false)} />
           <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
@@ -641,7 +641,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       {/* BottomMenu는 items: MenuItem[] 배열만 지원하고 children/slot 미지원이므로
           기존 isMenuOpen 패턴(인라인 bottom-sheet)을 재사용한다 (PR-4 범위 내 최소 침습) */}
       {commentMenuTarget !== null && (
-        <div className="fixed inset-0 z-50 flex items-end">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setCommentMenuTarget(null)}
@@ -669,7 +669,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
 
       {/* ─── 댓글 삭제 확인 모달 ─── */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setDeleteTarget(null)} />
           <div className="relative w-full max-w-[320px] bg-white rounded-2xl p-6 shadow-lg">
             <h3 className="text-gray-900 text-lg font-bold mb-2">댓글을 삭제하시겠어요?</h3>

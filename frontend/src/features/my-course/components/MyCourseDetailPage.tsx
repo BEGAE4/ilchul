@@ -757,7 +757,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* ─── 모달: 위치 인증 ─── */}
       {verifyingStopId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => !isVerifying && setVerifyingStopId(null)}
@@ -805,7 +805,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* ─── 모달: 순서 변경 프리뷰 확인 ─── */}
       {reorderPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setReorderPreview(null)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-5">
             <h3 className="font-bold text-lg mb-1">순서 변경 저장</h3>
@@ -847,7 +847,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* ─── 모달: 사진 미리보기 ─── */}
       {!!previewPhoto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90" onClick={() => setPreviewPhoto(null)} />
           <div className="relative max-w-full max-h-[70vh] rounded-xl overflow-hidden">
             <Image src={previewPhoto} alt="Preview" width={400} height={400} className="object-contain" />
@@ -863,7 +863,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* ─── 모달: 복제 ─── */}
       {isCloneOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setIsCloneOpen(false)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-5">
             <h3 className="font-bold text-lg mb-1">플랜 복제하기</h3>
@@ -933,7 +933,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* ─── 모달: 이름 수정 ─── */}
       {isRenameOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setIsRenameOpen(false)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-5">
             <h3 className="font-bold text-lg mb-4">플랜 이름 수정</h3>
@@ -963,7 +963,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* ─── 모달: 삭제 확인 ─── */}
       {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setIsDeleteConfirmOpen(false)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-5">
             <h3 className="font-bold text-lg mb-2">플랜 삭제 확인</h3>
@@ -988,7 +988,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* ─── 바텀시트: 플랜 사진 관리 ─── */}
       {isPhotoSheetOpen && (
-        <div className="fixed inset-0 z-50 flex items-end">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsPhotoSheetOpen(false)} />
           <div className="relative w-full bg-white rounded-t-3xl p-5 shadow-xl max-h-[70vh] overflow-y-auto">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
@@ -1030,7 +1030,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* ─── 더보기 메뉴 ─── */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-50 flex items-end">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsMenuOpen(false)} />
           <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
@@ -1101,7 +1101,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* ─── 완주 축하 오버레이 ─── */}
       {showCelebration && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-6">
+        <div className="fixed inset-y-0 app-frame z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-6">
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}

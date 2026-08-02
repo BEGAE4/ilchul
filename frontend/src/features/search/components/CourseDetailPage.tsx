@@ -136,7 +136,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({
       </div>
 
       {/* Floating Action Button */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 flex justify-center w-[360px] mx-auto z-50">
+      <div className="fixed bottom-0 app-frame p-4 bg-white border-t border-gray-100 flex justify-center z-50">
         <button className="w-full bg-primary-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary-200 active:scale-[0.98] transition-transform">
           이 플랜으로 일정 담기
         </button>

@@ -427,7 +427,7 @@ export function SettingsPage() {
 
       {/* 로그아웃 모달 */}
       {showLogoutModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-[300px] relative">
             <button
               onClick={() => setShowLogoutModal(false)}
@@ -459,7 +459,7 @@ export function SettingsPage() {
 
       {/* 계정 탈퇴 모달 */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-[300px] relative">
             <button
               onClick={() => setShowDeleteModal(false)}
