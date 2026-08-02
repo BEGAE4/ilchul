@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, Check, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Check, Clock, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // ── 공통 바텀시트 껍데기 ──
@@ -15,7 +15,7 @@ const SheetShell: React.FC<{
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[60] bg-black/40"
+      className="fixed inset-y-0 app-frame z-[60] bg-black/40"
       onClick={onClose}
     >
       <motion.div
@@ -96,6 +96,193 @@ export const SelectField: React.FC<SelectFieldProps> = ({
                 {opt.value === value && <Check size={16} className="text-primary-500" />}
               </button>
             ))}
+          </div>
+        </SheetShell>
+      )}
+    </>
+  );
+};
+
+// ── 커스텀 시간 선택(시계 바텀시트) ──
+// 30분 단위 48개 옵션을 세로로 훑는 대신, 12시간 시계판에서 시(時)를 한 번에 고른다.
+interface TimeFieldProps {
+  value: string; // HH:MM (30분 단위)
+  placeholder?: string;
+  title: string;
+  onChange: (value: string) => void;
+  className?: string;
+}
+
+const CLOCK_SIZE = 248; // 시계판 지름(px)
+const CLOCK_RADIUS = 96; // 중심 → 숫자 중심 거리(px)
+const HOUR_NUMBERS = Array.from({ length: 12 }, (_, i) => i + 1);
+
+interface ClockDraft {
+  hour12: number | null; // 아직 고르지 않았으면 null
+  minute: number;
+  isPm: boolean;
+}
+
+function toClockDraft(value: string): ClockDraft {
+  if (!value) return { hour12: null, minute: 0, isPm: false };
+  const [h, m] = value.split(':').map(Number);
+  return { hour12: h % 12 === 0 ? 12 : h % 12, minute: m === 30 ? 30 : 0, isPm: h >= 12 };
+}
+
+function fromClockDraft(hour12: number, minute: number, isPm: boolean): string {
+  const h24 = isPm ? (hour12 === 12 ? 12 : hour12 + 12) : hour12 === 12 ? 0 : hour12;
+  return `${String(h24).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function formatClockLabel(hour12: number, minute: number, isPm: boolean): string {
+  return `${isPm ? '오후' : '오전'} ${hour12}시${minute === 30 ? ' 30분' : ''}`;
+}
+
+// 12시를 맨 위에 두고 시계 방향으로 배치 — 숫자 중심 좌표를 삼각함수로 구한다
+function hourPosition(hour12: number): { left: number; top: number } {
+  const rad = ((hour12 % 12) * 30 * Math.PI) / 180;
+  return {
+    left: CLOCK_SIZE / 2 + CLOCK_RADIUS * Math.sin(rad),
+    top: CLOCK_SIZE / 2 - CLOCK_RADIUS * Math.cos(rad),
+  };
+}
+
+export const TimeField: React.FC<TimeFieldProps> = ({
+  value,
+  placeholder = '시간 선택',
+  title,
+  onChange,
+  className = '',
+}) => {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<ClockDraft>(() => toClockDraft(value));
+
+  const openSheet = () => {
+    setDraft(toClockDraft(value));
+    setOpen(true);
+  };
+
+  const confirm = () => {
+    if (draft.hour12 === null) return;
+    onChange(fromClockDraft(draft.hour12, draft.minute, draft.isPm));
+    setOpen(false);
+  };
+
+  const selected = toClockDraft(value);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={openSheet}
+        className={`w-full flex items-center justify-between p-3 border border-gray-200 rounded-xl bg-gray-50 text-base transition-colors ${className} ${
+          value ? 'text-gray-900' : 'text-gray-400'
+        }`}
+      >
+        <span>
+          {value && selected.hour12 !== null
+            ? formatClockLabel(selected.hour12, selected.minute, selected.isPm)
+            : placeholder}
+        </span>
+        <Clock size={18} className="text-gray-400 shrink-0" />
+      </button>
+
+      {open && (
+        <SheetShell title={title} onClose={() => setOpen(false)}>
+          <div className="px-3 pb-2 flex flex-col items-center">
+            {/* 오전 / 오후 */}
+            <div className="flex w-full max-w-[248px] p-1 bg-gray-100 rounded-xl mb-4">
+              {[
+                { label: '오전', isPm: false },
+                { label: '오후', isPm: true },
+              ].map((opt) => (
+                <button
+                  key={opt.label}
+                  type="button"
+                  onClick={() => setDraft((d) => ({ ...d, isPm: opt.isPm }))}
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${
+                    draft.isPm === opt.isPm ? 'bg-white text-primary-600 shadow-sm' : 'text-gray-500'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* 시계판 */}
+            <div
+              className="relative rounded-full bg-gray-50"
+              style={{ width: CLOCK_SIZE, height: CLOCK_SIZE }}
+            >
+              {draft.hour12 !== null && (
+                <div
+                  className="absolute left-1/2 origin-bottom bg-primary-500 rounded-full pointer-events-none"
+                  style={{
+                    width: 2,
+                    height: CLOCK_RADIUS,
+                    top: CLOCK_SIZE / 2 - CLOCK_RADIUS,
+                    transform: `translateX(-50%) rotate(${(draft.hour12 % 12) * 30}deg)`,
+                  }}
+                  aria-hidden
+                />
+              )}
+              <div
+                className="absolute left-1/2 top-1/2 w-2 h-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary-500 pointer-events-none"
+                aria-hidden
+              />
+
+              {HOUR_NUMBERS.map((hour) => {
+                const { left, top } = hourPosition(hour);
+                const isActive = draft.hour12 === hour;
+                return (
+                  <button
+                    key={hour}
+                    type="button"
+                    onClick={() => setDraft((d) => ({ ...d, hour12: hour }))}
+                    aria-label={`${draft.isPm ? '오후' : '오전'} ${hour}시`}
+                    aria-pressed={isActive}
+                    className={`absolute w-10 h-10 -translate-x-1/2 -translate-y-1/2 rounded-full text-sm font-bold transition-colors ${
+                      isActive ? 'bg-primary-500 text-white' : 'text-gray-700 active:bg-primary-50'
+                    }`}
+                    style={{ left, top }}
+                  >
+                    {hour}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 분 — 기존 옵션과 동일하게 30분 단위 */}
+            <div className="flex w-full max-w-[248px] gap-2 mt-4">
+              {[0, 30].map((minute) => (
+                <button
+                  key={minute}
+                  type="button"
+                  onClick={() => setDraft((d) => ({ ...d, minute }))}
+                  className={`flex-1 py-2.5 rounded-xl border text-sm font-bold transition-colors ${
+                    draft.minute === minute
+                      ? 'border-primary-500 bg-primary-50 text-primary-700'
+                      : 'border-gray-200 text-gray-600'
+                  }`}
+                >
+                  {minute === 0 ? '정각' : '30분'}
+                </button>
+              ))}
+            </div>
+
+            {/* 확정 전 미리보기 — 높이를 고정해 버튼이 밀리지 않게 한다 */}
+            <div className="h-6 mt-3 text-sm font-bold text-gray-900">
+              {draft.hour12 !== null && formatClockLabel(draft.hour12, draft.minute, draft.isPm)}
+            </div>
+
+            <button
+              type="button"
+              onClick={confirm}
+              disabled={draft.hour12 === null}
+              className="w-full max-w-[248px] mt-1 mb-1 py-3 rounded-xl bg-primary-500 text-white font-bold disabled:bg-gray-300 transition-colors"
+            >
+              선택 완료
+            </button>
           </div>
         </SheetShell>
       )}

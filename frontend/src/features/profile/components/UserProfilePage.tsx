@@ -267,7 +267,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
       {/* BottomMenu는 items: MenuItem[] 배열만 지원하고 children/slot 미지원이므로
           CourseViewPage의 isMenuOpen 패턴(인라인 bottom-sheet)을 동일하게 재사용한다 */}
       {menuOpen && (
-        <div className="fixed inset-0 z-50 flex items-end">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
           <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />

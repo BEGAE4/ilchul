@@ -635,7 +635,7 @@ export const ProfilePage: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {courseToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setCourseToDelete(null)} />
           <div className="relative bg-white rounded-2xl p-6 mx-5 w-full max-w-[320px] shadow-lg">
             <h2 className="text-gray-900 text-lg font-bold mb-2">

@@ -21,13 +21,18 @@ import {
   Bus,
   Footprints,
   Car,
+  ChevronDown,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+// TODO(transportTime): AnimatePresence는 이동 시간 직접입력 섹션에서만 쓰여 함께 주석 처리.
+// 원문 — import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { LogoLoader } from '@/shared/ui/LogoLoader';
 import { StepIndicator } from '@/shared/ui/StepIndicator';
 import { RouteMap, getStopCoord } from './RouteMap';
-import { SelectField, DateField } from './SurveyPickers';
+// TODO(transportTime): SelectField는 주석 처리된 이동 시간 섹션에서만 쓰여 import에서 제외.
+// 원문 — import { SelectField, DateField } from './SurveyPickers';
+import { TimeField, DateField } from './SurveyPickers';
 import { useSurveyStore, type SurveyStep } from '@/shared/lib/stores/useSurveyStore';
 import { planApi, type PlanPreviewResponse } from '@/features/plan';
 import { recommendPlaces } from '@/features/place/api/place.api';
@@ -89,6 +94,17 @@ function mapRecommendedPlaces(data: unknown): Place[] {
     .filter((p): p is Place => p !== null);
 }
 
+// 스텝마다 하단 CTA 클래스를 따로 적다 보니 그림자·비활성 색이 제각각이 됐다.
+// 화면이 바뀌어도 같은 버튼으로 읽히도록 한 곳에서 관리한다.
+const PRIMARY_CTA =
+  'w-full bg-primary-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary-200 disabled:bg-gray-300 disabled:shadow-none active:scale-[0.98] transition-all';
+
+// 하단 액션 바. 스크롤 컨테이너는 PageLayout의 .container라서 Header의 sticky top-0과 짝을 이루도록
+// sticky bottom-0으로 붙인다. 내용이 길어져도 CTA가 화면 밖으로 밀려나지 않는다.
+const STICKY_FOOTER_SHELL =
+  'sticky bottom-0 z-30 bg-white border-t border-gray-100 shadow-[0_-4px_12px_-4px_rgba(0,0,0,0.08)]';
+const STICKY_FOOTER = `${STICKY_FOOTER_SHELL} p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]`;
+
 // ── Survey 1: 마음 상태 ──
 const MIND_STATES = [
   { label: '그냥 기운이 없고 지쳤어요', emoji: '😔' },
@@ -106,6 +122,13 @@ const TRANSPORTS: { label: string; icon: typeof Bus }[] = [
   { label: '도보', icon: Footprints },
   { label: '자가용', icon: Car },
 ];
+// TODO(transportTime): 이동 시간(transportTime) 질문 임시 비활성화.
+// 사유 — 서버 SurveyResultDto(cc/api/v3~v6, backend SurveyResultDto.java)에 해당 필드가 없어
+//        POST /api/place/recommend 로 전달되지 않고, 추천 LLM 프롬프트에도 반영되지 않는다.
+//        (v1/v2 명세에는 '선택' 필드로 존재했으나 v3에서 사라진 상태)
+// 조치 — BE에 의도적 제외인지 확인 후 완전 제거하거나 복구한다.
+//        복구 시 'TODO(transportTime)' 로 전체 검색하면 관련 블록을 모두 찾을 수 있다.
+/*
 // 이동수단마다 체감 이동 한도가 달라 도보 기준 짧은 구간부터 자가용 기준 장거리까지 단계별로 제공
 const TRANSPORT_TIMES = ['30분 이내', '1시간 이내', '2시간 이내', '상관없어요', '직접입력'];
 
@@ -118,6 +141,7 @@ const CUSTOM_TIME_OPTIONS = Array.from({ length: 24 }, (_, i) => {
   if (m === 0) return { value: `${h}시간`, label: `${h}시간` };
   return { value: `${h}시간 ${m}분`, label: `${h}시간 ${m}분` };
 });
+*/
 
 // ── Survey 3: 30분 단위 시간 선택 ──
 const HALF_HOURS: { value: string; label: string }[] = [];
@@ -134,24 +158,107 @@ for (let i = 0; i < 24; i++) {
   }
 }
 
+const HALF_HOUR_LABELS = new Map(HALF_HOURS.map((o) => [o.value, o.label]));
+
+// ── Survey 3: 당일치기 기준 ──
+// '자고 오지 않는 일정'이 당일치기의 통념이므로, 다음 날 새벽 귀가까지만 허용한다.
+// (야경·일출 코스를 살리면서 1박 2일과는 구분되는 선)
+const OVERNIGHT_END_LIMIT = '06:00';
+const MAX_TRIP_MINUTES = 20 * 60;
+
+// ── Survey 3: 자주 고르는 시간대 프리셋 ──
+// 야간의 종료를 24:00이 아닌 23:30으로 두는 이유 — HALF_HOURS의 마지막 값이 23:30이라
+// '직접 설정'으로 펼쳤을 때 프리셋 값이 그대로 매핑되어야 빈칸으로 보이지 않는다.
+const TIME_PRESETS: { key: string; label: string; range: string; start: string; end: string }[] = [
+  { key: 'morning', label: '오전 반나절', range: '09:00 - 13:00', start: '09:00', end: '13:00' },
+  { key: 'afternoon', label: '오후', range: '13:00 - 18:00', start: '13:00', end: '18:00' },
+  { key: 'allday', label: '하루 종일', range: '09:00 - 21:00', start: '09:00', end: '21:00' },
+  { key: 'night', label: '야간', range: '18:00 - 23:30', start: '18:00', end: '23:30' },
+];
+
+function toTimeString(d: Date): string {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function toDateString(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function addDays(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return toDateString(new Date(y, m - 1, d + days));
+}
+
+function diffDays(fromDateStr: string, toDateStr: string): number {
+  const [fy, fm, fd] = fromDateStr.split('-').map(Number);
+  const [ty, tm, td] = toDateStr.split('-').map(Number);
+  const from = new Date(fy, fm - 1, fd).getTime();
+  const to = new Date(ty, tm - 1, td).getTime();
+  return Math.round((to - from) / 86_400_000);
+}
+
+const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+
+function getWeekday(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).getDay();
+}
+
+function formatShortDate(dateStr: string): string {
+  const [, m, d] = dateStr.split('-').map(Number);
+  return `${m}/${d}`;
+}
+
+// 오늘/내일/토요일/일요일을 렌더 시점 기준으로 계산한다.
+// 당일치기는 하루만 고르므로 '주말' 같은 이틀짜리 표현 대신 요일을 명시하고 날짜를 함께 보여준다.
+// 요일 칩이 오늘·내일과 겹치면 중복 활성되므로 제외한다.
+function getDatePresets(todayStr: string): { key: string; label: string; date: string }[] {
+  const dow = getWeekday(todayStr);
+  const presets = [
+    { key: 'today', label: '오늘', date: todayStr },
+    { key: 'tomorrow', label: '내일', date: addDays(todayStr, 1) },
+    { key: 'saturday', label: '토요일', date: addDays(todayStr, (6 - dow + 7) % 7) },
+    { key: 'sunday', label: '일요일', date: addDays(todayStr, (7 - dow) % 7) },
+  ];
+  return presets.filter((p, i) => presets.findIndex((o) => o.date === p.date) === i);
+}
+
+function formatTimeLabel(value: string): string {
+  return HALF_HOUR_LABELS.get(value) ?? value;
+}
+
+function buildDefaultPlanTitle(mindState: string | undefined): string {
+  const trimmed = (mindState ?? '').trim();
+  return trimmed ? `${trimmed.slice(0, 10)} 힐링 플랜` : '나만의 힐링 플랜';
+}
+
+function formatDayLabel(dateStr: string, todayStr: string): string {
+  if (dateStr === todayStr) return '오늘';
+  if (dateStr === addDays(todayStr, 1)) return '내일';
+  const [, m, d] = dateStr.split('-').map(Number);
+  return `${m}월 ${d}일 (${WEEKDAY_LABELS[getWeekday(dateStr)]})`;
+}
+
 // 스텝 번호 매핑 (StepIndicator 용)
+// 인디케이터가 실제로 보이는 화면(Header showStep)은 6개뿐이다.
+// generating/placeDetail은 인디케이터를 띄우지 않는 경유 화면이라 직전 단계 번호를 그대로 물려받아
+// 되돌아왔을 때 진행바가 튀지 않게 한다.
 const STEP_NUMBERS: Record<SurveyStep, number> = {
   landing: 0,
   survey1: 1,
   survey2: 2,
   survey3: 3,
   startPoint: 4,
-  generating: 5,
-  placeSelect: 6,
-  placeDetail: 7,
-  finalPlan: 8,
+  generating: 4,
+  placeSelect: 5,
+  placeDetail: 5,
+  finalPlan: 6,
 };
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 6;
 
 // ── 헬퍼 함수 ──
 function getTodayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return toDateString(new Date());
 }
 
 function parseStayMinutes(time: string): number {
@@ -182,6 +289,7 @@ export const CourseCreationFlow: React.FC = () => {
     setPreviousStep,
     updateSurvey,
     togglePlaceSelection,
+    clearPlaceSelection,
     setFinalStops,
     setViewingPlaceId,
     setIsRecalculating,
@@ -195,17 +303,30 @@ export const CourseCreationFlow: React.FC = () => {
   const [isDirectInput, setIsDirectInput] = useState(false);
   const [directInputValue, setDirectInputValue] = useState('');
   const [showExitModal, setShowExitModal] = useState(false);
+  // Survey 3 — 프리셋으로 못 고르는 일정을 잡을 때만 펼치는 기존 4필드 UI
+  const [showCustomSchedule, setShowCustomSchedule] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  // 저장 직전에 사용자가 직접 정하는 값 — 이전에는 감정 문구에서 자동 생성되고 비공개로 고정돼 있었다
+  const [planTitle, setPlanTitle] = useState('');
+  const [isPlanVisible, setIsPlanVisible] = useState(false);
   // 최종 플랜 단계의 서버 계산 프리뷰 (소요시간/이동거리)
   const [serverPreview, setServerPreview] = useState<PlanPreviewResponse | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
   // 설문 기반 장소 추천 결과 (POST /api/place/recommend), 실패 시 기본 목록 유지
   const [recommendedPlaces, setRecommendedPlaces] = useState<Place[]>(RECOMMENDED_PLACES);
+  // 추천 API 실패/빈 응답으로 기본 목록을 대신 보여주는 중인지 — 개인화 결과로 오인하지 않도록 고지한다
+  const [isRecommendFallback, setIsRecommendFallback] = useState(false);
   // 카카오맵 SDK 로드 상태 — 출발지 검색/역지오코딩에 services 라이브러리 사용
   const [isKakaoLoading, kakaoError] = useKakaoMapLoader();
   // 출발지 키워드 검색 결과 (카카오 로컬 Places.keywordSearch)
   const [addressResults, setAddressResults] = useState<KeywordPlaceResult[]>([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+
+  // 새로고침/재진입 시 sessionStorage에 저장해둔 설문 입력을 복원한다.
+  // 스토어가 skipHydration이라 마운트 후 여기서 한 번만 수동 복원한다.
+  useEffect(() => {
+    void useSurveyStore.persist.rehydrate();
+  }, []);
 
   // 출발지 검색어 디바운스 → 카카오 키워드 장소 검색
   useEffect(() => {
@@ -226,39 +347,55 @@ export const CourseCreationFlow: React.FC = () => {
     return () => clearTimeout(timer);
   }, [customAddress, step, isKakaoLoading, kakaoError]);
 
+  // 설문 조건 그대로 장소 추천을 (재)요청한다. 출발지 단계의 '다음으로'와 결과 화면의 '다시 추천받기'가 공유한다.
+  const runRecommendation = () => {
+    clearPlaceSelection();
+    setStep('generating');
+    const minDelay = new Promise((resolve) => setTimeout(resolve, 1500));
+    void (async () => {
+      try {
+        const [result] = await Promise.all([
+          recommendPlaces({
+            emotion: surveyData.mindState ?? '',
+            startTime: surveyData.startTime ?? '',
+            endTime: surveyData.endTime ?? '',
+            transport: surveyData.transport ?? '',
+            location: { x: startingPoint.coord.lng, y: startingPoint.coord.lat },
+          }),
+          minDelay,
+        ]);
+        const mapped = mapRecommendedPlaces(result);
+        // 응답이 비었거나 파싱되지 않으면 기본 목록으로 대체되므로, 개인화 결과가 아님을 알린다
+        if (mapped.length > 0) {
+          setRecommendedPlaces(mapped);
+          setIsRecommendFallback(false);
+        } else {
+          setRecommendedPlaces(RECOMMENDED_PLACES);
+          setIsRecommendFallback(true);
+        }
+      } catch (err) {
+        console.error('장소 추천 실패, 기본 추천 목록으로 대체합니다:', err);
+        setRecommendedPlaces(RECOMMENDED_PLACES);
+        setIsRecommendFallback(true);
+        await minDelay;
+      } finally {
+        setStep('placeSelect');
+      }
+    })();
+  };
+
   // ── 네비게이션 ──
   const handleNext = () => {
     if (step === 'landing') setStep('survey1');
     else if (step === 'survey1') setStep('survey2');
     else if (step === 'survey2') setStep('survey3');
     else if (step === 'survey3') setStep('startPoint');
-    else if (step === 'startPoint') {
-      setStep('generating');
-      const minDelay = new Promise((resolve) => setTimeout(resolve, 1500));
-      void (async () => {
-        try {
-          const [result] = await Promise.all([
-            recommendPlaces({
-              emotion: surveyData.mindState ?? '',
-              startTime: surveyData.startTime ?? '',
-              endTime: surveyData.endTime ?? '',
-              transport: surveyData.transport ?? '',
-              location: { x: startingPoint.coord.lng, y: startingPoint.coord.lat },
-            }),
-            minDelay,
-          ]);
-          const mapped = mapRecommendedPlaces(result);
-          if (mapped.length > 0) setRecommendedPlaces(mapped);
-        } catch (err) {
-          console.error('장소 추천 실패, 기본 추천 목록으로 대체합니다:', err);
-          await minDelay;
-        } finally {
-          setStep('placeSelect');
-        }
-      })();
-    } else if (step === 'placeSelect') {
+    else if (step === 'startPoint') runRecommendation();
+    else if (step === 'placeSelect') {
       const selected = recommendedPlaces.filter((p) => selectedPlaceIds.includes(p.id));
       setFinalStops(selected);
+      // 사용자가 아직 제목을 손대지 않았다면 기본값을 채워 편집 출발점으로 삼는다
+      if (!planTitle.trim()) setPlanTitle(buildDefaultPlanTitle(surveyData.mindState));
       setStep('finalPlan');
       // 서버 계산 프리뷰 조회 (POST /api/plan-place/preview) — 실패해도 화면 진행은 유지
       setServerPreview(null);
@@ -324,9 +461,9 @@ export const CourseCreationFlow: React.FC = () => {
             })
             .filter((p) => Number.isInteger(p.placeId));
           const created = await planApi.createPlan({
-            planTitle: `${(surveyData.mindState ?? '').slice(0, 10)} 힐링 플랜`,
+            planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState),
             planDescription: `${surveyData.transport ?? ''}으로 떠나는 나만의 힐링 여행`,
-            isPlanVisible: false,
+            isPlanVisible,
             requiredTime: serverPreview?.requiredTime ?? 0,
             totalDistance: serverPreview?.totalDistance ?? 0,
             ...(startingPoint.address
@@ -364,7 +501,8 @@ export const CourseCreationFlow: React.FC = () => {
     }
   };
 
-  const hasUnsavedData = surveyData.mindState || surveyData.transport || surveyData.transportTime;
+  // TODO(transportTime): 원문 — surveyData.mindState || surveyData.transport || surveyData.transportTime
+  const hasUnsavedData = surveyData.mindState || surveyData.transport;
 
   const handleBack = () => {
     if (step === 'landing') {
@@ -393,6 +531,10 @@ export const CourseCreationFlow: React.FC = () => {
 
   const handleRetry = () => {
     reset();
+    // 설문을 처음부터 다시 하므로 이전 감정에서 만들어진 플랜 이름도 함께 비운다
+    setPlanTitle('');
+    setIsPlanVisible(false);
+    setIsRecommendFallback(false);
     setStep('survey1');
   };
 
@@ -428,10 +570,25 @@ export const CourseCreationFlow: React.FC = () => {
     const end = new Date(`${endDate}T${endTime}`);
     if (isNaN(start.getTime()) || isNaN(end.getTime()))
       return { valid: false, error: '올바른 날짜를 입력해주세요.' };
+    // 오늘을 골랐다면 이미 지난 시각으로 출발하는 일정은 막는다
+    if (startDate === today && start.getTime() < Date.now())
+      return { valid: false, error: '시작 시간이 이미 지났어요. 다른 시간대를 선택해주세요.' };
+    // 당일치기 기준 — 자고 오지 않는 일정. 다음 날 새벽 귀가까지만 허용한다.
+    const overnight = diffDays(startDate, endDate);
+    if (overnight > 1)
+      return { valid: false, error: '당일치기라 다음 날 새벽까지만 선택할 수 있어요.' };
+    if (overnight === 1 && endTime > OVERNIGHT_END_LIMIT)
+      return {
+        valid: false,
+        error: `다음 날은 새벽 ${Number(OVERNIGHT_END_LIMIT.slice(0, 2))}시까지만 선택할 수 있어요.`,
+      };
     const diffMin = (end.getTime() - start.getTime()) / (1000 * 60);
     if (diffMin <= 0) return { valid: false, error: '종료 시간은 시작 시간 이후여야 해요.' };
-    if (diffMin > 24 * 60)
-      return { valid: false, error: '입력해주신 시간이 당일치기 기준(24시간)을 초과해요.' };
+    if (diffMin > MAX_TRIP_MINUTES)
+      return {
+        valid: false,
+        error: `한 번에 최대 ${MAX_TRIP_MINUTES / 60}시간까지 계획할 수 있어요.`,
+      };
     return { valid: true, error: '' };
   }, [surveyData, today]);
 
@@ -497,7 +654,7 @@ export const CourseCreationFlow: React.FC = () => {
   // ════════════════════════════════════════════
   // ── 이탈 확인 모달 JSX ──
   const exitModal = showExitModal && (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-y-0 app-frame bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-6 w-full max-w-[300px]">
         <h2 className="font-bold text-lg text-gray-900 mb-2">나가시겠어요?</h2>
         <p className="text-sm text-gray-500 mb-5 leading-relaxed">
@@ -527,7 +684,7 @@ export const CourseCreationFlow: React.FC = () => {
 
   if (step === 'landing') {
     return (
-      <div className="flex flex-col h-full bg-white">
+      <div className="flex flex-col min-h-dvh bg-white">
         <Header onBack={handleBack} />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-violet-50 via-primary-50 to-white -z-10" />
@@ -543,7 +700,7 @@ export const CourseCreationFlow: React.FC = () => {
               <motion.div
                 animate={{ scale: [1, 1.06, 1] }}
                 transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', delay: 1.4 }}
-                className="w-16 h-16 rounded-full bg-gradient-to-b from-amber-300 to-orange-400 shadow-[0_0_40px_12px_rgba(251,191,36,0.35)]"
+                className="w-16 h-16 rounded-full bg-gradient-to-b from-accent-300 to-accent-500 shadow-[0_0_36px_10px_var(--color-accent-200)]"
               />
             </motion.div>
             <div className="absolute bottom-0 left-0 right-0 h-px bg-primary-200" />
@@ -574,7 +731,7 @@ export const CourseCreationFlow: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 1 }}
             onClick={handleNext}
-            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary-200 active:scale-[0.98] transition-transform"
+            className={PRIMARY_CTA}
           >
             시작하기
           </motion.button>
@@ -589,7 +746,7 @@ export const CourseCreationFlow: React.FC = () => {
   // ════════════════════════════════════════════
   if (step === 'survey1') {
     return (
-      <div className="fixed inset-0 z-40 h-dvh flex flex-col bg-white">
+      <div className="fixed inset-y-0 app-frame z-40 h-dvh flex flex-col bg-white">
         <div className="shrink-0">
           <Header onBack={handleBack} title="나의 상태 확인" showStep />
           <div className="px-5 pt-5 pb-2">
@@ -613,7 +770,7 @@ export const CourseCreationFlow: React.FC = () => {
                   }}
                   className={`w-full py-3.5 px-5 rounded-full border-2 text-center transition-all ${
                     isActive
-                      ? 'border-primary-400 bg-primary-50 text-primary-700'
+                      ? 'border-primary-500 bg-primary-50 text-primary-700'
                       : 'border-gray-100 bg-white text-gray-600'
                   }`}
                 >
@@ -654,7 +811,7 @@ export const CourseCreationFlow: React.FC = () => {
                   placeholder="지금 느끼는 감정을 적어주세요"
                   maxLength={30}
                   autoFocus
-                  className="w-full py-3.5 px-5 rounded-full border-2 border-primary-400 bg-primary-50 text-primary-700 text-center outline-none placeholder:text-primary-300"
+                  className="w-full py-3.5 px-5 rounded-full border-2 border-primary-500 bg-primary-50 text-primary-700 text-center outline-none placeholder:text-primary-300"
                 />
                 <div className="flex items-start gap-1.5 px-2">
                   <AlertCircle size={12} className="text-gray-300 mt-0.5 shrink-0" />
@@ -666,11 +823,11 @@ export const CourseCreationFlow: React.FC = () => {
             )}
           </div>
         </div>
-        <div className="shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-white">
+        <div className={STICKY_FOOTER}>
           <button
             onClick={handleNext}
             disabled={!surveyData.mindState}
-            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
+            className={PRIMARY_CTA}
           >
             선택 완료
           </button>
@@ -681,24 +838,29 @@ export const CourseCreationFlow: React.FC = () => {
   }
 
   // ════════════════════════════════════════════
-  // (3) Survey 2 — 이동 수단 및 시간
+  // (3) Survey 2 — 이동 수단 (이동 시간은 TODO(transportTime)로 임시 비활성화)
   // ════════════════════════════════════════════
   if (step === 'survey2') {
+    // TODO(transportTime): 이동 시간 질문 임시 비활성화에 따라 함께 주석 처리
+    /*
     const isCustomTime =
       surveyData.transportTime === '직접입력' ||
       CUSTOM_TIME_OPTIONS.some((o) => o.value === surveyData.transportTime);
     const showCustomPicker =
       isCustomTime && !['1시간 이내', '상관없어요', ''].includes(surveyData.transportTime ?? '');
+    */
 
     return (
-      <div className="fixed inset-0 z-40 h-dvh flex flex-col bg-white">
+      <div className="fixed inset-y-0 app-frame z-40 h-dvh flex flex-col bg-white">
         <div className="shrink-0">
-          <Header onBack={handleBack} title="이동 수단 및 시간" showStep />
+          {/* TODO(transportTime): 원문 타이틀 — "이동 수단 및 시간" */}
+          <Header onBack={handleBack} title="이동 수단" showStep />
           <div className="px-6 pt-5 pb-2">
+            {/* TODO(transportTime): 원문 — "Q2. 희망하는 이동 수단과 / 이동 시간을 선택해주세요." */}
             <h2 className="text-xl font-bold">
-              Q2. 희망하는 이동 수단과
+              Q2. 희망하는 이동 수단을
               <br />
-              이동 시간을 선택해주세요.
+              선택해주세요.
             </h2>
           </div>
         </div>
@@ -723,6 +885,8 @@ export const CourseCreationFlow: React.FC = () => {
             </div>
           </div>
 
+          {/* TODO(transportTime): 이동 시간 선택 섹션 임시 비활성화 (서버 미전달 필드) */}
+          {/*
           <div>
             <h3 className="text-sm font-bold text-gray-500 mb-3">이동 시간</h3>
             <div className="flex flex-col gap-2">
@@ -768,16 +932,15 @@ export const CourseCreationFlow: React.FC = () => {
               )}
             </AnimatePresence>
           </div>
+          */}
         </div>
-        <div className="shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-white">
+        <div className={STICKY_FOOTER}>
+          {/* TODO(transportTime): disabled 원문 —
+              !surveyData.transport || !surveyData.transportTime || surveyData.transportTime === '직접입력' */}
           <button
             onClick={handleNext}
-            disabled={
-              !surveyData.transport ||
-              !surveyData.transportTime ||
-              surveyData.transportTime === '직접입력'
-            }
-            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
+            disabled={!surveyData.transport}
+            className={PRIMARY_CTA}
           >
             선택 완료
           </button>
@@ -790,86 +953,272 @@ export const CourseCreationFlow: React.FC = () => {
   // (4) Survey 3 — 당일치기 일정
   // ════════════════════════════════════════════
   if (step === 'survey3') {
+    const datePresets = getDatePresets(today);
+    const activeTimePreset = TIME_PRESETS.find(
+      (p) =>
+        surveyData.startTime === p.start &&
+        surveyData.endTime === p.end &&
+        surveyData.startDate === surveyData.endDate
+    );
+    // 프리셋으로 표현되지 않는 값이 이미 들어있다면(뒤로 갔다 온 경우 등) 직접 설정을 펼쳐둔다
+    const hasScheduleValue = !!(surveyData.startTime && surveyData.endTime);
+    const isCustomOpen = showCustomSchedule || (hasScheduleValue && !activeTimePreset);
+
+    // 오늘을 고른 경우, 이미 지나간 시간대 프리셋은 고를 수 없게 한다.
+    // 'HH:MM' 형식은 제로패딩되어 있어 문자열 비교로 시각 비교가 성립한다.
+    const nowHM = toTimeString(new Date());
+    const isPastOnDate = (date: string | undefined, time: string) =>
+      (date ?? today) === today && time < nowHM;
+    const availableTimePresets = TIME_PRESETS.filter(
+      (p) => !isPastOnDate(surveyData.startDate, p.start)
+    );
+    const isTodaySoldOut =
+      (surveyData.startDate ?? today) === today && availableTimePresets.length === 0;
+
+    // 날짜만 바꿀 때, 이미 익일 종료로 잡혀 있던 일정은 날짜 간격을 유지한다
+    const applyDatePreset = (date: string) => {
+      const { startDate: prevStart, endDate: prevEnd, startTime } = surveyData;
+      const gap = prevStart && prevEnd ? Math.max(0, diffDays(prevStart, prevEnd)) : 0;
+      updateSurvey('startDate', date);
+      updateSurvey('endDate', gap > 0 ? addDays(date, gap) : date);
+      // 오늘로 옮기면서 기존 시간대가 이미 지나버렸다면 시간 선택만 비운다
+      if (startTime && isPastOnDate(date, startTime)) {
+        updateSurvey('startTime', '');
+        updateSurvey('endTime', '');
+      }
+    };
+
+    // 종료가 다음 날(새벽)인지 — 당일치기 허용 범위는 startDate 또는 startDate+1까지다
+    const isOvernight =
+      !!surveyData.startDate &&
+      !!surveyData.endDate &&
+      diffDays(surveyData.startDate, surveyData.endDate) === 1;
+
+    const setOvernight = (overnight: boolean) => {
+      const base = surveyData.startDate || today;
+      updateSurvey('startDate', base);
+      updateSurvey('endDate', overnight ? addDays(base, 1) : base);
+    };
+
+    const applyTimePreset = (preset: (typeof TIME_PRESETS)[number]) => {
+      const date = surveyData.startDate || today;
+      updateSurvey('startDate', date);
+      updateSurvey('startTime', preset.start);
+      updateSurvey('endDate', date);
+      updateSurvey('endTime', preset.end);
+    };
+
     return (
-      <div className="fixed inset-0 z-40 h-dvh flex flex-col bg-white">
+      <div className="fixed inset-y-0 app-frame z-40 h-dvh flex flex-col bg-white">
         <div className="shrink-0">
           <Header onBack={handleBack} title="일정 선택" showStep />
           <div className="px-6 pt-5 pb-2">
-            <h2 className="text-xl font-bold mb-2">
-              Q3. 당일치기 여행 일정을
-              <br />
-              설정해주세요.
-            </h2>
-            <p className="text-sm text-gray-400">최대 24시간 이내의 당일치기 일정을 선택해주세요.</p>
+            <h2 className="text-xl font-bold mb-2">Q3. 언제 다녀오실 건가요?</h2>
+            <p className="text-sm text-gray-400">하루 안에 다녀오는 코스를 만들어드려요.</p>
           </div>
         </div>
         <div className="flex-1 px-6 pt-3 pb-4 overflow-y-auto">
           <div className="space-y-6">
+            {/* 날짜 — 오늘/내일/이번 주말 칩 + 그 외 날짜는 캘린더 */}
             <div className="space-y-2">
               <div className="flex items-center gap-1.5 text-sm font-bold text-gray-700">
                 <Calendar size={15} className="text-primary-500" />
-                여행 시작
+                날짜
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <DateField
-                  title="여행 시작일 선택"
-                  value={surveyData.startDate ?? ''}
-                  min={today}
-                  onChange={(newStart) => {
-                    updateSurvey('startDate', newStart);
-                    if (!surveyData.endDate || surveyData.endDate < newStart) {
-                      updateSurvey('endDate', newStart);
-                    }
-                  }}
-                />
-                <SelectField
-                  title="여행 시작 시간 선택"
-                  placeholder="시간 선택"
-                  value={surveyData.startTime ?? ''}
-                  options={HALF_HOURS}
-                  onChange={(v) => updateSurvey('startTime', v)}
-                />
+              <div className="flex flex-wrap gap-2">
+                {datePresets.map((preset) => {
+                  const isActive = surveyData.startDate === preset.date;
+                  return (
+                    <button
+                      key={preset.key}
+                      type="button"
+                      onClick={() => applyDatePreset(preset.date)}
+                      className={`px-4 py-2.5 rounded-lg border font-medium text-sm transition-all ${
+                        isActive
+                          ? 'border-primary-500 bg-primary-50 text-primary-700'
+                          : 'border-gray-200 text-gray-600'
+                      }`}
+                    >
+                      {preset.label}
+                      <span
+                        className={`ml-1.5 text-xs ${
+                          isActive ? 'text-primary-500' : 'text-gray-400'
+                        }`}
+                      >
+                        {formatShortDate(preset.date)}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
+              <DateField
+                title="여행 날짜 선택"
+                placeholder="다른 날짜 선택"
+                value={
+                  surveyData.startDate && !datePresets.some((p) => p.date === surveyData.startDate)
+                    ? surveyData.startDate
+                    : ''
+                }
+                min={today}
+                onChange={applyDatePreset}
+              />
             </div>
 
+            {/* 시간대 — 프리셋 한 번으로 시작/종료가 함께 정해진다 */}
             <div className="space-y-2">
               <div className="flex items-center gap-1.5 text-sm font-bold text-gray-700">
                 <Clock size={15} className="text-orange-500" />
-                여행 종료
+                가장 많이 고르는 일정
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <DateField
-                  title="여행 종료일 선택"
-                  value={surveyData.endDate ?? ''}
-                  min={surveyData.startDate || today}
-                  onChange={(v) => updateSurvey('endDate', v)}
-                />
-                <SelectField
-                  title="여행 종료 시간 선택"
-                  placeholder="시간 선택"
-                  value={surveyData.endTime ?? ''}
-                  options={HALF_HOURS}
-                  onChange={(v) => updateSurvey('endTime', v)}
-                />
+                {TIME_PRESETS.map((preset) => {
+                  const isActive = activeTimePreset?.key === preset.key;
+                  const isPast = isPastOnDate(surveyData.startDate, preset.start);
+                  return (
+                    <button
+                      key={preset.key}
+                      type="button"
+                      disabled={isPast}
+                      onClick={() => applyTimePreset(preset)}
+                      className={`px-4 py-3 rounded-xl border text-left transition-all ${
+                        isPast
+                          ? 'border-gray-100 bg-gray-50 text-gray-300'
+                          : isActive
+                            ? 'border-primary-500 bg-primary-50 text-primary-700'
+                            : 'border-gray-200 text-gray-600'
+                      }`}
+                    >
+                      <span className="block font-bold text-sm">{preset.label}</span>
+                      <span
+                        className={`block text-xs mt-0.5 ${
+                          isPast
+                            ? 'text-gray-300'
+                            : isActive
+                              ? 'text-primary-500'
+                              : 'text-gray-400'
+                        }`}
+                      >
+                        {isPast ? '시간이 지났어요' : preset.range}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
+              {isTodaySoldOut && (
+                <div className="flex items-start gap-2 bg-amber-50 p-3 rounded-xl border border-amber-100">
+                  <AlertCircle size={16} className="text-amber-400 mt-0.5 shrink-0" />
+                  <span className="text-sm text-amber-700">
+                    오늘은 남은 시간대가 없어요. 내일 이후로 선택하거나 직접 설정해주세요.
+                  </span>
+                </div>
+              )}
             </div>
 
-            {surveyData.startTime && surveyData.endTime && surveyData.startDate && surveyData.endDate && survey3Validation.valid && (
+            {/* 직접 설정 — 기존 4필드 UI를 그대로 접어둔 영역 */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowCustomSchedule((prev) => !prev)}
+                aria-expanded={isCustomOpen}
+                className="w-full flex items-center justify-center gap-1 py-2 text-sm font-medium text-gray-500 active:text-gray-700"
+              >
+                직접 설정하기
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform ${isCustomOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {isCustomOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4 border border-gray-100 rounded-xl p-4"
+                >
+                  <div className="space-y-2">
+                    <div className="text-sm font-bold text-gray-700">여행 시작</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <DateField
+                        title="여행 시작일 선택"
+                        value={surveyData.startDate ?? ''}
+                        min={today}
+                        onChange={(newStart) => {
+                          updateSurvey('startDate', newStart);
+                          if (!surveyData.endDate || surveyData.endDate < newStart) {
+                            updateSurvey('endDate', newStart);
+                          }
+                        }}
+                      />
+                      <TimeField
+                        title="여행 시작 시간 선택"
+                        placeholder="시간 선택"
+                        value={surveyData.startTime ?? ''}
+                        onChange={(v) => updateSurvey('startTime', v)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="text-sm font-bold text-gray-700">여행 종료</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* 당일치기라 종료일 후보는 당일 또는 다음 날 새벽 둘뿐 — 캘린더 대신 토글 */}
+                      <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-xl">
+                        {[
+                          { label: '당일', overnight: false },
+                          { label: '다음날 새벽', overnight: true },
+                        ].map((opt) => (
+                          <button
+                            key={opt.label}
+                            type="button"
+                            onClick={() => setOvernight(opt.overnight)}
+                            className={`py-2 px-1 rounded-lg text-xs font-bold transition-colors ${
+                              isOvernight === opt.overnight
+                                ? 'bg-white text-primary-600 shadow-sm'
+                                : 'text-gray-500'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      <TimeField
+                        title="여행 종료 시간 선택"
+                        placeholder="시간 선택"
+                        value={surveyData.endTime ?? ''}
+                        onChange={(v) => updateSurvey('endTime', v)}
+                      />
+                    </div>
+                    {isOvernight && (
+                      <p className="text-xs text-gray-400">
+                        자고 오지 않는 일정이라 다음 날 새벽{' '}
+                        {Number(OVERNIGHT_END_LIMIT.slice(0, 2))}시까지 선택할 수 있어요.
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* 선택 결과 요약 */}
+            {survey3Validation.valid && surveyData.startDate && surveyData.endDate && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="bg-primary-50 p-4 rounded-xl border border-primary-100"
               >
-                <div className="flex items-center gap-2 text-primary-700 font-bold text-sm mb-1">
-                  <Timer size={16} />총 여행 시간
+                <div className="text-primary-700 font-bold">
+                  {formatDayLabel(surveyData.startDate, today)}{' '}
+                  {formatTimeLabel(surveyData.startTime ?? '')} →{' '}
+                  {surveyData.endDate !== surveyData.startDate && '다음날 '}
+                  {formatTimeLabel(surveyData.endTime ?? '')}
                 </div>
-                <div className="text-primary-600 text-lg font-bold">
-                  {(() => {
-                    const start = new Date(`${surveyData.startDate}T${surveyData.startTime}`);
-                    const end = new Date(`${surveyData.endDate}T${surveyData.endTime}`);
-                    const diffMin = (end.getTime() - start.getTime()) / (1000 * 60);
-                    return formatMinutes(diffMin);
-                  })()}
+                <div className="flex items-center gap-1.5 text-primary-600 text-sm mt-1">
+                  <Timer size={14} />총{' '}
+                  {formatMinutes(
+                    (new Date(`${surveyData.endDate}T${surveyData.endTime}`).getTime() -
+                      new Date(`${surveyData.startDate}T${surveyData.startTime}`).getTime()) /
+                      60_000
+                  )}
                 </div>
               </motion.div>
             )}
@@ -886,11 +1235,11 @@ export const CourseCreationFlow: React.FC = () => {
             )}
           </div>
         </div>
-        <div className="shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-gray-100 bg-white">
+        <div className={STICKY_FOOTER}>
           <button
             onClick={handleNext}
             disabled={!survey3Validation.valid}
-            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shadow-lg shadow-primary-100"
+            className={PRIMARY_CTA}
           >
             다음으로
           </button>
@@ -904,23 +1253,16 @@ export const CourseCreationFlow: React.FC = () => {
   // ════════════════════════════════════════════
   if (step === 'generating') {
     return (
-      <div className="flex flex-col h-full items-center justify-center p-6 text-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-orange-50 via-primary-50 to-white -z-10" />
-        <div className="mb-8">
+      <div className="flex flex-col min-h-dvh items-center justify-center p-6 text-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-accent-50 via-primary-50 to-white -z-10" />
+        <div className="mb-6">
           <LogoLoader />
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">
             김여행님에게 맞는 곳을<br />찾는 중입니다.
           </h2>
-          <p className="text-gray-500 text-sm mb-8">잠시만 기다려주세요...</p>
-          <button
-            onClick={handleRetry}
-            className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 transition-colors mt-4 mx-auto"
-          >
-            <RotateCcw size={14} />
-            다시 하기
-          </button>
+          <p className="text-gray-500 text-sm">잠시만 기다려주세요...</p>
         </div>
       </div>
     );
@@ -946,7 +1288,7 @@ export const CourseCreationFlow: React.FC = () => {
     };
 
     return (
-      <div className="flex flex-col h-full bg-white">
+      <div className="flex flex-col min-h-dvh bg-white">
         <Header onBack={handleBack} title="출발지 설정" showStep />
         <div className="flex-1 overflow-y-auto">
           <div className="p-5 pb-3">
@@ -967,7 +1309,7 @@ export const CourseCreationFlow: React.FC = () => {
 
           {/* 지도 프리뷰 */}
           <div className="px-4 pb-3">
-            <div className="relative rounded-xl overflow-hidden border-2 border-indigo-100">
+            <div className="relative rounded-xl overflow-hidden border-2 border-primary-100">
               <RouteMap
                 startingPoint={startingPoint}
                 stops={[]}
@@ -987,7 +1329,7 @@ export const CourseCreationFlow: React.FC = () => {
               <div className="absolute top-3 left-3 right-3 z-10">
                 <div className="bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-lg border border-gray-100">
                   <div className="flex items-center gap-2 text-sm">
-                    <MapPin size={16} className="text-indigo-500 shrink-0" />
+                    <MapPin size={16} className="text-primary-500 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-gray-900 truncate">
                         {startingPoint.address || '출발지를 선택해주세요'}
@@ -999,7 +1341,7 @@ export const CourseCreationFlow: React.FC = () => {
             </div>
           </div>
 
-          {/* 현재 위치 버튼 + 검색 */}
+          {/* 현재 위치 버튼 + 검색 — 같은 화면의 '다음으로'가 유일한 주 버튼이 되도록 GPS는 톤 다운한 채움을 쓴다 */}
           <div className="px-5 space-y-3">
             <button
               onClick={() => {
@@ -1028,7 +1370,7 @@ export const CourseCreationFlow: React.FC = () => {
                   toast.error('GPS를 사용할 수 없습니다');
                 }
               }}
-              className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-indigo-500 text-white font-bold active:bg-indigo-600 transition-colors"
+              className="w-full flex items-center justify-center gap-2 p-3.5 rounded-xl bg-primary-50 border border-primary-200 text-primary-700 font-bold active:bg-primary-100 transition-colors"
             >
               {geoStatus === 'loading' ? (
                 <>
@@ -1056,7 +1398,7 @@ export const CourseCreationFlow: React.FC = () => {
                   }}
                   onFocus={() => setShowAddressList(true)}
                   placeholder="역, 주소, 장소명으로 검색"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-base focus:border-indigo-400 outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-base focus:border-primary-400 outline-none transition-all"
                 />
               </div>
 
@@ -1073,9 +1415,9 @@ export const CourseCreationFlow: React.FC = () => {
                         <button
                           key={addr.label}
                           onClick={() => selectStartingPoint('custom', addr.label, addr.coord)}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-indigo-50 border-b border-gray-50 last:border-b-0"
+                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-primary-50 border-b border-gray-50 last:border-b-0"
                         >
-                          <MapPin size={14} className="text-indigo-400 shrink-0" />
+                          <MapPin size={14} className="text-primary-400 shrink-0" />
                           <span className="text-sm text-gray-700">{addr.label}</span>
                         </button>
                       ))
@@ -1095,9 +1437,9 @@ export const CourseCreationFlow: React.FC = () => {
                             result.coord
                           )
                         }
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-indigo-50 border-b border-gray-50 last:border-b-0"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-primary-50 border-b border-gray-50 last:border-b-0"
                       >
-                        <MapPin size={14} className="text-indigo-400 shrink-0" />
+                        <MapPin size={14} className="text-primary-400 shrink-0" />
                         <span className="flex-1 min-w-0">
                           <span className="block text-sm text-gray-700 truncate">{result.name}</span>
                           {result.address && (
@@ -1124,7 +1466,7 @@ export const CourseCreationFlow: React.FC = () => {
                       <button
                         key={addr.label}
                         onClick={() => selectStartingPoint('custom', addr.label, addr.coord)}
-                        className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 border border-gray-100 text-left hover:bg-indigo-50 hover:border-indigo-200 transition-colors"
+                        className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 border border-gray-100 text-left hover:bg-primary-50 hover:border-primary-200 transition-colors"
                       >
                         <MapPin size={12} className="text-gray-400 shrink-0" />
                         <span className="text-xs text-gray-700 font-medium truncate">
@@ -1138,11 +1480,11 @@ export const CourseCreationFlow: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="p-4 border-t border-gray-100">
+        <div className={STICKY_FOOTER}>
           <button
             onClick={handleNext}
             disabled={!startingPoint.address}
-            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shadow-lg shadow-primary-100"
+            className={PRIMARY_CTA}
           >
             다음으로
           </button>
@@ -1156,7 +1498,7 @@ export const CourseCreationFlow: React.FC = () => {
   // ════════════════════════════════════════════
   if (step === 'placeSelect') {
     return (
-      <div className="flex flex-col h-full bg-gray-50">
+      <div className="flex flex-col min-h-dvh bg-gray-50">
         <Header onBack={handleBack} title="장소 선택" showStep />
 
         <div className="px-4 pt-3 pb-1">
@@ -1169,11 +1511,43 @@ export const CourseCreationFlow: React.FC = () => {
         </div>
 
         <div className="bg-white p-4 pb-2 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900">추천 결과입니다</h2>
-          <p className="text-sm text-gray-500">가고 싶은 장소를 선택해주세요.</p>
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold text-gray-900">
+                {isRecommendFallback ? '인기 장소를 보여드릴게요' : '추천 결과입니다'}
+              </h2>
+              <p className="text-sm text-gray-500">가고 싶은 장소를 선택해주세요.</p>
+            </div>
+            {/* 설문을 다시 하지 않고 같은 조건으로 추천만 새로 받는다 */}
+            <button
+              type="button"
+              onClick={runRecommendation}
+              className="flex items-center gap-1.5 shrink-0 text-xs font-bold text-gray-500 bg-gray-100 px-3 py-2 rounded-full active:bg-gray-200"
+            >
+              <RotateCcw size={12} />
+              다시 추천받기
+            </button>
+          </div>
+          {isRecommendFallback && (
+            <div className="flex items-start gap-2 mt-3 bg-amber-50 p-3 rounded-xl border border-amber-100">
+              <AlertCircle size={16} className="text-amber-400 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-amber-700">
+                  맞춤 추천을 불러오지 못해 인기 장소를 대신 보여드리고 있어요.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="mt-1 text-xs font-bold text-amber-700 underline underline-offset-2"
+                >
+                  출발지로 돌아가 다시 시도하기
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="flex-1 p-4 overflow-y-auto space-y-3 pb-32">
+        <div className="flex-1 p-4 overflow-y-auto space-y-3">
           {recommendedPlaces.map((place) => {
             const isSelected = selectedPlaceIds.includes(place.id);
             return (
@@ -1223,8 +1597,8 @@ export const CourseCreationFlow: React.FC = () => {
           })}
         </div>
 
-        {/* 예상 소요 시간 바 + 버튼 */}
-        <div className="bg-white border-t border-gray-100 shadow-[0_-4px_12px_-4px_rgba(0,0,0,0.08)]">
+        {/* 예상 소요 시간 바 + 버튼 — 안쪽 패딩이 따로 있어 shell만 쓴다 */}
+        <div className={STICKY_FOOTER_SHELL}>
           {selectedPlaceIds.length > 0 && availableMin > 0 && (
             <div className="px-4 pt-3 pb-1">
               <div
@@ -1251,11 +1625,11 @@ export const CourseCreationFlow: React.FC = () => {
               </div>
             </div>
           )}
-          <div className="p-4 pt-2">
+          <div className="px-4 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <button
               onClick={handleNext}
               disabled={selectedPlaceIds.length === 0}
-              className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all"
+              className={PRIMARY_CTA}
             >
               선택 완료 ({selectedPlaceIds.length})
             </button>
@@ -1277,7 +1651,7 @@ export const CourseCreationFlow: React.FC = () => {
     const isSelected = selectedPlaceIds.includes(place.id);
 
     return (
-      <div className="flex flex-col h-full bg-white">
+      <div className="flex flex-col min-h-dvh bg-white">
         <div className="relative h-64 w-full shrink-0">
           <Image
             src={place.image}
@@ -1345,7 +1719,7 @@ export const CourseCreationFlow: React.FC = () => {
         </div>
 
         {previousStep === 'placeSelect' && (
-          <div className="p-4 border-t border-gray-100 bg-white">
+          <div className={STICKY_FOOTER}>
             <button
               onClick={() => {
                 togglePlaceSelection(place.id);
@@ -1371,28 +1745,43 @@ export const CourseCreationFlow: React.FC = () => {
   if (step === 'finalPlan') {
     const firstStopCoord = finalStops.length > 0 ? getStopCoord(finalStops[0]) : null;
     return (
-      <div className="flex flex-col h-full bg-gray-50 relative">
+      <div className="flex flex-col min-h-dvh bg-gray-50 relative">
         <Header onBack={handleBack} title="나만의 힐링 플랜" showStep />
 
         <div className="bg-white p-4 border-b border-gray-100">
+          {/* 플랜 이름 — 저장 전에 직접 정할 수 있다 */}
+          <label htmlFor="plan-title" className="block text-xs font-bold text-gray-500 mb-1">
+            플랜 이름
+          </label>
+          <input
+            id="plan-title"
+            type="text"
+            value={planTitle}
+            onChange={(e) => setPlanTitle(e.target.value)}
+            placeholder={buildDefaultPlanTitle(surveyData.mindState)}
+            maxLength={30}
+            className="w-full mb-3 p-3 border border-gray-200 rounded-xl bg-gray-50 font-bold text-gray-900 outline-none focus:border-primary-400 focus:bg-white transition-colors"
+          />
+
           <div className="flex items-center justify-between mb-2">
             <h2 className="font-bold text-lg">플랜 일정표</h2>
             <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-1 rounded">
               총 {finalStops.length}개 장소
             </span>
           </div>
-          <div className="flex items-center gap-4 text-xs text-gray-500">
-            <div className="flex items-center gap-1">
-              <Calendar size={14} />
+          {/* 날짜·이동수단·출발지는 한 줄에 밀어넣으면 주소에서 줄바꿈이 터진다. 항목마다 한 행씩 준다. */}
+          <div className="flex flex-col gap-1.5 text-xs text-gray-500">
+            <div className="flex items-center gap-1.5">
+              <Calendar size={14} className="shrink-0" />
               <span>{surveyData.startDate}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Truck size={14} />
+            <div className="flex items-center gap-1.5">
+              <Truck size={14} className="shrink-0" />
               <span>{surveyData.transport} 이동</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Navigation size={14} />
-              <span>{startingPoint.address}</span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Navigation size={14} className="shrink-0" />
+              <span className="truncate">{startingPoint.address}</span>
             </div>
           </div>
           {serverPreview && (
@@ -1407,6 +1796,38 @@ export const CourseCreationFlow: React.FC = () => {
               경로 예상 정보를 불러오지 못했어요. 저장에는 영향이 없어요.
             </div>
           )}
+
+          {/* 공개 여부 — 이전에는 비공개로 고정돼 있었다.
+              이름을 정하고 일정을 확인한 뒤 마지막에 결정하는 값이라 입력 영역 맨 아래에 둔다. */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isPlanVisible}
+            onClick={() => setIsPlanVisible((prev) => !prev)}
+            className="w-full flex items-center justify-between gap-3 mt-4 p-3 rounded-xl border border-gray-200 text-left"
+          >
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-gray-900">
+                {isPlanVisible ? '공개 플랜' : '비공개 플랜'}
+              </span>
+              <span className="block text-xs text-gray-400 mt-0.5">
+                {isPlanVisible
+                  ? '다른 사람도 이 플랜을 볼 수 있어요.'
+                  : '나만 볼 수 있어요. 나중에 바꿀 수 있어요.'}
+              </span>
+            </span>
+            <span
+              className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition-colors ${
+                isPlanVisible ? 'bg-primary-500' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                  isPlanVisible ? 'translate-x-5' : ''
+                }`}
+              />
+            </span>
+          </button>
         </div>
 
         <div className="px-4 pt-3 pb-1">
@@ -1430,18 +1851,18 @@ export const CourseCreationFlow: React.FC = () => {
             {/* 출발지 */}
             <div className="flex gap-3">
               <div className="flex flex-col items-center pt-1">
-                <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center">
+                <div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center">
                   <Navigation size={12} className="text-white" />
                 </div>
-                <div className="w-0.5 flex-1 bg-indigo-200 my-1" />
+                <div className="w-0.5 flex-1 bg-primary-200 my-1" />
               </div>
               <div className="pb-2 flex-1">
-                <div className="text-sm font-bold text-indigo-600">출발지</div>
+                <div className="text-sm font-bold text-primary-600">출발지</div>
                 <div className="text-xs text-gray-500">
                   {startingPoint.address} · {surveyData.startTime} 출발
                 </div>
                 {firstStopCoord && (
-                  <div className="mt-1 flex items-center gap-1 text-[11px] text-indigo-400">
+                  <div className="mt-1 flex items-center gap-1 text-[11px] text-primary-400">
                     <Truck size={10} />
                     <span>
                       {getTravelMinutes(startingPoint.coord, firstStopCoord)}분 소요 예상
@@ -1524,10 +1945,10 @@ export const CourseCreationFlow: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-4 bg-white border-t border-gray-100 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-30">
+        <div className={STICKY_FOOTER}>
           <button
             onClick={handleNext}
-            className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-primary-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className={`${PRIMARY_CTA} flex items-center justify-center gap-2`}
           >
             <Check size={20} />
             힐링 플랜 생성 완료
