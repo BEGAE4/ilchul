@@ -328,7 +328,7 @@
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 390px;
+  max-width: var(--container-app);
   display: flex;
   gap: 8px;
   padding: 12px 16px;

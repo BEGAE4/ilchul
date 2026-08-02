@@ -178,7 +178,7 @@ export const InquiryDetailSection = ({
       </div>
 
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-[300px]">
             <h2 className="font-bold text-lg text-gray-900 mb-2">문의를 삭제하시겠어요?</h2>
             <p className="text-sm text-gray-500 mb-5">삭제한 문의는 복구할 수 없어요.</p>

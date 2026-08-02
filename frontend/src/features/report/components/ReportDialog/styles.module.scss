@@ -12,7 +12,13 @@ $report-color-cancel-text: #4b5563;      // gray-600
 
 .overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: var(--container-app);
+  translate: -50% 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 199;
 }
@@ -20,15 +26,16 @@ $report-color-cancel-text: #4b5563;      // gray-600
 .sheet {
   position: fixed;
   bottom: var(--keyboard-offset, 0px);
-  left: 0;
-  right: 0;
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: var(--container-app);
+  translate: -50% 0;
   background: white;
   border-radius: 20px 20px 0 0;
   z-index: 200;
   max-height: 85vh;
   overflow-y: auto;
-  max-width: 480px;
-  margin: 0 auto;
   // 키보드 회피는 bottom 변수로 처리 — transform을 쓰면 fixed 자식에 영향을 주므로 bottom 사용
 }
 

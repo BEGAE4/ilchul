@@ -78,6 +78,10 @@
   --spacing-safe-bottom: env(safe-area-inset-bottom);
   --spacing-safe-left: env(safe-area-inset-left);
   --spacing-safe-right: env(safe-area-inset-right);
+
+  /* 앱 프레임 폭 (단일 소스) — 모든 화면·오버레이가 이 폭으로 정렬된다.
+     Tailwind: max-w-app / w-app, SCSS: var(--container-app) */
+  --container-app: 390px;
 }
 
 /* Pretendard Variable 폰트 정의  */
@@ -184,6 +188,22 @@ body {
   line-height: 1.6;
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;
+}
+
+/* ========================================
+   앱 프레임 (--container-app)
+   - 일반 화면 컨테이너는 AppShell(src/shared/ui/AppShell)이 담당한다
+   - position: fixed 요소는 뷰포트 기준이라 프레임을 벗어나므로,
+     아래 유틸리티로 동일한 폭·중앙 정렬을 맞춘다
+   - transform 대신 translate 속성을 쓰는 이유: motion의 transform 애니메이션과
+     충돌하지 않고 합성되기 때문
+   ======================================== */
+@utility app-frame {
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: var(--container-app);
+  translate: -50% 0;
 }
 
 /* 모바일 최적화 컨테이너 */

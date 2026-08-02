@@ -7,7 +7,7 @@
 }
 
 .container {
-  width: min(390px, 100%);
+  width: min(var(--container-app), 100%);
   margin: 0 auto;
   padding: 0;
   display: flex;
