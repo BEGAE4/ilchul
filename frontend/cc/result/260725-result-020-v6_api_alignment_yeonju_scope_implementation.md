@@ -49,7 +49,7 @@
   - `MyCourseDetailPage`의 순서 편집 미리보기·저장 요청에 `departurePoint: plan.departurePoint ?? undefined` 포함.
   - forward-compatible: 백엔드 필드 배포 전엔 undefined(현행 동일), 배포 후 자동 동작. tsc 0 에러.
   - 남은 것: 백엔드가 상세 응답에 departurePoint를 실제 배포하면 end-to-end 동작(배포 후 수동 확인).
-- **미결(스탬프 location)**: "위치 없으면 프론트 block" 방향으로 논의 중 — 실내·timeout 사용자도 막히는 UX 확정 후 반영 예정.
+- **스탬프 location 반영 완료**: "위치 없으면 경고만 띄우고 통과" 방향으로 확정. `MyCourseDetailPage` handleStampFileSelected에서 `getCurrentLocation()`이 null(권한 거부/미지원/timeout)이면 `toast.info('현재 위치를 확인할 수 없어 위치 정보 없이 인증했어요.')` 안내 후 인증은 그대로 진행(위치 없이 전송). tsc 0 에러.
 
 ## 미착수 / 유보
 
