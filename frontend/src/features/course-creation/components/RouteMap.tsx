@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Map, CustomOverlayMap, Polyline, useMap } from 'react-kakao-maps-sdk';
 import { MapPin, Navigation } from 'lucide-react';
 import type { Place } from '@/shared/types';
@@ -132,30 +132,6 @@ export function RouteMap({
           />
         )}
       </Map>
-
-      {/* 하단 경로 요약 레이블 */}
-      {stops.length > 0 && (
-        <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm px-3 py-2 z-10 pointer-events-none">
-          <div className="flex items-center gap-2 text-xs text-gray-600">
-            <div className="flex items-center gap-1">
-              <div className="w-2.5 h-2.5 rounded-full bg-primary-500" />
-              <span>출발</span>
-            </div>
-            {stops.slice(0, 4).map((stop, i) => (
-              <React.Fragment key={stop.id}>
-                <span className="text-gray-300">→</span>
-                <div className="flex items-center gap-1">
-                  <div className="w-2.5 h-2.5 rounded-full bg-orange-500 flex items-center justify-center">
-                    <span className="text-[7px] text-white font-bold">{i + 1}</span>
-                  </div>
-                  <span className="truncate max-w-[60px]">{stop.name}</span>
-                </div>
-              </React.Fragment>
-            ))}
-            {stops.length > 4 && <span className="text-gray-400">+{stops.length - 4}</span>}
-          </div>
-        </div>
-      )}
 
       {/* 출발지 미선택 힌트 (출발지 설정 화면) */}
       {stops.length === 0 && !startingPoint.address && (
