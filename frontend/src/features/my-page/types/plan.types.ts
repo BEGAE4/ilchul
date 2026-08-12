@@ -1,13 +1,13 @@
-// 내 플랜 목록 타입 정의
+// 내 플랜 목록 타입 정의 — PlanSummary (v5 명세 api-docs.json)
 export interface MyPlan {
   planId: number;
   planTitle: string;
-  createAt: string | null; // ISO date string (아직 미구현으로 null 허용)
-  tripDate: string; // ISO date string
-  placeCount: number;
+  createAt: string | null; // ISO date string
+  tripStartDate: string | null; // ISO date string (여행 시작)
+  tripEndDate: string | null; // ISO date string (여행 종료)
+  isPlanVisible: boolean; // 공개 여부
+  requiredTime: number; // 소요 시간 (분)
   planImages: string[];
-  // 백엔드가 수정 예정인 필드
-  isPublic?: boolean;
 }
 
 export interface MyPlansResponse {
