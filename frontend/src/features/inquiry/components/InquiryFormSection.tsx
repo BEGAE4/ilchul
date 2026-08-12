@@ -11,7 +11,7 @@ import type {
   InquiryImage,
   InquiryType,
 } from '../types/inquiry.types';
-import { INQUIRY_TYPE_CATEGORY_ID, INQUIRY_TYPE_LABELS } from '../types/inquiry.types';
+import { INQUIRY_TYPE_LABELS } from '../types/inquiry.types';
 
 interface InquiryFormSectionProps {
   mode: 'create' | 'edit';
@@ -110,13 +110,11 @@ export const InquiryFormSection = ({
     if (!isValid || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const categoryId = INQUIRY_TYPE_CATEGORY_ID[inquiryType];
       let result: InquiryDetail;
       if (mode === 'create') {
         result = await createInquiry({
           title: title.trim(),
           content: content.trim(),
-          categoryId,
           inquiryType,
           images: newImages.map((i) => i.file),
         });
@@ -125,9 +123,8 @@ export const InquiryFormSection = ({
         result = await updateInquiry(existingInquiry!.inquiryId, {
           title: title.trim(),
           content: content.trim(),
-          categoryId,
           inquiryType,
-          images: newImages.map((i) => i.file),
+          newImages: newImages.map((i) => i.file),
           deleteImageIds: deleteImageIds.length > 0 ? deleteImageIds : undefined,
         });
         toast.success('문의가 수정되었어요.');

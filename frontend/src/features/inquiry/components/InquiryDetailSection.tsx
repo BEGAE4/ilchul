@@ -4,9 +4,13 @@ import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchInquiryDetail, deleteInquiry } from '../api/inquiry.api';
+import { fetchInquiryDetail, deleteInquiry, closeInquiry } from '../api/inquiry.api';
 import type { InquiryDetail } from '../types/inquiry.types';
-import { INQUIRY_STATUS_LABELS } from '../types/inquiry.types';
+import {
+  INQUIRY_STATUS_LABELS,
+  INQUIRY_STATUS_BADGE_CLASS,
+  INQUIRY_TYPE_LABELS,
+} from '../types/inquiry.types';
 
 interface InquiryDetailSectionProps {
   inquiryId: number;
@@ -32,6 +36,7 @@ export const InquiryDetailSection = ({
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     fetchInquiryDetail(inquiryId)
@@ -54,8 +59,24 @@ export const InquiryDetailSection = ({
     }
   };
 
-  const isPending = inquiry?.status === 'PENDING';
-  const canEdit = !isAdmin && isPending;
+  const handleClose = async () => {
+    if (!inquiry) return;
+    setIsClosing(true);
+    try {
+      await closeInquiry(inquiry.inquiryId);
+      toast.success('문의를 종료했어요.');
+      onDeleted();
+    } catch {
+      toast.error('문의 종료에 실패했어요. 다시 시도해 주세요.');
+    } finally {
+      setIsClosing(false);
+    }
+  };
+
+  const hasAnswer = inquiry?.hasAnswer ?? false;
+  const isClosed = inquiry?.inquiryStatus === 'CLOSED';
+  const canEdit = !isAdmin && !hasAnswer && !isClosed;
+  const canClose = !isAdmin && !isClosed;
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -104,14 +125,12 @@ export const InquiryDetailSection = ({
           <div className="p-5">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xs font-medium bg-sky-50 text-sky-600 rounded-full px-2 py-0.5">
-                {inquiry.categoryName}
+                {INQUIRY_TYPE_LABELS[inquiry.inquiryType]}
               </span>
               <span
-                className={`text-xs font-medium rounded-full px-2 py-0.5 ${
-                  isPending ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-600'
-                }`}
+                className={`text-xs font-medium rounded-full px-2 py-0.5 ${INQUIRY_STATUS_BADGE_CLASS[inquiry.inquiryStatus]}`}
               >
-                {INQUIRY_STATUS_LABELS[inquiry.status]}
+                {INQUIRY_STATUS_LABELS[inquiry.inquiryStatus]}
               </span>
             </div>
 
@@ -167,11 +186,21 @@ export const InquiryDetailSection = ({
               </div>
             )}
 
-            {!inquiry.answer && isPending && (
+            {!inquiry.answer && !isClosed && (
               <div className="bg-orange-50 rounded-xl p-4 text-center">
                 <p className="text-sm text-orange-500 font-medium">답변 대기 중이에요</p>
                 <p className="text-xs text-orange-400 mt-1">영업일 기준 1~3일 내로 답변드릴게요.</p>
               </div>
+            )}
+
+            {canClose && (
+              <button
+                onClick={handleClose}
+                disabled={isClosing}
+                className="mt-4 w-full py-3 border border-gray-200 text-gray-500 text-sm font-semibold rounded-xl active:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                {isClosing ? '처리 중...' : '문의 종료하기'}
+              </button>
             )}
           </div>
         )}

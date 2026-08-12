@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { fetchAllInquiries } from '../api/inquiry.api';
-import type { InquiryListItem, InquiryStatus } from '../types/inquiry.types';
+import type { InquiryListItem } from '../types/inquiry.types';
 import { InquiryCard } from './InquiryCard';
 
 interface AdminInquiryListSectionProps {
@@ -10,9 +10,11 @@ interface AdminInquiryListSectionProps {
   onAnswerInquiry: (id: number) => void;
 }
 
-const TABS: { id: InquiryStatus; label: string }[] = [
-  { id: 'PENDING', label: '답변 대기' },
-  { id: 'ANSWERED', label: '답변 완료' },
+// 답변 유무 탭 — 서버 필터가 없어 hasAnswer 기준으로 클라이언트에서 구분한다.
+type AnswerTab = 'pending' | 'answered';
+const TABS: { id: AnswerTab; label: string }[] = [
+  { id: 'pending', label: '답변 대기' },
+  { id: 'answered', label: '답변 완료' },
 ];
 
 export const AdminInquiryListSection = ({
@@ -20,13 +22,13 @@ export const AdminInquiryListSection = ({
   onAnswerInquiry,
 }: AdminInquiryListSectionProps) => {
   const [inquiries, setInquiries] = useState<InquiryListItem[]>([]);
-  const [activeTab, setActiveTab] = useState<InquiryStatus>('PENDING');
+  const [activeTab, setActiveTab] = useState<AnswerTab>('pending');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
     setIsLoading(true);
-    fetchAllInquiries({ status: activeTab })
+    fetchAllInquiries()
       .then((res) => {
         if (alive) setInquiries(res.items);
       })
@@ -36,7 +38,11 @@ export const AdminInquiryListSection = ({
     return () => {
       alive = false;
     };
-  }, [activeTab]);
+  }, []);
+
+  const visibleInquiries = inquiries.filter((i) =>
+    activeTab === 'answered' ? i.hasAnswer : !i.hasAnswer
+  );
 
   return (
     <div className="flex flex-col flex-1">
@@ -71,23 +77,23 @@ export const AdminInquiryListSection = ({
               </div>
             ))}
           </div>
-        ) : inquiries.length === 0 ? (
+        ) : visibleInquiries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
             <span className="text-4xl mb-3">📭</span>
             <p className="text-sm">
-              {activeTab === 'PENDING' ? '답변 대기 중인 문의가 없어요' : '답변 완료된 문의가 없어요'}
+              {activeTab === 'pending' ? '답변 대기 중인 문의가 없어요' : '답변 완료된 문의가 없어요'}
             </p>
           </div>
         ) : (
           <div>
-            {inquiries.map((inquiry) => (
+            {visibleInquiries.map((inquiry) => (
               <InquiryCard
                 key={inquiry.inquiryId}
                 inquiry={inquiry}
                 showUser
                 onClick={() => onSelectInquiry(inquiry.inquiryId)}
                 onAnswer={
-                  inquiry.status === 'PENDING'
+                  !inquiry.hasAnswer
                     ? () => onAnswerInquiry(inquiry.inquiryId)
                     : undefined
                 }

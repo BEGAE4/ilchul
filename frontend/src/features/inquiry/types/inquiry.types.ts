@@ -1,4 +1,6 @@
-export type InquiryStatus = 'PENDING' | 'ANSWERED';
+// cs-inquiry(고객 문의) 도메인 타입 — v5 명세(api-docs.json) 기준
+// enum inquiryType: GENERAL|BUG|SUGGESTION|OTHER, inquiryStatus: OPEN|IN_PROGRESS|RESOLVED|CLOSED
+export type InquiryStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 
 export type InquiryType = 'GENERAL' | 'BUG' | 'SUGGESTION' | 'OTHER';
 
@@ -17,17 +19,19 @@ export const INQUIRY_TYPE_LABELS: Record<InquiryType, string> = {
   OTHER: '기타',
 };
 
-// inquiryType → categoryId 고정 매핑 (카테고리 조회 API가 숫자 ID를 내려주지 않아 프론트에서 매핑)
-export const INQUIRY_TYPE_CATEGORY_ID: Record<InquiryType, number> = {
-  GENERAL: 1,
-  BUG: 2,
-  SUGGESTION: 3,
-  OTHER: 4,
+export const INQUIRY_STATUS_LABELS: Record<InquiryStatus, string> = {
+  OPEN: '접수',
+  IN_PROGRESS: '처리 중',
+  RESOLVED: '답변 완료',
+  CLOSED: '종료',
 };
 
-export const INQUIRY_STATUS_LABELS: Record<InquiryStatus, string> = {
-  PENDING: '답변 대기',
-  ANSWERED: '답변 완료',
+// 상태 배지 색상 (Tailwind class)
+export const INQUIRY_STATUS_BADGE_CLASS: Record<InquiryStatus, string> = {
+  OPEN: 'bg-orange-50 text-orange-500',
+  IN_PROGRESS: 'bg-blue-50 text-blue-500',
+  RESOLVED: 'bg-green-50 text-green-600',
+  CLOSED: 'bg-gray-100 text-gray-500',
 };
 
 export interface InquiryImage {
@@ -35,12 +39,12 @@ export interface InquiryImage {
   url: string;
 }
 
-/** 목록(내 문의 / 전체 문의)용 경량 아이템 */
+/** 목록(내 문의 / 관리자 전체)용 경량 아이템 — UserCsInquiryItemDto / AdminCsInquiryItemDto */
 export interface InquiryListItem {
   inquiryId: number;
   title: string;
-  categoryName: string;
-  status: InquiryStatus;
+  inquiryType: InquiryType;
+  inquiryStatus: InquiryStatus;
   hasAnswer: boolean;
   authorNickname?: string; // 관리자 전체 목록에서만 내려옴
   createdAt: string;
@@ -59,10 +63,9 @@ export interface InquiryDetail {
   inquiryId: number;
   title: string;
   content: string;
-  categoryId: number;
-  categoryName: string;
   inquiryType: InquiryType;
-  status: InquiryStatus;
+  inquiryStatus: InquiryStatus;
+  hasAnswer: boolean;
   images: InquiryImage[];
   authorNickname?: string;
   createdAt: string;
@@ -70,23 +73,24 @@ export interface InquiryDetail {
   answer: InquiryAnswer | null;
 }
 
+/** 문의 작성 — CreateCsInquiryRequestDto: title, content, inquiryType, images */
 export interface CreateInquiryInput {
   title: string;
   content: string;
-  categoryId: number;
   inquiryType: InquiryType;
   images: File[];
 }
 
+/** 문의 수정 — UpdateCsInquiryRequestDto: title, content, inquiryType, newImages, deleteImageIds */
 export interface UpdateInquiryInput {
   title?: string;
   content?: string;
-  categoryId?: number;
   inquiryType?: InquiryType;
-  images?: File[];
+  newImages?: File[];
   deleteImageIds?: number[];
 }
 
+/** 답변 작성 — ReplyCsInquiryRequestDto */
 export interface CreateAnswerRequest {
   content: string;
 }
@@ -95,7 +99,7 @@ export interface InquiryListResponse {
   items: InquiryListItem[];
   nextCursorId: number | null;
   hasNext: boolean;
-  totalCount?: number;
+  totalCount?: number; // 관리자 목록에만 포함
 }
 
 export interface InquiryCategory {
@@ -107,9 +111,10 @@ export interface InquiryCategoriesResponse {
   categories: InquiryCategory[];
 }
 
+/** 관리자 목록 조회 쿼리 — GET /api/cs-inquiry */
 export interface FetchAllInquiriesParams {
   category?: string;
   search?: string;
-  status?: InquiryStatus;
+  size?: number;
   lastInquiryId?: number;
 }

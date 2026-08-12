@@ -3,7 +3,11 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import type { InquiryListItem } from '../types/inquiry.types';
-import { INQUIRY_STATUS_LABELS } from '../types/inquiry.types';
+import {
+  INQUIRY_STATUS_LABELS,
+  INQUIRY_STATUS_BADGE_CLASS,
+  INQUIRY_TYPE_LABELS,
+} from '../types/inquiry.types';
 
 interface InquiryCardProps {
   inquiry: InquiryListItem;
@@ -18,7 +22,7 @@ const formatDate = (iso: string) => {
 };
 
 export const InquiryCard = ({ inquiry, showUser = false, onClick, onAnswer }: InquiryCardProps) => {
-  const isPending = inquiry.status === 'PENDING';
+  const needsAnswer = !inquiry.hasAnswer;
 
   return (
     <div className="bg-white border-b border-gray-100 px-5 py-4 active:bg-gray-50 transition-colors">
@@ -27,14 +31,12 @@ export const InquiryCard = ({ inquiry, showUser = false, onClick, onAnswer }: In
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
               <span className="text-xs font-medium bg-sky-50 text-sky-600 rounded-full px-2 py-0.5">
-                {inquiry.categoryName}
+                {INQUIRY_TYPE_LABELS[inquiry.inquiryType]}
               </span>
               <span
-                className={`text-xs font-medium rounded-full px-2 py-0.5 ${
-                  isPending ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-600'
-                }`}
+                className={`text-xs font-medium rounded-full px-2 py-0.5 ${INQUIRY_STATUS_BADGE_CLASS[inquiry.inquiryStatus]}`}
               >
-                {INQUIRY_STATUS_LABELS[inquiry.status]}
+                {INQUIRY_STATUS_LABELS[inquiry.inquiryStatus]}
               </span>
             </div>
             <p className="text-sm font-semibold text-gray-900 truncate">{inquiry.title}</p>
@@ -47,7 +49,7 @@ export const InquiryCard = ({ inquiry, showUser = false, onClick, onAnswer }: In
         </div>
       </button>
 
-      {showUser && isPending && onAnswer && (
+      {showUser && needsAnswer && onAnswer && (
         <button
           onClick={(e) => {
             e.stopPropagation();

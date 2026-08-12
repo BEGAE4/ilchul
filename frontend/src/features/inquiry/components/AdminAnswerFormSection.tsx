@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchInquiryDetail, createAnswer } from '../api/inquiry.api';
 import type { InquiryDetail } from '../types/inquiry.types';
+import { INQUIRY_TYPE_LABELS } from '../types/inquiry.types';
 
 interface AdminAnswerFormSectionProps {
   inquiryId: number;
@@ -65,7 +66,7 @@ export const AdminAnswerFormSection = ({
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-medium bg-sky-50 text-sky-600 rounded-full px-2 py-0.5">
-                {inquiry.categoryName}
+                {INQUIRY_TYPE_LABELS[inquiry.inquiryType]}
               </span>
               {inquiry.authorNickname && (
                 <span className="text-xs text-gray-400">{inquiry.authorNickname}</span>

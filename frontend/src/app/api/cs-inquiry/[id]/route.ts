@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type {
-  InquiryAnswer,
   InquiryDetail,
   InquiryType,
 } from '@/features/inquiry/types/inquiry.types';
@@ -43,9 +42,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       ...base,
       title: (formData?.get('title') as string) ?? base.title,
       content: (formData?.get('content') as string) ?? base.content,
-      categoryId: formData?.get('categoryId')
-        ? Number(formData.get('categoryId'))
-        : base.categoryId,
       inquiryType: (formData?.get('inquiryType') as InquiryType) ?? base.inquiryType,
       updatedAt: new Date().toISOString(),
     };
@@ -67,9 +63,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       ...base,
       title: (formData?.get('title') as string) ?? base.title,
       content: (formData?.get('content') as string) ?? base.content,
-      categoryId: formData?.get('categoryId')
-        ? Number(formData.get('categoryId'))
-        : base.categoryId,
       inquiryType: (formData?.get('inquiryType') as InquiryType) ?? base.inquiryType,
       updatedAt: new Date().toISOString(),
     });
@@ -101,48 +94,4 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   }
 
   return NextResponse.json({ success: true });
-}
-
-/** POST 문의 답변 작성 (관리자) — { content } */
-export async function POST(request: NextRequest, { params }: Params) {
-  const { id } = await params;
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  const body = await request.json().catch(() => ({}));
-
-  if (!baseUrl) {
-    const answer: InquiryAnswer = {
-      answerId: Date.now(),
-      inquiryId: Number(id),
-      content: body.content ?? '',
-      answeredBy: '관리자',
-      answeredAt: new Date().toISOString(),
-    };
-    return NextResponse.json(answer, { status: 201 });
-  }
-
-  const cookie = request.headers.get('cookie') ?? '';
-  const res = await fetch(`${baseUrl}/api/cs-inquiry/${id}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(cookie ? { cookie } : {}),
-    },
-    body: JSON.stringify(body),
-    cache: 'no-store',
-  }).catch(() => null);
-
-  if (!res || !res.ok) {
-    // 백엔드 미동작 시 mock 으로 폴백
-    const answer: InquiryAnswer = {
-      answerId: Date.now(),
-      inquiryId: Number(id),
-      content: body.content ?? '',
-      answeredBy: '관리자',
-      answeredAt: new Date().toISOString(),
-    };
-    return NextResponse.json(answer, { status: 201 });
-  }
-
-  const data = await res.json().catch(() => ({}));
-  return NextResponse.json(data, { status: res.status });
 }

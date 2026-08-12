@@ -4,7 +4,6 @@ import type {
   InquiryListResponse,
   InquiryCategoriesResponse,
   InquiryCategory,
-  InquiryStatus,
   CreateInquiryInput,
   UpdateInquiryInput,
   CreateAnswerRequest,
@@ -15,19 +14,18 @@ import type {
 const BASE = '/api/cs-inquiry';
 const DEFAULT_PAGE_SIZE = 10;
 
-/** 내 문의 목록 조회 (답변 대기/완료 구분) — GET /api/cs-inquiry?size=&lastInquiryId= */
+/** 내 문의 목록 조회 (커서 페이징) — GET /api/cs-inquiry/my?size=&lastInquiryId= */
 export const fetchMyInquiries = async (
-  status?: InquiryStatus,
   lastInquiryId?: number,
   size: number = DEFAULT_PAGE_SIZE
 ): Promise<InquiryListResponse> => {
-  const res = await axios.get<InquiryListResponse>(BASE, {
-    params: { status, size, lastInquiryId },
+  const res = await axios.get<InquiryListResponse>(`${BASE}/my`, {
+    params: { size, lastInquiryId },
   });
   return res.data;
 };
 
-/** 전체 문의 목록 조회 (관리자) */
+/** 전체 문의 목록 조회 (관리자) — GET /api/cs-inquiry?category=&search=&size=&lastInquiryId= */
 export const fetchAllInquiries = async (
   params: FetchAllInquiriesParams = {}
 ): Promise<InquiryListResponse> => {
@@ -41,14 +39,13 @@ export const fetchInquiryDetail = async (id: number): Promise<InquiryDetail> => 
   return res.data;
 };
 
-/** 문의 작성 (multipart/form-data) */
+/** 문의 작성 (multipart/form-data) — title, content, inquiryType, images */
 export const createInquiry = async (
   input: CreateInquiryInput
 ): Promise<InquiryDetail> => {
   const fd = new FormData();
   fd.append('title', input.title);
   fd.append('content', input.content);
-  fd.append('categoryId', String(input.categoryId));
   fd.append('inquiryType', input.inquiryType);
   input.images.forEach((file) => fd.append('images', file));
 
@@ -56,7 +53,7 @@ export const createInquiry = async (
   return res.data;
 };
 
-/** 문의 수정 (multipart/form-data) */
+/** 문의 수정 (multipart/form-data) — title, content, inquiryType, newImages, deleteImageIds */
 export const updateInquiry = async (
   id: number,
   input: UpdateInquiryInput
@@ -64,9 +61,8 @@ export const updateInquiry = async (
   const fd = new FormData();
   if (input.title !== undefined) fd.append('title', input.title);
   if (input.content !== undefined) fd.append('content', input.content);
-  if (input.categoryId !== undefined) fd.append('categoryId', String(input.categoryId));
   if (input.inquiryType !== undefined) fd.append('inquiryType', input.inquiryType);
-  input.images?.forEach((file) => fd.append('images', file));
+  input.newImages?.forEach((file) => fd.append('newImages', file));
   input.deleteImageIds?.forEach((imageId) => fd.append('deleteImageIds', String(imageId)));
 
   const res = await axios.patch<InquiryDetail>(`${BASE}/${id}`, fd);
@@ -78,12 +74,17 @@ export const deleteInquiry = async (id: number): Promise<void> => {
   await axios.delete(`${BASE}/${id}`);
 };
 
-/** 문의 답변 작성 (관리자) */
+/** 문의 종료(완료) — 작성자, PATCH /api/cs-inquiry/{id}/close */
+export const closeInquiry = async (id: number): Promise<void> => {
+  await axios.patch(`${BASE}/${id}/close`);
+};
+
+/** 문의 답변 작성 (관리자) — POST /api/cs-inquiry/{id}/reply */
 export const createAnswer = async (
   inquiryId: number,
   body: CreateAnswerRequest
 ): Promise<InquiryAnswer> => {
-  const res = await axios.post<InquiryAnswer>(`${BASE}/${inquiryId}`, body);
+  const res = await axios.post<InquiryAnswer>(`${BASE}/${inquiryId}/reply`, body);
   return res.data;
 };
 

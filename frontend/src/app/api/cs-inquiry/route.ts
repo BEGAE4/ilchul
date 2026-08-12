@@ -1,22 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import type { InquiryStatus } from '@/features/inquiry/types/inquiry.types';
 import { mockCreated, mockListResponse } from './_mock';
 
 /**
- * GET 문의 목록 조회
- * - 내 문의:   ?size=&lastInquiryId=&status=  (size 파라미터로 식별)
- * - 전체(관리자): ?category=&search=&status=&lastInquiryId=
- * 실서버에서는 인증 역할로 범위가 결정되며, mock 에서는 size 유무로 구분한다.
+ * GET 문의 목록 조회 (관리자) — GET /api/cs-inquiry?category=&search=&size=&lastInquiryId=
+ * 내 문의 목록은 별도 라우트 `/api/cs-inquiry/my` 에서 처리한다.
  */
 export async function GET(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const { search } = new URL(request.url);
-  const params = request.nextUrl.searchParams;
-  const status = params.get('status') as InquiryStatus | null;
-  const mine = params.has('size');
 
   if (!baseUrl) {
-    return NextResponse.json(mockListResponse({ mine, status }));
+    return NextResponse.json(mockListResponse({ mine: false }));
   }
 
   const cookie = request.headers.get('cookie') ?? '';
@@ -26,10 +20,10 @@ export async function GET(request: NextRequest) {
   }).catch(() => null);
 
   if (!res || !res.ok) {
-    return NextResponse.json(mockListResponse({ mine, status }));
+    return NextResponse.json(mockListResponse({ mine: false }));
   }
 
-  const data = await res.json().catch(() => mockListResponse({ mine, status }));
+  const data = await res.json().catch(() => mockListResponse({ mine: false }));
   return NextResponse.json(data);
 }
 
