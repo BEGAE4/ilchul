@@ -3,6 +3,7 @@ import type {
   PlaceDetail,
   SearchPlaceItem,
   SurveyResult,
+  RecommendPlaceGroup,
   PlaceLikeResponse,
   PlaceScrapResponse,
   PlaceReviewListResponse,
@@ -27,9 +28,11 @@ export async function searchPlaces(keyword: string): Promise<SearchPlaceItem[]> 
 
 // 인기 장소(내 주변/전국)는 main feature(main.api.ts + BFF popular 라우트)에서 담당한다.
 
-// 장소 추천 (설문 기반) — 응답 스키마 서버 미확정
-export async function recommendPlaces(body: SurveyResult): Promise<unknown> {
-  const { data } = await apiClient.post('/api/place/recommend', body);
+// 장소 추천 (설문 기반) — 키워드별로 묶인 그룹 배열을 반환한다.
+// 명세에 응답 타입이 비어 있어 서버가 평면 배열로 바꿔 보낼 가능성이 남아 있다.
+// 호출부(mapRecommendedPlaces)가 두 모양을 모두 받도록 돼 있으므로 여기서는 검증하지 않는다.
+export async function recommendPlaces(body: SurveyResult): Promise<RecommendPlaceGroup[]> {
+  const { data } = await apiClient.post<RecommendPlaceGroup[]>('/api/place/recommend', body);
   return data;
 }
 
