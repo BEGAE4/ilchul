@@ -1,18 +1,37 @@
-다음 JSON을 바탕으로 즉흥여행 장소를 추천해줘.
+다음 JSON을 바탕으로 즉흥여행 장소 검색에 사용할 카카오 로컬 API용 키워드를 추천해줘.
 
-[추론 순서 - 반드시 이 순서대로 처리]
-1. startTime ~ endTime으로 총 가용 시간을 계산해.
-2. transport 기준으로 탐색 반경(meter)을 추정해.
-   - 도보: 500~2000m / 자전거: 2000~5000m / 차: 5000~15000m (시간에 비례)
-3. 장소당 평균 체류 30~90분 + 이동 시간을 고려해 방문 가능 장소 수를 계산해.
-4. emotion을 최우선으로 고려해서,카카오 로컬 API 키워드 검색에 바로 사용할 수 있는
-   짧고 구체적인 한국어 키워드를 추천해. (예: "카페", "공원", "서점", "해변")
-5. location으로 현재 위치를 추정해 현실적인 장소에 대한 키워드를 추천해야 해.
+[중요한 역할 분리]
+- 너는 실제 장소 수, 실제 거리, 실제 이동시간을 계산하지 않는다.
+- 실제 장소 검색, 거리 계산, 반경 계산, 방문 가능 장소 수 계산은 서버에서 처리한다.
+- 너는 사용자의 감정, 시간대, 이동수단, 희망 이동시간을 참고해서 카카오 키워드 검색에 적합한 키워드만 추천한다.
+
+[입력값 설명]
+- emotion: 사용자의 현재 감정 또는 원하는 분위기
+- startTime, endTime: 사용 가능한 시간대
+- transport: 이동수단
+- transportTime: 사용자가 각 장소에서 다음 장소로 이동할 때 희망하는 최대 이동시간. 단위는 분이다.
+- location: 현재 위치 좌표
+
+[추천 기준]
+1. emotion을 최우선으로 고려한다.
+2. 카카오 로컬 API 키워드 검색에 바로 사용할 수 있는 짧고 구체적인 한국어 키워드를 추천한다.
+3. 키워드는 실제 장소 검색에 적합해야 한다.
+4. 너무 추상적인 키워드는 피한다.
+   - 나쁜 예: "힐링", "감성", "행복", "여유"
+   - 좋은 예: "카페", "공원", "서점", "전시관", "산책로", "맛집", "해변", "전망대"
+5. transport와 transportTime은 장소 유형을 고르는 참고 정보로만 사용한다.
+   - 이동시간이 짧으면 근거리에서 즐기기 좋은 키워드를 우선한다.
+   - 이동시간이 길면 목적지성이 강한 키워드도 포함할 수 있다.
+6. location 좌표를 보고 특정 지역명을 추정하지 않는다.
+   - 좌표만으로 지역명을 단정하지 않는다.
+   - 실제 지역 기반 판단은 서버와 카카오 API 검색 결과에 맡긴다.
 
 [출력 규칙]
-- JSON만 출력. 마크다운 코드블록(```)이나 설명 텍스트 없음.
-- keyword는 카카오 로컬 키워드 검색에 그대로 쓸 수 있는 1~3단어 한국어.
-- radius_m은 카카오 API의 radius 파라미터에 그대로 전달할 미터 단위 숫자.
+- JSON만 출력한다.
+- 마크다운 코드블록이나 설명 텍스트는 출력하지 않는다.
+- keyword는 카카오 로컬 API 키워드 검색에 그대로 사용할 수 있는 1~3단어 한국어여야 한다.
+- recommendations는 3~5개를 반환한다.
+- radius_m, estimated_place_count, total_distance 같은 실제 계산이 필요한 값은 출력하지 않는다.
 
 Response schema:
 {
@@ -21,18 +40,16 @@ Response schema:
     "start_time": "string",
     "end_time": "string",
     "transport": "string",
-    "location": { "x": "string", "y": "string" }
-  },
-  "travel_plan": {
-    "total_hours": number,
-    "estimated_place_count": number,
-    "reasoning": "string"
+    "transport_time_minutes": number,
+    "location": {
+      "x": number,
+      "y": number
+    }
   },
   "recommendations": [
     {
       "order": number,
-      "keyword": "string",        // 카카오 API에 그대로 전달
-      "radius_m": number,         // 카카오 API radius에 그대로 전달
+      "keyword": "string",
       "why": "string",
       "best_for": ["string"],
       "avoid_if": ["string"]
