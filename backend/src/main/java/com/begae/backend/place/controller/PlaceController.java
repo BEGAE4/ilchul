@@ -20,6 +20,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 @Tag(name = "장소", description = "장소 조회, 추천, 좋아요, 스크랩 및 후기 관련 API")
 @Slf4j
@@ -40,14 +41,9 @@ public class PlaceController {
             @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
             @Parameter(description = "검색 키워드", example = "카페") @RequestParam String keyword
     ) {
-        try {
-            log.info("api request : {}", keyword);
-            List<SearchPlaceResponseDto> places = placeService.searchPlaceByKeyword(keyword);
-            return ResponseEntity.ok().body(places);
-        } catch (Exception e) {
-            log.error(e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+        log.info("api request : {}", keyword);
+        List<SearchPlaceResponseDto> places = placeService.searchPlaceByKeyword(keyword);
+        return ResponseEntity.ok().body(places);
     }
 
     @PostMapping("/recommend")
@@ -56,35 +52,30 @@ public class PlaceController {
     public ResponseEntity<?> recommendPlace(
             @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
             @RequestBody SurveyResultDto survey
-    ) {
-        try {
-            List<RecommendPlaceResponseDto> result =
-                    placeService.generateKeyword(survey)
-                            .getRecommendations()
-                            .stream()
-                            .map(recommendation -> {
-                                SearchPlaceRequestDto requestDto = SearchPlaceRequestDto.builder()
-                                        .keyword(recommendation.getKeyword())
-                                        .radiusM(recommendation.getRadiusM())
-                                        .x(String.valueOf(survey.getLocation().getX()))
-                                        .y(String.valueOf(survey.getLocation().getY()))
-                                        .build();
+    ) throws JsonProcessingException {
+        List<RecommendPlaceResponseDto> result =
+                placeService.generateKeyword(survey)
+                        .getRecommendations()
+                        .stream()
+                        .map(recommendation -> {
+                            SearchPlaceRequestDto requestDto = SearchPlaceRequestDto.builder()
+                                    .keyword(recommendation.getKeyword())
+                                    .radiusM(recommendation.getRadiusM())
+                                    .x(String.valueOf(survey.getLocation().getX()))
+                                    .y(String.valueOf(survey.getLocation().getY()))
+                                    .build();
 
-                                List<SearchPlaceResponseDto> places =
-                                        placeService.searchPlaceForRecommend(requestDto);
+                            List<SearchPlaceResponseDto> places =
+                                    placeService.searchPlaceForRecommend(requestDto);
 
-                                return RecommendPlaceResponseDto.builder()
-                                        .keyword(recommendation.getKeyword())
-                                        .radiusM(recommendation.getRadiusM())
-                                        .places(places)
-                                        .build();
-                            })
-                            .toList();
-            return ResponseEntity.ok().body(result);
-        } catch (Exception e) {
-            log.error("recommendPlace error", e);
-            return ResponseEntity.internalServerError().build();
-        }
+                            return RecommendPlaceResponseDto.builder()
+                                    .keyword(recommendation.getKeyword())
+                                    .radiusM(recommendation.getRadiusM())
+                                    .places(places)
+                                    .build();
+                        })
+                        .toList();
+        return ResponseEntity.ok().body(result);
     }
 
     @GetMapping("/{placeId}")
