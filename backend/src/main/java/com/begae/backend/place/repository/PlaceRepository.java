@@ -13,7 +13,7 @@ import java.util.Optional;
 
 @Repository
 public interface PlaceRepository extends JpaRepository<Place, Integer> {
-    Optional<Place> findPlaceBySourceId(String sourceId);
+    Optional<Place> findPlaceBySourceAndSourceId(String source, String sourceId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Place p WHERE p.placeId = :placeId")

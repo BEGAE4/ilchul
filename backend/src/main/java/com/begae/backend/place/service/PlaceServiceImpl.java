@@ -141,7 +141,8 @@ public class PlaceServiceImpl implements PlaceService {
         }).onErrorResume(exception -> Mono.just(buildDto(document, null)));
 
         return placeSummary.flatMap(placeSummaryDto ->
-                Mono.fromCallable(() -> upsertPlaceFrom(document, placeSummaryDto))
+                Mono.fromCallable(() -> upsertPlace(
+                                PlaceUpsertCommand.fromKakao(document, placeSummaryDto, null)))
                         .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
                         .map(placeId -> SearchPlaceResponseDto.builder()
                                 .placeId(placeId)
@@ -165,26 +166,28 @@ public class PlaceServiceImpl implements PlaceService {
     }
 
     @Override
-    public int upsertPlaceFrom(KakaoPlaceResponseDto.Document document, PlaceSummaryDto dto) {
-
-        final String sourceId = document.getId();
+    public int upsertPlace(PlaceUpsertCommand command) {
+        final String sourceId = command.getSourceId();
         LocalDateTime now = LocalDateTime.now();
 
-        Optional<Place> existing = placeRepository.findPlaceBySourceId(sourceId);
+        Optional<Place> existing =
+                placeRepository.findPlaceBySourceAndSourceId(command.getSource(), sourceId);
 
         if (existing.isEmpty()) {
             // 신규 데이터 바로 저장
             Place newPlace = Place.builder()
+                    .source(command.getSource())
                     .sourceId(sourceId)
-                    .addressName(document.getAddressName())
-                    .roadAddressName(document.getRoadAddressName())
-                    .categoryName(dto != null ? dto.getCategoryName() : document.getCategoryName())
-                    .phone(document.getPhone())
-                    .placeName(document.getPlaceName())
-                    .placeUrl(document.getPlaceUrl())
-                    .placeImageUrl(dto != null ? dto.getPlaceImageUrl() : null)
-                    .x(Double.parseDouble(document.getX()))
-                    .y(Double.parseDouble(document.getY()))
+                    .addressName(command.getAddressName())
+                    .roadAddressName(command.getRoadAddressName())
+                    .categoryName(command.getCategoryName())
+                    .phone(command.getPhone())
+                    .placeName(command.getPlaceName())
+                    .placeUrl(command.getPlaceUrl())
+                    .placeImageUrl(command.getPlaceImageUrl())
+                    .wellnessContentId(command.getWellnessContentId())
+                    .x(command.getX())
+                    .y(command.getY())
                     .lastFetchedAt(now)
                     .lastSeenAt(now)
                     .build();
@@ -192,7 +195,7 @@ public class PlaceServiceImpl implements PlaceService {
                 placeRepository.save(newPlace);
                 return newPlace.getPlaceId();
             } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                return placeRepository.findPlaceBySourceId(sourceId)
+                return placeRepository.findPlaceBySourceAndSourceId(command.getSource(), sourceId)
                         .map(Place::getPlaceId)
                         .orElseThrow(() -> e);
             }
@@ -205,14 +208,18 @@ public class PlaceServiceImpl implements PlaceService {
         }
 
         // 이미 갱신된 데이터는 건너뛰기
-        boolean stale = place.getLastFetchedAt() == null ||
-                place.getLastFetchedAt().isBefore(now.minusDays(7));
+        boolean stale = place.getLastFetchedAt() == null
+                || place.getLastFetchedAt().isBefore(now.minusDays(7));
 
-        if (!stale) { // 갱신된 데이터라면 DB 쓰기 생략
+        // 웰니스 식별자가 새로 붙는 경우는 stale 여부와 무관하게 반영해야 한다
+        boolean needsWellnessLink = command.getWellnessContentId() != null
+                && place.getWellnessContentId() == null;
+
+        if (!stale && !needsWellnessLink) { // 갱신된 데이터라면 DB 쓰기 생략
             return place.getPlaceId();
         }
 
-        place.mergeFrom(document, dto);
+        place.mergeFrom(command);
         placeRepository.save(place);
         return place.getPlaceId();
     }
