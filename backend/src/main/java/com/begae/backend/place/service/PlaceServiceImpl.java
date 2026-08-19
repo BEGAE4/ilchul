@@ -1,11 +1,6 @@
 package com.begae.backend.place.service;
 
-import com.anthropic.client.AnthropicClient;
-import com.anthropic.client.okhttp.AnthropicOkHttpClient;
-import com.anthropic.models.messages.Message;
-import com.anthropic.models.messages.MessageCreateParams;
 import com.begae.backend.global.exception.CustomException;
-import com.begae.backend.place.component.PromptRegistry;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.dto.*;
 import com.begae.backend.place.exception.PlaceErrorCode;
@@ -14,12 +9,9 @@ import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.dto.PopularPlanItemDto;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan_place.domain.PlanPlace;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
@@ -40,17 +32,12 @@ import java.util.stream.IntStream;
 @Transactional
 public class PlaceServiceImpl implements PlaceService {
 
-    private final ObjectMapper objectMapper;
-    @Value("${anthropic-api.api-key}")
-    private String ANTHROPIC_API_KEY;
-
     private final String GOOGLE_FIELDMASK = "places.displayName,places.formattedAddress,places.photos.name";
 
     private final WebClient kakaoWebClient;
     private final WebClient googleWebClient;
     private final PlaceRepository placeRepository;
     private final PlanRepository planRepository;
-    private final PromptRegistry promptRegistry;
 
     @Override
     public List<SearchPlaceResponseDto> searchPlaceByKeyword(String keyword) {
@@ -59,24 +46,6 @@ public class PlaceServiceImpl implements PlaceService {
                 .uri(uriBuilder -> uriBuilder
                         .path("/v2/local/search/keyword.json")
                         .queryParam("query", keyword)
-                        .build())
-                .retrieve()
-                .bodyToMono(KakaoPlaceResponseDto.class)
-                .timeout(Duration.ofMinutes(5))
-                .block();
-        return getSearchResult(kakaoResponse);
-    }
-
-    @Override
-    public List<SearchPlaceResponseDto> searchPlaceForRecommend(SearchPlaceRequestDto request) {
-
-        KakaoPlaceResponseDto kakaoResponse = kakaoWebClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/v2/local/search/keyword.json")
-                        .queryParam("query", request.getKeyword())
-                        .queryParam("radius", request.getRadiusM())
-                        .queryParam("x", request.getX())
-                        .queryParam("y", request.getY())
                         .build())
                 .retrieve()
                 .bodyToMono(KakaoPlaceResponseDto.class)
@@ -259,42 +228,6 @@ public class PlaceServiceImpl implements PlaceService {
         place.mergeFrom(command);
         placeRepository.save(place);
         return place.getPlaceId();
-    }
-
-    @Override
-    public RecommendKeywordDto generateKeyword(SurveyResultDto survey) throws JsonProcessingException {
-
-        AnthropicClient client = AnthropicOkHttpClient.builder().
-                apiKey(ANTHROPIC_API_KEY).
-                timeout(Duration.ofMinutes(1)).
-                build();
-
-        String userTemplate = buildUserPrompt(survey);
-
-        MessageCreateParams params = MessageCreateParams.builder()
-                .model("claude-sonnet-4-5-20250929")
-                .maxTokens(1000)
-                .system(promptRegistry.getSystemPrompt())
-                .addUserMessage(userTemplate)
-                .build();
-
-        Message message = client.messages().create(params);
-
-        String content = message.content().getFirst().asText().text()
-                .replaceAll("```json\\n", "")
-                .replaceAll("```", "")
-                .trim();
-
-        RecommendKeywordDto recommend = new ObjectMapper().readValue(content, RecommendKeywordDto.class);
-
-        return recommend;
-    }
-
-    private String buildUserPrompt(SurveyResultDto survey) throws JsonProcessingException {
-        String surveyJson = objectMapper.writeValueAsString(survey);
-
-        return promptRegistry.getUserTemplate()
-                .replace("{{SURVEY_JSON}}", surveyJson);
     }
 
     @Override

@@ -1,5 +1,9 @@
 package com.begae.backend.place.service;
 
+import com.anthropic.client.AnthropicClient;
+import com.anthropic.client.okhttp.AnthropicOkHttpClient;
+import com.anthropic.models.messages.Message;
+import com.anthropic.models.messages.MessageCreateParams;
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.global.exception.GlobalErrorCode;
 import com.begae.backend.place.client.WellnessApiClient;
@@ -156,9 +160,36 @@ public class RecommendServiceImpl implements RecommendService {
         }
     }
 
-    // Task 8에서 PlaceServiceImpl의 Anthropic 호출 코드를 옮겨 채운다.
-    // 이 태스크의 테스트는 callAi를 spy로 가로채므로 아직 비어 있어도 통과한다.
     AiSelectionDto callAi(String surveyJson, String candidateList) {
-        throw new UnsupportedOperationException("Task 8에서 구현한다");
+        AnthropicClient client = AnthropicOkHttpClient.builder()
+                .apiKey(anthropicApiKey)
+                .timeout(Duration.ofMinutes(1))
+                .build();
+
+        String userPrompt = promptRegistry.getUserTemplate()
+                .replace("{{SURVEY_JSON}}", surveyJson)
+                .replace("{{CANDIDATES}}", candidateList);
+
+        MessageCreateParams params = MessageCreateParams.builder()
+                .model("claude-sonnet-4-5-20250929")
+                // 항목마다 reason·tags가 붙어 v1(1000)보다 출력이 길다
+                .maxTokens(1500)
+                .system(promptRegistry.getSystemPrompt())
+                .addUserMessage(userPrompt)
+                .build();
+
+        Message message = client.messages().create(params);
+
+        String content = message.content().getFirst().asText().text()
+                .replaceAll("```json\\n", "")
+                .replaceAll("```", "")
+                .trim();
+
+        try {
+            return objectMapper.readValue(content, AiSelectionDto.class);
+        } catch (JsonProcessingException e) {
+            log.error("AI 응답 파싱 실패: {}", content, e);
+            throw new CustomException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
+        }
     }
 }
