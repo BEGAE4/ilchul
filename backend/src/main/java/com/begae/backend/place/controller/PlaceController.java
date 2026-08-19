@@ -60,7 +60,6 @@ public class PlaceController {
                         .map(recommendation -> {
                             SearchPlaceRequestDto requestDto = SearchPlaceRequestDto.builder()
                                     .keyword(recommendation.getKeyword())
-                                    .radiusM(recommendation.getRadiusM())
                                     .x(String.valueOf(survey.getLocation().getX()))
                                     .y(String.valueOf(survey.getLocation().getY()))
                                     .build();
@@ -70,7 +69,6 @@ public class PlaceController {
 
                             return RecommendPlaceResponseDto.builder()
                                     .keyword(recommendation.getKeyword())
-                                    .radiusM(recommendation.getRadiusM())
                                     .places(places)
                                     .build();
                         })
