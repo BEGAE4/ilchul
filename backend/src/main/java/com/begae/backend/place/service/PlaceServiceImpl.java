@@ -94,13 +94,14 @@ public class PlaceServiceImpl implements PlaceService {
         }
 
         return Flux.fromIterable(documents)
-                .flatMap(document -> toPlaceSummary(document), 8)
+                .flatMap(document -> toPlaceSummary(document, null), 8)
                 .collectList()
                 .block(Duration.ofSeconds(20));
     }
 
     @Override
-    public Mono<SearchPlaceResponseDto> toPlaceSummary(KakaoPlaceResponseDto.Document document) {
+    public Mono<SearchPlaceResponseDto> toPlaceSummary(
+            KakaoPlaceResponseDto.Document document, String wellnessContentId) {
         String textQuery = document.getRoadAddressName() + ", " + document.getPlaceName();
 
         Mono<GooglePlaceResponseDto> googleResponse = googleWebClient.post()
@@ -142,7 +143,7 @@ public class PlaceServiceImpl implements PlaceService {
 
         return placeSummary.flatMap(placeSummaryDto ->
                 Mono.fromCallable(() -> upsertPlace(
-                                PlaceUpsertCommand.fromKakao(document, placeSummaryDto, null)))
+                                PlaceUpsertCommand.fromKakao(document, placeSummaryDto, wellnessContentId)))
                         .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
                         .map(placeId -> SearchPlaceResponseDto.builder()
                                 .placeId(placeId)
@@ -155,14 +156,50 @@ public class PlaceServiceImpl implements PlaceService {
     }
 
     private PlaceSummaryDto buildDto(KakaoPlaceResponseDto.Document document, String photoUri) {
-        String[] split = document.getCategoryName().split(">");
-         return PlaceSummaryDto.builder()
-                .categoryName(split[0] + "· " + split[1].trim())
+        String raw = document.getCategoryName() == null ? "" : document.getCategoryName();
+        String[] split = raw.split(">");
+        String categoryName = split.length >= 2
+                ? split[0].trim() + "· " + split[1].trim()
+                : raw.trim();
+        return PlaceSummaryDto.builder()
+                .categoryName(categoryName)
                 .placeName(document.getPlaceName())
                 .placeImageUrl(photoUri)
                 .x(document.getX())
                 .y(document.getY())
                 .build();
+    }
+
+    @Override
+    public List<KakaoPlaceResponseDto.Document> searchRawByKeyword(
+            String keyword, double x, double y, int radiusM) {
+
+        KakaoPlaceResponseDto response = kakaoWebClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v2/local/search/keyword.json")
+                        .queryParam("query", keyword)
+                        .queryParam("radius", radiusM)
+                        .queryParam("x", x)
+                        .queryParam("y", y)
+                        .build())
+                .retrieve()
+                .bodyToMono(KakaoPlaceResponseDto.class)
+                .timeout(Duration.ofSeconds(10))
+                .onErrorResume(e -> {
+                    // 검색어 하나가 실패해도 나머지 후보로 추천을 이어간다
+                    log.warn("카카오 키워드 검색 실패: keyword={}", keyword, e);
+                    return Mono.empty();
+                })
+                .block();
+
+        if (response == null || response.getDocuments() == null) return List.of();
+        return response.getDocuments();
+    }
+
+    @Override
+    public SearchPlaceResponseDto enrichAndUpsert(
+            KakaoPlaceResponseDto.Document document, String wellnessContentId) {
+        return toPlaceSummary(document, wellnessContentId).block(Duration.ofSeconds(20));
     }
 
     @Override
