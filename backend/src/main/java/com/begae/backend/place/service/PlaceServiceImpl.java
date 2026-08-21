@@ -12,17 +12,16 @@ import com.begae.backend.plan_place.domain.PlanPlace;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -38,6 +37,7 @@ public class PlaceServiceImpl implements PlaceService {
     private final WebClient googleWebClient;
     private final PlaceRepository placeRepository;
     private final PlanRepository planRepository;
+    private final PlaceUpsertWriter placeUpsertWriter;
 
     @Override
     public List<SearchPlaceResponseDto> searchPlaceByKeyword(String keyword) {
@@ -168,61 +168,11 @@ public class PlaceServiceImpl implements PlaceService {
 
     @Override
     public int upsertPlace(PlaceUpsertCommand command) {
-        final String sourceId = command.getSourceId();
-        LocalDateTime now = LocalDateTime.now();
-
-        Optional<Place> existing =
-                placeRepository.findPlaceBySourceAndSourceId(command.getSource(), sourceId);
-
-        if (existing.isEmpty()) {
-            // 신규 데이터 바로 저장
-            Place newPlace = Place.builder()
-                    .source(command.getSource())
-                    .sourceId(sourceId)
-                    .addressName(command.getAddressName())
-                    .roadAddressName(command.getRoadAddressName())
-                    .categoryName(command.getCategoryName())
-                    .phone(command.getPhone())
-                    .placeName(command.getPlaceName())
-                    .placeUrl(command.getPlaceUrl())
-                    .placeImageUrl(command.getPlaceImageUrl())
-                    .wellnessContentId(command.getWellnessContentId())
-                    .x(command.getX())
-                    .y(command.getY())
-                    .lastFetchedAt(now)
-                    .lastSeenAt(now)
-                    .build();
-            try {
-                placeRepository.save(newPlace);
-                return newPlace.getPlaceId();
-            } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                return placeRepository.findPlaceBySourceAndSourceId(command.getSource(), sourceId)
-                        .map(Place::getPlaceId)
-                        .orElseThrow(() -> e);
-            }
+        try {
+            return placeUpsertWriter.insertOrMerge(command);
+        } catch (DataIntegrityViolationException e) {
+            return placeUpsertWriter.mergeAfterConflict(command);
         }
-
-        Place place = existing.get();
-
-        if (place.getLastSeenAt() == null || place.getLastSeenAt().isBefore(now.minusHours(6))) {
-            place.markSeen();
-        }
-
-        // 이미 갱신된 데이터는 건너뛰기
-        boolean stale = place.getLastFetchedAt() == null
-                || place.getLastFetchedAt().isBefore(now.minusDays(7));
-
-        // 웰니스 식별자가 새로 붙는 경우는 stale 여부와 무관하게 반영해야 한다
-        boolean needsWellnessLink = command.getWellnessContentId() != null
-                && place.getWellnessContentId() == null;
-
-        if (!stale && !needsWellnessLink) { // 갱신된 데이터라면 DB 쓰기 생략
-            return place.getPlaceId();
-        }
-
-        place.mergeFrom(command);
-        placeRepository.save(place);
-        return place.getPlaceId();
     }
 
     @Override
