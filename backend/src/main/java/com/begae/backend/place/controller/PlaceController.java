@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -55,7 +56,7 @@ public class PlaceController {
     @ApiResponse(responseCode = "422", description = "추천할 만한 장소를 찾지 못했습니다.")
     public ResponseEntity<RecommendResponseDto> recommendPlace(
             @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
-            @RequestBody SurveyResultDto survey
+            @RequestBody @Valid SurveyResultDto survey
     ) {
         return ResponseEntity.ok(recommendService.recommend(survey));
     }

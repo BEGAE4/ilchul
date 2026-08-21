@@ -28,7 +28,7 @@ class RecommendServiceImplTest {
                 .startTime("2026-08-20 15:00")
                 .endTime("2026-08-20 22:00")
                 .transport("도보")
-                .transportTime(60)
+                .transportTime("1시간 이내")
                 .location(SurveyResultDto.Location.builder().x(127.0).y(37.5).build())
                 .build();
     }
