@@ -154,11 +154,6 @@ public class PlaceServiceImpl implements PlaceService {
                 .retrieve()
                 .bodyToMono(KakaoPlaceResponseDto.class)
                 .timeout(Duration.ofSeconds(10))
-                .onErrorResume(e -> {
-                    // 검색어 하나가 실패해도 나머지 후보로 추천을 이어간다
-                    log.warn("카카오 키워드 검색 실패: keyword={}", keyword, e);
-                    return Mono.empty();
-                })
                 .block();
 
         if (response == null || response.getDocuments() == null) return List.of();
