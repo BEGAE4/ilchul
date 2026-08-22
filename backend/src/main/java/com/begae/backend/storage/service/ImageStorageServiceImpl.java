@@ -73,6 +73,43 @@ public class ImageStorageServiceImpl implements ImageStorageService {
     }
 
     @Override
+    public StoredImage uploadByUrl(byte[] bytes, String originalFilename, String contentType, String directory) {
+        validateImageBytes(bytes, contentType);
+
+        String extension = extractExtension(originalFilename);
+        String imageKey = createImageKey(directory, extension);
+
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(properties.bucket())
+                    .key(imageKey)
+                    .contentType(contentType)
+                    .contentLength((long) bytes.length)
+                    .build();
+
+            s3Client.putObject(
+                    putObjectRequest,
+                    RequestBody.fromBytes(bytes)
+            );
+
+            String imageUrl = getAccessibleUrl(imageKey);
+
+            return new StoredImage(
+                    imageKey,
+                    imageUrl,
+                    originalFilename,
+                    contentType,
+                    (long) bytes.length
+            );
+        } catch (Exception e) {
+            throw new IllegalStateException("이미지 업로드에 실패했습니다.", e);
+        }
+    }
+
+
+
+
+    @Override
     public void delete(String imageKey) {
         if (!StringUtils.hasText(imageKey)) {
             return;
@@ -114,6 +151,21 @@ public class ImageStorageServiceImpl implements ImageStorageService {
         }
     }
 
+    private void validateImageBytes(byte[] bytes, String contentType) {
+        if (bytes == null || bytes.length == 0) {
+            throw new IllegalArgumentException("이미지 파일이 비어있습니다.");
+        }
+
+        if (bytes.length > MAX_FILE_SIZE) {
+            throw new IllegalArgumentException("이미지 파일 크기는 5MB를 초과할 수 없습니다.");
+        }
+
+        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("지원하지 않는 이미지 형식입니다.");
+        }
+    }
+
+
     private String extractExtension(String originalFilename) {
         if (!StringUtils.hasText(originalFilename) || !originalFilename.contains(".")) {
             return "jpg";
@@ -127,6 +179,16 @@ public class ImageStorageServiceImpl implements ImageStorageService {
             default -> throw new CustomException(StorageErrorCode.NOT_ALLOWED_CONTENT_TYPE);
         };
     }
+
+    private String extractExtensionFromContentType(String contentType) {
+        return switch (contentType) {
+            case "image/jpeg" -> "jpg";
+            case "image/png" -> "png";
+            case "image/webp" -> "webp";
+            default -> throw new IllegalArgumentException("지원하지 않는 이미지 형식입니다.");
+        };
+    }
+
 
     private String createImageKey(String directory, String extension) {
         String normalizedDirectory = directory

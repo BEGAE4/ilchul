@@ -9,4 +9,9 @@ import lombok.*;
 @Builder
 public class SearchLogSaveRequest {
     private String name;
+
+    public static SearchLogSaveRequest of(String name) {
+        return new SearchLogSaveRequest(name);
+    }
+
 }
