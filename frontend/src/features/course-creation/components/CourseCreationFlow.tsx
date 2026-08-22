@@ -23,16 +23,12 @@ import {
   Car,
   ChevronDown,
 } from 'lucide-react';
-// TODO(transportTime): AnimatePresence는 이동 시간 직접입력 섹션에서만 쓰여 함께 주석 처리.
-// 원문 — import { motion, AnimatePresence } from 'motion/react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { LogoLoader } from '@/shared/ui/LogoLoader';
 import { StepIndicator } from '@/shared/ui/StepIndicator';
 import { RouteMap, getStopCoord } from './RouteMap';
-// TODO(transportTime): SelectField는 주석 처리된 이동 시간 섹션에서만 쓰여 import에서 제외.
-// 원문 — import { SelectField, DateField } from './SurveyPickers';
-import { TimeField, DateField } from './SurveyPickers';
+import { SelectField, TimeField, DateField } from './SurveyPickers';
 import { useSurveyStore, type SurveyStep } from '@/shared/lib/stores/useSurveyStore';
 import { planApi, type PlanPreviewResponse } from '@/features/plan';
 import { recommendPlaces } from '@/features/place/api/place.api';
@@ -98,13 +94,6 @@ const TRANSPORTS: { label: string; icon: typeof Bus }[] = [
   { label: '도보', icon: Footprints },
   { label: '자가용', icon: Car },
 ];
-// TODO(transportTime): 이동 시간(transportTime) 질문 임시 비활성화.
-// 사유 — 서버 SurveyResultDto(cc/api/v3~v6, backend SurveyResultDto.java)에 해당 필드가 없어
-//        POST /api/place/recommend 로 전달되지 않고, 추천 LLM 프롬프트에도 반영되지 않는다.
-//        (v1/v2 명세에는 '선택' 필드로 존재했으나 v3에서 사라진 상태)
-// 조치 — BE에 의도적 제외인지 확인 후 완전 제거하거나 복구한다.
-//        복구 시 'TODO(transportTime)' 로 전체 검색하면 관련 블록을 모두 찾을 수 있다.
-/*
 // 이동수단마다 체감 이동 한도가 달라 도보 기준 짧은 구간부터 자가용 기준 장거리까지 단계별로 제공
 const TRANSPORT_TIMES = ['30분 이내', '1시간 이내', '2시간 이내', '상관없어요', '직접입력'];
 
@@ -117,7 +106,6 @@ const CUSTOM_TIME_OPTIONS = Array.from({ length: 24 }, (_, i) => {
   if (m === 0) return { value: `${h}시간`, label: `${h}시간` };
   return { value: `${h}시간 ${m}분`, label: `${h}시간 ${m}분` };
 });
-*/
 
 // ── Survey 3: 30분 단위 시간 선택 ──
 const HALF_HOURS: { value: string; label: string }[] = [];
@@ -334,9 +322,11 @@ export const CourseCreationFlow: React.FC = () => {
         const [result] = await Promise.all([
           recommendPlaces({
             emotion: surveyData.mindState ?? '',
-            startTime: surveyData.startTime ?? '',
-            endTime: surveyData.endTime ?? '',
+            // 서버는 'YYYY-MM-DD HH:mm' 형식을 기대한다 (예: 2026-08-22 10:00)
+            startTime: `${surveyData.startDate ?? ''} ${surveyData.startTime ?? ''}`.trim(),
+            endTime: `${surveyData.endDate ?? ''} ${surveyData.endTime ?? ''}`.trim(),
             transport: surveyData.transport ?? '',
+            transportTime: surveyData.transportTime ?? '',
             location: { x: startingPoint.coord.lng, y: startingPoint.coord.lat },
           }),
           minDelay,
@@ -481,8 +471,7 @@ export const CourseCreationFlow: React.FC = () => {
     }
   };
 
-  // TODO(transportTime): 원문 — surveyData.mindState || surveyData.transport || surveyData.transportTime
-  const hasUnsavedData = surveyData.mindState || surveyData.transport;
+  const hasUnsavedData = surveyData.mindState || surveyData.transport || surveyData.transportTime;
 
   const handleBack = () => {
     if (step === 'landing') {
@@ -818,29 +807,24 @@ export const CourseCreationFlow: React.FC = () => {
   }
 
   // ════════════════════════════════════════════
-  // (3) Survey 2 — 이동 수단 (이동 시간은 TODO(transportTime)로 임시 비활성화)
+  // (3) Survey 2 — 이동 수단 및 시간
   // ════════════════════════════════════════════
   if (step === 'survey2') {
-    // TODO(transportTime): 이동 시간 질문 임시 비활성화에 따라 함께 주석 처리
-    /*
     const isCustomTime =
       surveyData.transportTime === '직접입력' ||
       CUSTOM_TIME_OPTIONS.some((o) => o.value === surveyData.transportTime);
     const showCustomPicker =
       isCustomTime && !['1시간 이내', '상관없어요', ''].includes(surveyData.transportTime ?? '');
-    */
 
     return (
       <div className="fixed inset-y-0 app-frame z-40 h-dvh flex flex-col bg-white">
         <div className="shrink-0">
-          {/* TODO(transportTime): 원문 타이틀 — "이동 수단 및 시간" */}
-          <Header onBack={handleBack} title="이동 수단" showStep />
+          <Header onBack={handleBack} title="이동 수단 및 시간" showStep />
           <div className="px-6 pt-5 pb-2">
-            {/* TODO(transportTime): 원문 — "Q2. 희망하는 이동 수단과 / 이동 시간을 선택해주세요." */}
             <h2 className="text-xl font-bold">
-              Q2. 희망하는 이동 수단을
+              Q2. 희망하는 이동 수단과
               <br />
-              선택해주세요.
+              이동 시간을 선택해주세요.
             </h2>
           </div>
         </div>
@@ -865,8 +849,6 @@ export const CourseCreationFlow: React.FC = () => {
             </div>
           </div>
 
-          {/* TODO(transportTime): 이동 시간 선택 섹션 임시 비활성화 (서버 미전달 필드) */}
-          {/*
           <div>
             <h3 className="text-sm font-bold text-gray-500 mb-3">이동 시간</h3>
             <div className="flex flex-col gap-2">
@@ -912,14 +894,13 @@ export const CourseCreationFlow: React.FC = () => {
               )}
             </AnimatePresence>
           </div>
-          */}
         </div>
         <div className={STICKY_FOOTER}>
-          {/* TODO(transportTime): disabled 원문 —
-              !surveyData.transport || !surveyData.transportTime || surveyData.transportTime === '직접입력' */}
           <button
             onClick={handleNext}
-            disabled={!surveyData.transport}
+            disabled={
+              !surveyData.transport || !surveyData.transportTime || surveyData.transportTime === '직접입력'
+            }
             className={PRIMARY_CTA}
           >
             선택 완료
