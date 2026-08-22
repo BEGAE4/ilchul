@@ -20,6 +20,9 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler { // 인가 �
 
     private final ObjectMapper objectMapper;
 
+    /**
+     * 인증은 되었으나 권한이 없는 경우이므로 401이 아니라 403으로 응답한다.
+     */
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {

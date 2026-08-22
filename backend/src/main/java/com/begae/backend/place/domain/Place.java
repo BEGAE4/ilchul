@@ -1,8 +1,7 @@
 package com.begae.backend.place.domain;
 
 import com.begae.backend.global.domain.BaseEntity;
-import com.begae.backend.place.dto.KakaoPlaceResponseDto;
-import com.begae.backend.place.dto.PlaceSummaryDto;
+import com.begae.backend.place.dto.PlaceUpsertCommand;
 import com.begae.backend.plan_place.domain.PlanPlace;
 import jakarta.persistence.*;
 import lombok.Builder;
@@ -63,6 +62,12 @@ public class Place extends BaseEntity {
     @Column(name = "last_seen_at")
     private LocalDateTime lastSeenAt;
 
+    @Column(name = "source", length = 20)
+    private String source;
+
+    @Column(name = "wellness_content_id", length = 20)
+    private String wellnessContentId;
+
     @Column(name = "like_count")
     private Integer likeCount = 0;
 
@@ -73,9 +78,11 @@ public class Place extends BaseEntity {
     private List<PlanPlace> planPlaces = new ArrayList<>();
 
     @Builder
-    public Place(String sourceId, String addressName, String roadAddressName, String categoryName,
-                 String phone, String placeName, String placeUrl, String placeImageUrl, Double x, Double y,
+    public Place(String source, String sourceId, String addressName, String roadAddressName, String categoryName,
+                 String phone, String placeName, String placeUrl, String placeImageUrl, String wellnessContentId,
+                 Double x, Double y,
                  LocalDateTime lastFetchedAt, LocalDateTime lastSeenAt) {
+        this.source = source;
         this.sourceId = sourceId;
         this.addressName = addressName;
         this.roadAddressName = roadAddressName;
@@ -84,6 +91,7 @@ public class Place extends BaseEntity {
         this.placeName = placeName;
         this.placeUrl = placeUrl;
         this.placeImageUrl = placeImageUrl;
+        this.wellnessContentId = wellnessContentId;
         this.x = x;
         this.y = y;
         this.lastFetchedAt = lastFetchedAt;
@@ -92,19 +100,19 @@ public class Place extends BaseEntity {
         this.scrapCount = 0;
     }
 
-    public void mergeFrom(KakaoPlaceResponseDto.Document doc, PlaceSummaryDto dto) {
-        if (hasText(doc.getAddressName())) this.addressName = doc.getAddressName();
-        if (hasText(doc.getRoadAddressName())) this.roadAddressName = doc.getRoadAddressName();
-        if (hasText(doc.getCategoryName())) this.categoryName = doc.getCategoryName();
-        if (hasText(doc.getPhone())) this.phone = doc.getPhone();
-        if (hasText(doc.getPlaceName())) this.placeName = doc.getPlaceName();
-        if (hasText(doc.getPlaceUrl())) this.placeUrl = doc.getPlaceUrl();
-        if (hasText(doc.getX())) this.x = Double.parseDouble(doc.getX());
-        if (hasText(doc.getY())) this.y = Double.parseDouble(doc.getY());
+    public void mergeFrom(PlaceUpsertCommand cmd) {
+        if (hasText(cmd.getAddressName())) this.addressName = cmd.getAddressName();
+        if (hasText(cmd.getRoadAddressName())) this.roadAddressName = cmd.getRoadAddressName();
+        if (hasText(cmd.getCategoryName())) this.categoryName = cmd.getCategoryName();
+        if (hasText(cmd.getPhone())) this.phone = cmd.getPhone();
+        if (hasText(cmd.getPlaceName())) this.placeName = cmd.getPlaceName();
+        if (hasText(cmd.getPlaceUrl())) this.placeUrl = cmd.getPlaceUrl();
+        if (cmd.getX() != null) this.x = cmd.getX();
+        if (cmd.getY() != null) this.y = cmd.getY();
+        if (hasText(cmd.getPlaceImageUrl())) this.placeImageUrl = cmd.getPlaceImageUrl();
 
-        if (dto != null && hasText(dto.getPlaceImageUrl())) {
-            this.placeImageUrl = dto.getPlaceImageUrl();
-        }
+        // 한 번 붙은 웰니스 식별자는 지우지 않는다. 이번 조회에서 안 걸렸을 뿐일 수 있다.
+        if (hasText(cmd.getWellnessContentId())) this.wellnessContentId = cmd.getWellnessContentId();
 
         this.lastFetchedAt = LocalDateTime.now();
     }

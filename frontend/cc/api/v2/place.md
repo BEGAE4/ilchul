@@ -98,97 +98,88 @@
 
 
 
-# PLACE-16. 설문 바탕 장소 추천
+# PLACE-16. 설문 바탕 장소 추천 (v2 웰니스 우선)
 ## URL : POST /api/place/recommend
+
+> 웰니스 공공 API와 카카오에서 후보를 먼저 모은 뒤, AI가 후보 인덱스만 선택해 방문 순서를 구성한다.
+> 웰니스 장소는 카카오 POI로 다시 매칭하고 `wellnessCertified=true`로 구분한다.
+
+### 처리 흐름
+
+```text
+설문
+ ├─ 웰니스 공공 API → 카카오 POI 매칭
+ └─ 감정별 카카오 키워드 검색
+      ↓
+후보 병합·중복 제거 → AI 1회 선택 → 선택된 장소만 사진 보강·DB upsert
+```
+
 ### 본문 파라미터
 
 | **이름** | **유형** | **필수/선택** | **설명** |
 | --- | --- | --- | --- |
-| emotion | String | 필수 | 사용자가 선택/입력한 마음 상태 (`CourseCreationFlow` Survey 1 `mindState`) |
-| startTime | DateTime | 필수 | 여행 시작 일시 (`startDate` + `startTime`, 형식 `yyyy-MM-dd HH:mm`) |
-| endTime | DateTime | 필수 | 여행 종료 일시 (`endDate` + `endTime`, 24시간 이내 당일치기) |
-| transport | String | 필수 | 이동 수단 (`도보` / `대중교통` / `자가용`) |
-| transportTime | String | 선택 | 희망 이동 시간 (`1시간 이내` / `상관없어요` / 30분 단위 직접 입력) |
-| location | Object | 필수 | 출발지 좌표 (`startingPoint.coord` — `{ x: 경도, y: 위도 }`) |
+| emotion | String | 필수 | 사용자가 선택/입력한 마음 상태 |
+| startTime | DateTime | 필수 | `yyyy-MM-dd HH:mm` |
+| endTime | DateTime | 필수 | startTime 이후, 24시간 이내 |
+| transport | String | 필수 | `도보` / `대중교통` / `자가용` |
+| transportTime | String | 선택 | 희망 이동 시간 |
+| location | Object | 필수 | `{ x: 경도, y: 위도 }` |
 
 ### 응답 코드
 
 | status | message |
 | --- | --- |
-| 200 | 성공 |
-| 400 | 요청 데이터 오류 (필수 필드 누락 / 시간 형식 오류 / startTime ≥ endTime) |
+| 200 | 추천 코스 생성 성공 |
+| 400 | 필수 필드, 좌표, 시간 또는 이동수단 오류 |
 | 401 | 인증 필요 |
-| 422 | 추천 결과 없음 (모든 keyword 빈 배열 — UI는 다시 하기로 안내) |
-| 500 | 외부 추천 엔진 호출 실패 |
-
-## 코드 예시
+| 422 | 추천할 수 있는 후보가 없음 |
+| 500 | 카카오 검색 또는 응답 처리 실패 |
+| 503 | Anthropic 추천 서비스 일시 오류 |
 
 ### 요청
 
-```jsx
+```json
 {
-    "emotion" : "마음이 좀 울적하고 속상해요",
-    "startTime" : "2026-04-18 15:00",
-    "endTime" : "2026-04-18 22:00",
-    "transport" : "도보",
-    "transportTime" : "1시간 이내",
-    "location" : {
-        "x" : 128.898981,
-        "y" : 37.760152
-    }
+  "emotion": "마음이 좀 울적하고 속상해요",
+  "startTime": "2026-08-20 15:00",
+  "endTime": "2026-08-20 22:00",
+  "transport": "도보",
+  "transportTime": "1시간 이내",
+  "location": { "x": 127.0812, "y": 37.5372 }
 }
 ```
 
 ### 응답
 
 ```json
-[
+{
+  "recommendId": "rc_8f3a91c2",
+  "candidateCount": { "wellness": 1, "kakao": 12 },
+  "plan": {
+    "totalHours": 7,
+    "estimatedPlaceCount": 2,
+    "reasoning": "몸을 데운 뒤 조용한 곳에서 마무리하는 흐름이에요"
+  },
+  "items": [
     {
-        "keyword": "카페",
-        "radiusM": 1500,
-        "places": [
-            {
-                "placeId": 165,
-                "placeImageUrl": "https://lh3.googleusercontent.com/place-photos/AJRVUZOU...",
-                "categoryName": "음식점 · 카페",
-                "placeName": "알뜨",
-                "stayMinutes": 60,
-                "x": 128.899802252991,
-                "y": 37.7631911006287
-            },
-            {
-                "placeId": 163,
-                "placeImageUrl": "https://lh3.googleusercontent.com/place-photos/AJRVUZMo...",
-                "categoryName": "음식점 · 카페",
-                "placeName": "비사이드그라운드",
-                "stayMinutes": 90,
-                "x": 128.90304529019443,
-                "y": 37.761153305137384
-            }
-        ]
-    },
-    {
-        "keyword": "공원",
-        "radiusM": 2000,
-        "places": [
-            {
-                "placeId": 177,
-                "placeImageUrl": "https://lh3.googleusercontent.com/place-photos/AJRVUZOa...",
-                "categoryName": "여행 · 공원",
-                "placeName": "말나눔터 공원",
-                "stayMinutes": 60,
-                "x": 128.895186645304,
-                "y": 37.759298135914
-            }
-        ]
-    },
-    {
-        "keyword": "전망좋은",
-        "radiusM": 2000,
-        "places": []
+      "order": 1,
+      "placeId": 165,
+      "placeName": "우리유황온천",
+      "categoryName": "관광,명소 · 온천,사우나",
+      "placeImageUrl": "https://lh3.googleusercontent.com/place-photos/...",
+      "roadAddressName": "서울 광진구 자양로5길 33",
+      "x": 127.0812,
+      "y": 37.5372,
+      "stayMinutes": 90,
+      "reason": "따뜻한 물에 몸을 담그면 굳은 마음이 먼저 풀려요",
+      "tags": ["#온천", "#몸풀기"],
+      "wellnessCertified": true
     }
-]
+  ]
+}
 ```
+
+> `wellnessCertified`는 국가 웰니스 인증 출처 여부다. 방문 사진 인증을 뜻하는 프론트의 `isVerified`와는 다른 필드다.
 
 # PLACE-19. 플랜에 장소 추가
 ## URL : POST api/plan-place/{planId}
@@ -755,4 +746,3 @@ GET /api/geo/keyword?query=강릉 안목해변&x=128.898981&y=37.760152&radius=5
 ```
 
 > **연계 흐름**: 사용자가 외부 POI를 선택하면 (1) `POST /api/place/import { externalId }`로 자체 placeId 적재 → (2) `POST /api/plan-place/{planId}` 로 추가. 적재 파이프라인에서 백엔드가 Google Places 3-4(Photos)로 이미지를 보강한다.
-

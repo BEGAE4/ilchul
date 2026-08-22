@@ -7,8 +7,7 @@ import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.place.component.PromptRegistry;
-import com.begae.backend.place.dto.RecommendKeywordDto;
-import com.begae.backend.place.dto.SurveyResultDto;
+import com.begae.backend.place.dto.AiSelectionDto;
 import com.begae.backend.place.exception.PlaceErrorCode;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.NoSuchElementException;
 
 @Slf4j
@@ -31,26 +31,27 @@ public class AnthropicRecommendationClient {
     private final PromptRegistry promptRegistry;
     private final MeterRegistry meterRegistry;
 
-    public RecommendKeywordDto generate(SurveyResultDto survey) {
+    public AiSelectionDto select(String surveyJson, String candidateList, Duration timeout) {
         try {
-            String surveyJson = objectMapper.writeValueAsString(survey);
             String userPrompt = promptRegistry.getUserTemplate()
-                    .replace("{{SURVEY_JSON}}", surveyJson);
+                    .replace("{{SURVEY_JSON}}", surveyJson)
+                    .replace("{{CANDIDATES}}", candidateList);
 
             MessageCreateParams params = MessageCreateParams.builder()
                     .model(MODEL)
-                    .maxTokens(1000)
+                    .maxTokens(1500)
                     .system(promptRegistry.getSystemPrompt())
                     .addUserMessage(userPrompt)
                     .build();
 
-            Message message = anthropicClient.messages().create(params);
+            AnthropicClient requestClient = anthropicClient.withOptions(options -> options.timeout(timeout));
+            Message message = requestClient.messages().create(params);
             String content = message.content().getFirst().asText().text()
                     .replace("```json\n", "")
                     .replace("```", "")
                     .trim();
 
-            return objectMapper.readValue(content, RecommendKeywordDto.class);
+            return objectMapper.readValue(content, AiSelectionDto.class);
         } catch (AnthropicServiceException exception) {
             recordFailure("service");
             log.warn("Anthropic recommendation request failed with status {}", exception.statusCode());

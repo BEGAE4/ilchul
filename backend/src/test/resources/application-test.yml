@@ -40,6 +40,9 @@ kakao:
 google:
   rest-api-key: test-google-key
 
+tour-api:
+  service-key: test-tour-api-key
+
 anthropic-api:
   api-key: test-anthropic-key
 

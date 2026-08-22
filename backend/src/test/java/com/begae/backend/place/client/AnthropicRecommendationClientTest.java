@@ -6,11 +6,12 @@ import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.services.blocking.MessageService;
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.place.component.PromptRegistry;
-import com.begae.backend.place.dto.SurveyResultDto;
 import com.begae.backend.place.exception.PlaceErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
+
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -25,11 +26,12 @@ class AnthropicRecommendationClientTest {
         AnthropicClient anthropicClient = mock(AnthropicClient.class);
         MessageService messageService = mock(MessageService.class);
         PromptRegistry promptRegistry = mock(PromptRegistry.class);
+        when(anthropicClient.withOptions(any())).thenReturn(anthropicClient);
         when(anthropicClient.messages()).thenReturn(messageService);
         when(messageService.create(any(MessageCreateParams.class)))
                 .thenThrow(new AnthropicIoException("upstream unavailable"));
         when(promptRegistry.getSystemPrompt()).thenReturn("system");
-        when(promptRegistry.getUserTemplate()).thenReturn("survey={{SURVEY_JSON}}");
+        when(promptRegistry.getUserTemplate()).thenReturn("survey={{SURVEY_JSON}} candidates={{CANDIDATES}}");
         SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
 
         AnthropicRecommendationClient client = new AnthropicRecommendationClient(
@@ -39,7 +41,7 @@ class AnthropicRecommendationClientTest {
                 meterRegistry
         );
 
-        assertThatThrownBy(() -> client.generate(SurveyResultDto.builder().build()))
+        assertThatThrownBy(() -> client.select("{}", "[0] candidate", Duration.ofSeconds(5)))
                 .isInstanceOfSatisfying(CustomException.class, exception ->
                         assertThat(exception.getErrorCode())
                                 .isEqualTo(PlaceErrorCode.RECOMMENDATION_SERVICE_UNAVAILABLE));

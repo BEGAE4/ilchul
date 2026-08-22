@@ -8,11 +8,13 @@ import com.begae.backend.place.dto.*;
 import com.begae.backend.place.dto.PopularPlaceResponseDto;
 import com.begae.backend.place.service.PlaceReviewService;
 import com.begae.backend.place.service.PlaceService;
+import com.begae.backend.place.service.RecommendService;
 import com.begae.backend.place.service.ScrappedPlaceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +31,7 @@ import java.util.List;
 public class PlaceController {
 
     private final PlaceService placeService;
+    private final RecommendService recommendService;
     private final LikeService likeService;
     private final ScrappedPlaceService scrappedPlaceService;
     private final PlaceReviewService placeReviewService;
@@ -46,35 +49,16 @@ public class PlaceController {
     }
 
     @PostMapping("/recommend")
-    @Operation(summary = "장소 추천", description = "사용자 설문 결과를 기반으로 추천 장소 목록을 조회합니다.")
-    @ApiResponse(responseCode = "200", description = "추천 장소 목록이 성공적으로 조회되었습니다.")
-    public ResponseEntity<?> recommendPlace(
+    @Operation(summary = "장소 추천 (v2)",
+               description = "설문 결과로 웰니스 인증 장소와 카카오 장소를 모아 AI가 코스를 구성한다. "
+                           + "웰니스 인증 장소는 wellnessCertified=true로 내려간다.")
+    @ApiResponse(responseCode = "200", description = "추천 코스가 성공적으로 생성되었습니다.")
+    @ApiResponse(responseCode = "422", description = "추천할 만한 장소를 찾지 못했습니다.")
+    public ResponseEntity<RecommendResponseDto> recommendPlace(
             @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
-            @RequestBody SurveyResultDto survey
+            @RequestBody @Valid SurveyResultDto survey
     ) {
-        List<RecommendPlaceResponseDto> result =
-                placeService.generateKeyword(survey)
-                        .getRecommendations()
-                        .stream()
-                        .map(recommendation -> {
-                            SearchPlaceRequestDto requestDto = SearchPlaceRequestDto.builder()
-                                    .keyword(recommendation.getKeyword())
-                                    .radiusM(recommendation.getRadiusM())
-                                    .x(String.valueOf(survey.getLocation().getX()))
-                                    .y(String.valueOf(survey.getLocation().getY()))
-                                    .build();
-
-                            List<SearchPlaceResponseDto> places =
-                                    placeService.searchPlaceForRecommend(requestDto);
-
-                            return RecommendPlaceResponseDto.builder()
-                                    .keyword(recommendation.getKeyword())
-                                    .radiusM(recommendation.getRadiusM())
-                                    .places(places)
-                                    .build();
-                        })
-                        .toList();
-        return ResponseEntity.ok().body(result);
+        return ResponseEntity.ok(recommendService.recommend(survey));
     }
 
     @GetMapping("/{placeId}")
