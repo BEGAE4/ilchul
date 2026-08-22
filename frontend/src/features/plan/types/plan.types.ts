@@ -68,6 +68,7 @@ export interface CreatePlanBody {
   requiredTime: number;
   totalDistance: number;
   departurePoint?: DeparturePoint;
+  // 'yyyy-MM-dd HH:mm' (toServerDateTime 으로 생성; ISO 'T' 형식은 400)
   tripStartDate?: string;
   tripEndDate?: string;
   places?: CreatePlanPlaceRequest[];
@@ -85,6 +86,7 @@ export interface UpdatePlanBody {
   planTitle?: string;
   isPlanVisible?: boolean;
   planDescription?: string;
+  // 'yyyy-MM-dd HH:mm' (toServerDateTime 으로 생성; ISO 'T' 형식은 400)
   tripStartDate?: string;
   tripEndDate?: string;
 }
