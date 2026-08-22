@@ -127,19 +127,23 @@ public class JwtManager {
     } // 토큰으로부터 Authentication 객체를 만드는 메서드
 
     @Transactional
-    public JwtDto reissueAccessToken(String refreshToken) {
-        RefreshToken availableToken = refreshTokenRedisRepository.findByRefreshToken(refreshToken);
+    public Optional<JwtDto> reissueAccessToken(String refreshToken) {
+        Optional<RefreshToken> availableToken = refreshTokenRedisRepository.findByRefreshToken(refreshToken);
+        if (availableToken.isEmpty()) {
+            return Optional.empty();
+        }
 
-        JwtDto jwtDto = createToken(availableToken.getUserId(), availableToken.getEmail(), availableToken.getAuthority());
+        RefreshToken storedToken = availableToken.get();
+        JwtDto jwtDto = createToken(storedToken.getUserId(), storedToken.getEmail(), storedToken.getAuthority());
         refreshTokenRedisRepository.save(RefreshToken.builder()
-                .id(availableToken.getId())
-                .userId(availableToken.getUserId())
-                .email(availableToken.getEmail())
-                .authorities(availableToken.getAuthorities())
+                .id(storedToken.getId())
+                .userId(storedToken.getUserId())
+                .email(storedToken.getEmail())
+                .authorities(storedToken.getAuthorities())
                 .refreshToken(jwtDto.getRefreshToken())
                 .build());
 
-        return jwtDto;
+        return Optional.of(jwtDto);
 
     } // 리프레시 토큰을 검사하고 토큰을 새로 재발급
 

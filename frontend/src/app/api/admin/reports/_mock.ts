@@ -224,6 +224,12 @@ export function updateMockReportStatus(
   if (status === 'REJECTED') {
     const extra = c.detailByReport.get(reportId) ?? { detail: null, resolution: null };
     c.detailByReport.set(reportId, { ...extra, resolution: 'NO_ACTION' });
+  } else if (status === 'RESOLVED') {
+    // 명세상 resolution은 필수 — 제재 없이 RESOLVED로 직접 전이하면 기본값(NO_ACTION) 부여
+    const extra = c.detailByReport.get(reportId) ?? { detail: null, resolution: null };
+    if (extra.resolution == null) {
+      c.detailByReport.set(reportId, { ...extra, resolution: 'NO_ACTION' });
+    }
   }
   return getMockReportDetail(reportId);
 }

@@ -18,7 +18,7 @@
   width: 40px;
   height: 40px;
   border: 3px solid #f3f3f3;
-  border-top: 3px solid #0066cc;
+  border-top: 3px solid var(--color-primary-700);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -46,7 +46,7 @@
   }
 
   button {
-    background: #0066cc;
+    background: var(--color-primary-700);
     color: white;
     border: none;
     border-radius: 8px;
@@ -56,7 +56,7 @@
     transition: background-color 0.2s;
 
     &:hover {
-      background: #0052a3;
+      background: var(--color-primary-800);
     }
   }
 }
@@ -219,7 +219,7 @@
   border-radius: 8px;
   padding: 8px 16px;
   font-size: 14px;
-  color: #0066cc;
+  color: var(--color-primary-700);
   cursor: pointer;
   transition: background-color 0.2s;
 
@@ -360,13 +360,13 @@
 .completedIcon {
   width: 48px;
   height: 48px;
-  background: #0066cc;
+  background: var(--color-primary-700);
   border: 2px solid white;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 102, 204, 0.3);
+  box-shadow: 0 2px 8px rgba(47, 87, 196, 0.3);
   padding: 6px;
   overflow: visible;
   position: relative;
@@ -455,7 +455,7 @@
   }
 
   &.active {
-    color: #0066cc;
+    color: var(--color-primary-700);
     font-weight: 600;
 
     &::after {
@@ -465,7 +465,7 @@
       left: 0;
       right: 0;
       height: 2px;
-      background: #0066cc;
+      background: var(--color-primary-700);
     }
   }
 }
@@ -501,7 +501,7 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  color: #0066cc;
+  color: var(--color-primary-700);
   font-size: 16px;
   margin-bottom: 8px;
 }
@@ -547,7 +547,7 @@
 
 .editLink {
   font-size: 12px;
-  color: #0066cc;
+  color: var(--color-primary-700);
   cursor: pointer;
   text-decoration: underline;
 }

@@ -1,0 +1,58 @@
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:ilchul-test;MODE=MySQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  security:
+    user:
+      password: test-admin-password
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-client
+            client-secret: test-google-secret
+            redirect-uri: http://localhost/login/oauth2/code/google
+          kakao:
+            client-id: test-kakao-client
+            client-secret: test-kakao-secret
+            redirect-uri: http://localhost/login/oauth2/code/kakao
+          naver:
+            client-id: test-naver-client
+            client-secret: test-naver-secret
+            redirect-uri: http://localhost/login/oauth2/code/naver
+  jwt:
+    secret: dGVzdC1qd3Qtc2VjcmV0LXRlc3Qtand0LXNlY3JldC0xMjM0NTY=
+
+kakao:
+  rest-api-key: test-kakao-key
+
+google:
+  rest-api-key: test-google-key
+
+tour-api:
+  service-key: test-tour-api-key
+
+anthropic-api:
+  api-key: test-anthropic-key
+
+oauth:
+  redirect-uri: http://localhost/login/success
+  reissue-uri: http://localhost/login/reissue
+
+cloud:
+  aws:
+    s3:
+      bucket: test-bucket
+      region: ap-northeast-2
+      public-base-url: http://localhost/storage

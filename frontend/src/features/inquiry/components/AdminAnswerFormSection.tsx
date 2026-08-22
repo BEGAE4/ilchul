@@ -4,8 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchInquiryDetail, createAnswer } from '../api/inquiry.api';
-import type { Inquiry } from '../types/inquiry.types';
-import { INQUIRY_CATEGORY_LABELS } from '../types/inquiry.types';
+import type { InquiryDetail } from '../types/inquiry.types';
 
 interface AdminAnswerFormSectionProps {
   inquiryId: number;
@@ -20,7 +19,7 @@ export const AdminAnswerFormSection = ({
   onSuccess,
   onCancel,
 }: AdminAnswerFormSectionProps) => {
-  const [inquiry, setInquiry] = useState<Inquiry | null>(null);
+  const [inquiry, setInquiry] = useState<InquiryDetail | null>(null);
   const [answerContent, setAnswerContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,12 +64,12 @@ export const AdminAnswerFormSection = ({
         ) : (
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-medium bg-sky-50 text-sky-600 rounded-full px-2 py-0.5">
-                {INQUIRY_CATEGORY_LABELS[inquiry.category]}
+              <span className="text-xs font-medium bg-primary-50 text-primary-600 rounded-full px-2 py-0.5">
+                {inquiry.categoryName}
               </span>
-              <span className="text-xs text-gray-400">
-                {inquiry.userNickname}
-              </span>
+              {inquiry.authorNickname && (
+                <span className="text-xs text-gray-400">{inquiry.authorNickname}</span>
+              )}
             </div>
             <h3 className="text-sm font-bold text-gray-800 mb-2">{inquiry.title}</h3>
             <div className="bg-gray-50 rounded-xl p-4">
@@ -89,7 +88,7 @@ export const AdminAnswerFormSection = ({
             maxLength={MAX_ANSWER}
             placeholder="사용자에게 친절하게 답변해 주세요"
             rows={8}
-            className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-sky-400 resize-none"
+            className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm focus:outline-none focus:border-primary-400 resize-none"
           />
           <div className="text-xs text-gray-400 mt-1 text-right">
             {answerContent.length}/{MAX_ANSWER}
@@ -101,7 +100,7 @@ export const AdminAnswerFormSection = ({
         <button
           onClick={handleSubmit}
           disabled={!answerContent.trim() || isSubmitting}
-          className="w-full bg-sky-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all text-sm"
+          className="w-full bg-primary-500 text-white font-bold py-4 rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all text-sm"
         >
           {isSubmitting ? '등록 중...' : '답변 등록하기'}
         </button>

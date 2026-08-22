@@ -3,20 +3,17 @@ services:
     image: ${BACKEND_IMAGE}
     container_name: ilchul-backend-green
     ports:
-      - "8082:8080"
+      - "127.0.0.1:8082:${BACKEND_SERVER_PORT}"
     env_file:
       - .env
     environment:
-      - OTEL_SERVICE_NAME=ilchul-backend
-      - OTEL_RESOURCE_ATTRIBUTES=service.version=1.0.1,deployment.color=green
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4318
-      - OTEL_METRICS_EXPORTER=none
-      - OTEL_LOGS_EXPORTER=none
+      - SERVER_PORT=${BACKEND_SERVER_PORT}
     restart: unless-stopped
     networks:
       - ilchul-network
+      - monitoring_net
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${BACKEND_SERVER_PORT}/actuator/health || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -26,16 +23,19 @@ services:
     image: ${FRONTEND_IMAGE}
     container_name: ilchul-frontend-green
     ports:
-      - "3002:3000"
-    env_file:
-      - .env
+      - "127.0.0.1:3002:${FRONTEND_SERVER_PORT}"
+    environment:
+      - PORT=${FRONTEND_SERVER_PORT}
+      - HOSTNAME=0.0.0.0
+      - BACKEND_INTERNAL_URL=http://ilchul-backend-green:${BACKEND_SERVER_PORT}
     depends_on:
       - ilchul-backend-green
     restart: unless-stopped
     networks:
       - ilchul-network
+      - monitoring_net
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000 || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:${FRONTEND_SERVER_PORT} || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -45,3 +45,6 @@ networks:
   ilchul-network:
     external: true
     name: ilchul-network
+  monitoring_net:
+    external: true
+    name: monitoring_net

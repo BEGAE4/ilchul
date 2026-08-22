@@ -26,13 +26,11 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler { // 인가 �
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {
-
         GlobalErrorCode errorCode = GlobalErrorCode.HANDLE_ACCESS_DENIED;
 
         response.setStatus(errorCode.getHttpStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-
         objectMapper.writeValue(
                 response.getWriter(),
                 ErrorResponse.of(errorCode.getHttpStatus(), errorCode.getMessage())

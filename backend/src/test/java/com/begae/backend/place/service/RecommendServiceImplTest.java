@@ -1,6 +1,7 @@
 package com.begae.backend.place.service;
 
 import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.place.client.AnthropicRecommendationClient;
 import com.begae.backend.place.client.WellnessApiClient;
 import com.begae.backend.place.component.*;
 import com.begae.backend.place.dto.*;
@@ -61,7 +62,6 @@ class RecommendServiceImplTest {
         plan.setReasoning("몸을 데운 뒤 조용히 마무리하는 흐름");
         aiResponse.setTravelPlan(plan);
 
-        // callAi를 spy로 가로채므로 promptRegistry의 프롬프트가 비어 있어도 무방하다
         service = spy(new RecommendServiceImpl(
                 new SurveySearchPolicy(),
                 wellnessApiClient,
@@ -69,8 +69,8 @@ class RecommendServiceImplTest {
                 new CandidateMerger(),
                 new AiSelectionValidator(),
                 placeService,
-                new PromptRegistry(),
-                new ObjectMapper()));
+                new ObjectMapper(),
+                mock(AnthropicRecommendationClient.class)));
 
         when(placeService.searchRawByKeyword(anyString(), anyDouble(), anyDouble(), anyInt()))
                 .thenReturn(List.of(kakaoDoc("K1", "카페", "127.0", "37.5")));
