@@ -1,5 +1,7 @@
 package com.begae.backend.global.security.principal;
 
+import com.begae.backend.storage.dto.StoredImage;
+import com.begae.backend.storage.service.SocialProfileImageStorageService;
 import com.begae.backend.user.common.SocialType;
 import com.begae.backend.user.common.UserRole;
 import com.begae.backend.user.common.UserStatus;
@@ -24,6 +26,7 @@ import java.util.Map;
 public class CustomUserDetailsService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
+    private final SocialProfileImageStorageService socialProfileImageStorageService;
 
 
     // 로그인 성공 후 동작하는 메서드
@@ -53,17 +56,26 @@ public class CustomUserDetailsService extends DefaultOAuth2UserService {
         SocialType type = socialType;
         Map<String, String> userInfo = oauthUserInfo.getUserInfo();
         User user = userRepository.findByUserEmailAndSocialType(userInfo.get("email"), type)
-                .orElseGet(() ->
-                        userRepository.save(
-                                User.builder()
-                                        .userEmail(userInfo.get("email"))
-                                        .socialType(type)
-                                        .userNickname(userInfo.get("nickname"))
-                                        .userRole(UserRole.ROLE_USER)
-                                        .userStatus(UserStatus.STATUS_AVAILABLE)
-                                        .userImg(userInfo.get("profile_image"))
-                                        .build()
-                        ));
+                .orElseGet(() -> {
+                    String socialProfileImageUrl = userInfo.get("profile_image");
+
+                    String storedProfileImageUrl = socialProfileImageStorageService
+                            .uploadFromUrl(socialProfileImageUrl, "users/profile")
+                            .map(StoredImage::imageUrl)
+                            .orElse(socialProfileImageUrl);
+
+                    return userRepository.save(
+                            User.builder()
+                                    .userEmail(userInfo.get("email"))
+                                    .socialType(type)
+                                    .userNickname(userInfo.get("nickname"))
+                                    .userRole(UserRole.ROLE_USER)
+                                    .userStatus(UserStatus.STATUS_AVAILABLE)
+                                    .userImg(storedProfileImageUrl)
+                                    .build()
+                    );
+                });
+
 
         // UserDetails에 담기 위한 권한 정보
         SimpleGrantedAuthority authority = new SimpleGrantedAuthority(user.getUserRole().name());

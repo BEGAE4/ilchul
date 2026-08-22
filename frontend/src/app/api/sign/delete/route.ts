@@ -1,8 +1,9 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 
 // 회원 탈퇴 API (프론트 -> 백엔드 프록시) — 계정 영구 삭제 후 세션 만료
 export async function DELETE(request: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
   if (!baseUrl) {
     return new NextResponse(null, { status: 200 });
   }

@@ -1,3 +1,4 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 
 const CATEGORIES = [
@@ -9,7 +10,7 @@ const CATEGORIES = [
 
 /** GET 문의 카테고리(타입) 목록 조회 */
 export async function GET(request: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
 
   if (!baseUrl) {
     return NextResponse.json({ categories: CATEGORIES });

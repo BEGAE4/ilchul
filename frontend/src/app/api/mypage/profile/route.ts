@@ -1,6 +1,7 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const BASE_URL = getServerApiBaseUrl();
 
 const MOCK_PROFILE = {
   userNickname: '김여행',
@@ -34,7 +35,7 @@ export async function PATCH(request: NextRequest) {
   const baseUrl = BASE_URL;
   if (!baseUrl) {
     return NextResponse.json(
-      { error: 'NEXT_PUBLIC_API_BASE_URL 설정이 필요합니다.' },
+      { error: '백엔드 API 주소 설정이 필요합니다.' },
       { status: 500 }
     );
   }
@@ -68,4 +69,3 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
-
