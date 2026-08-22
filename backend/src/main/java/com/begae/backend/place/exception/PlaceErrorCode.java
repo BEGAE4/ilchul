@@ -9,7 +9,8 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum PlaceErrorCode implements ErrorCode {
 
-    PLACE_NOT_FOUND(HttpStatus.BAD_REQUEST, "P0001", "장소를 찾을 수 없습니다.");
+    PLACE_NOT_FOUND(HttpStatus.BAD_REQUEST, "P0001", "장소를 찾을 수 없습니다."),
+    RECOMMEND_NO_RESULT(HttpStatus.UNPROCESSABLE_ENTITY, "P0002", "추천할 만한 장소를 찾지 못했습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

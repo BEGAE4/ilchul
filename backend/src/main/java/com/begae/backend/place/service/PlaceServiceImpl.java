@@ -1,11 +1,6 @@
 package com.begae.backend.place.service;
 
-import com.anthropic.client.AnthropicClient;
-import com.anthropic.client.okhttp.AnthropicOkHttpClient;
-import com.anthropic.models.messages.Message;
-import com.anthropic.models.messages.MessageCreateParams;
 import com.begae.backend.global.exception.CustomException;
-import com.begae.backend.place.component.PromptRegistry;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.dto.*;
 import com.begae.backend.place.exception.PlaceErrorCode;
@@ -14,23 +9,19 @@ import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.dto.PopularPlanItemDto;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan_place.domain.PlanPlace;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -40,17 +31,13 @@ import java.util.stream.IntStream;
 @Transactional
 public class PlaceServiceImpl implements PlaceService {
 
-    private final ObjectMapper objectMapper;
-    @Value("${anthropic-api.api-key}")
-    private String ANTHROPIC_API_KEY;
-
     private final String GOOGLE_FIELDMASK = "places.displayName,places.formattedAddress,places.photos.name";
 
     private final WebClient kakaoWebClient;
     private final WebClient googleWebClient;
     private final PlaceRepository placeRepository;
     private final PlanRepository planRepository;
-    private final PromptRegistry promptRegistry;
+    private final PlaceUpsertWriter placeUpsertWriter;
 
     @Override
     public List<SearchPlaceResponseDto> searchPlaceByKeyword(String keyword) {
@@ -68,24 +55,6 @@ public class PlaceServiceImpl implements PlaceService {
     }
 
     @Override
-    public List<SearchPlaceResponseDto> searchPlaceForRecommend(SearchPlaceRequestDto request) {
-
-        KakaoPlaceResponseDto kakaoResponse = kakaoWebClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/v2/local/search/keyword.json")
-                        .queryParam("query", request.getKeyword())
-                        .queryParam("radius", request.getRadiusM())
-                        .queryParam("x", request.getX())
-                        .queryParam("y", request.getY())
-                        .build())
-                .retrieve()
-                .bodyToMono(KakaoPlaceResponseDto.class)
-                .timeout(Duration.ofMinutes(5))
-                .block();
-        return getSearchResult(kakaoResponse);
-    }
-
-    @Override
     public List<SearchPlaceResponseDto> getSearchResult(KakaoPlaceResponseDto kakaoResponse) {
         List<KakaoPlaceResponseDto.Document> documents = List.of();
         if(kakaoResponse != null) {
@@ -94,13 +63,14 @@ public class PlaceServiceImpl implements PlaceService {
         }
 
         return Flux.fromIterable(documents)
-                .flatMap(document -> toPlaceSummary(document), 8)
+                .flatMap(document -> toPlaceSummary(document, null), 8)
                 .collectList()
                 .block(Duration.ofSeconds(20));
     }
 
     @Override
-    public Mono<SearchPlaceResponseDto> toPlaceSummary(KakaoPlaceResponseDto.Document document) {
+    public Mono<SearchPlaceResponseDto> toPlaceSummary(
+            KakaoPlaceResponseDto.Document document, String wellnessContentId) {
         String textQuery = document.getRoadAddressName() + ", " + document.getPlaceName();
 
         Mono<GooglePlaceResponseDto> googleResponse = googleWebClient.post()
@@ -141,7 +111,8 @@ public class PlaceServiceImpl implements PlaceService {
         }).onErrorResume(exception -> Mono.just(buildDto(document, null)));
 
         return placeSummary.flatMap(placeSummaryDto ->
-                Mono.fromCallable(() -> upsertPlaceFrom(document, placeSummaryDto))
+                Mono.fromCallable(() -> upsertPlace(
+                                PlaceUpsertCommand.fromKakao(document, placeSummaryDto, wellnessContentId)))
                         .subscribeOn(reactor.core.scheduler.Schedulers.boundedElastic())
                         .map(placeId -> SearchPlaceResponseDto.builder()
                                 .placeId(placeId)
@@ -154,9 +125,13 @@ public class PlaceServiceImpl implements PlaceService {
     }
 
     private PlaceSummaryDto buildDto(KakaoPlaceResponseDto.Document document, String photoUri) {
-        String[] split = document.getCategoryName().split(">");
-         return PlaceSummaryDto.builder()
-                .categoryName(split[0] + "· " + split[1].trim())
+        String raw = document.getCategoryName() == null ? "" : document.getCategoryName();
+        String[] split = raw.split(">");
+        String categoryName = split.length >= 2
+                ? split[0].trim() + "· " + split[1].trim()
+                : raw.trim();
+        return PlaceSummaryDto.builder()
+                .categoryName(categoryName)
                 .placeName(document.getPlaceName())
                 .placeImageUrl(photoUri)
                 .x(document.getX())
@@ -165,92 +140,39 @@ public class PlaceServiceImpl implements PlaceService {
     }
 
     @Override
-    public int upsertPlaceFrom(KakaoPlaceResponseDto.Document document, PlaceSummaryDto dto) {
+    public List<KakaoPlaceResponseDto.Document> searchRawByKeyword(
+            String keyword, double x, double y, int radiusM) {
 
-        final String sourceId = document.getId();
-        LocalDateTime now = LocalDateTime.now();
+        KakaoPlaceResponseDto response = kakaoWebClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v2/local/search/keyword.json")
+                        .queryParam("query", keyword)
+                        .queryParam("radius", radiusM)
+                        .queryParam("x", x)
+                        .queryParam("y", y)
+                        .build())
+                .retrieve()
+                .bodyToMono(KakaoPlaceResponseDto.class)
+                .timeout(Duration.ofSeconds(10))
+                .block();
 
-        Optional<Place> existing = placeRepository.findPlaceBySourceId(sourceId);
-
-        if (existing.isEmpty()) {
-            // 신규 데이터 바로 저장
-            Place newPlace = Place.builder()
-                    .sourceId(sourceId)
-                    .addressName(document.getAddressName())
-                    .roadAddressName(document.getRoadAddressName())
-                    .categoryName(dto != null ? dto.getCategoryName() : document.getCategoryName())
-                    .phone(document.getPhone())
-                    .placeName(document.getPlaceName())
-                    .placeUrl(document.getPlaceUrl())
-                    .placeImageUrl(dto != null ? dto.getPlaceImageUrl() : null)
-                    .x(Double.parseDouble(document.getX()))
-                    .y(Double.parseDouble(document.getY()))
-                    .lastFetchedAt(now)
-                    .lastSeenAt(now)
-                    .build();
-            try {
-                placeRepository.save(newPlace);
-                return newPlace.getPlaceId();
-            } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                return placeRepository.findPlaceBySourceId(sourceId)
-                        .map(Place::getPlaceId)
-                        .orElseThrow(() -> e);
-            }
-        }
-
-        Place place = existing.get();
-
-        if (place.getLastSeenAt() == null || place.getLastSeenAt().isBefore(now.minusHours(6))) {
-            place.markSeen();
-        }
-
-        // 이미 갱신된 데이터는 건너뛰기
-        boolean stale = place.getLastFetchedAt() == null ||
-                place.getLastFetchedAt().isBefore(now.minusDays(7));
-
-        if (!stale) { // 갱신된 데이터라면 DB 쓰기 생략
-            return place.getPlaceId();
-        }
-
-        place.mergeFrom(document, dto);
-        placeRepository.save(place);
-        return place.getPlaceId();
+        if (response == null || response.getDocuments() == null) return List.of();
+        return response.getDocuments();
     }
 
     @Override
-    public RecommendKeywordDto generateKeyword(SurveyResultDto survey) throws JsonProcessingException {
-
-        AnthropicClient client = AnthropicOkHttpClient.builder().
-                apiKey(ANTHROPIC_API_KEY).
-                timeout(Duration.ofMinutes(1)).
-                build();
-
-        String userTemplate = buildUserPrompt(survey);
-
-        MessageCreateParams params = MessageCreateParams.builder()
-                .model("claude-sonnet-4-5-20250929")
-                .maxTokens(1000)
-                .system(promptRegistry.getSystemPrompt())
-                .addUserMessage(userTemplate)
-                .build();
-
-        Message message = client.messages().create(params);
-
-        String content = message.content().getFirst().asText().text()
-                .replaceAll("```json\\n", "")
-                .replaceAll("```", "")
-                .trim();
-
-        RecommendKeywordDto recommend = new ObjectMapper().readValue(content, RecommendKeywordDto.class);
-
-        return recommend;
+    public SearchPlaceResponseDto enrichAndUpsert(
+            KakaoPlaceResponseDto.Document document, String wellnessContentId) {
+        return toPlaceSummary(document, wellnessContentId).block(Duration.ofSeconds(20));
     }
 
-    private String buildUserPrompt(SurveyResultDto survey) throws JsonProcessingException {
-        String surveyJson = objectMapper.writeValueAsString(survey);
-
-        return promptRegistry.getUserTemplate()
-                .replace("{{SURVEY_JSON}}", surveyJson);
+    @Override
+    public int upsertPlace(PlaceUpsertCommand command) {
+        try {
+            return placeUpsertWriter.insertOrMerge(command);
+        } catch (DataIntegrityViolationException e) {
+            return placeUpsertWriter.mergeAfterConflict(command);
+        }
     }
 
     @Override

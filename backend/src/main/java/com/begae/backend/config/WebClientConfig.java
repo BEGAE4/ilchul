@@ -19,6 +19,9 @@ public class WebClientConfig {
     @Value("${google.rest-api-key}")
     private String GOOGLE_API_KEY;
 
+    @Value("${tour-api.service-key}")
+    private String TOUR_API_KEY;
+
     @Bean("kakaoWebClient")
     public WebClient kakaoWebClient(WebClient.Builder builder) {
         return builder
@@ -52,6 +55,17 @@ public class WebClientConfig {
                 .codecs(clientCodecConfigurer ->
                         clientCodecConfigurer.defaultCodecs().maxInMemorySize(2 * 1024 * 1024))
                 .clientConnector(new ReactorClientHttpConnector(HttpClient.create().responseTimeout(Duration.ofMinutes(5))))
+                .build();
+    }
+
+    @Bean("tourWebClient")
+    public WebClient tourWebClient(WebClient.Builder builder) {
+        return builder
+                .baseUrl("https://apis.data.go.kr/B551011/WellnessTursmService")
+                .codecs(clientCodecConfigurer ->
+                        clientCodecConfigurer.defaultCodecs().maxInMemorySize(2 * 1024 * 1024))
+                .clientConnector(new ReactorClientHttpConnector(
+                        HttpClient.create().responseTimeout(Duration.ofSeconds(5))))
                 .build();
     }
 }
