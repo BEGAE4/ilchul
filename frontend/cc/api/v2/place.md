@@ -1,80 +1,142 @@
-# PLACE-16 (v2). 설문 바탕 장소 추천 — 웰니스 우선 개편
+# PLACE API (v2)
 
-> v1 대비 파이프라인이 반대로 뒤집힌다. v1은 **AI가 검색 키워드를 만들고** 카카오로 찾았다.
-> v2는 **웰니스 공공 API와 카카오에서 후보를 먼저 모으고, AI가 그 중에서 고르고 순서를 짠다.**
-> v1 명세: [../v1/place.md](../v1/place.md) PLACE-16
+> Notion [엔드포인트 (3)](https://www.notion.so/3740e945fc0980c29284f38e962359db) 기준. 엔드포인트 12건.
 
+| ID | 제목 | 메서드 | URL | 서버 | 클라이언트 | FE검토 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 41 | 장소 좋아요 | POST | `/api/place/like/\{placeId\}` | 시작 전 | 시작 전 | N |
+| 42 | 장소 상세 조회 | GET | `/api/place/\{placeId\}` | 시작 전 | 시작 전 | N |
+| 43 | 장소 후기 조회 | GET | `/api/place/\{placeId\}/review?lastReviewId=` | 시작 전 | 시작 전 | N |
+| 44 | 장소 후기 작성 | POST | `/api/place/\{placeId\}/review` | 시작 전 | 시작 전 | N |
+| 45 | 장소가 포함된 코스 조회 | GET | `/api/place/\{placeId\}/plan` | 시작 전 | 시작 전 | N |
+| 56 | 장소 후기 조회 | GET | `/api/place/\{placeId\}/review?lastReviewId=` | 시작 전 | 시작 전 | Y |
+| 57 | 장소 후기 작성 | POST | `/api/place/\{placeId\}/review` | 시작 전 | 시작 전 | Y |
+| 58 | 장소가 포함된 코스 조회 | GET | `/api/place/\{placeId\}/plan` | 시작 전 | 시작 전 | Y |
+| 62 | 플랜에 장소 추가 | POST | `api/plan-place/{planId}` | 시작 전 | 시작 전 | Y |
+| 63 | 장소 상세 조회 | GET | `/api/place/\{placeId\}` | 시작 전 | 시작 전 | Y |
+| 64 | 장소 좋아요 | POST | `/api/place/like/\{placeId\}` | 시작 전 | 시작 전 | Y |
+| 65 | 장소 스크랩 | POST | `/api/place/scrapped/\{placeId\}` | 시작 전 | 시작 전 | Y |
+
+---
+
+# PLACE-4. 장소 검색
+## URL : GET /api/place/search?keyword={keyword}
+
+> 1차로 자체 DB에서 검색하고, 0건이면 백엔드가 Kakao Local 키워드 검색(1-5)을 호출해 외부 결과를 가공·적재 후 반환한다. 외부 fallback이 동작한 경우 응답 항목에 `source: "kakao"` 플래그를 함께 내려 클라이언트가 신규 placeId임을 인지하도록 한다. 직접 외부 POI를 가공하지 않고 raw 결과만 보고 싶다면 PLACE-N9를 사용.
+
+### 본문 파라미터
+
+| **이름** | **유형** | **필수/선택** | **설명** |
+| --- | --- | --- | --- |
+| keyword | query parameter | O | 검색할 키워드 (장소명/지역명/카테고리). `SearchPage` 자동완성 입력값 또는 `/search/results?q=` 쿼리 |
+| limit | query parameter | X | 반환 개수 (기본 20, 자동완성 드롭다운은 상위 3건만 사용) |
+
+### 응답 코드
+
+| status | message |
+| --- | --- |
+| 200 | 성공 |
+| 400 | 요청 데이터 오류 (keyword 누락 또는 길이 0) |
+| 500 | 외부 검색 API 호출 실패 |
+
+## 코드 예시
+
+### 요청
+
+```jsx
+{
+	get 요청 url 예시 -> http://localhost:8080/api/place/search?keyword=강남역근처초밥
+}
+```
+
+### 응답
+
+```java
+[
+    {
+        "placeId": 374,
+        "placeImageUrl": "https://lh3.googleusercontent.com/place-photos/AL8-SNFL...",
+        "categoryName": "음식점 · 일식",
+        "placeName": "갓덴스시 강남점",
+        "roadAddressName": "서울 강남구 강남대로 390",
+        "likeCount": 1240
+    },
+    {
+        "placeId": 375,
+        "placeImageUrl": "https://lh3.googleusercontent.com/place-photos/AL8-SNHA...",
+        "categoryName": "음식점 · 일식",
+        "placeName": "고메스시",
+        "roadAddressName": "서울 강남구 테헤란로 5길 12",
+        "likeCount": 980
+    },
+    {
+        "placeId": 381,
+        "placeImageUrl": "https://lh3.googleusercontent.com/place-photos/AL8-SNFz...",
+        "categoryName": "음식점 · 일식",
+        "placeName": "은행골 강남역점",
+        "roadAddressName": "서울 강남구 테헤란로 8길 21",
+        "likeCount": 850
+    },
+    {
+        "placeId": 378,
+        "placeImageUrl": "https://lh3.googleusercontent.com/place-photos/AL8-SNEh...",
+        "categoryName": "음식점 · 일식",
+        "placeName": "스시이안앤 강남역점",
+        "roadAddressName": "서울 강남구 강남대로 358",
+        "likeCount": 720
+    },
+    {
+        "placeId": 379,
+        "placeImageUrl": "https://lh3.googleusercontent.com/place-photos/AL8-SNHg...",
+        "categoryName": "음식점 · 일식",
+        "placeName": "오마카세 오사이초밥 강남역점",
+        "roadAddressName": "서울 강남구 봉은사로 4길 18",
+        "likeCount": 615
+    }
+]
+```
+
+
+
+# PLACE-16. 설문 바탕 장소 추천 (v2 웰니스 우선)
 ## URL : POST /api/place/recommend
 
-엔드포인트와 요청 스키마는 v1과 동일하다. **응답 스키마만 바뀐다.**
-현재 프론트는 이 API를 호출하지 않고 `RECOMMENDED_PLACES` mock을 쓰므로(`CourseCreationFlow.tsx:934`) 파괴적 변경의 영향 범위가 없다.
+> 웰니스 공공 API와 카카오에서 후보를 먼저 모은 뒤, AI가 후보 인덱스만 선택해 방문 순서를 구성한다.
+> 웰니스 장소는 카카오 POI로 다시 매칭하고 `wellnessCertified=true`로 구분한다.
 
----
+### 처리 흐름
 
-## 1. 파이프라인
-
-```
-설문(emotion, 시간, transport, 좌표)
- │
- ├─ (A) 웰니스 공공 API locationBasedList 1콜 → 웰니스 N건 (실측 0~6건)
- │       └ 각 건의 title + 좌표로 카카오 키워드 검색 → 같은 장소의 카카오 POI 확보
- │         → 후보 풀에 [웰니스] 태그를 달아 우선 편입
- │
- └─ (B) 표 C 검색어로 카카오 로컬 검색 → 일반 후보 M건
-        │
-        ▼
-   병합 · 카카오 place id 기준 중복 제거 (중복 시 웰니스 쪽 채택)
-        │
-        ▼
-   AI 1콜 — 후보 중 선택 + 순서 + 이유 (웰니스 태그 우선 지시)
-        │
-        ▼
-   선택된 4~5곳만 Google 사진 조회 + place upsert (+ wellness_content_id)
-        │
-        ▼
-   응답
+```text
+설문
+ ├─ 웰니스 공공 API → 카카오 POI 매칭
+ └─ 감정별 카카오 키워드 검색
+      ↓
+후보 병합·중복 제거 → AI 1회 선택 → 선택된 장소만 사진 보강·DB upsert
 ```
 
-### 설계 근거
+### 본문 파라미터
 
-**왜 웰니스를 "메인 후보 풀"이 아니라 "우선 가산점 소스"로 두는가**
-웰니스 공공 API의 전국 데이터가 **169건이 전부다**(2026-08-19 실측). 좌표 기반 조회 결과:
+| **이름** | **유형** | **필수/선택** | **설명** |
+| --- | --- | --- | --- |
+| emotion | String | 필수 | 사용자가 선택/입력한 마음 상태 |
+| startTime | DateTime | 필수 | `yyyy-MM-dd HH:mm` |
+| endTime | DateTime | 필수 | startTime 이후, 24시간 이내 |
+| transport | String | 필수 | `도보` / `대중교통` / `자가용` |
+| transportTime | String | 선택 | 희망 이동 시간 |
+| location | Object | 필수 | `{ x: 경도, y: 위도 }` |
 
-| 좌표 | 반경 20km(API 상한) |
-|---|---|
-| 서울시청 | 6건 |
-| 서울시청 (반경 5km) | 1건 |
-| 강릉 (v1 명세 설문 예시 좌표) | 1건 |
-| 부산 서면 | 3건 |
-| 제주시청 | 1건 |
-| 대전시청 | 2건 |
-| 안동 | 1건 |
+### 응답 코드
 
-도보 반경(500~2000m)에서는 전국 어디서도 사실상 0건이다. 웰니스만으로 코스를 구성하는 것은 불가능하므로, 카카오 결과와 병합하되 **웰니스 매칭 장소를 AI 선택 단계에서 우선**시킨다.
+| status | message |
+| --- | --- |
+| 200 | 추천 코스 생성 성공 |
+| 400 | 필수 필드, 좌표, 시간 또는 이동수단 오류 |
+| 401 | 인증 필요 |
+| 422 | 추천할 수 있는 후보가 없음 |
+| 500 | 카카오 검색 또는 응답 처리 실패 |
+| 503 | Anthropic 추천 서비스 일시 오류 |
 
-**왜 웰니스 장소를 카카오로 되찾는가**
-공공데이터 이용 정책상 웰니스 콘텐츠를 자체 DB에 적재할 수 없고 **식별자만 저장 가능**하다. `place` 행을 만들려면 이름·주소·좌표·이미지가 필요하므로 이는 카카오+Google 출처로 채우고, 웰니스에서는 `contentId`만 가져와 붙인다. 되찾기 과정이 동시에 우선 편입의 수단이 된다.
-
-**왜 AI 호출이 1회인가**
-표 C 검색어를 폴백 전용이 아니라 **상시 카카오 검색어**로 사용한다. v1처럼 AI가 키워드를 먼저 생성하면 AI 호출이 2회가 된다.
-
-**왜 후보 전체가 아니라 선택된 것만 enrich 하는가**
-v1의 `getSearchResult`는 검색 결과 **전건**에 `toPlaceSummary`(Google 텍스트검색 + 사진 미디어 = 2콜) + DB upsert를 돌린다. 후보 20~30건에 그대로 적용하면 외부 호출이 40~60회가 된다. AI 선택 이후로 미룬다.
-
----
-
-## 2. 요청 (v1과 동일)
-
-| 이름 | 유형 | 필수 | 설명 |
-|---|---|---|---|
-| emotion | String | O | 마음 상태 (Survey 1 `mindState`) |
-| startTime | DateTime | O | `yyyy-MM-dd HH:mm` |
-| endTime | DateTime | O | 당일치기 24시간 이내 |
-| transport | String | O | `도보` / `대중교통` / `자가용` |
-| transportTime | String | X | `1시간 이내` / `상관없어요` / 30분 단위 직접 입력 |
-| location | Object | O | 출발지 좌표 `{ x: 경도, y: 위도 }` |
-
-> `SurveyResultDto`에 `transportTime` 필드가 없다(v1 명세에는 존재). v2에서 추가한다.
+### 요청
 
 ```json
 {
@@ -87,20 +149,16 @@ v1의 `getSearchResult`는 검색 결과 **전건**에 `toPlaceSummary`(Google �
 }
 ```
 
----
-
-## 3. 응답
-
-### 스키마
+### 응답
 
 ```json
 {
   "recommendId": "rc_8f3a91c2",
-  "candidateCount": { "wellness": 6, "kakao": 24 },
+  "candidateCount": { "wellness": 1, "kakao": 12 },
   "plan": {
     "totalHours": 7,
-    "estimatedPlaceCount": 4,
-    "reasoning": "울적할 땐 몸을 데운 뒤 조용한 실내에서 마무리하는 흐름이 좋아요"
+    "estimatedPlaceCount": 2,
+    "reasoning": "몸을 데운 뒤 조용한 곳에서 마무리하는 흐름이에요"
   },
   "items": [
     {
@@ -116,216 +174,575 @@ v1의 `getSearchResult`는 검색 결과 **전건**에 `toPlaceSummary`(Google �
       "reason": "따뜻한 물에 몸을 담그면 굳은 마음이 먼저 풀려요",
       "tags": ["#온천", "#몸풀기"],
       "wellnessCertified": true
-    },
-    {
-      "order": 2,
-      "placeId": 402,
-      "placeName": "밀도 서울숲점",
-      "categoryName": "음식점 · 카페",
-      "placeImageUrl": "https://lh3.googleusercontent.com/place-photos/...",
-      "roadAddressName": "서울 성동구 왕십리로 82",
-      "x": 127.0442,
-      "y": 37.5445,
-      "stayMinutes": 60,
-      "reason": "따뜻한 차 한 잔으로 생각을 정리하기 좋아요",
-      "tags": ["#조용함", "#창가"],
-      "wellnessCertified": false
     }
   ]
 }
 ```
 
-### 필드
+> `wellnessCertified`는 국가 웰니스 인증 출처 여부다. 방문 사진 인증을 뜻하는 프론트의 `isVerified`와는 다른 필드다.
 
-| 필드 | 타입 | 설명 |
-|---|---|---|
-| `recommendId` | String | 재추천·AI 응답 로그 추적용 |
-| `candidateCount.wellness` | Integer | 웰니스 API가 반환한 후보 수 (매칭 실패 제외 전) |
-| `candidateCount.kakao` | Integer | 카카오 검색 후보 수 (중복 제거 후) |
-| `plan.totalHours` | Integer | startTime~endTime 총 가용 시간 |
-| `plan.estimatedPlaceCount` | Integer | AI가 판단한 방문 가능 장소 수 |
-| `plan.reasoning` | String | 코스 구성 이유 1문장 |
-| `items[].order` | Integer | 1부터 시작하는 방문 순서 |
-| `items[].placeId` | Integer | 자체 DB placeId. 장소 상세·좋아요·스크랩에 그대로 사용 |
-| `items[].stayMinutes` | Integer | 추천 체류 시간(분). **숫자** — 문자열 파싱 불필요 |
-| `items[].reason` | String | 이 장소를 고른 이유. 40자 이내 |
-| `items[].tags` | String[] | AI 생성 태그 0~3개 |
-| `items[].wellnessCertified` | Boolean | 힐링 인증 배지 노출 여부 |
+# PLACE-19. 플랜에 장소 추가
+## URL : POST api/plan-place/{planId}
 
-`placeName`, `categoryName`, `placeImageUrl`, `roadAddressName`, `x`, `y`는 v1 `places[]` 항목과 동일한 의미·타입이다.
+### 본문 파라미터
 
-### 설계 결정 기록
-
-- **최상위를 배열이 아닌 객체로 둔다.** v1은 최상위가 배열이라 `plan`, `candidateCount` 같은 리스트 밖 정보를 실을 자리가 없었다.
-- **`keyword` 그룹핑을 제거한다.** v2에는 키워드 그룹이라는 개념이 없고, `order`가 그룹 경계를 넘나들 수 있어 그룹 구조는 오버헤드다.
-- **`source` / `fallback` 필드를 두지 않는다.** 병합 구조에서는 "웰니스 경로 vs 폴백 경로"라는 이분법이 성립하지 않는다. 배지 판정은 `items[].wellnessCertified`가 온전히 담당한다.
-- **배지 판정은 백엔드가 확정해 boolean으로 내린다.** 프론트가 다른 필드로 추론하게 두면 규칙이 두 곳에 흩어진다.
+| **이름** | **유형** | **필수/선택** | **설명** |
+| --- | --- | --- | --- |
+| placeId | Integer | 필수 | 추가할 장소의 placeId (`PlaceAddSheet`에서 선택한 BestPlace) |
+| order | Integer | 필수 | 코스 내 플랜 장소 순서(1부터 시작). 신규 코스 생성 시 1, 기존 코스에 append 시 마지막 + 1 |
 
 ### 응답 코드
 
-| status | 조건 |
-|---|---|
+| status | message |
+| --- | --- |
 | 200 | 성공 |
-| 400 | 필수 필드 누락 / 시간 형식 오류 / `startTime >= endTime` |
+| 400 | 요청 데이터 오류 (placeId/order 누락 또는 형식 오류) |
 | 401 | 인증 필요 |
-| 422 | AI 선택 후 유효 `items`가 0건 (UI는 "다시 하기" 안내) |
-| 500 | 카카오 또는 AI 호출 실패 |
+| 403 | 작성자 본인이 아님 |
+| 404 | 플랜 또는 장소를 찾을 수 없음 |
+| 409 | 동일 order 중복 또는 이미 추가된 장소 |
 
-**웰니스 API 실패는 500이 아니다.** 타임아웃·장애 시 `candidateCount.wellness = 0`으로 degrade 하고 카카오 후보만으로 추천을 완성한다. 그 경우 모든 `wellnessCertified`가 `false`가 된다. 부가 소스의 장애가 추천 전체를 죽이면 안 된다.
+## 코드 예시
 
----
+### 요청
 
-## 4. 웰니스 공공 API 연동 (2026-08-19 실측)
-
-```
-GET https://apis.data.go.kr/B551011/WellnessTursmService/locationBasedList
-    ?serviceKey={TOUR_API_KEY}
-    &MobileOS=ETC&MobileApp=ilchul&_type=json
-    &numOfRows={n}&pageNo=1
-    &mapX={경도}&mapY={위도}&radius={m, 최대 20000}
-    &langDivCd=KOR
+```jsx
+{
+    "placeId" : 1,
+    "order" : 3
+}
 ```
 
-- 오퍼레이션명에 숫자가 없다. `locationBasedList1` / `locationBasedList2`는 존재하지 않는다.
-- **`langDivCd`는 필수.** 누락 시 `resultCode: "11"`. 값은 형식적이며 응답의 `langDivCd`는 항상 `KOR`이다.
-- 사용 가능한 다른 오퍼레이션: `areaBasedList`, `searchKeyword`(keyword 필수), `detailCommon`(contentId 필수, `overview` 제공), `detailIntro`
-- **코드 목록 API가 없다.** `wellnessThemaCode` / `areaCode` / `categoryCode` 모두 미제공 → 테마코드는 하드코딩해야 한다.
-- 키는 `.env`의 `TOUR_API_KEY`로 옮기고 `WebClientConfig`에 `tourWebClient` 빈을 추가한다. (현재 리포 루트 `.tour-api` 파일에 보관, 권한 600, gitignore됨)
+### 응답
 
-### 응답 필드 (locationBasedList, 19개)
-
-```
-contentId  contentTypeId  title  baseAddr  detailAddr  zipCd
-mapX  mapY  dist  mlevel  orgImage  thumbImage  cpyrhtDivCd
-lDongRegnCd  lDongSignguCd  wellnessThemaCd  langDivCd  regDt  mdfcnDt
-```
-
-이 중 v2가 사용하는 것은 **`contentId`, `title`, `mapX`, `mapY`** 뿐이다. 나머지는 저장하지 않는다.
-
-### 데이터 품질 (169건 전수)
-
-| 항목 | 실측 |
-|---|---|
-| `contentTypeId` | 전건 `"12"` (단일 타입) |
-| `tel` | **169/169 전부 빈 값** |
-| `orgImage` / `thumbImage` | 30건 없음 |
-| `detailAddr` | 135건 없음 |
-| `cpyrhtDivCd` | Type3 111건 / Type1 28건 / 빈값 30건 |
-
-`cpyrhtDivCd` 빈값 30건은 이미지 없는 30건과 정확히 일치 → **이미지 저작권 유형 필드**다. 과반이 Type3(출처표시 + **변경금지**)이므로 이미지 리사이즈·가공 캐싱도 제약을 받는다. v2가 웰니스 이미지를 쓰지 않는 이유다.
-
-### 테마 분포 (참고, 저장하지 않음)
-
-| 코드 | 건수 | 성격 |
-|---|---|---|
-| EX050100 | 93 | 온천·유황온천 |
-| EX050600 | 24 | 치유의숲 |
-| EX050200 | 22 | 찜질·해수찜 |
-| EX050500 | 11 | 호텔 스파 |
-| EX050400 | 10 | 명상·요가·힐링센터 |
-| EX050300 | 6 | 한방 |
-| EX050700 | 3 | 생태탐방·해양치유 |
-
-절반 이상이 온천·스파·찜질이다. 감정 기반 추천과 결이 다르므로 우선 편입은 하되 전체 코스를 웰니스로 채우려 하지 않는다.
-
----
-
-## 5. 표 C — 감정별 카카오 검색어
-
-`emotion` 값은 `CourseCreationFlow.tsx`의 `MIND_STATES` 7종과 정확히 일치한다.
-**아래는 제안값이다. 기획 확정 표로 교체한다.**
-
-| emotion | 카카오 검색어 |
-|---|---|
-| 그냥 기운이 없고 지쳤어요 | 온천, 사우나, 브런치카페, 공원 |
-| 마음이 좀 울적하고 속상해요 | 카페, 산책로, 서점, 전망대 |
-| 답답하고 짜증이 많아졌어요 | 등산로, 하천, 방탈출, 클라이밍 |
-| 무기력하고 재미가 없어요 | 전시회, 체험공방, 보드게임카페, 시장 |
-| 기분이 좋아요, 뭔가 하고 싶어요 | 맛집, 전시회, 산책로, 사진스팟 |
-| 생각이 많아졌어요, 정리가 필요해요 | 서점, 북카페, 사찰, 도서관 |
-| 아무 감정도 없이 멍한 느낌이에요 | 수목원, 미술관, 카페, 강변 |
-
-- 검색어 4개 × 카카오 키워드 검색 = 요청당 카카오 호출 4회 (+ 웰니스 되찾기 N회)
-- 반경은 `transport`로 산출한다. 도보 500~2000m / 대중교통·자전거 2000~5000m / 자가용 5000~15000m, 가용 시간에 비례
-- `emotion`이 표에 없는 값이면 마지막 행("멍한 느낌")을 기본값으로 쓴다
-
----
-
-## 6. 웰니스 ↔ 카카오 매칭 규칙
-
-1. 웰니스 `title`로 카카오 키워드 검색 (`x`, `y`에 웰니스 `mapX`, `mapY`, `radius=1000`)
-2. 결과 중 웰니스 좌표로부터 **150m 이내** 최근접 1건을 채택
-3. 150m 이내 결과가 없으면 **그 웰니스 장소는 후보에서 제외**한다. place 행을 만들 카카오 출처 데이터가 없기 때문이다
-4. 채택된 카카오 POI가 (B) 일반 후보에도 있으면 중복 제거하고 웰니스 태그를 유지한다
-
-매칭 실패율은 실측 데이터가 없다. 구현 시 실패 건을 로그로 남기고 임계값 150m를 사후 조정한다.
-
----
-
-## 7. DB 변경
-
-```sql
--- V26xxxxxxxx__add_place_source_and_wellness.sql
-
--- 1) 출처 구분
-ALTER TABLE `place` ADD COLUMN `source` VARCHAR(20) NOT NULL DEFAULT 'KAKAO';
-ALTER TABLE `place` DROP INDEX `uk_place_source`;
-ALTER TABLE `place` ADD UNIQUE KEY `uk_place_source` (`source`, `source_id`);
-
--- 2) 웰니스 식별자 (콘텐츠는 저장하지 않는다)
-ALTER TABLE `place` ADD COLUMN `wellness_content_id` VARCHAR(20) NULL;
-ALTER TABLE `place` ADD INDEX `idx_place_wellness` (`wellness_content_id`);
+```java
+{
+    "planTitle": "성수 카페거리 여행",
+    "planDescription": "성수 카페거리에서 시작하는 나만의 코스",
+    "isPlanVisible": false,
+    "totalDuration": 480,
+    "places": [
+        {
+            "placeId": 300,
+            "placeName": "교보문고 잠실점",
+            "roadAddressName": "서울 송파구 올림픽로 269",
+            "placeImageUrl": "https://lh3.googleusercontent.com/place-photos/AL8-SNFt...",
+            "order": 1,
+            "duration": 0
+        },
+        {
+            "placeId": 301,
+            "placeName": "교보문고 천호점",
+            "roadAddressName": "서울 강동구 올림픽로 664",
+            "placeImageUrl": "https://lh3.googleusercontent.com/place-photos/AL8-SNFs...",
+            "order": 2,
+            "duration": 18
+        },
+        {
+            "placeId": 1,
+            "placeName": "성수 카페거리",
+            "roadAddressName": "서울 성동구 성수이로 18길",
+            "placeImageUrl": "https://images.unsplash.com/photo-1692103675608-6e635afa077b?...",
+            "order": 3,
+            "duration": 29
+        }
+    ]
+}
 ```
 
-- **`wellness_content_id IS NOT NULL` 이 곧 배지 조건이다.** 별도 boolean 컬럼을 두지 않는다
-- `wellnessThemaCd`는 저장하지 않는다. 배지는 "웰니스 인증" 단일 라벨로 간다
-- `source` 컬럼은 이 설계에서 **방어적 성격**이다. 모든 place 행이 카카오 출처로 채워지므로 `source_id` 충돌은 원천적으로 발생하지 않는다. 다만 기존 `uk_place_source (source_id)` 단일 유니크는 출처가 늘어날 때 취약하므로 지금 정리해둔다
-- 배지가 `place`에 붙으므로 장소 상세(PLACE-N1)·인기 장소·검색 결과에서도 동일하게 노출할 수 있다
+# PLACE-N1. 장소 상세 조회
+## URL : GET /api/place/{placeId}
 
----
+> `PlaceDetailPage` 진입 시 호출. 현재 UI는 카테고리별 fake detail에 의존하므로 본 API로 대체 필요.
 
-## 8. 백엔드 리팩터링 항목
+### 본문 파라미터
 
-| 대상 | 변경 |
-|---|---|
-| `SurveyResultDto` | `transportTime` 필드 추가 |
-| `RecommendKeywordDto` | 폐기 → 선택 결과 DTO로 교체 (후보 인덱스 + order + reason + stayMinutes + tags) |
-| `prompts/SystemPrompt.txt`, `UserTemplate.txt` | 키워드 생성 → 후보 선별·순서·이유. 웰니스 태그 우선 지시 |
-| `PlaceServiceImpl.upsertPlaceFrom`, `Place.mergeFrom` | `KakaoPlaceResponseDto.Document` 강결합 해소 (출처 중립 입력 타입) |
-| `PlaceServiceImpl.getSearchResult` | 전건 enrich → AI 선택 이후로 이동 |
-| `WebClientConfig` | `tourWebClient` 빈 추가 |
-| `PlaceController.recommendPlace` | 새 응답 DTO, 422 처리, Swagger 어노테이션 |
+| **이름** | **유형** | **필수/선택** | **설명** |
+| --- | --- | --- | --- |
+| placeId | path parameter | 필수 | 장소 ID |
 
-**AI 응답 검증**: 후보에 없는 인덱스를 반환하면 해당 항목을 drop 한다. 남은 항목이 0건이면 422.
+### 응답 코드
 
----
+| status | message |
+| --- | --- |
+| 200 | 성공 |
+| 400 | 요청 데이터 오류 (placeId 형식 오류) |
+| 404 | 장소를 찾을 수 없음 |
 
-## 9. 프론트 카드 필드 매핑
+## 코드 예시
 
-`CourseCreationFlow.tsx`의 `placeSelect` / `placeDetail` 카드 기준.
+### 응답
 
-| 카드 표시 | 현재 mock (`Place`) | v2 응답 |
-|---|---|---|
-| 카테고리 뱃지 | `category` | `items[].categoryName` |
-| 장소명 | `name` | `items[].placeName` |
-| 설명문 | `description` | **`items[].reason`** |
-| 추천 체류 | `time` (`"60분"` 문자열) | **`items[].stayMinutes`** (숫자) |
-| 이미지 | `image` | `items[].placeImageUrl` |
-| 주소 | `address` | `items[].roadAddressName` |
-| 태그 | `tags` | `items[].tags` |
-| 전화번호 | `phone` | 없음 — 장소 상세(PLACE-N1)에서 조회 |
-| 방문 순서 | 없음 | `items[].order` |
-| 힐링 인증 배지 | 없음 | **`items[].wellnessCertified`** |
+```java
+{
+    "placeId": 165,
+    "placeName": "알뜨",
+    "categoryName": "음식점 · 카페",
+    "placeImageUrl": "https://lh3.googleusercontent.com/place-photos/AJRVUZOU...",
+    "roadAddressName": "강원 강릉시 율곡로 2729",
+    "phoneNumber": "033-123-4567",
+    "businessHours": "10:00 - 22:00",
+    "description": "감성적인 인테리어와 특별한 음료로 유명한 카페입니다.",
+    "tags": ["감성카페", "디저트 맛집", "포토스팟"],
+    "x": 128.899802252991,
+    "y": 37.7631911006287,
+    "likeCount": 2340,
+    "isLiked": false,
+    "bookmarkCount": 412,
+    "isBookmarked": false,
+    "averageRating": 4.6,
+    "reviewCount": 38,
+    "mapMeta": {
+        "provider": "naver",
+        "center": { "x": 128.899802252991, "y": 37.7631911006287 },
+        "zoom": 16,
+        "markers": [
+            { "x": 128.899802252991, "y": 37.7631911006287, "label": "알뜨" }
+        ],
+        "staticMapUrl": "https://naveropenapi.apigw.ntruss.com/map-static/v2/raster?w=600&h=400&center=128.899802,37.763191&level=16&markers=type:d|size:mid|pos:128.899802%2037.763191"
+    }
+}
+```
 
-### 주의: `wellnessCertified`와 `isVerified`는 다른 개념이다
+### 응답 필드별 데이터 출처
 
-| 필드 | 의미 | 위치 |
-|---|---|---|
-| `isVerified` / `verifiedImage` | 사용자가 현장에서 사진 찍어 **방문 인증**한 상태 | `StopSchema` (`shared/types/index.ts:11`), 백엔드는 `plan_place.is_stamped` |
-| `wellnessCertified` | 한국관광공사 **웰니스 인증 장소**인지 (출처 표시) | v2 응답 신규 |
+> **원칙**: 외부 API 호출은 **백엔드 적재 파이프라인이 1회만** 수행하고 결과를 자체 DB에 저장한다. 사용자가 본 API를 호출하는 시점에는 외부 API 호출이 발생하지 않는다 (지도 렌더링용 Naver Maps SDK는 클라이언트가 직접 로드).
 
-`isVerified`를 재사용하면 검색의 "인증된 플랜" 필터(`SearchResultsPage.tsx:255`)와 마이코스 진행률(`MyCourseDetailPage.tsx:141`)이 오염된다. 반드시 별도 필드로 둔다.
+| 필드 | 데이터 종류 | 1순위 출처 | 보조 | 메모 |
+| --- | --- | --- | --- | --- |
+| `placeId` | 자체 식별자 | 자체 DB | — | 외부 무관 |
+| `placeName` | POI 명칭 | Kakao Local 1-5 (키워드) | TMAP 4-2 / Google 3-1 | 국내 POI는 Kakao/TMAP 우위 |
+| `categoryName` | 카테고리 (`음식점 · 카페` 포맷) | Kakao Local 1-5 `category_name` | TMAP 4-2 업종 | Kakao 카테고리 체계가 현재 응답 포맷과 일치 |
+| `placeImageUrl` | 대표 이미지 | Google Places 3-4 (Place Photos) | 운영자 업로드 | 기존 `lh3.googleusercontent.com/place-photos` URL 사용 흔적 |
+| `roadAddressName` | 도로명 주소 | Kakao Local 1-5 응답 동봉 | Kakao 1-3 (좌표→주소 재호출), TMAP 4-2 새주소, Naver 2-4 | 1-5 응답에 누락 시 1-3로 보강 |
+| `phoneNumber` | 전화번호 | Kakao Local 1-5 | TMAP 4-2 / Google 3-1 `nationalPhoneNumber` | 셋 다 비면 운영자 입력 |
+| `businessHours` | 영업시간 | Google Places 3-1 `regularOpeningHours` | 운영자 수동 입력 | Kakao/TMAP 미제공 → Google + 운영자 큐레이션 조합 |
+| `description` | 장소 설명 | 운영자 수동 입력 | Google 3-1 `editorialSummary` / `generativeSummary` | AI 요약은 한글 품질 편차 큼 |
+| `tags` | 큐레이션 태그 | 자체 운영자 / AI 분류기 | — | 외부 API에 1:1 매칭 필드 없음 |
+| `x`, `y` | WGS84 좌표 | Kakao Local 1-5 | TMAP 4-2, Google 3-1 `location` | 적재 시 1회 |
+| `likeCount`, `isLiked` | 자체 좋아요 집계 | 자체 DB (PLACE-N2) | — | 외부 무관 |
+| `bookmarkCount`, `isBookmarked` | 자체 스크랩 집계 | 자체 DB (PLACE-N3) | — | 외부 무관 |
+| `averageRating`, `reviewCount` | 자체 후기 집계 | 자체 DB (PLACE-N4) | (참고) Google 3-1 `rating` | 외부 평점 노출은 정책·라이선스 이슈로 비권장 |
+| `mapMeta.provider` | 렌더링 벤더 | Naver Maps (고정) | Kakao Maps JS (대안) | 디자인 일관성·국내 정확도 |
+| `mapMeta.center`, `markers` | 지도용 좌표 | 자체 DB의 `x,y` 재사용 | — | 외부 호출 X |
+| `mapMeta.staticMapUrl` | 카드 썸네일 URL | Naver Static Map 2-2 | — | 백엔드/BFF에서 URL 빌드 (키 보호). `(좌표, zoom, size)` 동일 시 CDN 캐시 |
 
-### 배지 노출 빈도에 대한 사전 공유
+**적재 파이프라인 권장 순서**
 
-웰니스 데이터가 전국 169건이므로 (서울 7곳, 강릉 1곳 수준) **배지가 붙은 카드는 드물게 나타난다.** 배지 없는 상태를 기본으로 두고 UI를 설계한다.
+```
+[1] Kakao 1-5 키워드 검색      → placeName, categoryName, x, y, roadAddressName, phoneNumber
+[2] roadAddressName 누락 시 Kakao 1-3 (좌표→주소)
+[3] Google Places 3-1 (Place Details New) → businessHours, (옵션) description 후보
+[4] Google Places 3-4 (Place Photos)      → placeImageUrl 캐싱
+[5] 운영자 큐레이션                          → description, tags 보강
+[6] 자체 DB 적재 완료 → 이후 PLACE-N1은 자체 DB만으로 응답
+```
+
+**런타임 외부 호출은 단 하나** — 클라이언트가 `mapMeta`를 가지고 Naver Maps JS SDK(2-1 Dynamic)로 지도를 그리는 순간뿐. `staticMapUrl`은 카드/공유 OG 이미지용 fallback.
+
+# PLACE-N2. 장소 좋아요
+## URL : POST /api/place/like/{placeId}
+
+> `PlaceDetailPage` Heart 버튼 토글 시 호출 (이미 좋아요 상태면 DELETE).
+
+### 본문 파라미터
+
+| **이름** | **유형** | **필수/선택** | **설명** |
+| --- | --- | --- | --- |
+|  |  |  |  |
+|  |  |  |  |
+|  |  |  |  |
+
+### 응답 코드
+
+| status | message |
+| --- | --- |
+| 200 | 성공 |
+| 400 | 요청 데이터 오류 (placeId 형식 오류) |
+| 401 | 인증 필요 |
+| 404 | 장소를 찾을 수 없음 |
+| 409 | 이미 좋아요 처리됨 (POST) / 좋아요 상태가 아님 (DELETE) |
+
+## 코드 예시
+
+### 요청
+
+```jsx
+{
+}
+```
+
+### 응답
+
+```java
+{
+    "status": 200,
+    "data": {
+        "placeId": 165,
+        "isLiked": true,
+        "likeCount": 2341
+    }
+}
+```
+
+# PLACE-N3. 장소 스크랩
+## URL : POST /api/place/scrapped/{placeId}
+
+> `PlaceDetailPage` Bookmark 버튼 토글 시 호출 (해제는 DELETE).
+
+### 본문 파라미터
+
+| **이름** | **유형** | **필수/선택** | **설명** |
+| --- | --- | --- | --- |
+|  |  |  |  |
+|  |  |  |  |
+|  |  |  |  |
+
+### 응답 코드
+
+| status | message |
+| --- | --- |
+| 200 | 성공 |
+| 400 | 요청 데이터 오류 |
+| 401 | 인증 필요 |
+| 404 | 장소를 찾을 수 없음 |
+| 409 | 이미 스크랩 상태 (POST) / 스크랩 상태가 아님 (DELETE) |
+
+## 코드 예시
+
+### 요청
+
+```jsx
+{
+}
+```
+
+### 응답
+
+```java
+{
+    "status": 200,
+    "data": {
+        "placeId": 165,
+        "isBookmarked": true,
+        "bookmarkCount": 413
+    }
+}
+```
+
+# PLACE-N4. 장소 후기 조회
+## URL : GET /api/place/{placeId}/review?lastReviewId=
+
+> `PlaceDetailPage`의 "방문자 후기" 섹션. 별점/사진/코멘트 표시 (cursor 기반 페이지네이션).
+
+### 쿼리 파라미터
+
+| **이름** | **유형** | **필수/선택** | **설명** |
+| --- | --- | --- | --- |
+| lastReviewId | Integer | 필수 | 마지막으로 조회한 후기의 reviewId (처음이면 0) |
+| size | Integer | 선택 | 조회 개수 (기본 10) |
+
+### 응답 코드
+
+| status | message |
+| --- | --- |
+| 200 | 성공 |
+| 400 | 요청 데이터 오류 |
+| 404 | 장소를 찾을 수 없음 |
+
+## 코드 예시
+
+### 응답
+
+```java
+{
+    "status": 200,
+    "data": [
+        {
+            "reviewId": 1,
+            "userId": "u-pr1",
+            "username": "여행조아",
+            "userAvatar": "https://i.pravatar.cc/150?u=pr1",
+            "rating": 5,
+            "comment": "분위기가 너무 좋아요! 다음에 또 올 거예요 😊",
+            "imageUrl": "https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?...",
+            "createdAt": "2026-05-04T10:23:00Z"
+        },
+        {
+            "reviewId": 2,
+            "userId": "u-pr2",
+            "username": "감성충만",
+            "userAvatar": "https://i.pravatar.cc/150?u=pr2",
+            "rating": 4,
+            "comment": "사진 찍기 좋은 곳이에요. 주말에는 사람이 많으니 평일 방문 추천!",
+            "imageUrl": null,
+            "createdAt": "2026-05-01T14:30:00Z"
+        }
+    ],
+    "hasNext": true,
+    "averageRating": 4.6,
+    "totalCount": 38
+}
+```
+
+# PLACE-N5. 장소 후기 작성
+## URL : POST /api/place/{placeId}/review
+
+> 후기 작성 진입점은 향후 UI 추가 예정. 현재는 명세 선행.
+
+### 본문 파라미터
+
+| **이름** | **유형** | **필수/선택** | **설명** |
+| --- | --- | --- | --- |
+| rating | Integer | 필수 | 별점 (1~5) |
+| comment | String | 필수 | 후기 본문 (최대 1000자) |
+| image | File / String | 선택 | 사진 (multipart/form-data 또는 사전 업로드된 imageUrl) |
+
+### 응답 코드
+
+| status | message |
+| --- | --- |
+| 201 | 작성 성공 |
+| 400 | 요청 데이터 오류 (rating 범위 초과/comment 누락) |
+| 401 | 인증 필요 |
+| 404 | 장소를 찾을 수 없음 |
+| 409 | 이미 후기 작성됨 (1인 1후기 정책 시) |
+| 413 | 이미지 용량 초과 (최대 10MB) |
+
+## 코드 예시
+
+### 요청
+
+```jsx
+{
+    "rating": 5,
+    "comment": "분위기가 너무 좋아요! 다음에 또 올 거예요 😊",
+    "image": "https://cdn.example.com/uploads/review_38.jpg"
+}
+```
+
+### 응답
+
+```java
+{
+    "status": 201,
+    "data": {
+        "reviewId": 39,
+        "createdAt": "2026-05-06T12:00:00Z"
+    }
+}
+```
+
+# PLACE-N6. 장소가 포함된 코스 조회
+## URL : GET /api/place/{placeId}/plan
+
+> `PlaceDetailPage`의 "이 장소가 포함된 코스" 섹션 (가로 스크롤 캐러셀).
+
+### 쿼리 파라미터
+
+| **이름** | **유형** | **필수/선택** | **설명** |
+| --- | --- | --- | --- |
+| limit | Integer | 선택 | 조회 개수 (기본 5) |
+
+### 응답 코드
+
+| status | message |
+| --- | --- |
+| 200 | 성공 |
+| 400 | 요청 데이터 오류 |
+| 404 | 장소를 찾을 수 없음 |
+
+## 코드 예시
+
+### 응답
+
+```java
+{
+    "status": 200,
+    "data": [
+        {
+            "planId": 1,
+            "planTitle": "성수동 힙플레이스 완전 정복",
+            "thumbnailUrl": "https://images.unsplash.com/photo-1692103675608-6e635afa077b?...",
+            "location": "서울 성동구",
+            "duration": "4시간",
+            "tags": ["#카페투어", "#팝업스토어"],
+            "likeCount": 124
+        },
+        {
+            "planId": 2,
+            "planTitle": "강릉 바다보며 물멍 때리기",
+            "thumbnailUrl": "https://images.unsplash.com/photo-1703768516086-45eb97f36ce7?...",
+            "location": "강원 강릉시",
+            "duration": "6시간",
+            "tags": ["#오션뷰", "#힐링"],
+            "likeCount": 352
+        }
+    ]
+}
+```
+
+# PLACE-N7. 주소 → 좌표 (Geocoding)
+## URL : GET /api/geo/geocode?address={address}
+
+> `CourseCreationFlow` 출발지 입력 step에서 사용자가 텍스트 주소를 입력했을 때 호출. 백엔드가 **Kakao Local 1-1(주소→좌표)**을 프록시한다. 키 보관·요금 통제 목적으로 외부 직접 호출은 금지하고 본 엔드포인트를 경유한다.
+
+### 쿼리 파라미터
+
+| **이름** | **유형** | **필수/선택** | **설명** |
+| --- | --- | --- | --- |
+| address | query parameter | 필수 | 도로명 또는 지번 주소 (최소 2자) |
+| limit | query parameter | 선택 | 후보 개수 (기본 5, 최대 10) |
+
+### 응답 코드
+
+| status | message |
+| --- | --- |
+| 200 | 성공 |
+| 400 | 요청 데이터 오류 (address 누락/길이 0) |
+| 422 | 매칭 결과 없음 |
+| 502 | 외부(Kakao) API 호출 실패 |
+
+## 코드 예시
+
+### 요청
+
+```jsx
+GET /api/geo/geocode?address=강릉역
+```
+
+### 응답
+
+```java
+{
+    "status": 200,
+    "data": [
+        {
+            "addressName": "강원특별자치도 강릉시 용지로 176",
+            "roadAddressName": "강원특별자치도 강릉시 용지로 176",
+            "x": 128.898981,
+            "y": 37.760152,
+            "addressType": "ROAD_ADDR",
+            "region": {
+                "sido": "강원특별자치도",
+                "sigungu": "강릉시",
+                "dong": "교동"
+            }
+        }
+    ]
+}
+```
+
+# PLACE-N8. 좌표 → 주소·행정구역 (Reverse Geocoding)
+## URL : GET /api/geo/reverse?x={x}&y={y}
+
+> 현 위치 자동 입력(출발지 step "현재 위치" 버튼), 스탬프 라벨링, 추천 응답의 행정구역명 채움 등에 사용. 백엔드가 **Kakao Local 1-3(좌표→주소) + 1-2(좌표→행정구역)** 두 호출을 합쳐서 반환한다.
+
+### 쿼리 파라미터
+
+| **이름** | **유형** | **필수/선택** | **설명** |
+| --- | --- | --- | --- |
+| x | query parameter | 필수 | 경도 (WGS84) |
+| y | query parameter | 필수 | 위도 (WGS84) |
+
+### 응답 코드
+
+| status | message |
+| --- | --- |
+| 200 | 성공 |
+| 400 | 요청 데이터 오류 (x/y 누락 또는 범위 초과) |
+| 422 | 변환 결과 없음 (예: 해상 좌표) |
+| 502 | 외부(Kakao) API 호출 실패 |
+
+## 코드 예시
+
+### 요청
+
+```jsx
+GET /api/geo/reverse?x=128.899802&y=37.763191
+```
+
+### 응답
+
+```java
+{
+    "status": 200,
+    "data": {
+        "x": 128.899802,
+        "y": 37.763191,
+        "roadAddress": "강원특별자치도 강릉시 율곡로 2729",
+        "jibunAddress": "강원특별자치도 강릉시 교동 1875",
+        "region": {
+            "sido": "강원특별자치도",
+            "sigungu": "강릉시",
+            "dong": "교동",
+            "h_code": "5115052000",
+            "b_code": "5115011500"
+        },
+        "label": "강릉시 교동"
+    }
+}
+```
+
+# PLACE-N9. 외부 POI 키워드 검색 (Fallback)
+## URL : GET /api/geo/keyword?query={query}&x={x}&y={y}
+
+> 자체 DB에 없는 장소를 사용자가 검색했을 때 raw 외부 결과를 보고자 할 때 사용. 백엔드가 **Kakao Local 1-5(키워드 장소 검색)**을 프록시. 사용자 선택 시 별도 placeId 적재 절차(`POST /api/place/import` 등 후속 명세)가 이어진다. PLACE-4의 자동 fallback과 달리 본 API는 *적재 없이* 외부 결과만 반환한다.
+
+### 쿼리 파라미터
+
+| **이름** | **유형** | **필수/선택** | **설명** |
+| --- | --- | --- | --- |
+| query | query parameter | 필수 | 검색어 (최소 2자) |
+| x | query parameter | 선택 | 중심 좌표 경도 (거리순 정렬 시) |
+| y | query parameter | 선택 | 중심 좌표 위도 |
+| radius | query parameter | 선택 | 반경(m, 기본 20000, 최대 20000 — Kakao 정책) |
+| page | query parameter | 선택 | 페이지 (기본 1, 최대 45) |
+| size | query parameter | 선택 | 페이지 크기 (기본 15, 최대 15 — Kakao 정책) |
+
+### 응답 코드
+
+| status | message |
+| --- | --- |
+| 200 | 성공 |
+| 400 | 요청 데이터 오류 (query 누락/길이 0) |
+| 422 | 결과 없음 |
+| 502 | 외부(Kakao) API 호출 실패 |
+
+## 코드 예시
+
+### 요청
+
+```jsx
+GET /api/geo/keyword?query=강릉 안목해변&x=128.898981&y=37.760152&radius=5000
+```
+
+### 응답
+
+```java
+{
+    "status": 200,
+    "data": [
+        {
+            "externalId": "kakao:27434277",
+            "placeName": "안목해변",
+            "categoryName": "여행 · 해수욕장",
+            "phoneNumber": "",
+            "roadAddressName": "강원특별자치도 강릉시 창해로14번길 20-1",
+            "jibunAddressName": "강원특별자치도 강릉시 견소동 286",
+            "x": 128.918451,
+            "y": 37.776528,
+            "distance": 1820,
+            "placeUrl": "https://place.map.kakao.com/27434277"
+        }
+    ],
+    "pageable": {
+        "page": 1,
+        "size": 15,
+        "hasNext": true,
+        "totalCount": 8
+    }
+}
+```
+
+> **연계 흐름**: 사용자가 외부 POI를 선택하면 (1) `POST /api/place/import { externalId }`로 자체 placeId 적재 → (2) `POST /api/plan-place/{planId}` 로 추가. 적재 파이프라인에서 백엔드가 Google Places 3-4(Photos)로 이미지를 보강한다.

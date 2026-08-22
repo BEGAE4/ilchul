@@ -1,0 +1,9 @@
+.shell {
+  width: min(var(--container-app), 100%);
+  min-height: 100dvh;
+  margin: 0 auto;
+  background-color: #fff;
+  position: relative;
+  // 프레임 밖으로 삐져나가는 가로 스크롤 차단
+  overflow-x: hidden;
+}

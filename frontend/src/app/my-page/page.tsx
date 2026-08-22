@@ -72,8 +72,26 @@ const MyPage: React.FC = () => {
               onClick={() => console.log('감정 설문 다시 하기 클릭')}
             />
             <MenuItem
+              label="받은 제재"
+              onClick={() => router.push('/my-page/sanctions')}
+            />
+            <MenuItem
               label="계정 관리"
               onClick={() => console.log('계정 관리 클릭')}
+            />
+          </div>
+        </div>
+
+        <div className={styles.divider} />
+
+        {/* 고객 지원 섹션 */}
+        <div className={styles.menuSection}>
+          <h2 className={styles.sectionTitle}>고객 지원</h2>
+
+          <div className={styles.menuList}>
+            <MenuItem
+              label="고객센터 / 문의"
+              onClick={() => router.push('/profile/inquiry')}
             />
           </div>
         </div>

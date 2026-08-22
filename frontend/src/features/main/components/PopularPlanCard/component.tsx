@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { Heart, MapPin } from 'lucide-react';
+import { getSafeImageSrc } from '../../utils/image';
 import type { PopularPlanCardProps } from './types';
 import styles from './styles.module.scss';
 
@@ -14,7 +15,7 @@ export function PopularPlanCard({ plan, onClick }: PopularPlanCardProps) {
     >
       <div className="relative w-28 shrink-0">
         <Image
-          src={plan.thumbnail}
+          src={getSafeImageSrc(plan.thumbnail)}
           alt={plan.title}
           fill
           sizes="112px"

@@ -42,6 +42,8 @@ export const PlaceSchema = StopSchema.extend({
   address: z.string(),
   phone: z.string(),
   tags: z.array(z.string()),
+  // 지도 표시용 좌표 (서버 응답 x=경도, y=위도를 lat/lng로 변환해 담는다)
+  coord: z.object({ lat: z.number(), lng: z.number() }).optional(),
 });
 
 // --- Survey Schemas ---
@@ -49,6 +51,8 @@ export const PlaceSchema = StopSchema.extend({
 export const SurveyDataSchema = z.object({
   mindState: z.string().min(1, '마음 상태를 선택해주세요'),
   transport: z.string().min(1, '이동 수단을 선택해주세요'),
+  // TODO(transportTime): 서버 SurveyResultDto에 없는 필드라 UI에서 임시 비활성화된 상태.
+  // 이 스키마는 parse() 호출처 없이 SurveyData 타입 추론에만 쓰이므로 필드는 남겨둔다.
   transportTime: z.string().min(1, '이동 시간을 선택해주세요'),
   startDate: z.string().min(1, '시작 날짜를 입력해주세요'),
   startTime: z.string(),

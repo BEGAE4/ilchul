@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { X, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import Link from 'next/link';
 import { REASONS_BY_TARGET } from '../../utils/reasonsByTarget';
 import { REASON_LABELS } from '../../types/report';
 import type { ReportReasonCode } from '../../types';
@@ -25,6 +26,7 @@ export function ReportDialog({
   const [detail, setDetail] = useState('');
   const [isComposing, setIsComposing] = useState(false);
   const [displayLength, setDisplayLength] = useState(0);
+  const [submittedReportId, setSubmittedReportId] = useState<string | null>(null);
 
   const sheetRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -37,6 +39,7 @@ export function ReportDialog({
       setReasonCode(null);
       setDetail('');
       setDisplayLength(0);
+      setSubmittedReportId(null);
     }
   }, [isOpen]);
 
@@ -130,6 +133,7 @@ export function ReportDialog({
       }
 
       onSubmitted?.(res, target);
+      setSubmittedReportId(res.reportId ?? null);
       setStep('done');
     } catch (err) {
       const message = (err as Error)?.message;
@@ -334,6 +338,15 @@ export function ReportDialog({
                         닫기
                       </button>
                     </div>
+                    {submittedReportId && (
+                      <Link
+                        href={`/my-page/reports/${submittedReportId}`}
+                        className={styles.reportDetailLink}
+                        onClick={onClose}
+                      >
+                        신고 현황 보기 →
+                      </Link>
+                    )}
                   </div>
                 </>
               )}
