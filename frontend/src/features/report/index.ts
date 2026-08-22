@@ -20,7 +20,6 @@ export {
   markReported,
   getAll,
   clear,
-  buildIdempotencyKey,
 } from './utils';
 
 // hooks (PR-2)

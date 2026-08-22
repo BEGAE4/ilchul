@@ -1,11 +1,8 @@
 package com.begae.backend.place.service;
 
-import com.anthropic.client.AnthropicClient;
-import com.anthropic.client.okhttp.AnthropicOkHttpClient;
-import com.anthropic.models.messages.Message;
-import com.anthropic.models.messages.MessageCreateParams;
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.global.exception.GlobalErrorCode;
+import com.begae.backend.place.client.AnthropicRecommendationClient;
 import com.begae.backend.place.client.WellnessApiClient;
 import com.begae.backend.place.component.*;
 import com.begae.backend.place.dto.*;
@@ -14,7 +11,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -48,17 +44,14 @@ public class RecommendServiceImpl implements RecommendService {
     private static final Duration ENRICH_STAGE_TIMEOUT = Duration.ofSeconds(20);
     private static final Set<String> SUPPORTED_TRANSPORTS = Set.of("도보", "대중교통", "자가용");
 
-    @Value("${anthropic-api.api-key}")
-    private String anthropicApiKey;
-
     private final SurveySearchPolicy searchPolicy;
     private final WellnessApiClient wellnessApiClient;
     private final WellnessMatcher wellnessMatcher;
     private final CandidateMerger candidateMerger;
     private final AiSelectionValidator selectionValidator;
     private final PlaceService placeService;
-    private final PromptRegistry promptRegistry;
     private final ObjectMapper objectMapper;
+    private final AnthropicRecommendationClient recommendationClient;
 
     @Override
     public RecommendResponseDto recommend(SurveyResultDto survey) {
@@ -252,36 +245,7 @@ public class RecommendServiceImpl implements RecommendService {
     }
 
     AiSelectionDto callAi(String surveyJson, String candidateList, Duration timeout) {
-        AnthropicClient client = AnthropicOkHttpClient.builder()
-                .apiKey(anthropicApiKey)
-                .timeout(timeout)
-                .build();
-
-        String userPrompt = promptRegistry.getUserTemplate()
-                .replace("{{SURVEY_JSON}}", surveyJson)
-                .replace("{{CANDIDATES}}", candidateList);
-
-        MessageCreateParams params = MessageCreateParams.builder()
-                .model("claude-sonnet-4-5-20250929")
-                // 항목마다 reason·tags가 붙어 v1(1000)보다 출력이 길다
-                .maxTokens(1500)
-                .system(promptRegistry.getSystemPrompt())
-                .addUserMessage(userPrompt)
-                .build();
-
-        Message message = client.messages().create(params);
-
-        String content = message.content().getFirst().asText().text()
-                .replaceAll("```json\\n", "")
-                .replaceAll("```", "")
-                .trim();
-
-        try {
-            return objectMapper.readValue(content, AiSelectionDto.class);
-        } catch (JsonProcessingException e) {
-            log.error("AI 응답 파싱 실패: {}", content, e);
-            throw new CustomException(GlobalErrorCode.INTERNAL_SERVER_ERROR);
-        }
+        return recommendationClient.select(surveyJson, candidateList, timeout);
     }
 
     private List<RecommendResponseDto.Item> enrichSelections(

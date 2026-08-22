@@ -35,28 +35,28 @@ echo "롤백 대상 환경: $ROLLBACK_ENV"
 # 4. 중지되었던 이전 버전 컨테이너 깨우기
 echo "🚀 $ROLLBACK_ENV 컨테이너를 다시 시작합니다..."
 # 공통 yml 없이 단독 실행 파일만 사용
-docker compose -f docker-compose.${ROLLBACK_ENV}.yml start
+docker compose -f "docker-compose.${ROLLBACK_ENV}.yml" config --quiet
+docker compose -f "docker-compose.${ROLLBACK_ENV}.yml" start
 
-echo "서비스 부팅 대기 중 (20초)..."
-sleep 20 
-
-# 5. 프론트엔드 헬스 체크
-echo "🔍 $ROLLBACK_ENV 프론트엔드 점검 중 (Port: $FRONTEND_PORT)..."
-if ! curl -f http://localhost:$FRONTEND_PORT 2>/dev/null; then
-    echo "❌ 프론트엔드가 살아나지 않았습니다. 롤백을 중단합니다."
-    docker compose -f docker-compose.${ROLLBACK_ENV}.yml stop
-    exit 1
-fi
-echo "✅ 프론트엔드 OK"
-
-# 6. 백엔드 헬스 체크 (actuator 경로 적용)
-echo "🔍 $ROLLBACK_ENV 백엔드 점검 중 (Port: $BACKEND_PORT)..."
-if ! curl -f http://localhost:$BACKEND_PORT/actuator/health 2>/dev/null; then
-    echo "❌ 백엔드가 살아나지 않았습니다. 롤백을 중단합니다."
-    docker compose -f docker-compose.${ROLLBACK_ENV}.yml stop
-    exit 1
-fi
-echo "✅ 백엔드 OK"
+# 5. 두 컨테이너가 실제로 healthy가 될 때까지 대기
+BACKEND_CONTAINER="ilchul-backend-${ROLLBACK_ENV}"
+FRONTEND_CONTAINER="ilchul-frontend-${ROLLBACK_ENV}"
+for attempt in $(seq 1 30); do
+    BACKEND_HEALTH=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$BACKEND_CONTAINER")
+    FRONTEND_HEALTH=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$FRONTEND_CONTAINER")
+    if [ "$BACKEND_HEALTH" = "healthy" ] && [ "$FRONTEND_HEALTH" = "healthy" ] \
+        && curl --fail --silent --show-error "http://127.0.0.1:${BACKEND_PORT}/actuator/health" >/dev/null \
+        && curl --fail --silent --show-error "http://127.0.0.1:${FRONTEND_PORT}/intro" >/dev/null; then
+        break
+    fi
+    if [ "$attempt" -eq 30 ]; then
+        echo "❌ 컨테이너가 정상 상태가 되지 않아 롤백을 중단합니다."
+        docker compose -f "docker-compose.${ROLLBACK_ENV}.yml" stop
+        exit 1
+    fi
+    echo "대기 중: backend=${BACKEND_HEALTH}, frontend=${FRONTEND_HEALTH} (${attempt}/30)"
+    sleep 5
+done
 
 echo ""
 echo "✅ $ROLLBACK_ENV 환경이 모두 정상입니다."
@@ -69,10 +69,26 @@ if [ "$CONFIRM" != "yes" ]; then
     exit 0
 fi
 
-# 8. Nginx 트래픽 전환 (상대경로 방식 적용으로 깨짐 방지)
+# 8. Nginx 트래픽 전환
 echo "🌐 Nginx 트래픽 스위칭: $ROLLBACK_ENV"
-docker exec $GLOBAL_NGINX ln -sf /etc/nginx/conf.d/ilchul/ilchul-${ROLLBACK_ENV}.conf /etc/nginx/conf.d/ilchul/ilchul-active-env.conf
-docker exec $GLOBAL_NGINX nginx -s reload
+ACTIVE_CONFIG="/etc/nginx/conf.d/ilchul/ilchul-active-env.conf"
+ROLLBACK_CONFIG="/etc/nginx/conf.d/ilchul/ilchul-${ROLLBACK_ENV}.conf"
+CURRENT_CONFIG="/etc/nginx/conf.d/ilchul/ilchul-${CURRENT_ENV}.conf"
+docker exec "$GLOBAL_NGINX" nginx -t
+docker exec "$GLOBAL_NGINX" ln -sf "$ROLLBACK_CONFIG" "$ACTIVE_CONFIG"
+docker exec "$GLOBAL_NGINX" nginx -t
+docker exec "$GLOBAL_NGINX" nginx -s reload
+
+FRONTEND_STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/intro)
+AUTH_STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/api/plan/1)
+if [ "$FRONTEND_STATUS" != "200" ] || [ "$AUTH_STATUS" != "401" ]; then
+    echo "❌ 롤백 후 스모크 테스트 실패: frontend=${FRONTEND_STATUS}, unauthenticated_api=${AUTH_STATUS}"
+    docker exec "$GLOBAL_NGINX" ln -sf "$CURRENT_CONFIG" "$ACTIVE_CONFIG"
+    docker exec "$GLOBAL_NGINX" nginx -t
+    docker exec "$GLOBAL_NGINX" nginx -s reload
+    docker compose -f "docker-compose.${ROLLBACK_ENV}.yml" stop
+    exit 1
+fi
 
 # 9. 상태 업데이트 및 문제 있던 환경 중지
 echo "$ROLLBACK_ENV" > current_environment.txt

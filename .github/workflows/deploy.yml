@@ -1,254 +1,251 @@
-name: Blue-Green Deploy (Begae Account Optimized)
+name: Blue-Green Deploy
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  # 1. 변경 사항 감지 및 소문자 변수 설정
-  changes:
+  metadata:
     runs-on: ubuntu-latest
     outputs:
-      frontend: ${{ steps.filter.outputs.frontend }}
-      backend: ${{ steps.filter.outputs.backend }}
-      config: ${{ steps.filter.outputs.config }}
-      repo_owner: ${{ steps.lowercase.outputs.repo_owner }}
-      actor: ${{ steps.lowercase.outputs.actor }}
-      sha_short: ${{ steps.lowercase.outputs.sha_short }}
+      repo_owner: ${{ steps.values.outputs.repo_owner }}
+      actor: ${{ steps.values.outputs.actor }}
+      git_sha: ${{ steps.values.outputs.git_sha }}
     steps:
-      - name: checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set lowercase variables
-        id: lowercase
+      - name: Set image metadata
+        id: values
+        shell: bash
         run: |
-          echo "repo_owner=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-          echo "actor=$(echo ${{ github.actor }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
-          echo "sha_short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+          echo "repo_owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "actor=${GITHUB_ACTOR,,}" >> "$GITHUB_OUTPUT"
+          echo "git_sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
-      - name: filter changes
-        uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          base: ${{ github.event.before }}
-          filters: |
-            frontend: [ 'frontend/**' ]
-            backend: [ 'backend/**' ]
-            config: [ 'docker-compose.blue.yml', 'docker-compose.green.yml', '.github/workflows/deploy.yml', 'rollback.sh' ]
-
-  # 2. 프론트엔드 빌드 (ARM64)
   build-frontend:
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.config == 'true'
+    needs: metadata
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
-          cache: 'yarn'
-          cache-dependency-path: './frontend/yarn.lock'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
 
       - name: Install dependencies
-        working-directory: ./frontend
+        working-directory: frontend
         run: yarn install --frozen-lockfile
 
       - name: Build Next.js
-        working-directory: ./frontend
+        working-directory: frontend
         env:
           NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
+          NEXT_PUBLIC_KAKAO_MAP_APP_KEY: ${{ secrets.NEXT_PUBLIC_KAKAO_MAP_APP_KEY }}
         run: yarn build
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
-          username: ${{ needs.changes.outputs.actor }}
+          username: ${{ needs.metadata.outputs.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & Push Frontend
-        uses: docker/build-push-action@v5
+      - name: Build and push frontend image
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
         with:
-          context: ./frontend
+          context: frontend
           push: true
           platforms: linux/arm64
-          tags: |
-            ghcr.io/${{ needs.changes.outputs.repo_owner }}/ilchul-frontend:latest
-            ghcr.io/${{ needs.changes.outputs.repo_owner }}/ilchul-frontend:${{ needs.changes.outputs.sha_short }}
+          tags: ghcr.io/${{ needs.metadata.outputs.repo_owner }}/ilchul-frontend:${{ needs.metadata.outputs.git_sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # 3. 백엔드 빌드 (ARM64)
   build-backend:
-    needs: changes
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.config == 'true'
+    needs: metadata
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'gradle'
+          java-version: "21"
+          distribution: temurin
+          cache: gradle
 
-      - name: Build JAR with Gradle
-        working-directory: ./backend
+      - name: Test and build backend
+        working-directory: backend
         run: |
           chmod +x ./gradlew
-          ./gradlew build -x test --no-daemon
+          ./gradlew clean build --no-daemon
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Login to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
-          username: ${{ needs.changes.outputs.actor }}
+          username: ${{ needs.metadata.outputs.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & Push Backend
-        uses: docker/build-push-action@v5
+      - name: Build and push backend image
+        uses: docker/build-push-action@ca052bb54ab0790a636c9b5f226502c73d547a25 # v5
         with:
-          context: ./backend
+          context: backend
           push: true
           platforms: linux/arm64
-          tags: |
-            ghcr.io/${{ needs.changes.outputs.repo_owner }}/ilchul-backend:latest
-            ghcr.io/${{ needs.changes.outputs.repo_owner }}/ilchul-backend:${{ needs.changes.outputs.sha_short }}
+          tags: ghcr.io/${{ needs.metadata.outputs.repo_owner }}/ilchul-backend:${{ needs.metadata.outputs.git_sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # 4. 타겟 환경 배포 (begae 계정 직접 사용)
   deploy-target:
-    needs: [changes, build-frontend, build-backend]
-    if: ${{ !cancelled() && (needs.build-frontend.result == 'success' || needs.build-frontend.result == 'skipped') && (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped') }}
+    needs: [metadata, build-frontend, build-backend]
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
-        uses: actions/checkout@v4
-      
-      - name: Copy Config Files
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.ORACLE_HOST }}
-          username: ${{ secrets.ORACLE_USER }} # begae
-          key: ${{ secrets.ORACLE_KEY }}
-          port: ${{ secrets.ORACLE_PORT }}
-          source: "docker-compose.blue.yml,docker-compose.green.yml,rollback.sh"
-          target: "/home/begae/ilchul" # begae 홈으로 바로 복사
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: SSH Deploy
-        uses: appleboy/ssh-action@master
+      - name: Prepare backend runtime environment
         env:
-          REPO_OWNER: ${{ needs.changes.outputs.repo_owner }}
-          ACTOR: ${{ needs.changes.outputs.actor }}
+          RUNTIME_ENV_FILE: ${{ secrets.ENV_FILE }}
+          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
+        shell: bash
+        run: |
+          umask 077
+          printf '%s\n' "$RUNTIME_ENV_FILE" > .env.deploy
+          printf 'ANTHROPIC_API_KEY=%s\n' "$ANTHROPIC_API_KEY" >> .env.deploy
+
+      - name: Copy deployment files
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.ORACLE_HOST }}
-          username: ${{ secrets.ORACLE_USER }} # begae
+          username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_KEY }}
           port: ${{ secrets.ORACLE_PORT }}
-          envs: REPO_OWNER,ACTOR
+          source: docker-compose.blue.yml,docker-compose.green.yml,rollback.sh,.env.deploy
+          target: /home/begae/ilchul
+
+      - name: Deploy inactive environment
+        uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
+        env:
+          REPO_OWNER: ${{ needs.metadata.outputs.repo_owner }}
+          ACTOR: ${{ needs.metadata.outputs.actor }}
+          GIT_SHA: ${{ needs.metadata.outputs.git_sha }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_KEY }}
+          port: ${{ secrets.ORACLE_PORT }}
+          envs: REPO_OWNER,ACTOR,GIT_SHA,GHCR_TOKEN
           script: |
-            set -e
+            set -eu
             PROJECT_PATH="/home/begae/ilchul"
-            cd $PROJECT_PATH
-            
-            # 1. 환경 결정 로직 (sudo 없이 begae 권한으로 실행)
-            if [ ! -f current_environment.txt ]; then 
+            cd "$PROJECT_PATH"
+
+            if [ ! -f current_environment.txt ]; then
               echo "blue" > current_environment.txt
             fi
-            CURRENT_ENV=$(cat current_environment.txt | tr -d '[:space:]')
-            TARGET_ENV=$([ "$CURRENT_ENV" = "blue" ] && echo "green" || echo "blue")
-            
-            # 2. 동적 포트 할당
-            BACKEND_PORT=$([ "$TARGET_ENV" = "blue" ] && echo "8081" || echo "8082")
-            
-            echo "TARGET_ENV: $TARGET_ENV, BACKEND_PORT: $BACKEND_PORT"
+
+            CURRENT_ENV=$(tr -d '[:space:]' < current_environment.txt)
+            if [ "$CURRENT_ENV" = "blue" ]; then
+              TARGET_ENV="green"
+              BACKEND_PORT="8082"
+              FRONTEND_PORT="3002"
+            else
+              TARGET_ENV="blue"
+              BACKEND_PORT="8081"
+              FRONTEND_PORT="3001"
+            fi
+
             echo "$TARGET_ENV" > target_environment.txt
             echo "$CURRENT_ENV" > previous_environment.txt
 
-            # 3. .env 파일 생성 (특수문자 보호를 위해 분리 기록)
-            # 3-A: 시크릿 값 보호 ('EOF')
-            cat << 'EOF' > .env
-            ${{ secrets.ENV_FILE }}
-            ANTHROPIC_API_KEY=${{ secrets.CLAUDE_API_KEY }}
-            EOF
-            
-            # 3-B: 변수 확장이 필요한 환경변수 추가 (>> 사용하여 덧붙이기)
-            cat << EOF >> .env
-            API_BASE_URL=http://ilchul-backend-${TARGET_ENV}:8080
-            FRONTEND_IMAGE=ghcr.io/${REPO_OWNER}/ilchul-frontend:latest
-            BACKEND_IMAGE=ghcr.io/${REPO_OWNER}/ilchul-backend:latest
-            EOF
+            mv .env.deploy .env
+            cat << ENV_EOF >> .env
+            FRONTEND_IMAGE=ghcr.io/${REPO_OWNER}/ilchul-frontend:${GIT_SHA}
+            BACKEND_IMAGE=ghcr.io/${REPO_OWNER}/ilchul-backend:${GIT_SHA}
+            ENV_EOF
+            chmod 600 .env
 
-            # 4. 이미지 풀 및 실행 (begae가 docker 그룹이므로 sudo 불필요)
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${ACTOR} --password-stdin
-            docker compose -f docker-compose.${TARGET_ENV}.yml pull
-            docker compose -f docker-compose.${TARGET_ENV}.yml up -d
-            
-            # 5. 헬스 체크
-            echo "🔍 Health checking $TARGET_ENV on port $BACKEND_PORT..."
-            sleep 20
-            for i in {1..10}; do
-              if curl -f http://localhost:$BACKEND_PORT/actuator/health 2>/dev/null; then
-                echo "✅ Target $TARGET_ENV is healthy!"
+            printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+            docker compose -f "docker-compose.${TARGET_ENV}.yml" config --quiet
+            docker compose -f "docker-compose.${TARGET_ENV}.yml" pull
+            docker compose -f "docker-compose.${TARGET_ENV}.yml" up -d
+
+            BACKEND_CONTAINER="ilchul-backend-${TARGET_ENV}"
+            FRONTEND_CONTAINER="ilchul-frontend-${TARGET_ENV}"
+            for attempt in $(seq 1 30); do
+              BACKEND_HEALTH=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$BACKEND_CONTAINER")
+              FRONTEND_HEALTH=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$FRONTEND_CONTAINER")
+              if [ "$BACKEND_HEALTH" = "healthy" ] && [ "$FRONTEND_HEALTH" = "healthy" ] \
+                && curl --fail --silent --show-error "http://127.0.0.1:${BACKEND_PORT}/actuator/health" >/dev/null \
+                && curl --fail --silent --show-error "http://127.0.0.1:${FRONTEND_PORT}/intro" >/dev/null; then
                 exit 0
               fi
-              echo "Waiting... ($i/10)"
+              echo "Waiting for ${TARGET_ENV}: backend=${BACKEND_HEALTH}, frontend=${FRONTEND_HEALTH} (${attempt}/30)"
               sleep 5
             done
+
+            docker compose -f "docker-compose.${TARGET_ENV}.yml" ps
+            docker logs --tail 100 "$BACKEND_CONTAINER" || true
+            docker logs --tail 100 "$FRONTEND_CONTAINER" || true
             exit 1
 
-  # 5. 자동 트래픽 전환 및 구버전 중지
   switch-traffic:
     needs: deploy-target
-    if: ${{ !cancelled() && needs.deploy-target.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Auto Switch
-        uses: appleboy/ssh-action@master
+      - name: Switch traffic and smoke test
+        uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
         with:
           host: ${{ secrets.ORACLE_HOST }}
-          username: ${{ secrets.ORACLE_USER }} # begae
+          username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_KEY }}
           port: ${{ secrets.ORACLE_PORT }}
           script: |
-            set -e
+            set -eu
             PROJECT_PATH="/home/begae/ilchul"
             GLOBAL_NGINX="nginx"
-            cd $PROJECT_PATH
-            
-            TARGET_ENV=$(cat target_environment.txt | tr -d '[:space:]')
-            CURRENT_ENV=$(cat previous_environment.txt | tr -d '[:space:]')
-            
-            echo "🔄 Switching Nginx traffic to $TARGET_ENV..."
-            # Nginx 제어도 sudo 없이 begae 권한으로 가능 (docker 그룹)
-            docker exec $GLOBAL_NGINX ln -sf /etc/nginx/conf.d/ilchul/ilchul-${TARGET_ENV}.conf /etc/nginx/conf.d/ilchul/ilchul-active-env.conf
-            docker exec $GLOBAL_NGINX nginx -s reload
-            
+            cd "$PROJECT_PATH"
+
+            TARGET_ENV=$(tr -d '[:space:]' < target_environment.txt)
+            CURRENT_ENV=$(tr -d '[:space:]' < previous_environment.txt)
+            TARGET_CONFIG="/etc/nginx/conf.d/ilchul/ilchul-${TARGET_ENV}.conf"
+            CURRENT_CONFIG="/etc/nginx/conf.d/ilchul/ilchul-${CURRENT_ENV}.conf"
+            ACTIVE_CONFIG="/etc/nginx/conf.d/ilchul/ilchul-active-env.conf"
+
+            docker exec "$GLOBAL_NGINX" nginx -t
+            docker exec "$GLOBAL_NGINX" ln -sf "$TARGET_CONFIG" "$ACTIVE_CONFIG"
+            docker exec "$GLOBAL_NGINX" nginx -t
+            docker exec "$GLOBAL_NGINX" nginx -s reload
+
+            FRONTEND_STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/intro)
+            AUTH_STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/api/plan/1)
+            if [ "$FRONTEND_STATUS" != "200" ] || [ "$AUTH_STATUS" != "401" ]; then
+              echo "Smoke test failed: frontend=${FRONTEND_STATUS}, unauthenticated_api=${AUTH_STATUS}"
+              docker exec "$GLOBAL_NGINX" ln -sf "$CURRENT_CONFIG" "$ACTIVE_CONFIG"
+              docker exec "$GLOBAL_NGINX" nginx -t
+              docker exec "$GLOBAL_NGINX" nginx -s reload
+              exit 1
+            fi
+
             echo "$TARGET_ENV" > current_environment.txt
-            docker compose -f docker-compose.${CURRENT_ENV}.yml stop
-            
-            echo "🎉 Switched to $TARGET_ENV. Deployment Complete."
+            docker compose -f "docker-compose.${CURRENT_ENV}.yml" stop

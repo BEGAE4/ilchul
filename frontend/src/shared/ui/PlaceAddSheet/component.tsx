@@ -90,7 +90,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/50 z-50"
+            className="fixed inset-y-0 app-frame bg-black/50 z-50"
             onClick={handleClose}
           />
           <motion.div
@@ -98,7 +98,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 400 }}
-            className="fixed bottom-0 left-0 right-0 z-50 w-full max-w-[430px] mx-auto"
+            className="fixed bottom-0 app-frame z-50"
           >
             <div className="bg-white rounded-t-2xl px-5 pt-3 pb-8 max-h-[70vh] flex flex-col">
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 shrink-0" />
@@ -125,7 +125,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                   <p className="text-xs text-gray-500 mb-6">장소가 플랜에 추가되었어요!</p>
                   <button
                     onClick={handleClose}
-                    className="w-full py-3 bg-sky-500 text-white font-bold rounded-xl active:scale-[0.98] transition-transform"
+                    className="w-full py-3 bg-primary-500 text-white font-bold rounded-xl active:scale-[0.98] transition-transform"
                   >
                     확인
                   </button>
@@ -143,7 +143,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[10px] font-bold text-sky-600">{place.category}</div>
+                      <div className="text-[10px] font-bold text-primary-600">{place.category}</div>
                       <div className="text-sm font-bold text-gray-900 truncate">{place.name}</div>
                       <div className="text-xs text-gray-400 flex items-center gap-0.5">
                         <MapPin size={10} /> {place.location}
@@ -156,14 +156,14 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                       onClick={() => setSelectedCourseId('__new__')}
                       className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
                         selectedCourseId === '__new__'
-                          ? 'border-sky-500 bg-sky-50'
+                          ? 'border-primary-500 bg-primary-50'
                           : 'border-gray-100 bg-white'
                       }`}
                     >
                       <div
                         className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
                           selectedCourseId === '__new__'
-                            ? 'bg-sky-500 text-white'
+                            ? 'bg-primary-500 text-white'
                             : 'bg-gray-100 text-gray-400'
                         }`}
                       >
@@ -174,7 +174,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                         <div className="text-xs text-gray-400">이 장소로 새 플랜을 시작해요</div>
                       </div>
                       {selectedCourseId === '__new__' && (
-                        <div className="w-5 h-5 rounded-full bg-sky-500 flex items-center justify-center shrink-0">
+                        <div className="w-5 h-5 rounded-full bg-primary-500 flex items-center justify-center shrink-0">
                           <Check size={12} className="text-white" />
                         </div>
                       )}
@@ -186,7 +186,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                         onClick={() => setSelectedCourseId(course.id)}
                         className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
                           selectedCourseId === course.id
-                            ? 'border-sky-500 bg-sky-50'
+                            ? 'border-primary-500 bg-primary-50'
                             : 'border-gray-100 bg-white'
                         }`}
                       >
@@ -208,7 +208,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                           </div>
                         </div>
                         {selectedCourseId === course.id && (
-                          <div className="w-5 h-5 rounded-full bg-sky-500 flex items-center justify-center shrink-0">
+                          <div className="w-5 h-5 rounded-full bg-primary-500 flex items-center justify-center shrink-0">
                             <Check size={12} className="text-white" />
                           </div>
                         )}
@@ -227,7 +227,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                   <button
                     onClick={handleConfirm}
                     disabled={!selectedCourseId}
-                    className="w-full py-3.5 bg-sky-500 text-white font-bold rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shrink-0"
+                    className="w-full py-3.5 bg-primary-500 text-white font-bold rounded-xl disabled:bg-gray-300 active:scale-[0.98] transition-all shrink-0"
                   >
                     {selectedCourseId === '__new__' ? '새 플랜 생성하며 담기' : '선택한 플랜에 담기'}
                   </button>

@@ -46,7 +46,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
 
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const reportCtx = useReport({ reporterId: currentUser.id });
+  const reportCtx = useReport();
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 600);
@@ -90,7 +90,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-gray-500">
         <p className="text-lg font-bold mb-2">사용자를 찾을 수 없습니다</p>
-        <button onClick={() => router.back()} className="text-sky-500 font-medium">
+        <button onClick={() => router.back()} className="text-primary-500 font-medium">
           돌아가기
         </button>
       </div>
@@ -113,7 +113,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
   );
 
   const STATS = [
-    { label: '공개 플랜', value: userCourses.length, color: 'text-sky-500' },
+    { label: '공개 플랜', value: userCourses.length, color: 'text-primary-500' },
     { label: '받은 좋아요', value: totalLikes, color: 'text-red-500' },
     { label: '받은 저장', value: totalBookmarks, color: 'text-violet-500' },
   ];
@@ -224,8 +224,8 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
                   >
                     <Bookmark
                       size={16}
-                      fill={bookmarkedIds.has(course.id) ? '#3b82f6' : 'none'}
-                      className="text-blue-500"
+                      fill={bookmarkedIds.has(course.id) ? 'var(--color-primary-500)' : 'none'}
+                      className="text-primary-500"
                     />
                   </button>
                   <div className="absolute bottom-3 left-3 right-3">
@@ -267,7 +267,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
       {/* BottomMenu는 items: MenuItem[] 배열만 지원하고 children/slot 미지원이므로
           CourseViewPage의 isMenuOpen 패턴(인라인 bottom-sheet)을 동일하게 재사용한다 */}
       {menuOpen && (
-        <div className="fixed inset-0 z-50 flex items-end">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
           <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />

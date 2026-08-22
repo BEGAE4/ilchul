@@ -28,13 +28,11 @@ public class JwtAuthenticationFailEntryPoint implements AuthenticationEntryPoint
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException {
-
         GlobalErrorCode errorCode = GlobalErrorCode.UNAUTHORIZED;
 
         response.setStatus(errorCode.getHttpStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-
         objectMapper.writeValue(
                 response.getWriter(),
                 ErrorResponse.of(errorCode.getHttpStatus(), errorCode.getMessage())

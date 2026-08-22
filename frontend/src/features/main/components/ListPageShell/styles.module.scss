@@ -10,7 +10,7 @@
 
 .totalCountNumber {
   font-weight: 700;
-  color: rgb(14, 165, 233);
+  color: var(--color-primary-500);
 }
 
 .loading,
@@ -31,7 +31,7 @@
 .retryButton {
   margin-top: 12px;
   padding: 8px 20px;
-  background-color: rgb(14, 165, 233);
+  background-color: var(--color-primary-500);
   color: #fff;
   border-radius: 999px;
   font-size: 13px;
