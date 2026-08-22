@@ -31,6 +31,7 @@ import {
 import { motion } from 'motion/react';
 import { usePlanDetail, planApi, type PlanPlaceDetail, type PlanPreviewResponse } from '@/features/plan';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
+import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
 
 const FALLBACK_THUMBNAIL =
   'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1080&auto=format&fit=crop';
@@ -333,8 +334,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
       // 복제 API는 날짜만 받으므로 시간은 수정 API로 반영 (실패해도 복제 자체는 유지)
       await planApi
         .updatePlan(res.planId, {
-          tripStartDate: `${cloneDate}T${cloneStartTime}:00`,
-          tripEndDate: `${cloneDate}T${cloneEndTime}:00`,
+          tripStartDate: toServerDateTime(cloneDate, cloneStartTime),
+          tripEndDate: toServerDateTime(cloneDate, cloneEndTime),
         })
         .catch(() => undefined);
       setIsCloneOpen(false);
