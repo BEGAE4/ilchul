@@ -29,13 +29,13 @@ export interface SearchPlaceItem {
 // 장소 추천 요청 (SurveyResultDto)
 export interface SurveyResult {
   emotion: string;
+  // 'YYYY-MM-DD HH:mm' (예: '2026-08-22 10:00')
   startTime: string;
   endTime: string;
   transport: string;
   location: { x: number; y: number };
-  // 명세 260819에서 부활한 필드(int32). 단위/'상관없어요' 표현이 BE와 합의되지 않아 아직 보내지 않는다.
-  // TODO(transportTime): 합의 후 설문 질문과 함께 복구한다.
-  transportTime?: number;
+  // 설문 선택지 문자열 그대로 전달 (예: '1시간 이내', '상관없어요', '1시간 30분')
+  transportTime: string;
 }
 
 // 장소 추천 응답 — 서버는 키워드별로 묶인 그룹 배열(List<RecommendPlaceResponseDto>)을 돌려준다.
