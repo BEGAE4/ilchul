@@ -41,6 +41,7 @@ import {
 } from '@/shared/lib/kakao';
 import type { Place } from '@/shared/types';
 import { mapRecommendedPlaces } from '../utils/recommendedPlaces';
+import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
 
 // 추천 장소 이미지는 출처(카카오 CDN 등)를 미리 알 수 없어 next.config의 remotePatterns로 감쌀 수 없다.
 // 미등록 호스트는 next/image가 렌더 중에 예외를 던지므로 최적화를 끄고, 빈 src·로드 실패는 자리 표시로 대체한다.
@@ -323,8 +324,8 @@ export const CourseCreationFlow: React.FC = () => {
           recommendPlaces({
             emotion: surveyData.mindState ?? '',
             // 서버는 'YYYY-MM-DD HH:mm' 형식을 기대한다 (예: 2026-08-22 10:00)
-            startTime: `${surveyData.startDate ?? ''} ${surveyData.startTime ?? ''}`.trim(),
-            endTime: `${surveyData.endDate ?? ''} ${surveyData.endTime ?? ''}`.trim(),
+            startTime: toServerDateTime(surveyData.startDate ?? '', surveyData.startTime ?? ''),
+            endTime: toServerDateTime(surveyData.endDate ?? '', surveyData.endTime ?? ''),
             transport: surveyData.transport ?? '',
             transportTime: surveyData.transportTime ?? '',
             location: { x: startingPoint.coord.lng, y: startingPoint.coord.lat },
@@ -367,8 +368,12 @@ export const CourseCreationFlow: React.FC = () => {
       : {}),
     ...(surveyData.startDate
       ? {
-          tripStartDate: `${surveyData.startDate}T${surveyData.startTime || '00:00'}:00`,
-          tripEndDate: `${surveyData.startDate}T${surveyData.endTime || '23:59'}:00`,
+          // 서버는 'yyyy-MM-dd HH:mm' 만 받는다 (ISO 'T' 구분자·초 포함 시 400)
+          tripStartDate: toServerDateTime(surveyData.startDate, surveyData.startTime || '00:00'),
+          tripEndDate: toServerDateTime(
+            surveyData.endDate || surveyData.startDate,
+            surveyData.endTime || '23:59'
+          ),
         }
       : {}),
   });
@@ -1834,11 +1839,14 @@ export const CourseCreationFlow: React.FC = () => {
             startingPoint={startingPoint}
             stops={finalStops}
             showRoute
-            className="h-48"
+            className="h-40"
           />
         </div>
 
-        <div className="flex-1 p-4 overflow-y-auto relative">
+        {/* 일정표는 페이지 스크롤(PageLayout .container)에 맡긴다.
+            이전에는 flex-1 + overflow-y-auto 로 중첩 스크롤을 만들어, 상단 입력 패널과 지도를 뺀
+            한두 항목 높이만 남아 모바일에서 일정을 거의 볼 수 없었다. */}
+        <div className="flex-1 p-4 pb-6 relative">
           {isRecalculating && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
               <Loader2 className="animate-spin text-primary-500 mb-2" size={32} />

@@ -71,6 +71,7 @@ export async function createPlanPreview(body: {
   planDescription?: string;
   isPlanVisible?: boolean;
   departurePoint?: CreatePlanBody['departurePoint'];
+  // 'yyyy-MM-dd HH:mm' (toServerDateTime 으로 생성; ISO 'T' 형식은 400)
   tripStartDate?: string;
   tripEndDate?: string;
   places: { placeId: number; order: number }[];
