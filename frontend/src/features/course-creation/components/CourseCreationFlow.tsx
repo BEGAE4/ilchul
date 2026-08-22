@@ -23,16 +23,12 @@ import {
   Car,
   ChevronDown,
 } from 'lucide-react';
-// TODO(transportTime): AnimatePresence는 이동 시간 직접입력 섹션에서만 쓰여 함께 주석 처리.
-// 원문 — import { motion, AnimatePresence } from 'motion/react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { LogoLoader } from '@/shared/ui/LogoLoader';
 import { StepIndicator } from '@/shared/ui/StepIndicator';
 import { RouteMap, getStopCoord } from './RouteMap';
-// TODO(transportTime): SelectField는 주석 처리된 이동 시간 섹션에서만 쓰여 import에서 제외.
-// 원문 — import { SelectField, DateField } from './SurveyPickers';
-import { TimeField, DateField } from './SurveyPickers';
+import { SelectField, TimeField, DateField } from './SurveyPickers';
 import { useSurveyStore, type SurveyStep } from '@/shared/lib/stores/useSurveyStore';
 import { planApi, type PlanPreviewResponse } from '@/features/plan';
 import { recommendPlaces } from '@/features/place/api/place.api';
@@ -44,55 +40,31 @@ import {
   type KeywordPlaceResult,
 } from '@/shared/lib/kakao';
 import type { Place } from '@/shared/types';
+import { mapRecommendedPlaces } from '../utils/recommendedPlaces';
 
-// 장소 추천 응답(POST /api/place/recommend)은 서버 스키마가 아직 확정되지 않아
-// 방어적으로 파싱하고, 실패/빈 배열이면 기본 추천 목록(RECOMMENDED_PLACES)으로 대체한다.
-function mapRecommendedPlaces(data: unknown): Place[] {
-  if (!Array.isArray(data)) return [];
-  return data
-    .map((raw): Place | null => {
-      if (!raw || typeof raw !== 'object') return null;
-      const item = raw as Record<string, unknown>;
-      const id = item.placeId ?? item.id;
-      const name = item.placeName ?? item.name;
-      if (id === undefined || id === null || typeof name !== 'string') return null;
-      // 좌표: 응답이 location { x, y } 또는 평면 x/y 어느 쪽이든 수용 (x=경도, y=위도)
-      const loc =
-        item.location && typeof item.location === 'object'
-          ? (item.location as Record<string, unknown>)
-          : undefined;
-      const x = typeof item.x === 'number' ? item.x : typeof loc?.x === 'number' ? loc.x : undefined;
-      const y = typeof item.y === 'number' ? item.y : typeof loc?.y === 'number' ? loc.y : undefined;
-      return {
-        id: String(id),
-        name,
-        category:
-          typeof item.categoryName === 'string'
-            ? item.categoryName
-            : typeof item.category === 'string'
-              ? item.category
-              : '추천 장소',
-        time: typeof item.time === 'string' ? item.time : '60분',
-        description: typeof item.description === 'string' ? item.description : '',
-        image:
-          typeof item.placeImageUrl === 'string'
-            ? item.placeImageUrl
-            : typeof item.image === 'string'
-              ? item.image
-              : '',
-        address:
-          typeof item.addressName === 'string'
-            ? item.addressName
-            : typeof item.address === 'string'
-              ? item.address
-              : '',
-        phone: typeof item.phone === 'string' ? item.phone : '',
-        tags: Array.isArray(item.tags) ? item.tags.filter((t): t is string => typeof t === 'string') : [],
-        ...(x !== undefined && y !== undefined ? { coord: { lat: y, lng: x } } : {}),
-      };
-    })
-    .filter((p): p is Place => p !== null);
-}
+// 추천 장소 이미지는 출처(카카오 CDN 등)를 미리 알 수 없어 next.config의 remotePatterns로 감쌀 수 없다.
+// 미등록 호스트는 next/image가 렌더 중에 예외를 던지므로 최적화를 끄고, 빈 src·로드 실패는 자리 표시로 대체한다.
+const PlaceHeroImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-primary-100 to-primary-50 flex items-center justify-center">
+        <MapPin size={40} className="text-primary-300" />
+      </div>
+    );
+  }
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes="100vw"
+      unoptimized
+      className="object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
+};
 
 // 스텝마다 하단 CTA 클래스를 따로 적다 보니 그림자·비활성 색이 제각각이 됐다.
 // 화면이 바뀌어도 같은 버튼으로 읽히도록 한 곳에서 관리한다.
@@ -122,13 +94,6 @@ const TRANSPORTS: { label: string; icon: typeof Bus }[] = [
   { label: '도보', icon: Footprints },
   { label: '자가용', icon: Car },
 ];
-// TODO(transportTime): 이동 시간(transportTime) 질문 임시 비활성화.
-// 사유 — 서버 SurveyResultDto(cc/api/v3~v6, backend SurveyResultDto.java)에 해당 필드가 없어
-//        POST /api/place/recommend 로 전달되지 않고, 추천 LLM 프롬프트에도 반영되지 않는다.
-//        (v1/v2 명세에는 '선택' 필드로 존재했으나 v3에서 사라진 상태)
-// 조치 — BE에 의도적 제외인지 확인 후 완전 제거하거나 복구한다.
-//        복구 시 'TODO(transportTime)' 로 전체 검색하면 관련 블록을 모두 찾을 수 있다.
-/*
 // 이동수단마다 체감 이동 한도가 달라 도보 기준 짧은 구간부터 자가용 기준 장거리까지 단계별로 제공
 const TRANSPORT_TIMES = ['30분 이내', '1시간 이내', '2시간 이내', '상관없어요', '직접입력'];
 
@@ -141,7 +106,6 @@ const CUSTOM_TIME_OPTIONS = Array.from({ length: 24 }, (_, i) => {
   if (m === 0) return { value: `${h}시간`, label: `${h}시간` };
   return { value: `${h}시간 ${m}분`, label: `${h}시간 ${m}분` };
 });
-*/
 
 // ── Survey 3: 30분 단위 시간 선택 ──
 const HALF_HOURS: { value: string; label: string }[] = [];
@@ -312,6 +276,7 @@ export const CourseCreationFlow: React.FC = () => {
   // 최종 플랜 단계의 서버 계산 프리뷰 (소요시간/이동거리)
   const [serverPreview, setServerPreview] = useState<PlanPreviewResponse | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   // 설문 기반 장소 추천 결과 (POST /api/place/recommend), 실패 시 기본 목록 유지
   const [recommendedPlaces, setRecommendedPlaces] = useState<Place[]>(RECOMMENDED_PLACES);
   // 추천 API 실패/빈 응답으로 기본 목록을 대신 보여주는 중인지 — 개인화 결과로 오인하지 않도록 고지한다
@@ -357,9 +322,11 @@ export const CourseCreationFlow: React.FC = () => {
         const [result] = await Promise.all([
           recommendPlaces({
             emotion: surveyData.mindState ?? '',
-            startTime: surveyData.startTime ?? '',
-            endTime: surveyData.endTime ?? '',
+            // 서버는 'YYYY-MM-DD HH:mm' 형식을 기대한다 (예: 2026-08-22 10:00)
+            startTime: `${surveyData.startDate ?? ''} ${surveyData.startTime ?? ''}`.trim(),
+            endTime: `${surveyData.endDate ?? ''} ${surveyData.endTime ?? ''}`.trim(),
             transport: surveyData.transport ?? '',
+            transportTime: surveyData.transportTime ?? '',
             location: { x: startingPoint.coord.lng, y: startingPoint.coord.lat },
           }),
           minDelay,
@@ -370,6 +337,8 @@ export const CourseCreationFlow: React.FC = () => {
           setRecommendedPlaces(mapped);
           setIsRecommendFallback(false);
         } else {
+          // 폴백이 켜졌다는 것은 응답 모양이 또 달라졌다는 뜻이다. 원본을 남겨 다음 조정의 근거로 삼는다.
+          console.warn('추천 응답을 장소 목록으로 변환하지 못해 기본 목록으로 대체합니다:', result);
           setRecommendedPlaces(RECOMMENDED_PLACES);
           setIsRecommendFallback(true);
         }
@@ -382,6 +351,103 @@ export const CourseCreationFlow: React.FC = () => {
         setStep('placeSelect');
       }
     })();
+  };
+
+  // 출발지/일정은 프리뷰와 생성 요청이 똑같이 쓴다. 두 곳에서 따로 조립하다 어긋나지 않도록 한 곳에서 만든다.
+  const buildPlanContext = () => ({
+    ...(startingPoint.address
+      ? {
+          departurePoint: {
+            name: startingPoint.address,
+            address: startingPoint.address,
+            x: startingPoint.coord.lng,
+            y: startingPoint.coord.lat,
+          },
+        }
+      : {}),
+    ...(surveyData.startDate
+      ? {
+          tripStartDate: `${surveyData.startDate}T${surveyData.startTime || '00:00'}:00`,
+          tripEndDate: `${surveyData.startDate}T${surveyData.endTime || '23:59'}:00`,
+        }
+      : {}),
+  });
+
+  const planDescription = `${surveyData.transport ?? ''}으로 떠나는 나만의 힐링 여행`;
+
+  // 프리뷰는 선택이 아니라 생성의 선행 조건이다.
+  // requiredTime/totalDistance/travelTime/stayTime은 전부 서버 계산값이고 명세에 재계산 API가 없어,
+  // 실패한 채로 저장하면 0분·0km짜리 플랜이 복구 경로 없이 영구히 남는다.
+  const requestPreview = async (stops: Place[]) => {
+    setServerPreview(null);
+    setPreviewFailed(false);
+    setIsPreviewLoading(true);
+    try {
+      const numericPlaces = stops
+        .map((p, i) => ({ placeId: Number(p.id), order: i + 1 }))
+        .filter((p) => Number.isInteger(p.placeId));
+      if (numericPlaces.length === 0) {
+        setPreviewFailed(true);
+        return;
+      }
+      const preview = await planApi.createPlanPreview({
+        planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState),
+        planDescription,
+        isPlanVisible,
+        ...buildPlanContext(),
+        places: numericPlaces,
+      });
+      setServerPreview(preview);
+    } catch (err) {
+      console.error('플랜 생성 프리뷰 실패:', err);
+      setPreviewFailed(true);
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const savePlan = async () => {
+    // 프리뷰 없이 저장하면 0값이 그대로 들어간다. CTA도 막아두지만 마지막 방어선을 둔다.
+    if (!serverPreview) {
+      toast.error('경로 계산이 끝난 뒤 저장할 수 있어요.');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      // 프리뷰 응답(장소별 duration/stayTime)을 order 기준으로 조인해 명세 필수 필드를 채운다.
+      const previewByOrder = new Map(serverPreview.places.map((p) => [p.order, p]));
+      const numericPlaces = finalStops
+        .map((s, i) => {
+          const order = i + 1;
+          const pv = previewByOrder.get(order);
+          return {
+            placeId: Number(s.id),
+            order,
+            travelTime: pv?.duration ?? 0,
+            stayTime: pv?.stayTime ?? 0,
+          };
+        })
+        .filter((p) => Number.isInteger(p.placeId));
+      const created = await planApi.createPlan({
+        planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState),
+        planDescription,
+        isPlanVisible,
+        requiredTime: serverPreview.requiredTime,
+        totalDistance: serverPreview.totalDistance,
+        ...buildPlanContext(),
+        places: numericPlaces,
+      });
+      reset();
+      toast.success('힐링 플랜이 생성되었어요!', { description: '내 플랜에서 확인해보세요.' });
+      router.push(`/course/${created.planId}`);
+    } catch (err) {
+      console.error('플랜 생성 실패:', err);
+      toast.error('플랜 저장에 실패했어요.', {
+        description: '네트워크 상태를 확인한 뒤 다시 시도해주세요.',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // ── 네비게이션 ──
@@ -397,112 +463,15 @@ export const CourseCreationFlow: React.FC = () => {
       // 사용자가 아직 제목을 손대지 않았다면 기본값을 채워 편집 출발점으로 삼는다
       if (!planTitle.trim()) setPlanTitle(buildDefaultPlanTitle(surveyData.mindState));
       setStep('finalPlan');
-      // 서버 계산 프리뷰 조회 (POST /api/plan-place/preview) — 실패해도 화면 진행은 유지
-      setServerPreview(null);
-      setPreviewFailed(false);
-      void (async () => {
-        try {
-          const numericPlaces = selected
-            .map((p, i) => ({ placeId: Number(p.id), order: i + 1 }))
-            .filter((p) => Number.isInteger(p.placeId));
-          if (numericPlaces.length === 0) {
-            setPreviewFailed(true);
-            return;
-          }
-          const preview = await planApi.createPlanPreview({
-            planTitle: `${(surveyData.mindState ?? '').slice(0, 10)} 힐링 플랜`,
-            planDescription: `${surveyData.transport ?? ''}으로 떠나는 나만의 힐링 여행`,
-            isPlanVisible: false,
-            ...(startingPoint.address
-              ? {
-                  departurePoint: {
-                    name: startingPoint.address,
-                    address: startingPoint.address,
-                    x: startingPoint.coord.lng,
-                    y: startingPoint.coord.lat,
-                  },
-                }
-              : {}),
-            ...(surveyData.startDate
-              ? {
-                  tripStartDate: `${surveyData.startDate}T${surveyData.startTime || '00:00'}:00`,
-                  tripEndDate: `${surveyData.startDate}T${surveyData.endTime || '23:59'}:00`,
-                }
-              : {}),
-            places: numericPlaces,
-          });
-          setServerPreview(preview);
-        } catch (err) {
-          console.error('플랜 생성 프리뷰 실패:', err);
-          setPreviewFailed(true);
-        }
-      })();
+      void requestPreview(selected);
     } else if (step === 'finalPlan') {
       // v5: POST /api/plan/create 한 번으로 출발지/일정/장소까지 일괄 등록.
-      // 실패 시 에러 토스트를 노출하고 현재 화면을 유지한다.
       if (isSaving) return;
-      void (async () => {
-        setIsSaving(true);
-        try {
-          // 프리뷰 응답(장소별 duration/stayTime)을 order 기준으로 조인해 명세 필수 필드를 채운다.
-          const previewByOrder = new Map(
-            (serverPreview?.places ?? []).map((p) => [p.order, p])
-          );
-          const numericPlaces = finalStops
-            .map((s, i) => {
-              const order = i + 1;
-              const pv = previewByOrder.get(order);
-              return {
-                placeId: Number(s.id),
-                order,
-                travelTime: pv?.duration ?? 0,
-                stayTime: pv?.stayTime ?? 0,
-              };
-            })
-            .filter((p) => Number.isInteger(p.placeId));
-          const created = await planApi.createPlan({
-            planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState),
-            planDescription: `${surveyData.transport ?? ''}으로 떠나는 나만의 힐링 여행`,
-            isPlanVisible,
-            requiredTime: serverPreview?.requiredTime ?? 0,
-            totalDistance: serverPreview?.totalDistance ?? 0,
-            ...(startingPoint.address
-              ? {
-                  departurePoint: {
-                    name: startingPoint.address,
-                    address: startingPoint.address,
-                    x: startingPoint.coord.lng,
-                    y: startingPoint.coord.lat,
-                  },
-                }
-              : {}),
-            ...(surveyData.startDate
-              ? {
-                  tripStartDate: `${surveyData.startDate}T${surveyData.startTime || '00:00'}:00`,
-                  tripEndDate: `${surveyData.startDate}T${surveyData.endTime || '23:59'}:00`,
-                }
-              : {}),
-            places: numericPlaces,
-          });
-          reset();
-          toast.success('힐링 플랜이 생성되었어요!', {
-            description: '내 플랜에서 확인해보세요.',
-          });
-          router.push(`/course/${created.planId}`);
-        } catch (err) {
-          console.error('플랜 생성 실패:', err);
-          toast.error('플랜 저장에 실패했어요.', {
-            description: '네트워크 상태를 확인한 뒤 다시 시도해주세요.',
-          });
-        } finally {
-          setIsSaving(false);
-        }
-      })();
+      void savePlan();
     }
   };
 
-  // TODO(transportTime): 원문 — surveyData.mindState || surveyData.transport || surveyData.transportTime
-  const hasUnsavedData = surveyData.mindState || surveyData.transport;
+  const hasUnsavedData = surveyData.mindState || surveyData.transport || surveyData.transportTime;
 
   const handleBack = () => {
     if (step === 'landing') {
@@ -552,11 +521,11 @@ export const CourseCreationFlow: React.FC = () => {
     } else if (direction === 'down' && index < newStops.length - 1) {
       [newStops[index], newStops[index + 1]] = [newStops[index + 1], newStops[index]];
     } else return;
+    setFinalStops(newStops);
+    // 순서가 바뀌면 이동시간·총소요·총거리가 전부 달라진다. 저장 요청에 실리는 travelTime/stayTime이
+    // order에 묶여 있어, 800ms 타이머로 재계산하는 시늉만 하던 것을 실제 프리뷰 재요청으로 바꾼다.
     setIsRecalculating(true);
-    setTimeout(() => {
-      setFinalStops(newStops);
-      setIsRecalculating(false);
-    }, 800);
+    void requestPreview(newStops).finally(() => setIsRecalculating(false));
   };
 
   // ── Survey 3 유효성 검사 ──
@@ -838,29 +807,24 @@ export const CourseCreationFlow: React.FC = () => {
   }
 
   // ════════════════════════════════════════════
-  // (3) Survey 2 — 이동 수단 (이동 시간은 TODO(transportTime)로 임시 비활성화)
+  // (3) Survey 2 — 이동 수단 및 시간
   // ════════════════════════════════════════════
   if (step === 'survey2') {
-    // TODO(transportTime): 이동 시간 질문 임시 비활성화에 따라 함께 주석 처리
-    /*
     const isCustomTime =
       surveyData.transportTime === '직접입력' ||
       CUSTOM_TIME_OPTIONS.some((o) => o.value === surveyData.transportTime);
     const showCustomPicker =
       isCustomTime && !['1시간 이내', '상관없어요', ''].includes(surveyData.transportTime ?? '');
-    */
 
     return (
       <div className="fixed inset-y-0 app-frame z-40 h-dvh flex flex-col bg-white">
         <div className="shrink-0">
-          {/* TODO(transportTime): 원문 타이틀 — "이동 수단 및 시간" */}
-          <Header onBack={handleBack} title="이동 수단" showStep />
+          <Header onBack={handleBack} title="이동 수단 및 시간" showStep />
           <div className="px-6 pt-5 pb-2">
-            {/* TODO(transportTime): 원문 — "Q2. 희망하는 이동 수단과 / 이동 시간을 선택해주세요." */}
             <h2 className="text-xl font-bold">
-              Q2. 희망하는 이동 수단을
+              Q2. 희망하는 이동 수단과
               <br />
-              선택해주세요.
+              이동 시간을 선택해주세요.
             </h2>
           </div>
         </div>
@@ -885,8 +849,6 @@ export const CourseCreationFlow: React.FC = () => {
             </div>
           </div>
 
-          {/* TODO(transportTime): 이동 시간 선택 섹션 임시 비활성화 (서버 미전달 필드) */}
-          {/*
           <div>
             <h3 className="text-sm font-bold text-gray-500 mb-3">이동 시간</h3>
             <div className="flex flex-col gap-2">
@@ -932,14 +894,13 @@ export const CourseCreationFlow: React.FC = () => {
               )}
             </AnimatePresence>
           </div>
-          */}
         </div>
         <div className={STICKY_FOOTER}>
-          {/* TODO(transportTime): disabled 원문 —
-              !surveyData.transport || !surveyData.transportTime || surveyData.transportTime === '직접입력' */}
           <button
             onClick={handleNext}
-            disabled={!surveyData.transport}
+            disabled={
+              !surveyData.transport || !surveyData.transportTime || surveyData.transportTime === '직접입력'
+            }
             className={PRIMARY_CTA}
           >
             선택 완료
@@ -1562,9 +1523,15 @@ export const CourseCreationFlow: React.FC = () => {
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded mb-1 inline-block">
-                      {place.category}
-                    </span>
+                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                      <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded">
+                        {place.category}
+                      </span>
+                      {/* 추천 응답에는 태그가 없다. 대신 이 장소를 찾아낸 키워드를 보여줘 추천 이유를 남긴다. */}
+                      {place.tags[0] && (
+                        <span className="text-xs text-gray-400">{place.tags[0]}</span>
+                      )}
+                    </div>
                     <h3 className="font-bold text-gray-900">{place.name}</h3>
                   </div>
                   <div
@@ -1575,7 +1542,11 @@ export const CourseCreationFlow: React.FC = () => {
                     {isSelected && <Check size={14} className="text-white" />}
                   </div>
                 </div>
-                <p className="text-sm text-gray-500 mb-3">{place.description}</p>
+                {(place.description || place.address) && (
+                  <p className="text-sm text-gray-500 mb-3 line-clamp-2">
+                    {place.description || place.address}
+                  </p>
+                )}
                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
                   <div className="flex items-center text-xs text-gray-400 gap-1">
                     <Clock size={12} />
@@ -1653,13 +1624,7 @@ export const CourseCreationFlow: React.FC = () => {
     return (
       <div className="flex flex-col min-h-dvh bg-white">
         <div className="relative h-64 w-full shrink-0">
-          <Image
-            src={place.image}
-            alt={place.name}
-            fill
-            sizes="100vw"
-            className="object-cover"
-          />
+          <PlaceHeroImage src={place.image} alt={place.name} />
           <div className="absolute top-0 left-0 right-0 p-4 flex justify-between bg-gradient-to-b from-black/40 to-transparent">
             <button
               onClick={handleBack}
@@ -1685,14 +1650,18 @@ export const CourseCreationFlow: React.FC = () => {
               ))}
             </div>
 
+            {/* 추천 응답(SearchPlaceResponseDto)에는 주소·전화·소개가 없다.
+                값이 없는 행을 그대로 두면 제목만 있고 내용이 빈 줄로 남으므로 행째 감춘다. */}
             <div className="space-y-4 mb-8">
-              <div className="flex items-start gap-3">
-                <MapPin className="text-gray-400 mt-0.5" size={18} />
-                <div>
-                  <div className="text-sm font-bold text-gray-900">주소</div>
-                  <div className="text-sm text-gray-500">{place.address}</div>
+              {place.address && (
+                <div className="flex items-start gap-3">
+                  <MapPin className="text-gray-400 mt-0.5" size={18} />
+                  <div>
+                    <div className="text-sm font-bold text-gray-900">주소</div>
+                    <div className="text-sm text-gray-500">{place.address}</div>
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="flex items-start gap-3">
                 <Clock className="text-gray-400 mt-0.5" size={18} />
                 <div>
@@ -1700,21 +1669,25 @@ export const CourseCreationFlow: React.FC = () => {
                   <div className="text-sm text-gray-500">{place.time}</div>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <div className="w-[18px] flex justify-center text-gray-400 font-bold text-xs mt-0.5">
-                  Tel
+              {place.phone && (
+                <div className="flex items-start gap-3">
+                  <div className="w-[18px] flex justify-center text-gray-400 font-bold text-xs mt-0.5">
+                    Tel
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-gray-900">전화번호</div>
+                    <div className="text-sm text-gray-500">{place.phone}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-sm font-bold text-gray-900">전화번호</div>
-                  <div className="text-sm text-gray-500">{place.phone}</div>
-                </div>
-              </div>
+              )}
             </div>
 
-            <div className="mb-8">
-              <h2 className="text-lg font-bold text-gray-900 mb-2">장소 소개</h2>
-              <p className="text-gray-600 leading-relaxed text-sm">{place.description}</p>
-            </div>
+            {place.description && (
+              <div className="mb-8">
+                <h2 className="text-lg font-bold text-gray-900 mb-2">장소 소개</h2>
+                <p className="text-gray-600 leading-relaxed text-sm">{place.description}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1744,6 +1717,12 @@ export const CourseCreationFlow: React.FC = () => {
   // ════════════════════════════════════════════
   if (step === 'finalPlan') {
     const firstStopCoord = finalStops.length > 0 ? getStopCoord(finalStops[0]) : null;
+    // 저장 요청과 같은 기준(order)으로 프리뷰를 조인한다 — 화면 값과 저장 값이 항상 같아진다.
+    const previewStopByOrder = new Map((serverPreview?.places ?? []).map((p) => [p.order, p]));
+    // 출발지에서 첫 장소까지 걸리는 시간. 프리뷰가 없으면 좌표 기반 추정치로 대체한다.
+    const departTravelMin =
+      previewStopByOrder.get(1)?.duration ??
+      (firstStopCoord ? getTravelMinutes(startingPoint.coord, firstStopCoord) : null);
     return (
       <div className="flex flex-col min-h-dvh bg-gray-50 relative">
         <Header onBack={handleBack} title="나만의 힐링 플랜" showStep />
@@ -1791,9 +1770,29 @@ export const CourseCreationFlow: React.FC = () => {
               <span>총 이동 {serverPreview.totalDistance}km</span>
             </div>
           )}
+          {isPreviewLoading && (
+            <div className="mt-2 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
+              <Loader2 size={12} className="animate-spin" />
+              경로를 계산하고 있어요...
+            </div>
+          )}
+          {/* 프리뷰 값이 곧 저장 값이라, 실패하면 저장을 막고 재시도를 유도한다.
+              이전에는 "저장에는 영향이 없어요"라고 안내한 뒤 0분·0km로 저장하고 있었다. */}
           {previewFailed && (
-            <div className="mt-2 text-[11px] text-gray-400 bg-gray-50 px-3 py-2 rounded-lg">
-              경로 예상 정보를 불러오지 못했어요. 저장에는 영향이 없어요.
+            <div className="mt-2 flex items-start gap-2 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100">
+              <AlertCircle size={14} className="text-amber-400 mt-0.5 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs text-amber-700">
+                  경로를 계산하지 못해 지금은 저장할 수 없어요.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void requestPreview(finalStops)}
+                  className="mt-1 text-xs font-bold text-amber-700 underline underline-offset-2"
+                >
+                  다시 계산하기
+                </button>
+              </div>
             </div>
           )}
 
@@ -1861,12 +1860,10 @@ export const CourseCreationFlow: React.FC = () => {
                 <div className="text-xs text-gray-500">
                   {startingPoint.address} · {surveyData.startTime} 출발
                 </div>
-                {firstStopCoord && (
+                {departTravelMin !== null && (
                   <div className="mt-1 flex items-center gap-1 text-[11px] text-primary-400">
                     <Truck size={10} />
-                    <span>
-                      {getTravelMinutes(startingPoint.coord, firstStopCoord)}분 소요 예상
-                    </span>
+                    <span>{departTravelMin}분 소요 예상</span>
                   </div>
                 )}
               </div>
@@ -1881,8 +1878,18 @@ export const CourseCreationFlow: React.FC = () => {
               const currCoord = getStopCoord(stop);
               const nextCoord =
                 index < finalStops.length - 1 ? getStopCoord(finalStops[index + 1]) : null;
-              const travelFromPrev = currCoord ? getTravelMinutes(prevCoord, currCoord) : 15;
-              const travelToNext = nextCoord && currCoord ? getTravelMinutes(currCoord, nextCoord) : null;
+              // 화면에 보이는 값과 저장되는 값이 어긋나지 않도록 서버 프리뷰를 우선 쓰고,
+              // 프리뷰가 아직 없을 때만 좌표 기반 추정치로 대체한다.
+              const pv = previewStopByOrder.get(index + 1);
+              const pvNext = previewStopByOrder.get(index + 2);
+              const travelFromPrev =
+                pv?.duration ?? (currCoord ? getTravelMinutes(prevCoord, currCoord) : 15);
+              const travelToNext =
+                index < finalStops.length - 1
+                  ? (pvNext?.duration ??
+                    (nextCoord && currCoord ? getTravelMinutes(currCoord, nextCoord) : null))
+                  : null;
+              const stayLabel = pv?.stayTime ? formatMinutes(pv.stayTime) : stop.time;
 
               return (
                 <div
@@ -1929,7 +1936,7 @@ export const CourseCreationFlow: React.FC = () => {
                     <div className="flex items-center justify-between text-xs text-gray-500 bg-gray-50 p-2 rounded-lg">
                       <div className="flex items-center gap-1">
                         <Clock size={12} />
-                        <span>추천 체류 {stop.time}</span>
+                        <span>추천 체류 {stayLabel}</span>
                       </div>
                       {travelToNext !== null && (
                         <div className="flex items-center gap-1">
@@ -1948,10 +1955,19 @@ export const CourseCreationFlow: React.FC = () => {
         <div className={STICKY_FOOTER}>
           <button
             onClick={handleNext}
+            disabled={!serverPreview || isSaving || isPreviewLoading}
             className={`${PRIMARY_CTA} flex items-center justify-center gap-2`}
           >
-            <Check size={20} />
-            힐링 플랜 생성 완료
+            {isSaving || isPreviewLoading ? (
+              <Loader2 size={20} className="animate-spin" />
+            ) : (
+              <Check size={20} />
+            )}
+            {isSaving
+              ? '플랜 저장 중...'
+              : isPreviewLoading
+                ? '경로 계산 중...'
+                : '힐링 플랜 생성 완료'}
           </button>
         </div>
       </div>
