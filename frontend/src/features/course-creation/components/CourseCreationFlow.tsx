@@ -1527,7 +1527,7 @@ export const CourseCreationFlow: React.FC = () => {
                       <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded">
                         {place.category}
                       </span>
-                      {/* 추천 응답에는 태그가 없다. 대신 이 장소를 찾아낸 키워드를 보여줘 추천 이유를 남긴다. */}
+                      {/* AI 추천 태그 중 첫 번째만 배지로 보여준다 */}
                       {place.tags[0] && (
                         <span className="text-xs text-gray-400">{place.tags[0]}</span>
                       )}
