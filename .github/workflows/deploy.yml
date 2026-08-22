@@ -125,10 +125,12 @@ jobs:
       - name: Prepare backend runtime environment
         env:
           RUNTIME_ENV_FILE: ${{ secrets.ENV_FILE }}
+          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
         shell: bash
         run: |
           umask 077
           printf '%s\n' "$RUNTIME_ENV_FILE" > .env.deploy
+          printf 'ANTHROPIC_API_KEY=%s\n' "$ANTHROPIC_API_KEY" >> .env.deploy
 
       - name: Copy deployment files
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
