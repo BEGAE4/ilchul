@@ -1,3 +1,4 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 import type { InquiryStatus } from '@/features/inquiry/types/inquiry.types';
 import { mockCreated, mockListResponse } from './_mock';
@@ -9,7 +10,7 @@ import { mockCreated, mockListResponse } from './_mock';
  * 실서버에서는 인증 역할로 범위가 결정되며, mock 에서는 size 유무로 구분한다.
  */
 export async function GET(request: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
   const { search } = new URL(request.url);
   const params = request.nextUrl.searchParams;
   const status = params.get('status') as InquiryStatus | null;
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
 
 /** POST 문의 작성 — multipart/form-data */
 export async function POST(request: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
   const formData = await request.formData().catch(() => null);
 
   if (!baseUrl) {

@@ -1,3 +1,4 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 import type {
   InquiryAnswer,
@@ -11,7 +12,7 @@ type Params = { params: Promise<{ id: string }> };
 /** GET 문의 상세 조회 */
 export async function GET(request: NextRequest, { params }: Params) {
   const { id } = await params;
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
 
   if (!baseUrl) {
     return NextResponse.json(mockDetail(Number(id)));
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 /** PATCH 문의 수정 — multipart/form-data */
 export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params;
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
   const formData = await request.formData().catch(() => null);
 
   if (!baseUrl) {
@@ -82,7 +83,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 /** DELETE 문의 삭제 */
 export async function DELETE(request: NextRequest, { params }: Params) {
   const { id } = await params;
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
 
   if (!baseUrl) {
     return NextResponse.json({ success: true, inquiryId: Number(id) });
@@ -106,7 +107,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 /** POST 문의 답변 작성 (관리자) — { content } */
 export async function POST(request: NextRequest, { params }: Params) {
   const { id } = await params;
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
   const body = await request.json().catch(() => ({}));
 
   if (!baseUrl) {

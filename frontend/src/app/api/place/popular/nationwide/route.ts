@@ -1,8 +1,9 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 import { buildMockNationwidePlaces } from '@/features/main/utils/popular-mock';
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const BASE_URL = getServerApiBaseUrl();
 
 // MAIN-60. 전국 인기 장소 — 백엔드 프록시
 export async function GET(request: NextRequest) {

@@ -1,3 +1,4 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 import type { RecentSearch } from '@/features/search/types/search.types';
 import {
@@ -11,7 +12,7 @@ import {
 
 /** GET 최근 검색기록 조회 */
 export async function GET(request: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
   if (!baseUrl) {
     return NextResponse.json(getMockRecentSearches());
   }
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
 
 /** POST 최근 검색기록 추가 */
 export async function POST(request: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
   const body = (await request.json().catch(() => null)) as RecentSearch | null;
 
   if (!baseUrl) {
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
 
 /** DELETE 최근 검색기록 전체 삭제 */
 export async function DELETE(request: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
 
   if (!baseUrl) {
     clearMockRecentSearches();

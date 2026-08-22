@@ -1,3 +1,4 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 
 const MOCK_SUMMARY = {
@@ -10,7 +11,7 @@ const MOCK_SUMMARY = {
 // 사용자 프로필 COUNT 조회 API (프론트 -> 백엔드 프록시)
 // 백엔드 에러를 mock 200으로 위장하지 않는다 (Architect C-1).
 export async function GET(request: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
   if (!baseUrl) {
     if (process.env.NODE_ENV === 'production') {
       return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
