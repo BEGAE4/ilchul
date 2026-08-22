@@ -38,13 +38,32 @@ export interface SurveyResult {
   transportTime: string;
 }
 
-// 장소 추천 응답 — 서버는 키워드별로 묶인 그룹 배열(List<RecommendPlaceResponseDto>)을 돌려준다.
-// 명세 260819의 200 응답이 `type: object`로 비어 있어(컨트롤러가 ResponseEntity<?>) 명세만으로는 알 수 없고,
-// 백엔드 PlaceController.recommendPlace() 반환 타입을 근거로 삼았다.
-export interface RecommendPlaceGroup {
-  keyword: string;
-  radiusM: number;
-  places: SearchPlaceItem[];
+// 장소 추천 응답 (확정, 260822) — AI가 순서까지 정한 플랜 객체를 돌려준다.
+//   { recommendId, candidateCount, plan, items: [{ order, placeId, ... }] }
+export interface RecommendPlaceItem {
+  order: number;
+  placeId: number;
+  placeName: string;
+  categoryName: string;
+  placeImageUrl: string;
+  roadAddressName: string;
+  x: number;
+  y: number;
+  stayMinutes: number;
+  reason: string;
+  tags: string[];
+  wellnessCertified: boolean;
+}
+
+export interface RecommendResponse {
+  recommendId: string;
+  candidateCount: { wellness: number; kakao: number };
+  plan: {
+    totalHours: number;
+    estimatedPlaceCount: number;
+    reasoning: string;
+  };
+  items: RecommendPlaceItem[];
 }
 
 // 장소 좋아요 응답 (LikeResponseDto)
