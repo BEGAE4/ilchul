@@ -193,6 +193,7 @@ jobs:
             # 3-A: 시크릿 값 보호 ('EOF')
             cat << 'EOF' > .env
             ${{ secrets.ENV_FILE }}
+            ANTHROPIC_API_KEY=${{ secrets.CLAUDE_API_KEY }}
             EOF
             
             # 3-B: 변수 확장이 필요한 환경변수 추가 (>> 사용하여 덧붙이기)
