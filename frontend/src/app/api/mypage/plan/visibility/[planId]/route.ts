@@ -1,3 +1,4 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 
 // 프론트에서 호출하는 공개/비공개 토글을 백엔드로 프록시합니다.
@@ -5,10 +6,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ planId: string }> }
 ) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
   if (!baseUrl) {
     return NextResponse.json(
-      { status: 500, error: 'NEXT_PUBLIC_API_BASE_URL 설정이 필요합니다.' },
+      { status: 500, error: '백엔드 API 주소 설정이 필요합니다.' },
       { status: 500 }
     );
   }
@@ -36,4 +37,3 @@ export async function POST(
     return NextResponse.json({ status: 500 }, { status: 500 });
   }
 }
-

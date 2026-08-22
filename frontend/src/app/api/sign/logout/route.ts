@@ -1,8 +1,9 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 
 // 로그아웃 API (프론트 -> 백엔드 프록시) — 세션 쿠키 무효화, 204 No Content
 export async function POST(request: NextRequest) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
   if (!baseUrl) {
     return new NextResponse(null, { status: 204 });
   }

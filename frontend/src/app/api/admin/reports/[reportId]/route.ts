@@ -1,3 +1,4 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getMockReportDetail,
@@ -12,7 +13,7 @@ interface RouteContext {
 
 async function proxyToBackend(req: NextRequest, reportId: string, method: 'GET' | 'PATCH'): Promise<Response | null> {
   if (useMock) return null;
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
   const cookie = req.headers.get('cookie') ?? '';
   const init: RequestInit = {
     method,
@@ -44,7 +45,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   const body = await req.json().catch(() => ({}));
 
   if (!useMock) {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const baseUrl = getServerApiBaseUrl();
     const cookie = req.headers.get('cookie') ?? '';
     const res = await fetch(`${baseUrl}/api/admin/reports/${reportId}`, {
       method: 'PATCH',

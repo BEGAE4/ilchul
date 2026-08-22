@@ -112,6 +112,8 @@ logging:
   level:
     root: INFO
     org.springframework.cache: trace
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"
 
 server:
   port: 8080
@@ -133,7 +135,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,metrics
   endpoint:
     health:
       show-details: always
