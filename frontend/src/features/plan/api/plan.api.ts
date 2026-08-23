@@ -14,6 +14,7 @@ import type {
   LikeResponse,
   ScrapPlanResponse,
 } from '../types/plan.types';
+import { normalizePlanDetail } from '../utils/normalizePlanDetail';
 
 // 플랜 생성 — 출발지/일정/장소까지 일괄 등록
 export async function createPlan(body: CreatePlanBody): Promise<CreatePlanResponse> {
@@ -24,7 +25,7 @@ export async function createPlan(body: CreatePlanBody): Promise<CreatePlanRespon
 // 플랜 상세 조회 — PlanDetailDto 직접 반환 (래핑 없음)
 export async function fetchPlanDetail(planId: number): Promise<PlanDetail> {
   const { data } = await apiClient.get<PlanDetail>(`/api/plan/${planId}`);
-  return data;
+  return normalizePlanDetail(data);
 }
 
 // 플랜 수정
@@ -106,7 +107,7 @@ export async function uploadPlanImages(planId: number, images: File[]): Promise<
   const { data } = await apiClient.post<PlanDetail>(`/api/plan/${planId}/images`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return data;
+  return normalizePlanDetail(data);
 }
 
 // 플랜 이미지 삭제 — 명세 query int[]. 반복 파라미터(imageIds=1&imageIds=2)로 직렬화
@@ -115,7 +116,7 @@ export async function deletePlanImages(planId: number, imageIds: number[]): Prom
     params: { imageIds },
     paramsSerializer: { indexes: null },
   });
-  return data;
+  return normalizePlanDetail(data);
 }
 
 // 플랜 복제 (일정 담기)
