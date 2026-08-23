@@ -316,7 +316,7 @@ export const ProfilePage: React.FC = () => {
               key={tab.key}
               onClick={() => setMainTab(tab.key)}
               className={`flex-1 pb-3 text-sm font-bold transition-all relative text-center ${
-                mainTab === tab.key ? 'text-gray-900' : 'text-gray-400'
+                mainTab === tab.key ? 'text-primary-600' : 'text-gray-400'
               }`}
             >
               {tab.label}
@@ -328,7 +328,7 @@ export const ProfilePage: React.FC = () => {
               {mainTab === tab.key && (
                 <motion.div
                   layoutId="mainTabIndicator"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 rounded-full"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500 rounded-full"
                 />
               )}
             </button>
