@@ -183,9 +183,9 @@ export default function Home() {
             <ScrollCarousel slidesToShow={1.15} gap={12}>
               {nearbyPlans.items.slice(0, 5).map((plan, index) => (
                 <div
-                  key={plan.id}
+                  key={String(plan.id)}
                   className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
-                  onClick={() => handleCourseClick(plan.id)}
+                  onClick={() => handleCourseClick(String(plan.id))}
                 >
                   <div className="relative h-40">
                     <Image
@@ -199,16 +199,6 @@ export default function Home() {
                       {index + 1}
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/50 to-transparent" />
-                    <div className="absolute bottom-2.5 left-3 flex gap-1.5">
-                      {(plan.tags ?? []).slice(0, 2).map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-[10px] text-white bg-white/20 backdrop-blur-sm rounded px-1.5 py-0.5"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
                   </div>
                   <div className="p-3.5">
                     <h3 className="font-bold text-gray-900 text-sm line-clamp-1 mb-1.5">
@@ -315,9 +305,9 @@ export default function Home() {
           <div className="px-5 space-y-3">
             {nationwidePlans.items.map((plan, index) => (
               <div
-                key={plan.id}
+                key={String(plan.id)}
                 className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex h-28 cursor-pointer active:scale-[0.98] transition-transform"
-                onClick={() => handleCourseClick(plan.id)}
+                onClick={() => handleCourseClick(String(plan.id))}
               >
                 <div className="relative w-28 shrink-0">
                   <Image
@@ -339,16 +329,6 @@ export default function Home() {
                     <p className="text-xs text-gray-500 line-clamp-1">{plan.description}</p>
                   </div>
                   <div>
-                    <div className="flex gap-1.5 mb-1.5">
-                      {(plan.tags ?? []).slice(0, 3).map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-[10px] text-primary-600 bg-primary-50 rounded px-1.5 py-0.5"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 text-[10px] text-gray-400">
                         <MapPin size={9} />

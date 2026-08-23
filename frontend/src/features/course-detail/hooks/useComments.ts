@@ -44,6 +44,40 @@ export function useComments(planId: string) {
     loadComments(lastId, true);
   }, [comments, isFetchingMore, hasNext, loadComments]);
 
+  // 대댓글 더보기 — 목록 응답의 replies 는 첫 페이지만 포함(hasNext)하므로 커서 페이징으로 이어 받는다
+  const [fetchingRepliesFor, setFetchingRepliesFor] = useState<number | null>(null);
+  const fetchMoreReplies = useCallback(
+    async (parentReplyId: number) => {
+      if (fetchingRepliesFor !== null) return;
+      const parent = comments.find((c) => c.replyId === parentReplyId);
+      if (!parent || !parent.replies.hasNext) return;
+      const children = parent.replies.replies;
+      const lastId = children.length ? children[children.length - 1].replyId : 0;
+      try {
+        setFetchingRepliesFor(parentReplyId);
+        const res = await commentApi.fetchChildReplies(parentReplyId, lastId);
+        setComments((prev) =>
+          prev.map((c) =>
+            c.replyId === parentReplyId
+              ? {
+                  ...c,
+                  replies: {
+                    replies: [...c.replies.replies, ...res.replies],
+                    hasNext: res.hasNext,
+                  },
+                }
+              : c
+          )
+        );
+      } catch {
+        toast.error('답글을 불러오지 못했어요.');
+      } finally {
+        setFetchingRepliesFor(null);
+      }
+    },
+    [comments, fetchingRepliesFor]
+  );
+
   const submitComment = useCallback(async () => {
     const content = commentText.trim();
     if (!content) return;
@@ -153,5 +187,7 @@ export function useComments(planId: string) {
     toggleCommentLike: toggleLike,
     hideComment,
     fetchMore,
+    fetchMoreReplies,
+    fetchingRepliesFor,
   };
 }

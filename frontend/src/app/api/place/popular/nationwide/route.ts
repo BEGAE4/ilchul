@@ -1,9 +1,5 @@
 import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
-import { buildMockNationwidePlaces } from '@/features/main/utils/popular-mock';
-
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
-const BASE_URL = getServerApiBaseUrl();
 
 // MAIN-60. 전국 인기 장소 — 백엔드 프록시
 export async function GET(request: NextRequest) {
@@ -11,13 +7,14 @@ export async function GET(request: NextRequest) {
   const limit = Number(sp.get('limit') ?? 6);
   const page = Number(sp.get('page') ?? 1);
 
-  if (USE_MOCK || !BASE_URL) {
-    return NextResponse.json(buildMockNationwidePlaces(limit, page));
+  const baseUrl = getServerApiBaseUrl();
+  if (!baseUrl) {
+    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
   }
 
   try {
     const cookie = request.headers.get('cookie') ?? '';
-    const url = new URL(`${BASE_URL}/api/place/popular/nationwide`);
+    const url = new URL(`${baseUrl}/api/place/popular/nationwide`);
     url.searchParams.set('limit', String(limit));
     url.searchParams.set('page', String(page));
 

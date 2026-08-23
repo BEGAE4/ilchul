@@ -17,6 +17,7 @@ import {
   Trash2,
   X,
   Plus,
+  User,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -67,6 +68,8 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     toggleCommentLike,
     hideComment,
     fetchMore,
+    fetchMoreReplies,
+    fetchingRepliesFor,
   } = useComments(courseId);
 
   const [shareOpen, setShareOpen] = useState(false);
@@ -212,14 +215,18 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           className="flex items-center gap-3 cursor-pointer active:opacity-70"
           onClick={() => router.push(`/profile/${plan.userId}`)}
         >
-          <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-200">
-            <Image
-              src={plan.userAvatar || `https://i.pravatar.cc/150?u=${plan.userId}`}
-              alt={plan.userNickname}
-              fill
-              sizes="40px"
-              className="object-cover"
-            />
+          <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-200 bg-gray-100 flex items-center justify-center">
+            {plan.userAvatar ? (
+              <Image
+                src={plan.userAvatar}
+                alt={plan.userNickname}
+                fill
+                sizes="40px"
+                className="object-cover"
+              />
+            ) : (
+              <User size={20} className="text-gray-400" />
+            )}
           </div>
           <div>
             <div className="text-sm font-bold text-gray-900">{plan.userNickname}</div>
@@ -410,7 +417,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                 </div>
 
                 {/* 대댓글 */}
-                {comment.replies.replies.length > 0 && (
+                {(comment.replies.replies.length > 0 || comment.replies.hasNext) && (
                   <div className="ml-12 mt-3 space-y-3 border-l-2 border-gray-100 pl-3">
                     {comment.replies.replies.map((reply) => (
                       <div key={reply.replyId} className="flex items-start gap-3">
@@ -473,6 +480,16 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                         </div>
                       </div>
                     ))}
+                    {comment.replies.hasNext && (
+                      <button
+                        type="button"
+                        onClick={() => fetchMoreReplies(comment.replyId)}
+                        disabled={fetchingRepliesFor === comment.replyId}
+                        className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                      >
+                        {fetchingRepliesFor === comment.replyId ? '불러오는 중...' : '답글 더보기'}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

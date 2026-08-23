@@ -27,7 +27,7 @@ interface UsePaginatedListResult<T> {
 const DEFAULT_LIMIT = 20;
 
 export function usePaginatedList<
-  T extends { id: string },
+  T extends { id: string | number },
   P extends Record<string, unknown>,
 >(options: UsePaginatedListOptions<T, P>): UsePaginatedListResult<T> {
   const { fetchFn, baseParams, limit = DEFAULT_LIMIT, enabled = true } = options;

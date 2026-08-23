@@ -1,1 +1,0 @@
-export { SanctionItem } from './component';
