@@ -13,7 +13,8 @@ import {
   Route,
   Search,
 } from 'lucide-react';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
+import PlanCover from '@/shared/ui/PlanCover';
 import type { BestPlace } from '@/shared/types';
 import { ScrollCarousel } from '@/shared/ui/ScrollCarousel';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
@@ -321,15 +322,13 @@ function CourseCard({ course, onClick }: CourseCardProps) {
       onClick={onClick}
     >
       <div className="relative h-40 bg-gray-100">
-        {course.thumbnailUrl && (
-          <Image
-            src={course.thumbnailUrl}
-            alt={course.planTitle}
-            fill
-            sizes="(max-width: 480px) 100vw, 480px"
-            className="object-cover"
-          />
-        )}
+        <PlanCover
+          src={course.thumbnailUrl}
+          alt={course.planTitle}
+          seed={course.planId}
+          size="md"
+          sizes="(max-width: 480px) 100vw, 480px"
+        />
         {course.matchedByPlace && matchedPlace && (
           <span className="absolute top-2.5 left-2.5 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
             <MapPin size={10} /> {matchedPlace.placeName} 포함

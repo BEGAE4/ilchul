@@ -3,7 +3,8 @@
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
+import PlanCover from '@/shared/ui/PlanCover';
 import {
   ArrowLeft,
   Calendar,
@@ -27,14 +28,12 @@ import {
   Timer,
   Info,
   Images,
+  Heart,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { usePlanDetail, planApi, type PlanPlaceDetail, type PlanPreviewResponse } from '@/features/plan';
+import { usePlanDetail, usePlanActions, planApi, type PlanPlaceDetail, type PlanPreviewResponse } from '@/features/plan';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
-
-const FALLBACK_THUMBNAIL =
-  'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1080&auto=format&fit=crop';
 
 function timeToMin(t: string): number {
   const [h, m] = t.split(':').map(Number);
@@ -116,6 +115,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   // 플랜 상세는 서버에서만 조회한다. 실패 시 에러 UI를 렌더링한다.
   const { plan, isLoading, error: planError, refetch } = usePlanDetail(courseId);
+  // 내 플랜에서도 좋아요는 가능하다 (스크랩은 소유자에게 의미가 없어 제공하지 않는다)
+  const { isLiked, likeCount, toggleLike } = usePlanActions(plan);
 
   const reviewRef = useRef<HTMLDivElement>(null);
   const stampInputRef = useRef<HTMLInputElement>(null);
@@ -202,7 +203,9 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const stops = orderedPlaces ?? serverPlaces;
   const isReorderMode = orderedPlaces !== null;
 
-  const thumbnail = plan.thumbnailUrl || plan.planImageUrls[0] || FALLBACK_THUMBNAIL;
+  // 대표 이미지: 업로드 썸네일 → 플랜 이미지 → 첫 번째 장소 사진. 없으면 PlanCover 의 '사진 없음' UI
+  const thumbnail =
+    plan.thumbnailUrl || plan.planImageUrls[0] || serverPlaces.find((p) => p.placeImage)?.placeImage || null;
   const locationLabel = serverPlaces[0]?.address?.split(' ').slice(0, 2).join(' ') || '미정';
   const scheduledDate = isoDate(plan.tripStartDate);
   const startTime = isoTime(plan.tripStartDate);
@@ -430,7 +433,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* 헤더 이미지 */}
       <div className="relative h-60 w-full">
-        <Image src={thumbnail} alt={plan.planTitle} fill sizes="100vw" className="object-cover" />
+        <PlanCover src={thumbnail} alt={plan.planTitle} seed={plan.planId} size="lg" priority />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
         <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start text-white">
           <button
@@ -479,16 +482,32 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           <div className="text-sm text-gray-500">
             <span className="font-bold text-gray-700">생성</span> {formatCreatedAt(plan.createAt)}
           </div>
-          <div
-            className={`text-xs font-bold px-2 py-1 rounded-full ${
-              phase === 'before'
-                ? 'bg-accent-50 text-accent-600'
-                : phase === 'during'
-                  ? 'bg-primary-50 text-primary-600'
-                  : 'bg-gray-100 text-gray-500'
-            }`}
-          >
-            {phase === 'before' ? '여행 전' : phase === 'during' ? '여행 중' : '여행 완료'}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleLike}
+              aria-pressed={isLiked}
+              aria-label={isLiked ? '좋아요 취소' : '좋아요'}
+              className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border transition-colors ${
+                isLiked
+                  ? 'bg-accent-50 border-accent-200 text-accent-600'
+                  : 'bg-white border-gray-200 text-gray-500'
+              }`}
+            >
+              <Heart size={12} fill={isLiked ? 'currentColor' : 'none'} />
+              {likeCount}
+            </button>
+            <div
+              className={`text-xs font-bold px-2 py-1 rounded-full ${
+                phase === 'before'
+                  ? 'bg-accent-50 text-accent-600'
+                  : phase === 'during'
+                    ? 'bg-primary-50 text-primary-600'
+                    : 'bg-gray-100 text-gray-500'
+              }`}
+            >
+              {phase === 'before' ? '여행 전' : phase === 'during' ? '여행 중' : '여행 완료'}
+            </div>
           </div>
         </div>
 

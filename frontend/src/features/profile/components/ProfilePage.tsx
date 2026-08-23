@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
+import PlanCover from '@/shared/ui/PlanCover';
 import { Settings, Plus, Bookmark, MapPin, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -316,7 +317,7 @@ export const ProfilePage: React.FC = () => {
               key={tab.key}
               onClick={() => setMainTab(tab.key)}
               className={`flex-1 pb-3 text-sm font-bold transition-all relative text-center ${
-                mainTab === tab.key ? 'text-gray-900' : 'text-gray-400'
+                mainTab === tab.key ? 'text-primary-600' : 'text-gray-400'
               }`}
             >
               {tab.label}
@@ -328,7 +329,7 @@ export const ProfilePage: React.FC = () => {
               {mainTab === tab.key && (
                 <motion.div
                   layoutId="mainTabIndicator"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900 rounded-full"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500 rounded-full"
                 />
               )}
             </button>
@@ -365,10 +366,12 @@ export const ProfilePage: React.FC = () => {
                       className="relative rounded-xl overflow-hidden shadow-sm border border-gray-100 active:scale-[0.99] transition-transform cursor-pointer"
                     >
                       <div className="relative h-36">
-                        <img
-                          src={plan.planImages?.[0] ?? '/images/course-plan.png'}
+                        <PlanCover
+                          src={plan.planImages?.[0]}
                           alt={plan.planTitle}
-                          className="w-full h-full object-cover"
+                          seed={plan.planId}
+                          size="md"
+                          sizes="(max-width: 480px) 100vw, 480px"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                         <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 bg-white/90 backdrop-blur-sm rounded-full shadow">
@@ -438,10 +441,12 @@ export const ProfilePage: React.FC = () => {
                         className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer active:opacity-80"
                       >
                         <div className="relative h-32">
-                          <img
-                            src={plan.planImages?.[0] ?? '/images/course-plan.png'}
+                          <PlanCover
+                            src={plan.planImages?.[0]}
                             alt={plan.planTitle}
-                            className="w-full h-full object-cover"
+                            seed={plan.planId}
+                            size="md"
+                            sizes="(max-width: 480px) 100vw, 480px"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                           <div className="absolute top-3 left-3">

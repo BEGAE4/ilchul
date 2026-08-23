@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import Image, { PLACEHOLDER_IMAGE } from '@/shared/ui/SafeImage';
 import {
   ArrowLeft,
   Heart,
@@ -140,7 +140,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
     location: serverPlace.roadAddressName || serverPlace.addressName,
     image:
       serverPlace.placeImageUrl ||
-      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1080&auto=format&fit=crop',
+      PLACEHOLDER_IMAGE,
     likes: placeActions.likeCount,
   };
 

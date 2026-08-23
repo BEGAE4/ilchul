@@ -1,8 +1,7 @@
 'use client';
 
-import Image from 'next/image';
+import PlanCover from '@/shared/ui/PlanCover';
 import { Heart, MapPin } from 'lucide-react';
-import { getSafeImageSrc } from '../../utils/image';
 import type { PopularPlanCardProps } from './types';
 import styles from './styles.module.scss';
 
@@ -14,13 +13,7 @@ export function PopularPlanCard({ plan, onClick }: PopularPlanCardProps) {
       className={`${styles.card} bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex h-28 active:scale-[0.98] transition-transform`}
     >
       <div className="relative w-28 shrink-0">
-        <Image
-          src={getSafeImageSrc(plan.thumbnail)}
-          alt={plan.title}
-          fill
-          sizes="112px"
-          className="object-cover"
-        />
+        <PlanCover src={plan.thumbnail} alt={plan.title} seed={plan.id} size="sm" sizes="112px" />
         <div className="absolute top-2 left-2 min-w-6 h-6 px-1 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded text-xs text-white font-bold italic border border-white/20">
           {plan.ranking}
         </div>

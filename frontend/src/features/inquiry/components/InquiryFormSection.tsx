@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
 import { ArrowLeft, ImagePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { createInquiry, updateInquiry, fetchInquiryCategories } from '../api/inquiry.api';

@@ -9,7 +9,7 @@ import IconBox from '@/shared/ui/IconBox';
 import type { NavItem } from '@/shared/ui/BottomNavigation';
 import { FeedPost } from '../types';
 import styles from './FeedDetailPage.module.scss';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
 
 interface FeedDetailPageProps {
   post: FeedPost;
