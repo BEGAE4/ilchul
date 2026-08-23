@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -11,27 +11,18 @@ import {
   Phone,
   Share2,
   Plus,
-  Star,
   Navigation,
   Bookmark,
   BookmarkCheck,
   ExternalLink,
+  User,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { toast } from 'sonner';
-import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { BottomActionBar } from '@/shared/ui/BottomActionBar';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
 import { ScrollCarousel } from '@/shared/ui/ScrollCarousel';
-import {
-  MOCK_COURSES,
-  NATIONWIDE_COURSES,
-  BEST_PLACES,
-  NEARBY_POPULAR_PLACES,
-  NATIONWIDE_PLACES,
-} from '@/shared/data/mockData';
-import type { BestPlace, Course } from '@/shared/types';
+import type { BestPlace } from '@/shared/types';
 import { usePlaceDetail, usePlaceActions } from '@/features/place';
 import { Map as KakaoMap, MapMarker } from 'react-kakao-maps-sdk';
 import { useKakaoMapLoader } from '@/shared/lib/kakao';
@@ -98,56 +89,17 @@ const DEFAULT_DETAIL = {
   tags: ['인기', '추천', '당일치기'],
 };
 
-const MOCK_PLACE_REVIEWS = [
-  {
-    id: 'pr1',
-    user: '여행조아',
-    avatar: 'https://i.pravatar.cc/150?u=pr1',
-    rating: 5,
-    comment: '분위기가 너무 좋아요! 다음에 또 올 거예요 😊',
-    date: '2일 전',
-    image:
-      'https://images.unsplash.com/photo-1627308595229-7830a5c91f9f?q=80&w=500&auto=format&fit=crop',
-  },
-  {
-    id: 'pr2',
-    user: '감성충만',
-    avatar: 'https://i.pravatar.cc/150?u=pr2',
-    rating: 4,
-    comment: '사진 찍기 좋은 곳이에요. 주말에는 사람이 많으니 평일 방문 추천!',
-    date: '5일 전',
-  },
-  {
-    id: 'pr3',
-    user: '먹스타그램',
-    avatar: 'https://i.pravatar.cc/150?u=pr3',
-    rating: 5,
-    comment: '여기 진짜 최고... 강력 추천합니다 👍',
-    date: '1주 전',
-  },
-];
-
-const ALL_PLACES = [...BEST_PLACES, ...NEARBY_POPULAR_PLACES, ...NATIONWIDE_PLACES];
-const ALL_COURSES = [...MOCK_COURSES, ...NATIONWIDE_COURSES];
-
 interface PlaceDetailPageProps {
   placeId: string;
 }
 
 export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
   const router = useRouter();
-  const { toggleBookmark, isBookmarked } = useCourseStore();
 
-  const [mockPlace, setMockPlace] = useState<BestPlace | null>(null);
-  const [relatedCourses, setRelatedCourses] = useState<Course[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
 
-  // 서버 장소(숫자 placeId)이면 상세/후기/포함 코스를 API로 조회하고,
-  // 목데이터 장소면 기존 로컬 데이터로 폴백한다.
+  // 장소 상세/후기/포함 플랜은 모두 서버 API로 조회한다 (GET /api/place/{placeId} 등)
   const {
     place: serverPlace,
     reviews: serverReviews,
@@ -158,106 +110,61 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
     isSubmittingReview,
     relatedPlans: serverPlans,
     isLoading: isServerLoading,
+    error: serverError,
   } = usePlaceDetail(placeId);
   const [reviewInput, setReviewInput] = useState('');
   // 위치 미니맵용 카카오맵 SDK 로드 상태
   const [isKakaoLoading, kakaoError] = useKakaoMapLoader();
-  const placeActions = usePlaceActions(placeId, {
-    onLocalLike: () => {
-      setIsLiked((prev) => !prev);
-      setLikeCount((prev) => (isLiked ? prev - 1 : prev + 1));
-    },
-    onLocalScrap: () => {
-      toggleBookmark(placeId);
-      // toggleBookmark는 동기 반영이므로 토글 직후 상태 기준으로 안내한다
-      toast.success(isBookmarked(placeId) ? '북마크에 저장했어요!' : '북마크를 해제했어요.');
-    },
-  });
+  // 좋아요/스크랩: POST·DELETE /api/place/{placeId}/likes|scraps 응답값으로 상태 확정
+  const placeActions = usePlaceActions(placeId);
 
-  const bookmarked = placeActions.isServerPlace ? placeActions.isScrapped : isBookmarked(placeId);
-
-  useEffect(() => {
-    // 로컬 mock 데이터에서 장소 조회
-    const found = ALL_PLACES.find((p) => p.id === placeId);
-    if (found) {
-      setMockPlace(found);
-      setLikeCount(found.likes);
-      // 같은 location의 플랜을 관련 플랜으로
-      const related = ALL_COURSES.filter(
-        (c) => c.location === found.location || c.stops.some((s) => s.name === found.name)
-      ).slice(0, 5);
-      setRelatedCourses(related);
-    }
-    setTimeout(() => setIsLoading(false), 400);
-  }, [placeId]);
-
+  const bookmarked = placeActions.isScrapped;
+  const liked = placeActions.isLiked;
+  const displayLikeCount = placeActions.likeCount;
   const handleLike = placeActions.toggleLike;
   const handleBookmark = placeActions.toggleScrap;
 
-  const liked = placeActions.isServerPlace ? placeActions.isLiked : isLiked;
-  const displayLikeCount = placeActions.isServerPlace ? placeActions.likeCount : likeCount;
-
-  if (isLoading || isServerLoading) {
+  if (isServerLoading) {
     return <PlaceDetailSkeleton />;
   }
 
-  // 서버 상세가 있으면 그것을 우선 사용하고, 없으면 목데이터로 폴백
-  const place: BestPlace | null = serverPlace
-    ? {
-        id: String(serverPlace.placeId),
-        name: serverPlace.placeName,
-        category: serverPlace.categoryName,
-        location: serverPlace.roadAddressName || serverPlace.addressName,
-        image:
-          serverPlace.placeImageUrl ||
-          mockPlace?.image ||
-          'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1080&auto=format&fit=crop',
-        likes: placeActions.likeCount,
-      }
-    : mockPlace;
-
-  if (!place) {
-    return <PlaceDetailSkeleton />;
+  // 서버에 없는 장소(목데이터 id 등)이거나 조회 실패 시 에러 화면
+  if (!serverPlace || !placeActions.isServerPlace) {
+    return <PlaceDetailError message={serverError} onBack={() => router.back()} />;
   }
+
+  const place: BestPlace = {
+    id: String(serverPlace.placeId),
+    name: serverPlace.placeName,
+    category: serverPlace.categoryName,
+    location: serverPlace.roadAddressName || serverPlace.addressName,
+    image:
+      serverPlace.placeImageUrl ||
+      'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1080&auto=format&fit=crop',
+    likes: placeActions.likeCount,
+  };
 
   const detail = PLACE_DETAILS[place.category] || DEFAULT_DETAIL;
-  const phone = serverPlace?.phone || detail.phone;
+  const phone = serverPlace.phone || '';
 
-  // 후기: 서버 장소면 v5 후기 API 데이터, 아니면 목데이터 (서버 후기에는 별점 없음)
-  const displayReviews = placeActions.isServerPlace
-    ? serverReviews.map((r) => ({
-        id: String(r.reviewId),
-        user: r.userNickname,
-        avatar: r.userImg || `https://i.pravatar.cc/150?u=${r.userId}`,
-        rating: null as number | null,
-        comment: r.content,
-        date: new Date(r.createAt).toLocaleDateString('ko-KR'),
-        image: undefined as string | undefined,
-      }))
-    : MOCK_PLACE_REVIEWS.map((r) => ({
-        ...r,
-        rating: r.rating as number | null,
-        image: r.image as string | undefined,
-      }));
+  // 후기: v5 후기 API 데이터 (별점 없음)
+  const displayReviews = serverReviews.map((r) => ({
+    id: String(r.reviewId),
+    user: r.userNickname,
+    avatar: r.userImg || '',
+    comment: r.content,
+    date: new Date(r.createAt).toLocaleDateString('ko-KR'),
+  }));
 
-  // 이 장소가 포함된 플랜: 서버 장소면 v5 API, 아니면 목데이터 매칭
-  const displayRelated = placeActions.isServerPlace
-    ? serverPlans.map((p) => ({
-        id: String(p.id),
-        title: p.title,
-        thumbnail: p.thumbnail,
-        location: p.location,
-        likes: p.likes,
-        tags: [] as string[],
-      }))
-    : relatedCourses.map((c) => ({
-        id: c.id,
-        title: c.title,
-        thumbnail: c.thumbnail,
-        location: c.location,
-        likes: c.likes,
-        tags: c.tags,
-      }));
+  // 이 장소가 포함된 플랜: GET /api/place/{placeId}/plan
+  const displayRelated = serverPlans.map((p) => ({
+    id: String(p.id),
+    title: p.title,
+    thumbnail: p.thumbnail,
+    location: p.location,
+    likes: p.likes,
+    tags: [] as string[],
+  }));
 
   return (
     <div className="bg-white min-h-screen pb-24">
@@ -332,10 +239,8 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
         <button
           onClick={() =>
             window.open(
-              // kakao link/to 형식: 이름,위도,경도 — 서버 장소만 좌표가 있으므로 없으면 검색 링크로 폴백
-              serverPlace
-                ? `https://map.kakao.com/link/to/${encodeURIComponent(place.name)},${serverPlace.y},${serverPlace.x}`
-                : `https://map.kakao.com/link/search/${encodeURIComponent(place.name)}`,
+              // kakao link/to 형식: 이름,위도,경도
+              `https://map.kakao.com/link/to/${encodeURIComponent(place.name)},${serverPlace.y},${serverPlace.x}`,
               '_blank'
             )
           }
@@ -367,19 +272,19 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
           <Clock size={16} className="text-gray-400 shrink-0" />
           <div className="flex-1">
             <div className="text-[10px] text-gray-400 mb-0.5">영업시간</div>
-            {/* v5 상세 응답에 영업시간 없음 — 서버 장소는 '-' 표시 */}
-            <div className="text-sm font-bold text-gray-900">
-              {serverPlace ? '-' : detail.hours}
-            </div>
+            {/* v5 상세 응답에 영업시간 없음 */}
+            <div className="text-sm font-bold text-gray-900">-</div>
           </div>
         </div>
         <div className="flex items-center gap-3 p-3.5 bg-gray-50 rounded-xl">
           <Phone size={16} className="text-gray-400 shrink-0" />
           <div className="flex-1">
             <div className="text-[10px] text-gray-400 mb-0.5">전화번호</div>
-            <div className="text-sm font-bold text-gray-900">{phone}</div>
+            <div className="text-sm font-bold text-gray-900">{phone || '-'}</div>
           </div>
-          <a href={`tel:${phone}`} className="text-primary-500 text-xs font-bold active:text-primary-700">전화하기</a>
+          {phone && (
+            <a href={`tel:${phone}`} className="text-primary-500 text-xs font-bold active:text-primary-700">전화하기</a>
+          )}
         </div>
         <div className="flex items-center gap-3 p-3.5 bg-gray-50 rounded-xl">
           <MapPin size={16} className="text-gray-400 shrink-0" />
@@ -390,7 +295,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
           <button
             onClick={() =>
               window.open(
-                serverPlace?.placeUrl ||
+                serverPlace.placeUrl ||
                   `https://map.kakao.com/link/search/${encodeURIComponent(place.name)}`,
                 '_blank'
               )
@@ -401,8 +306,8 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
           </button>
         </div>
 
-        {/* 위치 미니맵 — 서버 장소(좌표 보유)만 표시 */}
-        {serverPlace && !kakaoError && (
+        {/* 위치 미니맵 */}
+        {!kakaoError && (
           <div className="rounded-xl overflow-hidden border border-gray-100">
             {isKakaoLoading ? (
               <div className="h-40 bg-gray-100 animate-pulse" />
@@ -428,34 +333,35 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
           <span className="text-xs text-gray-400">{displayReviews.length}개의 후기</span>
         </div>
 
-        {/* 후기 작성 폼 — 서버 장소만 (v5 POST /api/place/{placeId}/review) */}
-        {placeActions.isServerPlace && (
-          <div className="mb-5">
-            <textarea
-              value={reviewInput}
-              onChange={(e) => setReviewInput(e.target.value)}
-              placeholder="이 장소는 어땠나요? 후기를 남겨보세요."
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-500 text-base"
-              rows={2}
-              maxLength={1000}
-            />
-            <div className="flex items-center justify-between mt-1.5">
-              <span className="text-[11px] text-gray-400">{reviewInput.length}/1000</span>
-              <button
-                onClick={async () => {
-                  const ok = await submitReview(reviewInput);
-                  if (ok) setReviewInput('');
-                }}
-                disabled={isSubmittingReview || !reviewInput.trim()}
-                className="px-4 py-2 bg-primary-500 text-white text-sm font-bold rounded-lg shadow-sm shadow-primary-200 active:scale-[0.98] transition-transform disabled:opacity-40"
-              >
-                {isSubmittingReview ? '등록 중...' : '후기 작성'}
-              </button>
-            </div>
+        {/* 후기 작성 폼 — POST /api/place/{placeId}/review */}
+        <div className="mb-5">
+          <textarea
+            value={reviewInput}
+            onChange={(e) => setReviewInput(e.target.value)}
+            placeholder="이 장소는 어땠나요? 후기를 남겨보세요."
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-500 text-base"
+            rows={2}
+            maxLength={1000}
+          />
+          <div className="flex items-center justify-between mt-1.5">
+            <span className="text-[11px] text-gray-400">{reviewInput.length}/1000</span>
+            <button
+              onClick={async () => {
+                const ok = await submitReview(reviewInput);
+                if (ok) setReviewInput('');
+              }}
+              disabled={isSubmittingReview || !reviewInput.trim()}
+              className="px-4 py-2 bg-primary-500 text-white text-sm font-bold rounded-lg shadow-sm shadow-primary-200 active:scale-[0.98] transition-transform disabled:opacity-40"
+            >
+              {isSubmittingReview ? '등록 중...' : '후기 작성'}
+            </button>
           </div>
-        )}
+        </div>
 
         <div className="space-y-4">
+          {displayReviews.length === 0 && (
+            <p className="text-center py-4 text-xs text-gray-400">아직 후기가 없어요. 첫 후기를 남겨보세요!</p>
+          )}
           {displayReviews.map((review, idx) => (
             <motion.div
               key={review.id}
@@ -465,38 +371,24 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
               className="bg-gray-50 rounded-xl p-4"
             >
               <div className="flex items-center gap-2.5 mb-2">
-                <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-                  <Image src={review.avatar} alt={review.user} fill sizes="32px" className="object-cover" />
+                <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
+                  {review.avatar ? (
+                    <Image src={review.avatar} alt={review.user} fill sizes="32px" className="object-cover" />
+                  ) : (
+                    <User size={16} className="text-gray-400" />
+                  )}
                 </div>
                 <div className="flex-1">
                   <div className="text-sm font-bold text-gray-900">{review.user}</div>
                   <div className="text-[10px] text-gray-400">{review.date}</div>
                 </div>
-                {review.rating !== null && (
-                  <div className="flex gap-0.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        size={12}
-                        className={
-                          i < (review.rating ?? 0) ? 'text-amber-400 fill-amber-400' : 'text-gray-200'
-                        }
-                      />
-                    ))}
-                  </div>
-                )}
               </div>
               <p className="text-sm text-gray-700 leading-relaxed">{review.comment}</p>
-              {review.image && (
-                <div className="relative w-full h-32 rounded-lg overflow-hidden mt-2">
-                  <Image src={review.image} alt="review" fill sizes="100%" className="object-cover" />
-                </div>
-              )}
             </motion.div>
           ))}
 
           {/* 후기 더보기 — 커서 페이징 */}
-          {placeActions.isServerPlace && hasMoreReviews && (
+          {hasMoreReviews && (
             <button
               onClick={fetchMoreReviews}
               disabled={isFetchingMoreReviews}
@@ -602,6 +494,23 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
         onClose={() => setIsShareOpen(false)}
         title={place.name}
       />
+    </div>
+  );
+}
+
+/* ── Error ── */
+function PlaceDetailError({ message, onBack }: { message: string | null; onBack: () => void }) {
+  return (
+    <div className="bg-white min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <MapPin size={40} className="text-gray-300 mb-4" />
+      <p className="text-base font-bold text-gray-900 mb-1">장소를 찾을 수 없어요</p>
+      <p className="text-sm text-gray-500 mb-6">{message || '존재하지 않거나 삭제된 장소예요.'}</p>
+      <button
+        onClick={onBack}
+        className="px-5 py-2.5 bg-primary-500 text-white text-sm font-bold rounded-xl active:scale-[0.98] transition-transform"
+      >
+        돌아가기
+      </button>
     </div>
   );
 }

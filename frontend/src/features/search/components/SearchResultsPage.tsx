@@ -4,40 +4,50 @@ import React, { useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
+  Bookmark,
   ChevronDown,
+  Clock,
   Heart,
   MapPin,
   Plus,
   Route,
   Search,
-  BadgeCheck,
 } from 'lucide-react';
 import Image from 'next/image';
-import { MOCK_COURSES, NATIONWIDE_COURSES, BEST_PLACES, NEARBY_POPULAR_PLACES, NATIONWIDE_PLACES } from '@/shared/data/mockData';
-import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
-import type { Course, BestPlace } from '@/shared/types';
+import type { BestPlace } from '@/shared/types';
 import { ScrollCarousel } from '@/shared/ui/ScrollCarousel';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
 import { SearchResultsSkeleton } from '@/shared/ui/Skeleton';
-import { searchPlaces } from '@/features/place/api/place.api';
-import type { SearchPlaceItem } from '@/features/place/types/place.types';
+import { searchAll } from '@/features/search/api/search.api';
+import type {
+  SearchPlaceResult,
+  SearchPlanResult,
+  SearchResultResponse,
+} from '@/features/search/types/search.types';
 
-function mapSearchPlaceItemToBestPlace(item: SearchPlaceItem): BestPlace {
+const SEARCH_LIMIT = 30;
+
+function mapSearchPlaceToBestPlace(item: SearchPlaceResult): BestPlace {
   return {
     id: String(item.placeId),
     name: item.placeName,
     category: item.categoryName,
-    location: '',
+    location: item.roadAddressName || item.addressName || '',
     image: item.placeImageUrl,
-    likes: 0,
+    likes: item.likeCount ?? 0,
   };
+}
+
+function formatRequiredTime(minutes: number): string {
+  if (!minutes || minutes <= 0) return '';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}분`;
+  return m === 0 ? `${h}시간` : `${h}시간 ${m}분`;
 }
 
 type ViewTab = '전체' | '플랜' | '장소';
 const VIEW_TABS: ViewTab[] = ['전체', '플랜', '장소'];
-
-const ALL_COURSES = [...MOCK_COURSES, ...NATIONWIDE_COURSES];
-const ALL_PLACES = [...BEST_PLACES, ...NEARBY_POPULAR_PLACES, ...NATIONWIDE_PLACES];
 
 export const SearchResultsPage: React.FC = () => {
   const router = useRouter();
@@ -46,80 +56,50 @@ export const SearchResultsPage: React.FC = () => {
   const initialTab = (searchParams.get('tab') as ViewTab) || '전체';
 
   const [activeViewTab, setActiveViewTab] = useState<ViewTab>(initialTab);
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<BestPlace | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [apiPlaces, setApiPlaces] = useState<BestPlace[] | null>(null);
-  const [placesLoading, setPlacesLoading] = useState(false);
+  const [result, setResult] = useState<SearchResultResponse | null>(null);
 
-  React.useEffect(() => {
-    setIsLoading(false);
-  }, [query]);
-
-  // 장소 검색 — GET /api/place/search (플랜/코스 검색은 서버 API가 없어 목데이터 유지)
+  // 통합 검색 — GET /api/search (장소 + 플랜)
   React.useEffect(() => {
     if (!query) {
-      setApiPlaces(null);
+      setResult(null);
+      setIsLoading(false);
       return;
     }
     let cancelled = false;
-    setPlacesLoading(true);
-    searchPlaces(query)
-      .then((items) => {
-        if (cancelled) return;
-        setApiPlaces(items.map(mapSearchPlaceItemToBestPlace));
+    setIsLoading(true);
+    searchAll(query, { page: 1, limit: SEARCH_LIMIT })
+      .then((data) => {
+        if (!cancelled) setResult(data);
       })
       .catch((err) => {
-        console.error('장소 검색 실패:', err);
-        if (!cancelled) setApiPlaces([]);
+        console.error('통합 검색 실패:', err);
+        if (!cancelled) setResult(null);
       })
       .finally(() => {
-        if (!cancelled) setPlacesLoading(false);
+        if (!cancelled) setIsLoading(false);
       });
     return () => {
       cancelled = true;
     };
   }, [query]);
 
-  const { toggleBookmark, toggleLike, isBookmarked, isLiked } = useCourseStore();
+  const filteredCourses = useMemo<SearchPlanResult[]>(
+    () => [...(result?.plans ?? [])].sort((a, b) => b.likeCount - a.likeCount),
+    [result]
+  );
 
-  const filteredCourses = useMemo(() => {
-    let list = ALL_COURSES.filter(
-      (c) =>
-        query === '' ||
-        c.title.includes(query) ||
-        c.location.includes(query) ||
-        c.tags.some((t) => t.includes(query)) ||
-        c.description.includes(query)
-    );
+  const filteredPlaces = useMemo<BestPlace[]>(
+    () =>
+      [...(result?.places ?? [])]
+        .sort((a, b) => b.likeCount - a.likeCount)
+        .map(mapSearchPlaceToBestPlace),
+    [result]
+  );
 
-    if (verifiedOnly) {
-      list = list.filter((c) => c.isVerified);
-    }
-
-    return list.sort((a, b) => b.likes - a.likes);
-  }, [query, verifiedOnly]);
-
-  const filteredPlaces = useMemo(() => {
-    if (apiPlaces !== null) {
-      return [...apiPlaces].sort((a, b) => b.likes - a.likes);
-    }
-    const unique = ALL_PLACES.filter(
-      (p, idx, arr) => arr.findIndex((x) => x.id === p.id) === idx
-    );
-    return unique
-      .filter(
-        (p) =>
-          query === '' ||
-          p.name.includes(query) ||
-          p.location.includes(query) ||
-          p.category.includes(query)
-      )
-      .sort((a, b) => b.likes - a.likes);
-  }, [query, apiPlaces]);
-
-  const totalCourses = filteredCourses.length;
-  const totalPlaces = filteredPlaces.length;
+  const totalCourses = result?.planTotalCount ?? filteredCourses.length;
+  const totalPlaces = result?.placeTotalCount ?? filteredPlaces.length;
 
   if (isLoading) {
     return <SearchResultsSkeleton />;
@@ -198,9 +178,6 @@ export const SearchResultsPage: React.FC = () => {
             )}
 
             {/* 장소 섹션 — 수평 스크롤 */}
-            {placesLoading && apiPlaces === null && (
-              <p className="px-5 pt-4 text-xs text-gray-400">장소를 검색하는 중...</p>
-            )}
             {filteredPlaces.length > 0 && (
               <div className="pt-4 pb-2">
                 <div className="px-5 mb-2.5 flex justify-between items-center">
@@ -251,13 +228,9 @@ export const SearchResultsPage: React.FC = () => {
                 </div>
                 {filteredCourses.slice(0, 4).map((course) => (
                   <CourseCard
-                    key={course.id}
+                    key={course.planId}
                     course={course}
-                    isLiked={isLiked(course.id)}
-                    isBookmarked={isBookmarked(course.id)}
-                    onLike={() => toggleLike(course.id)}
-                    onBookmark={() => toggleBookmark(course.id)}
-                    onClick={() => router.push(`/course/${course.id}`)}
+                    onClick={() => router.push(`/course/${course.planId}`)}
                   />
                 ))}
               </div>
@@ -270,64 +243,22 @@ export const SearchResultsPage: React.FC = () => {
           <div className="p-4">
             <div className="flex items-center justify-between mb-4 ml-1">
               <p className="text-sm text-gray-500">
-                총 <span className="font-bold text-primary-500">{filteredCourses.length}</span>개의 플랜
+                총 <span className="font-bold text-primary-500">{totalCourses}</span>개의 플랜
               </p>
-              <button
-                onClick={() => setVerifiedOnly((prev) => !prev)}
-                className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-all active:scale-95 ${
-                  verifiedOnly
-                    ? 'bg-primary-50 border-primary-300 text-primary-600'
-                    : 'bg-white border-gray-200 text-gray-500'
-                }`}
-              >
-                <span
-                  className={`w-4 h-4 rounded flex items-center justify-center shrink-0 transition-all ${
-                    verifiedOnly ? 'bg-primary-500 text-white' : 'border border-gray-300 bg-white'
-                  }`}
-                >
-                  {verifiedOnly && (
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path
-                        d="M1 4L3.5 6.5L9 1"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </span>
-                <BadgeCheck size={13} />
-                인증된 플랜
-              </button>
             </div>
 
             {filteredCourses.length === 0 && (
               <div className="text-center py-12">
                 <Route size={32} className="text-gray-200 mx-auto mb-3" />
-                <p className="text-sm text-gray-400 font-medium">
-                  {verifiedOnly ? '인증된 플랜이 없어요' : '검색 결과가 없어요'}
-                </p>
-                {verifiedOnly && (
-                  <button
-                    onClick={() => setVerifiedOnly(false)}
-                    className="mt-3 text-xs font-bold text-primary-500 underline"
-                  >
-                    필터 해제
-                  </button>
-                )}
+                <p className="text-sm text-gray-400 font-medium">검색 결과가 없어요</p>
               </div>
             )}
 
             {filteredCourses.map((course) => (
               <CourseCard
-                key={course.id}
+                key={course.planId}
                 course={course}
-                isLiked={isLiked(course.id)}
-                isBookmarked={isBookmarked(course.id)}
-                onLike={() => toggleLike(course.id)}
-                onBookmark={() => toggleBookmark(course.id)}
-                onClick={() => router.push(`/course/${course.id}`)}
+                onClick={() => router.push(`/course/${course.planId}`)}
               />
             ))}
           </div>
@@ -338,15 +269,11 @@ export const SearchResultsPage: React.FC = () => {
           <div className="p-4">
             <div className="flex items-center justify-between mb-4 ml-1">
               <p className="text-sm text-gray-500">
-                총 <span className="font-bold text-primary-500">{filteredPlaces.length}</span>개의 장소
+                총 <span className="font-bold text-primary-500">{totalPlaces}</span>개의 장소
               </p>
             </div>
 
-            {placesLoading && apiPlaces === null && (
-              <p className="text-center py-4 text-xs text-gray-400">장소를 검색하는 중...</p>
-            )}
-
-            {!placesLoading && filteredPlaces.length === 0 && (
+            {filteredPlaces.length === 0 && (
               <div className="text-center py-12">
                 <MapPin size={32} className="text-gray-200 mx-auto mb-3" />
                 <p className="text-sm text-gray-400 font-medium">검색 결과가 없어요</p>
@@ -380,54 +307,59 @@ export const SearchResultsPage: React.FC = () => {
 /* ── 서브 컴포넌트 ── */
 
 interface CourseCardProps {
-  course: Course;
-  isLiked: boolean;
-  isBookmarked: boolean;
-  onLike: () => void;
-  onBookmark: () => void;
+  course: SearchPlanResult;
   onClick: () => void;
 }
 
-function CourseCard({ course, isLiked, isBookmarked, onLike, onBookmark, onClick }: CourseCardProps) {
+// 검색 DTO에 isLiked/isBookmarked가 없어 토글 대신 카운트만 표시한다.
+function CourseCard({ course, onClick }: CourseCardProps) {
+  const requiredTime = formatRequiredTime(course.requiredTime);
+  const matchedPlace = course.places?.find((p) => p.matched);
   return (
     <div
       className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 mb-3 cursor-pointer active:scale-[0.99] transition-transform"
       onClick={onClick}
     >
-      <div className="relative h-40">
-        <Image
-          src={course.thumbnail}
-          alt={course.title}
-          fill
-          sizes="(max-width: 480px) 100vw, 480px"
-          className="object-cover"
-        />
-        {course.isVerified && (
-          <span className="absolute top-2.5 left-2.5 bg-primary-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-            인증
+      <div className="relative h-40 bg-gray-100">
+        {course.thumbnailUrl && (
+          <Image
+            src={course.thumbnailUrl}
+            alt={course.planTitle}
+            fill
+            sizes="(max-width: 480px) 100vw, 480px"
+            className="object-cover"
+          />
+        )}
+        {course.matchedByPlace && matchedPlace && (
+          <span className="absolute top-2.5 left-2.5 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+            <MapPin size={10} /> {matchedPlace.placeName} 포함
           </span>
         )}
-        <div className="absolute top-2.5 right-2.5 flex gap-1.5">
-          <button
-            onClick={(e) => { e.stopPropagation(); onLike(); }}
-            className="w-8 h-8 bg-black/40 rounded-full flex items-center justify-center"
-          >
-            <Heart size={14} fill={isLiked ? '#ef4444' : 'none'} color={isLiked ? '#ef4444' : 'white'} />
-          </button>
-        </div>
       </div>
       <div className="p-3.5">
-        <h3 className="font-bold text-gray-900 text-sm mb-1">{course.title}</h3>
-        <p className="text-xs text-gray-500 mb-2 line-clamp-1">{course.description}</p>
+        <h3 className="font-bold text-gray-900 text-sm mb-1">{course.planTitle}</h3>
+        <p className="text-xs text-gray-500 mb-2 line-clamp-1">{course.planDescription}</p>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 text-xs text-gray-400">
-            <MapPin size={10} />
-            <span>{course.location}</span>
+          <div className="flex items-center gap-2 text-xs text-gray-400">
+            {requiredTime && (
+              <span className="flex items-center gap-0.5">
+                <Clock size={10} />
+                {requiredTime}
+              </span>
+            )}
+            <span className="flex items-center gap-0.5">
+              <Route size={10} />
+              {course.places?.length ?? 0}곳
+            </span>
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <span className="flex items-center gap-0.5">
               <Heart size={10} className="text-red-400" />
-              {isLiked ? course.likes + 1 : course.likes}
+              {course.likeCount}
+            </span>
+            <span className="flex items-center gap-0.5">
+              <Bookmark size={10} className="text-primary-400" />
+              {course.scrapCount}
             </span>
           </div>
         </div>

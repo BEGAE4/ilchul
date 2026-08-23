@@ -3,37 +3,30 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Search, X, MapPin, Heart, Flame, ArrowRight, Route, Clock as ClockIcon } from 'lucide-react';
-import {
-  MOCK_COURSES,
-  NATIONWIDE_COURSES,
-  NEARBY_POPULAR_PLACES,
-  NATIONWIDE_PLACES,
-} from '@/shared/data/mockData';
+import { Search, X, MapPin, Heart, Flame, ArrowRight, Clock as ClockIcon, TrendingUp } from 'lucide-react';
 import {
   fetchRecentSearches,
   addRecentSearch,
   deleteRecentSearches,
+  fetchAutocomplete,
+  fetchPopularKeywords,
 } from '@/features/search/api/search.api';
-import type { RecentSearch } from '@/features/search/types/search.types';
+import type { PopularSearchKeyword, RecentSearch } from '@/features/search/types/search.types';
+import { useNationwidePopularPlaces, useNationwidePopularPlans } from '@/features/main/hooks';
 
 const MAX_RECENT = 8;
-
-// 트렌딩 데이터 (likes 기준 정렬)
-const ALL_PLACES = [...NEARBY_POPULAR_PLACES, ...NATIONWIDE_PLACES];
-const uniquePlaces = ALL_PLACES.filter(
-  (p, i, arr) => arr.findIndex((x) => x.id === p.id) === i
-);
-const TRENDING_PLACES = [...uniquePlaces].sort((a, b) => b.likes - a.likes).slice(0, 5);
-
-const ALL_COURSES = [...MOCK_COURSES, ...NATIONWIDE_COURSES];
-const TRENDING_COURSES = [...ALL_COURSES].sort((a, b) => b.likes - a.likes).slice(0, 5);
+const TRENDING_LIMIT = 5;
 
 interface Suggestion {
-  type: 'course' | 'place';
+  type: 'place' | 'keyword';
   id: string;
   label: string;
   sub: string;
+  placeId?: number;
+}
+
+function isPlaceSuggestion(type: string): boolean {
+  return type.toLowerCase() === 'place';
 }
 
 export const SearchPage: React.FC = () => {
@@ -45,6 +38,12 @@ export const SearchPage: React.FC = () => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isAutocompleting, setIsAutocompleting] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autocompleteReqId = useRef(0);
+  const [popularKeywords, setPopularKeywords] = useState<PopularSearchKeyword[]>([]);
+
+  // 지금 뜨는 여행지 / 플랜 — 전국 인기 API (MAIN-60 / MAIN-58)
+  const { items: trendingPlaces } = useNationwidePopularPlaces({ limit: TRENDING_LIMIT });
+  const { items: trendingCourses } = useNationwidePopularPlans({ limit: TRENDING_LIMIT });
 
   const loadRecentSearches = useCallback(async () => {
     try {
@@ -59,32 +58,42 @@ export const SearchPage: React.FC = () => {
     loadRecentSearches();
   }, [loadRecentSearches]);
 
-  const buildSuggestions = useCallback((query: string) => {
+  // 인기 검색어 — GET /api/search/popular
+  useEffect(() => {
+    fetchPopularKeywords()
+      .then((data) => setPopularKeywords(data.slice(0, 10)))
+      .catch(() => setPopularKeywords([]));
+  }, []);
+
+  // 자동완성 — GET /api/search/autocomplete
+  const buildSuggestions = useCallback(async (query: string) => {
     if (!query.trim()) {
       setSuggestions([]);
       setIsAutocompleting(false);
       return;
     }
+    const reqId = ++autocompleteReqId.current;
     setIsAutocompleting(true);
-    const q = query.toLowerCase();
-
-    const placeSuggestions: Suggestion[] = uniquePlaces
-      .filter((p) => p.name.toLowerCase().includes(q) || p.location.toLowerCase().includes(q))
-      .slice(0, 3)
-      .map((p) => ({ type: 'place', id: p.id, label: p.name, sub: `${p.category} · ${p.location}` }));
-
-    const courseSuggestions: Suggestion[] = ALL_COURSES
-      .filter(
-        (c) =>
-          c.title.toLowerCase().includes(q) ||
-          c.location.toLowerCase().includes(q) ||
-          c.tags.some((t) => t.toLowerCase().includes(q))
-      )
-      .slice(0, 3)
-      .map((c) => ({ type: 'course', id: c.id, label: c.title, sub: `${c.stops.length}개 정거장 · ${c.author}` }));
-
-    setSuggestions([...placeSuggestions, ...courseSuggestions]);
-    setIsAutocompleting(false);
+    try {
+      const items = await fetchAutocomplete(query.trim(), 8);
+      if (reqId !== autocompleteReqId.current) return;
+      setSuggestions(
+        items.map((item, idx) => {
+          const isPlace = isPlaceSuggestion(item.type) && item.placeId != null;
+          return {
+            type: isPlace ? 'place' : 'keyword',
+            id: `${item.type}-${item.placeId ?? idx}-${item.keyword}`,
+            label: item.keyword,
+            sub: isPlace ? '장소' : '검색어',
+            placeId: isPlace ? (item.placeId as number) : undefined,
+          };
+        })
+      );
+    } catch {
+      if (reqId === autocompleteReqId.current) setSuggestions([]);
+    } finally {
+      if (reqId === autocompleteReqId.current) setIsAutocompleting(false);
+    }
   }, []);
 
   const handleInputChange = (value: string) => {
@@ -117,16 +126,16 @@ export const SearchPage: React.FC = () => {
     inputRef.current?.focus();
   };
 
-  const handlePlaceClick = (placeId: string) => {
+  const handlePlaceClick = (placeId: string | number) => {
     router.push(`/place/${placeId}`);
   };
 
-  const handleCourseClick = (courseId: string) => {
+  const handleCourseClick = (courseId: string | number) => {
     router.push(`/course/${courseId}`);
   };
 
   const placeSuggestions = suggestions.filter((s) => s.type === 'place');
-  const courseSuggestions = suggestions.filter((s) => s.type === 'course');
+  const keywordSuggestions = suggestions.filter((s) => s.type === 'keyword');
   const showDropdown = isFocused && inputValue.trim().length > 0;
   const showRecent = isFocused && inputValue.trim().length === 0 && recentSearches.length > 0;
 
@@ -180,7 +189,7 @@ export const SearchPage: React.FC = () => {
                       key={item.id}
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => handlePlaceClick(item.id)}
+                      onClick={() => handlePlaceClick(item.placeId ?? item.id)}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition text-left"
                     >
                       <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center flex-shrink-0">
@@ -195,20 +204,20 @@ export const SearchPage: React.FC = () => {
                 </>
               )}
 
-              {/* 플랜 그룹 */}
-              {courseSuggestions.length > 0 && (
+              {/* 검색어 그룹 */}
+              {keywordSuggestions.length > 0 && (
                 <>
-                  <div className={`px-4 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider ${placeSuggestions.length > 0 ? 'border-t' : ''}`}>플랜</div>
-                  {courseSuggestions.map((item) => (
+                  <div className={`px-4 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider ${placeSuggestions.length > 0 ? 'border-t' : ''}`}>검색어</div>
+                  {keywordSuggestions.map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => handleCourseClick(item.id)}
+                      onClick={() => handleSearch(item.label)}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition text-left"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center flex-shrink-0">
-                        <Route size={14} className="text-violet-500" />
+                      <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <Search size={14} className="text-gray-500" />
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-900">{item.label}</p>
@@ -248,7 +257,7 @@ export const SearchPage: React.FC = () => {
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
-                deleteRecentSearches()
+                deleteRecentSearches(recentSearches)
                   .then(() => setRecentSearches([]))
                   .catch(() => {});
               }}
@@ -276,6 +285,29 @@ export const SearchPage: React.FC = () => {
         </div>
       )}
 
+      {/* 인기 검색어 */}
+      {popularKeywords.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp size={16} className="text-primary-500" />
+            <h2 className="font-bold text-gray-900">인기 검색어</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {popularKeywords.map((item) => (
+              <button
+                key={`${item.ranking}-${item.keyword}`}
+                type="button"
+                onClick={() => handleSearch(item.keyword)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-sm text-gray-700 hover:bg-gray-200 transition active:scale-95"
+              >
+                <span className="text-[11px] font-bold text-primary-500">{item.ranking}</span>
+                {item.keyword}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 지금 뜨는 여행지 */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-3">
@@ -283,7 +315,7 @@ export const SearchPage: React.FC = () => {
           <h2 className="font-bold text-gray-900">지금 뜨는 여행지</h2>
         </div>
         <div className="space-y-2.5">
-          {TRENDING_PLACES.map((place, idx) => (
+          {trendingPlaces.map((place, idx) => (
             <button
               key={place.id}
               onClick={() => handlePlaceClick(place.id)}
@@ -315,7 +347,7 @@ export const SearchPage: React.FC = () => {
           <h2 className="font-bold text-gray-900">지금 뜨는 플랜</h2>
         </div>
         <div className="space-y-2.5">
-          {TRENDING_COURSES.map((course, idx) => (
+          {trendingCourses.map((course, idx) => (
             <button
               key={course.id}
               onClick={() => handleCourseClick(course.id)}
@@ -332,7 +364,7 @@ export const SearchPage: React.FC = () => {
               <div className="text-left flex-1">
                 <p className="text-sm font-bold line-clamp-1">{course.title}</p>
                 <p className="text-[11px] text-gray-400">
-                  {course.location} · {course.duration} · {course.stops.length}곳
+                  {course.location} · {course.duration}
                 </p>
               </div>
               <Heart size={12} className="text-gray-300 fill-gray-300" />
