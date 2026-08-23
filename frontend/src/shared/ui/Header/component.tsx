@@ -2,7 +2,7 @@ import React from 'react';
 import IconBox from '../IconBox';
 import { HeaderProps } from './types';
 import styles from './styles.module.scss';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
 const Header: React.FC<HeaderProps> = ({
   variant = 'logo',
   logo,

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
 import { Search, X, MapPin, Heart, Flame, ArrowRight, Clock as ClockIcon, TrendingUp } from 'lucide-react';
 import {
   fetchRecentSearches,

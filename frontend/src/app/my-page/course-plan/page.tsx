@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
 import PageLayout from '@/shared/ui/PageLayout';
 import Header from '@/shared/ui/Header';
 import IconBox from '@/shared/ui/IconBox';

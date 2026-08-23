@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
 import { Heart } from 'lucide-react';
 import { getSafeImageSrc } from '../../utils/image';
 import type { PopularPlaceCardProps } from './types';
