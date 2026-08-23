@@ -108,7 +108,7 @@ export const InquiryDetailSection = ({
               </span>
               <span
                 className={`text-xs font-medium rounded-full px-2 py-0.5 ${
-                  isPending ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-600'
+                  isPending ? 'bg-accent-50 text-accent-500' : 'bg-primary-50 text-primary-600'
                 }`}
               >
                 {INQUIRY_STATUS_LABELS[inquiry.status]}
@@ -168,9 +168,9 @@ export const InquiryDetailSection = ({
             )}
 
             {!inquiry.answer && isPending && (
-              <div className="bg-orange-50 rounded-xl p-4 text-center">
-                <p className="text-sm text-orange-500 font-medium">답변 대기 중이에요</p>
-                <p className="text-xs text-orange-400 mt-1">영업일 기준 1~3일 내로 답변드릴게요.</p>
+              <div className="bg-accent-50 rounded-xl p-4 text-center">
+                <p className="text-sm text-accent-500 font-medium">답변 대기 중이에요</p>
+                <p className="text-xs text-accent-400 mt-1">영업일 기준 1~3일 내로 답변드릴게요.</p>
               </div>
             )}
           </div>

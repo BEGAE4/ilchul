@@ -165,7 +165,7 @@ export const ProfilePage: React.FC = () => {
         : summaryError
         ? '—'
         : summary?.verifyPlanCount ?? 0,
-      color: 'text-emerald-500',
+      color: 'text-primary-500',
     },
     {
       label: '받은 저장',
@@ -174,7 +174,7 @@ export const ProfilePage: React.FC = () => {
         : summaryError
         ? '—'
         : summary?.scrappedByOthersCount ?? 0,
-      color: 'text-violet-500',
+      color: 'text-primary-500',
     },
     {
       label: '저장한 플랜',
@@ -183,7 +183,7 @@ export const ProfilePage: React.FC = () => {
         : summaryError
         ? '—'
         : summary?.savedCourseCount ?? 0,
-      color: 'text-amber-500',
+      color: 'text-primary-500',
     },
   ];
 
