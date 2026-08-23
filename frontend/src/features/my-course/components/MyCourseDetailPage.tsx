@@ -3,7 +3,8 @@
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import Image, { PLACEHOLDER_IMAGE } from '@/shared/ui/SafeImage';
+import Image from '@/shared/ui/SafeImage';
+import PlanCover from '@/shared/ui/PlanCover';
 import {
   ArrowLeft,
   Calendar,
@@ -33,9 +34,6 @@ import { motion } from 'motion/react';
 import { usePlanDetail, usePlanActions, planApi, type PlanPlaceDetail, type PlanPreviewResponse } from '@/features/plan';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
-
-const FALLBACK_THUMBNAIL =
-  PLACEHOLDER_IMAGE;
 
 function timeToMin(t: string): number {
   const [h, m] = t.split(':').map(Number);
@@ -205,7 +203,9 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const stops = orderedPlaces ?? serverPlaces;
   const isReorderMode = orderedPlaces !== null;
 
-  const thumbnail = plan.thumbnailUrl || plan.planImageUrls[0] || FALLBACK_THUMBNAIL;
+  // 대표 이미지: 업로드 썸네일 → 플랜 이미지 → 첫 번째 장소 사진. 없으면 PlanCover 의 '사진 없음' UI
+  const thumbnail =
+    plan.thumbnailUrl || plan.planImageUrls[0] || serverPlaces.find((p) => p.placeImage)?.placeImage || null;
   const locationLabel = serverPlaces[0]?.address?.split(' ').slice(0, 2).join(' ') || '미정';
   const scheduledDate = isoDate(plan.tripStartDate);
   const startTime = isoTime(plan.tripStartDate);
@@ -433,7 +433,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* 헤더 이미지 */}
       <div className="relative h-60 w-full">
-        <Image src={thumbnail} alt={plan.planTitle} fill sizes="100vw" className="object-cover" />
+        <PlanCover src={thumbnail} alt={plan.planTitle} seed={plan.planId} size="lg" priority />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
         <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start text-white">
           <button

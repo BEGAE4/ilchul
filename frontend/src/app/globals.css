@@ -257,15 +257,20 @@ select {
   appearance: none;
 }
 
-/* 모바일 이미지 최적화 */
-img {
-  max-width: 100%;
-  height: auto;
-  -webkit-user-drag: none;
-  -khtml-user-drag: none;
-  -moz-user-drag: none;
-  -o-user-drag: none;
-  user-drag: none;
+/* 모바일 이미지 최적화
+   레이어 밖 규칙은 Tailwind 유틸리티(@layer utilities)보다 항상 우선하므로
+   `img { height: auto }` 가 h-full/h-32 를 덮어써 카드 이미지가 박스를 넘어 푸터를 가렸다.
+   base 레이어에 넣어 유틸리티가 이기게 한다. */
+@layer base {
+  img {
+    max-width: 100%;
+    height: auto;
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+  }
 }
 
 /* ========================================
