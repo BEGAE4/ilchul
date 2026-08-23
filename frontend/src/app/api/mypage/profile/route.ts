@@ -1,22 +1,11 @@
 import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 
-const BASE_URL = getServerApiBaseUrl();
-
-const MOCK_PROFILE = {
-  userNickname: '김여행',
-  userImg: 'https://i.pravatar.cc/150?u=me',
-  userIntro: '힐링 여행을 좋아하는 여행자입니다 🌿',
-};
-
 // 사용자 프로필 조회 — 백엔드 에러를 mock으로 위장하지 않는다 (Architect C-1)
 export async function GET(request: NextRequest) {
-  const baseUrl = BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
   if (!baseUrl) {
-    if (process.env.NODE_ENV === 'production') {
-      return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
-    }
-    return NextResponse.json(MOCK_PROFILE);
+    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
   }
 
   const cookie = request.headers.get('cookie') ?? '';
@@ -32,12 +21,9 @@ export async function GET(request: NextRequest) {
 
 // 사용자 프로필 수정
 export async function PATCH(request: NextRequest) {
-  const baseUrl = BASE_URL;
+  const baseUrl = getServerApiBaseUrl();
   if (!baseUrl) {
-    return NextResponse.json(
-      { error: '백엔드 API 주소 설정이 필요합니다.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
   }
 
   try {
