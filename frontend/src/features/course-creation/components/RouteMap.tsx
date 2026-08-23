@@ -114,7 +114,7 @@ export function RouteMap({
         {/* 정거장 순번 마커 */}
         {stopPoints.map((pt, i) => (
           <CustomOverlayMap key={pt.stop.id} position={pt.coord} yAnchor={0.5} zIndex={3}>
-            <div className="w-6 h-6 rounded-full bg-orange-500 border-2 border-white shadow flex items-center justify-center">
+            <div className="w-6 h-6 rounded-full bg-accent-500 border-2 border-white shadow flex items-center justify-center">
               <span className="text-[10px] text-white font-bold">{i + 1}</span>
             </div>
           </CustomOverlayMap>
@@ -125,7 +125,7 @@ export function RouteMap({
           <Polyline
             path={allPoints}
             strokeWeight={3}
-            strokeColor="#f97316"
+            strokeColor="#f97147"
             strokeOpacity={0.9}
             strokeStyle="shortdash"
           />

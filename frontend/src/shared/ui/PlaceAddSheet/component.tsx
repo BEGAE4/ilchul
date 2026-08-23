@@ -166,7 +166,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                   animate={{ opacity: 1, scale: 1 }}
                   className="flex flex-col items-center py-6"
                 >
-                  <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mb-3 text-green-500">
+                  <div className="w-14 h-14 bg-primary-100 rounded-full flex items-center justify-center mb-3 text-primary-500">
                     <Check size={28} strokeWidth={3} />
                   </div>
                   <p className="text-sm font-bold text-gray-900 mb-1">{place.name}</p>

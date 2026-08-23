@@ -167,7 +167,7 @@ export default function Home() {
           <div className="px-5 mb-3 flex justify-between items-center">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Flame size={16} className="text-orange-500" />
+                <Flame size={16} className="text-accent-500" />
                 <h2 className="text-lg font-bold text-gray-900">실시간 베스트 플랜</h2>
               </div>
               <p className="text-xs text-gray-500">지금 내 주변에서 가장 핫한 플랜</p>
@@ -229,7 +229,7 @@ export default function Home() {
           <div className="mb-4 flex justify-between items-center">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <TrendingUp size={16} className="text-emerald-500" />
+                <TrendingUp size={16} className="text-primary-500" />
                 <h2 className="text-lg font-bold text-gray-900">전국 인기 장소</h2>
               </div>
               <p className="text-xs text-gray-500">전국에서 가장 사랑받는 여행지</p>
@@ -290,7 +290,7 @@ export default function Home() {
           <div className="px-5 mb-3 flex justify-between items-center">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Flame size={16} className="text-violet-500" />
+                <Flame size={16} className="text-primary-500" />
                 <h2 className="text-lg font-bold text-gray-900">전국 인기 플랜</h2>
               </div>
               <p className="text-xs text-gray-500">전국 여행자들이 선택한 베스트 플랜</p>

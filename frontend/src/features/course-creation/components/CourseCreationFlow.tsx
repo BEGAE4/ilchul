@@ -660,7 +660,7 @@ export const CourseCreationFlow: React.FC = () => {
       <div className="flex flex-col min-h-dvh bg-white">
         <Header onBack={handleBack} />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-violet-50 via-primary-50 to-white -z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-primary-50 via-primary-50 to-white -z-10" />
 
           {/* 일출 모션: 수평선 위로 떠오르는 해 */}
           <div className="relative w-40 h-24 mb-8 overflow-hidden" aria-hidden>
@@ -1032,7 +1032,7 @@ export const CourseCreationFlow: React.FC = () => {
             {/* 시간대 — 프리셋 한 번으로 시작/종료가 함께 정해진다 */}
             <div className="space-y-2">
               <div className="flex items-center gap-1.5 text-sm font-bold text-gray-700">
-                <Clock size={15} className="text-orange-500" />
+                <Clock size={15} className="text-accent-500" />
                 가장 많이 고르는 일정
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -1070,9 +1070,9 @@ export const CourseCreationFlow: React.FC = () => {
                 })}
               </div>
               {isTodaySoldOut && (
-                <div className="flex items-start gap-2 bg-amber-50 p-3 rounded-xl border border-amber-100">
-                  <AlertCircle size={16} className="text-amber-400 mt-0.5 shrink-0" />
-                  <span className="text-sm text-amber-700">
+                <div className="flex items-start gap-2 bg-accent-50 p-3 rounded-xl border border-accent-100">
+                  <AlertCircle size={16} className="text-accent-400 mt-0.5 shrink-0" />
+                  <span className="text-sm text-accent-700">
                     오늘은 남은 시간대가 없어요. 내일 이후로 선택하거나 직접 설정해주세요.
                   </span>
                 </div>
@@ -1460,8 +1460,8 @@ export const CourseCreationFlow: React.FC = () => {
         <div className="flex-1 p-4 overflow-y-auto space-y-3">
           {/* 추천 실패/빈 결과 — 목록 대신 안내와 재시도 버튼만 보여준다 */}
           {recommendError && (
-            <div className="flex flex-col items-center text-center gap-3 bg-white p-6 rounded-xl border border-amber-100">
-              <AlertCircle size={24} className="text-amber-400" />
+            <div className="flex flex-col items-center text-center gap-3 bg-white p-6 rounded-xl border border-accent-100">
+              <AlertCircle size={24} className="text-accent-400" />
               <div>
                 <p className="text-sm font-bold text-gray-900">{recommendError}</p>
                 <p className="text-xs text-gray-500 mt-1">
@@ -1550,7 +1550,7 @@ export const CourseCreationFlow: React.FC = () => {
             <div className="px-4 pt-3 pb-1">
               <div
                 className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm ${
-                  timeDiffMin >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                  timeDiffMin >= 0 ? 'bg-primary-50 text-primary-700' : 'bg-accent-50 text-accent-700'
                 }`}
               >
                 <div className="flex items-center gap-1.5">
@@ -1561,8 +1561,8 @@ export const CourseCreationFlow: React.FC = () => {
                 <span
                   className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                     timeDiffMin >= 0
-                      ? 'bg-emerald-100 text-emerald-600'
-                      : 'bg-amber-100 text-amber-600'
+                      ? 'bg-primary-100 text-primary-600'
+                      : 'bg-accent-100 text-accent-600'
                   }`}
                 >
                   {timeDiffMin >= 0
@@ -1755,16 +1755,16 @@ export const CourseCreationFlow: React.FC = () => {
           {/* 프리뷰 값이 곧 저장 값이라, 실패하면 저장을 막고 재시도를 유도한다.
               이전에는 "저장에는 영향이 없어요"라고 안내한 뒤 0분·0km로 저장하고 있었다. */}
           {previewFailed && (
-            <div className="mt-2 flex items-start gap-2 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100">
-              <AlertCircle size={14} className="text-amber-400 mt-0.5 shrink-0" />
+            <div className="mt-2 flex items-start gap-2 bg-accent-50 px-3 py-2 rounded-lg border border-accent-100">
+              <AlertCircle size={14} className="text-accent-400 mt-0.5 shrink-0" />
               <div className="min-w-0">
-                <p className="text-xs text-amber-700">
+                <p className="text-xs text-accent-700">
                   경로를 계산하지 못해 지금은 저장할 수 없어요.
                 </p>
                 <button
                   type="button"
                   onClick={() => void requestPreview(finalStops)}
-                  className="mt-1 text-xs font-bold text-amber-700 underline underline-offset-2"
+                  className="mt-1 text-xs font-bold text-accent-700 underline underline-offset-2"
                 >
                   다시 계산하기
                 </button>

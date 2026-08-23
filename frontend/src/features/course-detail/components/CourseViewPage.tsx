@@ -567,7 +567,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
               </>
             ) : (
               <div className="text-center">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3 text-green-500">
+                <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 text-primary-500">
                   <Check size={24} strokeWidth={3} />
                 </div>
                 <h3 className="font-bold text-lg mb-2 text-gray-900">일정에 담았어요!</h3>

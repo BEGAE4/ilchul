@@ -482,9 +482,9 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           <div
             className={`text-xs font-bold px-2 py-1 rounded-full ${
               phase === 'before'
-                ? 'bg-amber-50 text-amber-600'
+                ? 'bg-accent-50 text-accent-600'
                 : phase === 'during'
-                  ? 'bg-emerald-50 text-emerald-600'
+                  ? 'bg-primary-50 text-primary-600'
                   : 'bg-gray-100 text-gray-500'
             }`}
           >
@@ -531,10 +531,10 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-3 flex items-center gap-2 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100"
+            className="mt-3 flex items-center gap-2 bg-primary-50 px-3 py-2 rounded-lg border border-primary-100"
           >
-            <BadgeCheck size={16} className="text-emerald-500" />
-            <span className="text-xs font-bold text-emerald-600">플랜 완주 완료</span>
+            <BadgeCheck size={16} className="text-primary-500" />
+            <span className="text-xs font-bold text-primary-600">플랜 완주 완료</span>
           </motion.div>
         )}
       </div>
@@ -659,9 +659,9 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           </div>
         )}
 
-        <div className="flex items-start gap-2 mb-4 bg-amber-50 p-3 rounded-lg border border-amber-100">
-          <Info size={14} className="text-amber-400 mt-0.5 shrink-0" />
-          <p className="text-[11px] text-amber-600 leading-relaxed">
+        <div className="flex items-start gap-2 mb-4 bg-accent-50 p-3 rounded-lg border border-accent-100">
+          <Info size={14} className="text-accent-400 mt-0.5 shrink-0" />
+          <p className="text-[11px] text-accent-600 leading-relaxed">
             {canVerify
               ? '각 장소에 도착하면 위치 인증을 해주세요.'
               : phase === 'before'
