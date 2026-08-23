@@ -47,13 +47,18 @@ function formatMinutes(min: number): string {
   if (m === 0) return `${h}시간`;
   return `${h}시간 ${m}분`;
 }
+// 서버 날짜 문자열 → Date. 'yyyy-MM-dd HH:mm'(@JsonFormat)은 Safari 등에서 Date 파싱이 실패하므로
+// 공백 구분자를 'T'로 치환해 ISO 형태로 맞춘 뒤 파싱한다. ISO('...T...')는 그대로 통과.
+function parseServerDate(value: string): Date {
+  return new Date(value.trim().replace(' ', 'T'));
+}
 function formatCreatedAt(iso?: string): string {
   if (!iso) return '방금 전';
-  const d = new Date(iso);
+  const d = parseServerDate(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
-// ISO date-time → 'YYYY-MM-DD' / 'HH:mm'
+// 'yyyy-MM-dd HH:mm' / ISO('yyyy-MM-ddTHH:mm:ss') 모두 앞 10자·11~16자가 동일해 slice로 처리
 function isoDate(iso?: string): string {
   return iso ? iso.slice(0, 10) : '';
 }
@@ -65,8 +70,8 @@ type CoursePhase = 'before' | 'during' | 'after';
 function getCoursePhase(tripStart?: string, tripEnd?: string): CoursePhase {
   if (!tripStart || !tripEnd) return 'during';
   const now = new Date();
-  const start = new Date(tripStart);
-  const end = new Date(tripEnd);
+  const start = parseServerDate(tripStart);
+  const end = parseServerDate(tripEnd);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 'during';
   if (now < start) return 'before';
   if (now > end) return 'after';
