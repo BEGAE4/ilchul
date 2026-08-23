@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
 import {
   ArrowLeft,
   Check,
@@ -442,7 +442,8 @@ export const CourseCreationFlow: React.FC = () => {
       });
       reset();
       toast.success('힐링 플랜이 생성되었어요!', { description: '내 플랜에서 확인해보세요.' });
-      router.push(`/course/${created.planId}`);
+      // 내가 만든 플랜은 소유자 페이지(수정·인증 가능, 스크랩 없음)로 보낸다
+      router.push(`/my-course/${created.planId}`);
     } catch (err) {
       console.error('플랜 생성 실패:', err);
       toast.error('플랜 저장에 실패했어요.', {
