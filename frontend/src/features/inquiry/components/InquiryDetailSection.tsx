@@ -58,7 +58,7 @@ export const InquiryDetailSection = ({
   const canEdit = !isAdmin && isPending;
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-dvh bg-white">
       <div className="bg-white sticky top-0 z-10 border-b border-gray-100">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center">

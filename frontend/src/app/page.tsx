@@ -64,7 +64,7 @@ export default function Home() {
 
   return (
     <PageLayout bottomNavItems={navItems}>
-      <div className="bg-gray-50 min-h-full pb-10">
+      <div className="bg-gray-50 flex-1 pb-10">
 
         {/* ───── 섹션 1: 비주얼 슬라이드 배너 ───── */}
         <div className="relative mb-2">

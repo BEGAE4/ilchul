@@ -86,7 +86,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   // 에러 UI — 데이터 로드 실패 또는 존재하지 않는 플랜
   if (!plan) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+      <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center">
         <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
           <X size={28} className="text-gray-400" />
         </div>
@@ -161,7 +161,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   };
 
   return (
-    <div className="bg-white pb-24 min-h-screen relative">
+    <div className="bg-white pb-24 min-h-dvh relative">
       {/* 히어로 이미지 */}
       <div className="relative h-64 w-full">
         <Image

@@ -10,7 +10,7 @@ export default function NotFound() {
 
   return (
     <PageLayout>
-    <div className="flex flex-col min-h-screen bg-white relative overflow-hidden">
+    <div className="flex flex-col min-h-dvh bg-white relative overflow-hidden">
       {/* 배경 그라디언트 */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary-50 via-primary-50/50 to-white" />
 
