@@ -17,7 +17,7 @@ export function useComments(planId: string) {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   const loadComments = useCallback(
-    async (lastReplyId = 0, append = false) => {
+    async (lastReplyId?: number, append = false) => {
       try {
         if (append) setIsFetchingMore(true);
         else setIsLoading(true);

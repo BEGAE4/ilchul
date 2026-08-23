@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
 import { CardProps } from './types';
 import styles from './styles.module.scss';
 

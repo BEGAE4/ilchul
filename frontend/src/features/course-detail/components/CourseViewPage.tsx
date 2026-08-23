@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { fetchMyPageProfile } from '@/features/my-page/api/my-page.api';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import Image, { PLACEHOLDER_IMAGE } from '@/shared/ui/SafeImage';
 import {
   ArrowLeft,
   Heart,
@@ -42,7 +43,22 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const { plan, isLoading: isPlanLoading, error: planError, refetch } = usePlanDetail(courseId);
   const planActions = usePlanActions(plan);
 
-  const { user, isLoggedIn } = useUserStore();
+  const { user, isLoggedIn, updateProfile } = useUserStore();
+
+  // 소유자 판별은 닉네임으로 하므로, 상세에 바로 진입해 스토어가 비어 있으면 프로필을 채운다
+  useEffect(() => {
+    if (!isLoggedIn || user?.name) return;
+    let isMounted = true;
+    fetchMyPageProfile()
+      .then((data) => {
+        if (!isMounted) return;
+        updateProfile({ name: data.userNickname, avatar: data.userImg, title: data.userIntro, bio: data.userIntro });
+      })
+      .catch(() => undefined);
+    return () => {
+      isMounted = false;
+    };
+  }, [isLoggedIn, user?.name, updateProfile]);
   const currentUser: CurrentUser = {
     id: user?.id ?? '',
     name: user?.name ?? '',
@@ -121,12 +137,16 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const heroImage =
     plan.thumbnailUrl ||
     plan.planImageUrls[0] ||
-    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1080&auto=format&fit=crop';
+    PLACEHOLDER_IMAGE;
   const locationLabel = places[0]?.address?.split(' ').slice(0, 2).join(' ') || '';
   const durationLabel =
     plan.requiredTime >= 60
       ? `${Math.floor(plan.requiredTime / 60)}시간${plan.requiredTime % 60 ? ` ${plan.requiredTime % 60}분` : ''}`
       : `${plan.requiredTime}분`;
+
+  // 현재 유저의 userId 를 주는 API 가 없어(userinfo=email/role, profile=닉네임) 닉네임으로 판별한다.
+  // 내 플랜이면 스크랩·'일정 담기' 하단 바는 의미가 없으므로 숨기고 좋아요만 남긴다.
+  const isMyPlan = isLoggedIn && !!user?.name && user.name === plan.userNickname;
 
   const courseTarget: ReportTarget = {
     type: 'course',
@@ -508,31 +528,33 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         )}
       </div>
 
-      <BottomActionBar
-        iconActions={[
-          {
-            id: 'like',
-            icon: Heart,
-            label: '좋아요',
-            active: liked,
-            activeTone: 'like',
-            filled: true,
-            onClick: planActions.toggleLike,
-          },
-          {
-            id: 'bookmark',
-            icon: Bookmark,
-            label: '스크랩',
-            active: bookmarked,
-            activeTone: 'bookmark',
-            filled: true,
-            onClick: planActions.toggleScrap,
-          },
-        ]}
-        primaryLabel="이 플랜으로 일정 담기"
-        primaryIcon={Plus}
-        onPrimaryClick={handleSaveCourse}
-      />
+      {!isMyPlan && (
+        <BottomActionBar
+          iconActions={[
+            {
+              id: 'like',
+              icon: Heart,
+              label: '좋아요',
+              active: liked,
+              activeTone: 'like',
+              filled: true,
+              onClick: planActions.toggleLike,
+            },
+            {
+              id: 'bookmark',
+              icon: Bookmark,
+              label: '스크랩',
+              active: bookmarked,
+              activeTone: 'bookmark',
+              filled: true,
+              onClick: planActions.toggleScrap,
+            },
+          ]}
+          primaryLabel="이 플랜으로 일정 담기"
+          primaryIcon={Plus}
+          onPrimaryClick={handleSaveCourse}
+        />
+      )}
 
       {/* ─── 모달: 일정 담기 ─── */}
       {showSaveModal && (
@@ -605,16 +627,18 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsMenuOpen(false)} />
           <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-            <button
-              onClick={() => {
-                planActions.toggleScrap();
-                setIsMenuOpen(false);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
-            >
-              <Bookmark size={18} className="text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">플랜 저장 / 해제</span>
-            </button>
+            {!isMyPlan && (
+              <button
+                onClick={() => {
+                  planActions.toggleScrap();
+                  setIsMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
+              >
+                <Bookmark size={18} className="text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">플랜 저장 / 해제</span>
+              </button>
+            )}
             <ReportMenuItem
               target={courseTarget}
               currentUser={currentUser}

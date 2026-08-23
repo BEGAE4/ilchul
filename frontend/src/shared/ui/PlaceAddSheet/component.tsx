@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Check, Plus, MapPin, Loader2 } from 'lucide-react';
-import Image from 'next/image';
+import Image, { PLACEHOLDER_IMAGE } from '@/shared/ui/SafeImage';
 import { toast } from 'sonner';
 import type { BestPlace } from '@/shared/types';
 import { fetchMyPlans } from '@/features/my-page/api/my-page.api';
@@ -14,7 +14,7 @@ import { toNumericPlaceId } from '@/features/place/utils/placeId';
 
 const NEW_PLAN_ID = '__new__';
 const FALLBACK_THUMB =
-  'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=400&auto=format&fit=crop';
+  PLACEHOLDER_IMAGE;
 
 interface PlaceAddSheetProps {
   open: boolean;

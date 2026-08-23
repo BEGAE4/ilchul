@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
 import { Heart, MapPin, ArrowRight, Plus, Flame, TrendingUp, Navigation } from 'lucide-react';
 import PageLayout from '@/shared/ui/PageLayout';
 import { getNavItems } from '@/shared/lib/constants/navItems';

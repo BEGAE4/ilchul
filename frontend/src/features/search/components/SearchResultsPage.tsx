@@ -13,7 +13,7 @@ import {
   Route,
   Search,
 } from 'lucide-react';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
 import type { BestPlace } from '@/shared/types';
 import { ScrollCarousel } from '@/shared/ui/ScrollCarousel';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
