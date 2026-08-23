@@ -38,7 +38,7 @@ export default function FeedDetail() {
   if (!post) {
     return (
       <PageLayout>
-        <div className="flex items-center justify-center h-screen text-gray-500">
+        <div className="flex items-center justify-center h-dvh text-gray-500">
           피드를 찾을 수 없습니다.
         </div>
       </PageLayout>

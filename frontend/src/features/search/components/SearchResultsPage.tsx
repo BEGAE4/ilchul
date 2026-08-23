@@ -161,7 +161,7 @@ export const SearchResultsPage: React.FC = () => {
       </div>
 
       {/* Content */}
-      <div className="bg-gray-50 min-h-screen">
+      <div className="bg-gray-50 min-h-dvh">
         {/* 전체 탭 */}
         {activeViewTab === '전체' && (
           <div>

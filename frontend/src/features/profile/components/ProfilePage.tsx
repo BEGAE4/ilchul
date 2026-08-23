@@ -245,14 +245,14 @@ export const ProfilePage: React.FC = () => {
   // 로그인 확인 전 / 미로그인(리다이렉트 대기) 시 보호 콘텐츠 노출 방지
   if (!ready) {
     return (
-      <div className="flex items-center justify-center min-h-full py-32 text-sm text-gray-400">
+      <div className="flex flex-1 items-center justify-center py-32 text-sm text-gray-400">
         로그인 확인 중...
       </div>
     );
   }
 
   return (
-    <div className="pb-24 bg-gray-50 min-h-full">
+    <div className="pb-24 bg-gray-50 flex-1">
       {/* ─── 프로필 헤더 ─── */}
       <div className="bg-white p-5 pb-0 border-b border-gray-100">
         <div className="flex justify-between items-start mb-6">
@@ -426,7 +426,16 @@ export const ProfilePage: React.FC = () => {
                     return (
                       <div
                         key={plan.planId}
-                        className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-default"
+                        role="link"
+                        tabIndex={0}
+                        onClick={() => router.push(`/my-course/${plan.planId}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            router.push(`/my-course/${plan.planId}`);
+                          }
+                        }}
+                        className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer active:opacity-80"
                       >
                         <div className="relative h-32">
                           <img

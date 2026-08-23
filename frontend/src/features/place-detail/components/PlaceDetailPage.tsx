@@ -167,7 +167,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
   }));
 
   return (
-    <div className="bg-white min-h-screen pb-24">
+    <div className="bg-white min-h-dvh pb-24">
       {/* 히어로 이미지 */}
       <div className="relative h-72">
         <Image src={place.image} alt={place.name} fill sizes="100vw" className="object-cover" />
@@ -501,7 +501,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
 /* ── Error ── */
 function PlaceDetailError({ message, onBack }: { message: string | null; onBack: () => void }) {
   return (
-    <div className="bg-white min-h-screen flex flex-col items-center justify-center px-6 text-center">
+    <div className="bg-white min-h-dvh flex flex-col items-center justify-center px-6 text-center">
       <MapPin size={40} className="text-gray-300 mb-4" />
       <p className="text-base font-bold text-gray-900 mb-1">장소를 찾을 수 없어요</p>
       <p className="text-sm text-gray-500 mb-6">{message || '존재하지 않거나 삭제된 장소예요.'}</p>
@@ -521,7 +521,7 @@ function PlaceDetailSkeleton() {
     <div className={`bg-gray-200 animate-pulse rounded-lg ${className}`} />
   );
   return (
-    <div className="bg-white min-h-screen pb-24">
+    <div className="bg-white min-h-dvh pb-24">
       <Sk className="h-72 w-full rounded-none" />
       <div className="grid grid-cols-3 border-b border-gray-100 py-4">
         {[1, 2, 3].map((i) => (
