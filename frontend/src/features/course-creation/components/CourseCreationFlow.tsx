@@ -32,7 +32,6 @@ import { SelectField, TimeField, DateField } from './SurveyPickers';
 import { useSurveyStore, type SurveyStep } from '@/shared/lib/stores/useSurveyStore';
 import { planApi, type PlanPreviewResponse } from '@/features/plan';
 import { recommendPlaces } from '@/features/place/api/place.api';
-import { RECOMMENDED_PLACES, MOCK_ADDRESSES } from '@/shared/data/mockData';
 import {
   useKakaoMapLoader,
   coordToAddress,
@@ -278,10 +277,10 @@ export const CourseCreationFlow: React.FC = () => {
   const [serverPreview, setServerPreview] = useState<PlanPreviewResponse | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  // 설문 기반 장소 추천 결과 (POST /api/place/recommend), 실패 시 기본 목록 유지
-  const [recommendedPlaces, setRecommendedPlaces] = useState<Place[]>(RECOMMENDED_PLACES);
-  // 추천 API 실패/빈 응답으로 기본 목록을 대신 보여주는 중인지 — 개인화 결과로 오인하지 않도록 고지한다
-  const [isRecommendFallback, setIsRecommendFallback] = useState(false);
+  // 설문 기반 장소 추천 결과 (POST /api/place/recommend)
+  const [recommendedPlaces, setRecommendedPlaces] = useState<Place[]>([]);
+  // 추천 API 실패/빈 응답 시 안내 문구 — 목록 대신 재시도 UI를 보여준다
+  const [recommendError, setRecommendError] = useState<string | null>(null);
   // 카카오맵 SDK 로드 상태 — 출발지 검색/역지오코딩에 services 라이브러리 사용
   const [isKakaoLoading, kakaoError] = useKakaoMapLoader();
   // 출발지 키워드 검색 결과 (카카오 로컬 Places.keywordSearch)
@@ -333,20 +332,19 @@ export const CourseCreationFlow: React.FC = () => {
           minDelay,
         ]);
         const mapped = mapRecommendedPlaces(result);
-        // 응답이 비었거나 파싱되지 않으면 기본 목록으로 대체되므로, 개인화 결과가 아님을 알린다
         if (mapped.length > 0) {
           setRecommendedPlaces(mapped);
-          setIsRecommendFallback(false);
+          setRecommendError(null);
         } else {
-          // 폴백이 켜졌다는 것은 응답 모양이 또 달라졌다는 뜻이다. 원본을 남겨 다음 조정의 근거로 삼는다.
-          console.warn('추천 응답을 장소 목록으로 변환하지 못해 기본 목록으로 대체합니다:', result);
-          setRecommendedPlaces(RECOMMENDED_PLACES);
-          setIsRecommendFallback(true);
+          // 비어 있다는 것은 응답 모양이 또 달라졌다는 뜻이다. 원본을 남겨 다음 조정의 근거로 삼는다.
+          console.warn('추천 응답을 장소 목록으로 변환하지 못했습니다:', result);
+          setRecommendedPlaces([]);
+          setRecommendError('조건에 맞는 장소를 찾지 못했어요.');
         }
       } catch (err) {
-        console.error('장소 추천 실패, 기본 추천 목록으로 대체합니다:', err);
-        setRecommendedPlaces(RECOMMENDED_PLACES);
-        setIsRecommendFallback(true);
+        console.error('장소 추천 실패:', err);
+        setRecommendedPlaces([]);
+        setRecommendError('추천 장소를 불러오지 못했어요.');
         await minDelay;
       } finally {
         setStep('placeSelect');
@@ -508,7 +506,8 @@ export const CourseCreationFlow: React.FC = () => {
     // 설문을 처음부터 다시 하므로 이전 감정에서 만들어진 플랜 이름도 함께 비운다
     setPlanTitle('');
     setIsPlanVisible(false);
-    setIsRecommendFallback(false);
+    setRecommendError(null);
+    setRecommendedPlaces([]);
     setStep('survey1');
   };
 
@@ -1238,11 +1237,6 @@ export const CourseCreationFlow: React.FC = () => {
   // (6) Starting Point Selection
   // ════════════════════════════════════════════
   if (step === 'startPoint') {
-    // SDK 로드 실패 시에만 쓰는 정적 폴백 목록
-    const fallbackAddresses = customAddress.trim()
-      ? MOCK_ADDRESSES.filter((a) => a.label.includes(customAddress.trim()))
-      : MOCK_ADDRESSES;
-
     const selectStartingPoint = (
       type: 'current' | 'custom',
       address: string,
@@ -1375,23 +1369,12 @@ export const CourseCreationFlow: React.FC = () => {
                   className="mt-2 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden"
                 >
                   {kakaoError ? (
-                    // SDK 로드 실패 시 정적 목록으로 폴백
-                    fallbackAddresses.length > 0 ? (
-                      fallbackAddresses.map((addr) => (
-                        <button
-                          key={addr.label}
-                          onClick={() => selectStartingPoint('custom', addr.label, addr.coord)}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-primary-50 border-b border-gray-50 last:border-b-0"
-                        >
-                          <MapPin size={14} className="text-primary-400 shrink-0" />
-                          <span className="text-sm text-gray-700">{addr.label}</span>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="px-4 py-6 text-center text-sm text-gray-400">
-                        검색 결과가 없습니다
-                      </div>
-                    )
+                    // SDK 로드 실패 시 검색을 쓸 수 없다 — 현재 위치 버튼만 남는다
+                    <div className="px-4 py-6 text-center text-sm text-gray-400">
+                      지도 서비스를 불러오지 못해 검색할 수 없어요.
+                      <br />
+                      현재 위치로 출발지를 설정해주세요.
+                    </div>
                   ) : addressResults.length > 0 ? (
                     addressResults.map((result) => (
                       <button
@@ -1422,26 +1405,6 @@ export const CourseCreationFlow: React.FC = () => {
                     </div>
                   )}
                 </motion.div>
-              )}
-
-              {!customAddress && !showAddressList && (
-                <div className="mt-3 space-y-2">
-                  <div className="text-xs font-bold text-gray-500 px-1">추천 출발지</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {MOCK_ADDRESSES.slice(0, 4).map((addr) => (
-                      <button
-                        key={addr.label}
-                        onClick={() => selectStartingPoint('custom', addr.label, addr.coord)}
-                        className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 border border-gray-100 text-left hover:bg-primary-50 hover:border-primary-200 transition-colors"
-                      >
-                        <MapPin size={12} className="text-gray-400 shrink-0" />
-                        <span className="text-xs text-gray-700 font-medium truncate">
-                          {addr.label}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
               )}
             </div>
           </div>
@@ -1479,9 +1442,7 @@ export const CourseCreationFlow: React.FC = () => {
         <div className="bg-white p-4 pb-2 border-b border-gray-100">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h2 className="text-lg font-bold text-gray-900">
-                {isRecommendFallback ? '인기 장소를 보여드릴게요' : '추천 결과입니다'}
-              </h2>
+              <h2 className="text-lg font-bold text-gray-900">추천 결과입니다</h2>
               <p className="text-sm text-gray-500">가고 싶은 장소를 선택해주세요.</p>
             </div>
             {/* 설문을 다시 하지 않고 같은 조건으로 추천만 새로 받는다 */}
@@ -1494,26 +1455,36 @@ export const CourseCreationFlow: React.FC = () => {
               다시 추천받기
             </button>
           </div>
-          {isRecommendFallback && (
-            <div className="flex items-start gap-2 mt-3 bg-amber-50 p-3 rounded-xl border border-amber-100">
-              <AlertCircle size={16} className="text-amber-400 mt-0.5 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-amber-700">
-                  맞춤 추천을 불러오지 못해 인기 장소를 대신 보여드리고 있어요.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="mt-1 text-xs font-bold text-amber-700 underline underline-offset-2"
-                >
-                  출발지로 돌아가 다시 시도하기
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="flex-1 p-4 overflow-y-auto space-y-3">
+          {/* 추천 실패/빈 결과 — 목록 대신 안내와 재시도 버튼만 보여준다 */}
+          {recommendError && (
+            <div className="flex flex-col items-center text-center gap-3 bg-white p-6 rounded-xl border border-amber-100">
+              <AlertCircle size={24} className="text-amber-400" />
+              <div>
+                <p className="text-sm font-bold text-gray-900">{recommendError}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  잠시 후 다시 시도하거나 출발지를 바꿔보세요.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={runRecommendation}
+                className="flex items-center gap-1.5 text-sm font-bold text-white bg-primary-500 px-4 py-2.5 rounded-xl active:bg-primary-600"
+              >
+                <RotateCcw size={14} />
+                다시 추천받기
+              </button>
+              <button
+                type="button"
+                onClick={handleBack}
+                className="text-xs font-bold text-gray-500 underline underline-offset-2"
+              >
+                출발지 바꾸기
+              </button>
+            </div>
+          )}
           {recommendedPlaces.map((place) => {
             const isSelected = selectedPlaceIds.includes(place.id);
             return (

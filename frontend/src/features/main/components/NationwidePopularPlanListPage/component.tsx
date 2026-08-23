@@ -41,7 +41,7 @@ export function NationwidePopularPlanListPage() {
       <div className={styles.list}>
         {items.map((plan) => (
           <PopularPlanCard
-            key={plan.id}
+            key={String(plan.id)}
             plan={plan}
             onClick={() => router.push(`/course/${plan.id}`)}
           />

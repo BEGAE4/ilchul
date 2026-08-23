@@ -14,6 +14,7 @@ import type {
   LikeResponse,
   ScrapPlanResponse,
 } from '../types/plan.types';
+import { normalizePlanDetail } from '../utils/normalizePlanDetail';
 
 // 플랜 생성 — 출발지/일정/장소까지 일괄 등록
 export async function createPlan(body: CreatePlanBody): Promise<CreatePlanResponse> {
@@ -24,7 +25,7 @@ export async function createPlan(body: CreatePlanBody): Promise<CreatePlanRespon
 // 플랜 상세 조회 — PlanDetailDto 직접 반환 (래핑 없음)
 export async function fetchPlanDetail(planId: number): Promise<PlanDetail> {
   const { data } = await apiClient.get<PlanDetail>(`/api/plan/${planId}`);
-  return data;
+  return normalizePlanDetail(data);
 }
 
 // 플랜 수정
@@ -106,16 +107,19 @@ export async function uploadPlanImages(planId: number, images: File[]): Promise<
   const { data } = await apiClient.post<PlanDetail>(`/api/plan/${planId}/images`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return data;
+  return normalizePlanDetail(data);
 }
 
 // 플랜 이미지 삭제 — 명세 query int[]. 반복 파라미터(imageIds=1&imageIds=2)로 직렬화
+// NOTE(미연결): 명세(260822) PlanDetailDto.planImageUrls 가 string[](URL만)이라 개별 이미지 ID를
+// 프론트가 알 수 없어 UI(MyCourseDetailPage 이미지 삭제 버튼)를 연결하지 못함.
+// 백엔드가 상세 응답에 이미지 ID(예: planImages: {id, url}[])를 내려주면 연결한다.
 export async function deletePlanImages(planId: number, imageIds: number[]): Promise<PlanDetail> {
   const { data } = await apiClient.delete<PlanDetail>(`/api/plan/${planId}/images`, {
     params: { imageIds },
     paramsSerializer: { indexes: null },
   });
-  return data;
+  return normalizePlanDetail(data);
 }
 
 // 플랜 복제 (일정 담기)
@@ -125,11 +129,6 @@ export async function clonePlan(
 ): Promise<ClonePlanResponse> {
   const { data } = await apiClient.post<ClonePlanResponse>(`/api/plan/${planId}/clone`, body);
   return data;
-}
-
-// 플랜 공개 여부 토글 — 본문 없는 토글형
-export async function togglePlanVisibility(planId: number): Promise<void> {
-  await apiClient.post(`/api/mypage/plan/visibility/${planId}`);
 }
 
 // 플랜 좋아요 / 취소
@@ -149,4 +148,4 @@ export async function togglePlanScrap(planId: number): Promise<ScrapPlanResponse
   return data;
 }
 
-// 내 플랜 / 스크랩 목록은 my-page feature(fetchMyPlans/fetchScrappedPlans)에서 담당한다.
+// 내 플랜 / 스크랩 목록·공개 여부 토글은 my-page feature(fetchMyPlans/fetchScrappedPlans/setMyPlanVisibility)에서 담당한다.

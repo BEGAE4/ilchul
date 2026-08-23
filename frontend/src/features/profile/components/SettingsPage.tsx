@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Image from 'next/image';
@@ -15,10 +15,11 @@ import {
   HelpCircle,
   Camera,
   X,
+  User,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
-import { updateMyPageProfile } from '@/features/my-page/api';
+import { fetchMyPageProfile, updateMyPageProfile } from '@/features/my-page/api';
 import { logout, deleteUser } from '@/features/authentication/api';
 
 type SettingsSection = 'main' | 'editProfile' | 'notification' | 'privacy' | 'about';
@@ -34,6 +35,29 @@ export function SettingsPage() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // 스토어가 비어 있으면(직접 진입 등) 프로필을 API에서 채운다
+  useEffect(() => {
+    if (user.name) return;
+    let isMounted = true;
+    fetchMyPageProfile()
+      .then((data) => {
+        if (!isMounted) return;
+        updateProfile({
+          name: data.userNickname,
+          avatar: data.userImg,
+          title: data.userIntro,
+          bio: data.userIntro,
+        });
+        setEditName(data.userNickname);
+        setEditTitle(data.userIntro);
+      })
+      .catch((err) => console.error('프로필 정보 로드 실패:', err));
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSaveProfile = async () => {
     if (!editName.trim()) return;
@@ -161,14 +185,18 @@ export function SettingsPage() {
         <div className="flex-1 p-5">
           <div className="flex justify-center mb-8">
             <div className="relative">
-              <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200">
-                <Image
-                  src={user.avatar}
-                  alt="Profile"
-                  fill
-                  sizes="96px"
-                  className="object-cover"
-                />
+              <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
+                {user.avatar ? (
+                  <Image
+                    src={user.avatar}
+                    alt="Profile"
+                    fill
+                    sizes="96px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <User size={40} className="text-gray-400" />
+                )}
               </div>
               <button className="absolute bottom-0 right-0 w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white">
                 <Camera size={14} />
@@ -353,14 +381,18 @@ export function SettingsPage() {
             }}
             className="flex items-center gap-4 cursor-pointer active:bg-gray-50 -mx-2 px-2 py-2 rounded-xl transition-colors"
           >
-            <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0">
-              <Image
-                src={user.avatar}
-                alt="Profile"
-                fill
-                sizes="56px"
-                className="object-cover"
-              />
+            <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0 bg-gray-100 flex items-center justify-center">
+              {user.avatar ? (
+                <Image
+                  src={user.avatar}
+                  alt="Profile"
+                  fill
+                  sizes="56px"
+                  className="object-cover"
+                />
+              ) : (
+                <User size={24} className="text-gray-400" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-bold text-gray-900">{user.name}</div>

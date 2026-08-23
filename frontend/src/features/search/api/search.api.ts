@@ -1,23 +1,58 @@
-import axios from 'axios';
-import type { RecentSearch } from '../types/search.types';
+import apiClient from '@/shared/lib/api/apiClient';
+import type {
+  PopularSearchKeyword,
+  RecentSearch,
+  SearchAutocompleteItem,
+  SearchResultResponse,
+} from '../types/search.types';
 
-const BASE = '/api/recent';
+const RECENT = '/api/search/recent';
 
-/** 최근 검색기록 조회 */
+/** 최근 검색기록 조회 — GET /api/search/recent */
 export const fetchRecentSearches = async (): Promise<RecentSearch[]> => {
-  const res = await axios.get<RecentSearch[]>(BASE);
+  const res = await apiClient.get<RecentSearch[]>(RECENT);
   return res.data ?? [];
 };
 
-/** 최근 검색기록 추가 */
+/** 최근 검색기록 추가 — POST /api/search/recent */
 export const addRecentSearch = async (name: string): Promise<void> => {
-  await axios.post(BASE, {
-    name,
-    createdAt: new Date().toISOString(),
-  });
+  await apiClient.post(RECENT, { name });
 };
 
-/** 최근 검색기록 전체 삭제 */
-export const deleteRecentSearches = async (): Promise<void> => {
-  await axios.delete(BASE);
+/** 최근 검색기록 단건 삭제 — DELETE /api/search/recent (body: name, createdAt) */
+export const deleteRecentSearch = async (item: RecentSearch): Promise<void> => {
+  await apiClient.delete(RECENT, { data: item });
+};
+
+/** 최근 검색기록 전체 삭제 — 단건 삭제 API를 항목별로 호출 */
+export const deleteRecentSearches = async (items: RecentSearch[]): Promise<void> => {
+  await Promise.all(items.map((item) => deleteRecentSearch(item)));
+};
+
+/** 통합 검색 — GET /api/search */
+export const searchAll = async (
+  keyword: string,
+  params: { page?: number; limit?: number } = {}
+): Promise<SearchResultResponse> => {
+  const res = await apiClient.get<SearchResultResponse>('/api/search', {
+    params: { keyword, ...params },
+  });
+  return res.data;
+};
+
+/** 검색어 자동완성 — GET /api/search/autocomplete */
+export const fetchAutocomplete = async (
+  keyword: string,
+  limit = 5
+): Promise<SearchAutocompleteItem[]> => {
+  const res = await apiClient.get<SearchAutocompleteItem[]>('/api/search/autocomplete', {
+    params: { keyword, limit },
+  });
+  return res.data ?? [];
+};
+
+/** 인기 검색어 — GET /api/search/popular */
+export const fetchPopularKeywords = async (): Promise<PopularSearchKeyword[]> => {
+  const res = await apiClient.get<PopularSearchKeyword[]>('/api/search/popular');
+  return res.data ?? [];
 };

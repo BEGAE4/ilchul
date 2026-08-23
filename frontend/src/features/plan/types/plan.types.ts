@@ -1,4 +1,4 @@
-// PLAN API (v6) 타입 정의 — cc/api/v6/260723-v6-004-plan.md, 005-plan-place.md, 002-mypage.md 기준
+// PLAN API 타입 정의 — cc/input/api-명세-260822.json (swagger) 기준으로 대조 완료 (260823)
 
 export interface DeparturePoint {
   name: string;
@@ -37,7 +37,7 @@ export interface PlanDetail {
   isLiked: boolean;
   requiredTime: number;
   totalDistance: number;
-  // 수정 시 이동시간 계산에 필요 — 백엔드가 상세 응답에 추가 예정(배포 전엔 undefined일 수 있음)
+  // 명세(260822)에 포함됨 — 출발지 미설정 시 null 가능
   departurePoint?: DeparturePoint | null;
   planDescription: string;
   likeCount: number;
@@ -113,6 +113,7 @@ export interface UpdatePlanPlacesResponse {
 
 // 플랜 복제 (POST /api/plan/{planId}/clone)
 export interface ClonePlanBody {
+  // 명세 format: date — 'yyyy-MM-dd'
   scheduledDate?: string;
 }
 
@@ -151,6 +152,7 @@ export interface PlanPreviewPlace {
 }
 
 export interface PlanPreviewResponse {
+  // UpdatePlanPreviewResponseDto 에만 존재(CreatePlanPreviewResponseDto 에는 없음)
   planId?: number;
   planTitle: string;
   planDescription: string;
@@ -171,22 +173,4 @@ export interface StampPlanPlaceResponse {
   stampedAt: string;
 }
 
-// 내 플랜 / 내 스크랩 목록 (GET /api/mypage/plans, /api/mypage/scrapped)
-export interface PlanSummary {
-  planId: number;
-  planTitle: string;
-  createAt: string;
-  tripStartDate: string;
-  tripEndDate: string;
-  isPlanVisible: boolean;
-  requiredTime: number;
-  planImages: string[];
-}
-
-export interface MyPlansResponse {
-  plans: PlanSummary[];
-}
-
-export interface ScrappedPlansResponse {
-  scrappedPlans: PlanSummary[];
-}
+// 내 플랜 / 내 스크랩 목록 타입(PlanSummary 등)은 my-page feature(types/plan.types.ts)에서 담당한다.

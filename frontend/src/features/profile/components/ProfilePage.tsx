@@ -3,11 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Settings, Plus, Eye, EyeOff, Trash2, X, Bookmark, MapPin } from 'lucide-react';
+import { Settings, Plus, Bookmark, MapPin, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
-import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
 import { useRequireAuth } from '@/features/authentication/hooks';
 import {
   fetchMyPlans,
@@ -19,17 +18,13 @@ import {
 import type { MyPlan, ScrappedPlan } from '@/features/my-page/types/plan.types';
 import type { MyPageSummary } from '@/features/my-page/types/summary.types';
 
-type MainTab = 'courses' | 'bookmarks' | 'plans';
-type CourseFilter = 'all' | 'public' | 'private';
+type MainTab = 'plans' | 'bookmarks';
 
 export const ProfilePage: React.FC = () => {
   const router = useRouter();
   const { ready } = useRequireAuth();
   const { user, email, updateProfile } = useUserStore();
-  const { myCourses, deleteMyCourse, toggleVisibility } = useCourseStore();
-  const [mainTab, setMainTab] = useState<MainTab>('courses');
-  const [courseFilter, setCourseFilter] = useState<CourseFilter>('all');
-  const [courseToDelete, setCourseToDelete] = useState<string | null>(null);
+  const [mainTab, setMainTab] = useState<MainTab>('plans');
   const [plansLoading, setPlansLoading] = useState(true);
   const [plans, setPlans] = useState<MyPlan[]>([]);
   const [plansError, setPlansError] = useState<string | null>(null);
@@ -61,8 +56,8 @@ export const ProfilePage: React.FC = () => {
           setPlanVisibility(prev => {
             const next = { ...prev };
             data.forEach((plan) => {
-              if (typeof plan.isPublic === 'boolean') {
-                next[plan.planId] = plan.isPublic;
+              if (typeof plan.isPlanVisible === 'boolean') {
+                next[plan.planId] = plan.isPlanVisible;
               }
             });
             return next;
@@ -153,13 +148,6 @@ export const ProfilePage: React.FC = () => {
     };
   }, [updateProfile]);
 
-  const filteredCourses = myCourses.filter((course) => {
-    if (courseFilter === 'all') return true;
-    if (courseFilter === 'public') return course.isPublic;
-    if (courseFilter === 'private') return !course.isPublic;
-    return true;
-  });
-
   const STATS: { label: string; value: number | string; color: string }[] = [
     {
       label: '공개 플랜',
@@ -201,7 +189,8 @@ export const ProfilePage: React.FC = () => {
 
   const formatIsoDate = (iso: string | null) => {
     if (!iso) return '생성일 미정';
-    const d = new Date(iso);
+    // 서버 날짜는 'yyyy-MM-dd HH:mm' 형식 — Safari/iOS 호환을 위해 ISO(T)로 정규화
+    const d = new Date(iso.replace(' ', 'T'));
     if (Number.isNaN(d.getTime())) return iso;
     return d.toLocaleDateString('ko-KR', {
       year: 'numeric',
@@ -246,25 +235,11 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleDeleteCourse = () => {
-    if (courseToDelete) {
-      deleteMyCourse(courseToDelete);
-      setCourseToDelete(null);
-      toast.success('플랜이 삭제되었어요.');
-    }
-  };
-
-  const handleToggleVisibility = (courseId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const course = myCourses.find((c) => c.id === courseId);
-    toggleVisibility(courseId);
-    toast(course?.isPublic ? '비공개로 전환했어요.' : '공개로 전환했어요.');
-  };
-
+  // 이전에는 zustand 목데이터(useCourseStore.myCourses) 탭이 같은 '내 플랜' 이름으로 하나 더 있었다.
+  // 서버 플랜 탭이 생긴 뒤에도 남아 가짜 플랜 2건이 실제 사용자에게 노출되고 있었다.
   const TABS: { key: MainTab; label: string; count: number }[] = [
-    { key: 'courses', label: '내 플랜', count: myCourses.length },
-    { key: 'bookmarks', label: '저장 플랜', count: scrappedPlans.length },
     { key: 'plans', label: '내 플랜', count: plans.length },
+    { key: 'bookmarks', label: '저장 플랜', count: scrappedPlans.length },
   ];
 
   // 로그인 확인 전 / 미로그인(리다이렉트 대기) 시 보호 콘텐츠 노출 방지
@@ -292,26 +267,27 @@ export const ProfilePage: React.FC = () => {
 
         {/* 아바타 + 이름 */}
         <div className="flex items-center gap-4 mb-5">
-          <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md flex-shrink-0">
-            <Image
-              src={user?.avatar ?? 'https://i.pravatar.cc/150?u=me'}
-              alt="프로필"
-              fill
-              sizes="64px"
-              className="object-cover"
-            />
+          <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-gray-100 flex items-center justify-center">
+            {user.avatar ? (
+              <Image
+                src={user.avatar}
+                alt="프로필"
+                fill
+                sizes="64px"
+                className="object-cover"
+              />
+            ) : (
+              <User size={28} className="text-gray-400" />
+            )}
           </div>
           <div>
             <div className="font-bold text-lg text-gray-900">
-              {user?.name ?? '김여행'}
+              {user.name || '여행자'}
             </div>
             {email && (
               <div className="text-xs text-gray-400 mt-0.5">{email}</div>
             )}
-            <div className="text-sm text-gray-500 mt-0.5">
-              여행 레벨 {user?.level ?? 3} · {user?.travelType ?? '힐링 마스터'}
-            </div>
-            {user?.bio && (
+            {user.bio && (
               <p className="text-xs text-gray-400 mt-1">{user.bio}</p>
             )}
           </div>
@@ -364,121 +340,11 @@ export const ProfilePage: React.FC = () => {
       <AnimatePresence mode="wait">
         <motion.div
           key={mainTab}
-          initial={{ opacity: 0, x: mainTab === 'courses' ? -20 : 20 }}
+          initial={{ opacity: 0, x: mainTab === 'plans' ? -20 : 20 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: mainTab === 'courses' ? 20 : -20 }}
+          exit={{ opacity: 0, x: mainTab === 'plans' ? 20 : -20 }}
           transition={{ duration: 0.2 }}
         >
-          {mainTab === 'courses' && (
-            <>
-              {/* 플랜 필터 */}
-              <div className="bg-white border-b border-gray-100 px-5 py-2.5 flex gap-2">
-                {([
-                  ['all', `전체 ${myCourses.length}`],
-                  ['public', `공개 ${myCourses.filter((c) => c.isPublic).length}`],
-                  ['private', `숨김 ${myCourses.filter((c) => !c.isPublic).length}`],
-                ] as const).map(([filter, label]) => (
-                  <button
-                    key={filter}
-                    onClick={() => setCourseFilter(filter)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                      courseFilter === filter
-                        ? 'bg-gray-900 text-white'
-                        : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="p-4">
-                {filteredCourses.length > 0 ? (
-                  <div className="space-y-4">
-                    {filteredCourses.map((course) => (
-                      <div
-                        key={course.id}
-                        onClick={() => router.push(`/my-course/${course.id}`)}
-                        className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 active:scale-[0.99] transition-transform cursor-pointer"
-                      >
-                        <div className="flex">
-                          <div className="relative w-24 h-24 shrink-0">
-                            <Image
-                              src={course.thumbnail}
-                              alt={course.title}
-                              fill
-                              sizes="96px"
-                              className="object-cover"
-                            />
-                          </div>
-                          <div className="flex-1 p-3 flex flex-col justify-between">
-                            <div>
-                              <h3 className="font-bold text-gray-900 text-sm line-clamp-1 mb-1">
-                                {course.title}
-                              </h3>
-                              <p className="text-xs text-gray-500 line-clamp-1">
-                                {course.description}
-                              </p>
-                            </div>
-                            <div className="flex items-center justify-between mt-2">
-                              <div className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">
-                                {course.location} · {course.duration}
-                              </div>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={(e) => handleToggleVisibility(course.id, e)}
-                                  className={`p-2.5 rounded-lg transition-colors ${
-                                    course.isPublic
-                                      ? 'bg-primary-50 text-primary-500'
-                                      : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                                  }`}
-                                  aria-label={course.isPublic ? '비공개로 전환' : '공개로 전환'}
-                                >
-                                  {course.isPublic ? <Eye size={16} /> : <EyeOff size={16} />}
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setCourseToDelete(course.id);
-                                  }}
-                                  className="p-2.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 active:bg-red-200 transition-colors"
-                                  aria-label="플랜 삭제"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-300">
-                      <Plus size={32} />
-                    </div>
-                    <p className="text-gray-500 font-medium mb-1">
-                      {courseFilter === 'all'
-                        ? '아직 생성된 플랜이 없어요'
-                        : '해당하는 플랜이 없어요'}
-                    </p>
-                    <p className="text-xs text-gray-400 mb-6">
-                      나만의 힐링 플랜을 만들어보세요!
-                    </p>
-                    {courseFilter === 'all' && (
-                      <button
-                        onClick={() => router.push('/create')}
-                        className="bg-primary-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary-200 active:scale-95 transition-transform"
-                      >
-                        플랜 생성하기
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
 
           {mainTab === 'bookmarks' && (
             <div className="p-4">
@@ -602,7 +468,8 @@ export const ProfilePage: React.FC = () => {
                               {plan.planTitle}
                             </h3>
                             <p className="text-xs text-white/90 mt-0.5">
-                              여행일정 {formatIsoDate(plan.tripDate)} · 장소 {plan.placeCount}개
+                              여행일정 {formatTripPeriod(plan.tripStartDate, plan.tripEndDate)} ·
+                              소요 {formatRequiredTime(plan.requiredTime)}
                             </p>
                             {plan.createAt ? (
                               <p className="text-[10px] text-white/80 mt-1">
@@ -632,43 +499,6 @@ export const ProfilePage: React.FC = () => {
           )}
         </motion.div>
       </AnimatePresence>
-
-      {/* Delete Confirmation Modal */}
-      {courseToDelete && (
-        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setCourseToDelete(null)} />
-          <div className="relative bg-white rounded-2xl p-6 mx-5 w-full max-w-[320px] shadow-lg">
-            <h2 className="text-gray-900 text-lg font-bold mb-2">
-              플랜을 삭제하시겠어요?
-            </h2>
-            <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-              삭제된 플랜은 복구할 수 없습니다.
-              <br />
-              정말로 삭제하시겠습니까?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setCourseToDelete(null)}
-                className="bg-gray-100 text-gray-700 font-bold py-2.5 px-4 rounded-xl text-sm flex-1 hover:bg-gray-200"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleDeleteCourse}
-                className="bg-red-500 text-white font-bold py-2.5 px-4 rounded-xl text-sm flex-1 shadow-md shadow-red-200 hover:bg-red-600"
-              >
-                삭제하기
-              </button>
-            </div>
-            <button
-              onClick={() => setCourseToDelete(null)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

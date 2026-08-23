@@ -1,13 +1,15 @@
-// 내 플랜 목록 타입 정의
+// 내 플랜 목록 타입 정의 (GET /api/mypage/plans → PlanSummary, 명세 260822)
+// 이전 정의(tripDate/placeCount/isPublic)는 구버전 응답이라 카드에 "생성일 미정 · 장소 개"가 찍히고
+// 공개 토글 초기값이 항상 '미설정'이었다.
 export interface MyPlan {
   planId: number;
   planTitle: string;
-  createAt: string | null; // ISO date string (아직 미구현으로 null 허용)
-  tripDate: string; // ISO date string
-  placeCount: number;
+  createAt: string | null; // 'yyyy-MM-dd HH:mm' 또는 ISO
+  tripStartDate: string | null;
+  tripEndDate: string | null;
+  isPlanVisible: boolean;
+  requiredTime: number; // 소요 시간 (분)
   planImages: string[];
-  // 백엔드가 수정 예정인 필드
-  isPublic?: boolean;
 }
 
 export interface MyPlansResponse {

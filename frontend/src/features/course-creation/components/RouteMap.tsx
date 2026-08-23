@@ -5,7 +5,6 @@ import { Map, CustomOverlayMap, Polyline, useMap } from 'react-kakao-maps-sdk';
 import { MapPin, Navigation } from 'lucide-react';
 import type { Place } from '@/shared/types';
 import type { StartingPoint } from '@/shared/types';
-import { PLACE_COORDS } from '@/shared/data/mockData';
 import { useKakaoMapLoader, type Coord } from '@/shared/lib/kakao';
 
 interface RouteMapProps {
@@ -17,9 +16,9 @@ interface RouteMapProps {
   onSelectCoord?: (coord: Coord) => void;
 }
 
-// 장소 좌표: 서버 응답 좌표 우선, 목데이터 장소는 PLACE_COORDS 폴백
+// 장소 좌표: 서버 응답 좌표만 사용한다. 좌표가 없는 장소는 지도에 표시하지 않는다.
 export function getStopCoord(stop: Place): Coord | null {
-  return stop.coord ?? PLACE_COORDS[stop.id] ?? null;
+  return stop.coord ?? null;
 }
 
 // 마커들이 모두 보이도록 지도 범위를 맞춘다

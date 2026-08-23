@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { SurveyData, Place, StartingPoint } from '@/shared/types';
-import { DEFAULT_START_COORD } from '@/shared/data/mockData';
+import { DEFAULT_START_COORD } from '@/shared/lib/constants/coords';
 
 export type SurveyStep =
   | 'landing'
