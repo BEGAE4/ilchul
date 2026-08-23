@@ -3,7 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { fetchMyPageProfile } from '@/features/my-page/api/my-page.api';
 import { useRouter } from 'next/navigation';
-import Image, { PLACEHOLDER_IMAGE } from '@/shared/ui/SafeImage';
+import Image from '@/shared/ui/SafeImage';
+import PlanCover from '@/shared/ui/PlanCover';
 import {
   ArrowLeft,
   Heart,
@@ -134,10 +135,9 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const scrapCount = planActions.scrapCount;
 
   const places = [...plan.planPlaceDetailDtos].sort((a, b) => a.orderIndex - b.orderIndex);
+  // 대표 이미지: 업로드 썸네일 → 플랜 이미지 → 첫 번째 장소 사진. 모두 없으면 PlanCover 가 '사진 없음' UI 를 그린다.
   const heroImage =
-    plan.thumbnailUrl ||
-    plan.planImageUrls[0] ||
-    PLACEHOLDER_IMAGE;
+    plan.thumbnailUrl || plan.planImageUrls[0] || places.find((p) => p.placeImage)?.placeImage || null;
   const locationLabel = places[0]?.address?.split(' ').slice(0, 2).join(' ') || '';
   const durationLabel =
     plan.requiredTime >= 60
@@ -184,14 +184,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     <div className="bg-white pb-24 min-h-dvh relative">
       {/* 히어로 이미지 */}
       <div className="relative h-64 w-full">
-        <Image
-          src={heroImage}
-          alt={plan.planTitle}
-          fill
-          sizes="100vw"
-          className="object-cover"
-          priority
-        />
+        <PlanCover src={heroImage} alt={plan.planTitle} seed={plan.planId} size="lg" priority />
         <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start bg-gradient-to-b from-black/40 to-transparent">
           <button
             onClick={() => router.back()}
