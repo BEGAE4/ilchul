@@ -29,6 +29,7 @@ import {
   Info,
   Images,
   Heart,
+  Loader2,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { usePlanDetail, usePlanActions, planApi, type PlanPlaceDetail, type PlanPreviewResponse } from '@/features/plan';
@@ -123,11 +124,14 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const reviewPhotoInputRef = useRef<HTMLInputElement>(null);
   const planImageInputRef = useRef<HTMLInputElement>(null);
 
-  // 여행 기록 — 서버 API 부재로 세션 로컬 상태 (v5에 리뷰 저장 엔드포인트 없음)
+  // 여행 기록 — 전용 API 는 없지만 명세의 두 엔드포인트로 저장한다.
+  //   텍스트: PATCH /api/plan/{planId} (planDescription)  /  사진: POST /api/plan/{planId}/images
+  // 이전에는 화면 상태에만 넣고 '저장되었어요' 토스트를 띄워 새로고침하면 사라졌다.
   const [isEditingReview, setIsEditingReview] = useState(false);
   const [reviewText, setReviewText] = useState('');
-  const [savedReview, setSavedReview] = useState('');
-  const [reviewPhotos, setReviewPhotos] = useState<string[]>([]);
+  // 아직 업로드하지 않은 사진 — 저장 시 업로드. 미리보기는 object URL.
+  const [pendingPhotos, setPendingPhotos] = useState<{ file: File; url: string }[]>([]);
+  const [isSavingReview, setIsSavingReview] = useState(false);
 
   const [verifyingStopId, setVerifyingStopId] = useState<number | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -222,24 +226,71 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const completedStops = stops.filter((s) => s.isStamped).length;
   const progress = stops.length > 0 ? (completedStops / stops.length) * 100 : 0;
 
-  const handleSaveReview = () => {
-    // 서버에 여행 기록 저장 API가 없어 화면 상태로만 유지 (백엔드 추가 시 연동)
-    setSavedReview(reviewText);
+  const MAX_REVIEW_PHOTOS = 6;
+  const savedPhotos = plan?.planImageUrls ?? [];
+
+  const startEditingReview = () => {
+    setReviewText(plan?.planDescription ?? '');
+    setIsEditingReview(true);
+  };
+
+  const discardPendingPhotos = () => {
+    pendingPhotos.forEach((p) => URL.revokeObjectURL(p.url));
+    setPendingPhotos([]);
+  };
+
+  const handleCancelReview = () => {
+    discardPendingPhotos();
     setIsEditingReview(false);
-    toast.success('여행 기록이 저장되었어요!');
+  };
+
+  const handleSaveReview = async () => {
+    if (!plan || isSavingReview) return;
+    const text = reviewText.trim();
+    const textChanged = text !== (plan.planDescription ?? '');
+    if (!textChanged && pendingPhotos.length === 0) {
+      setIsEditingReview(false);
+      return;
+    }
+    setIsSavingReview(true);
+    try {
+      if (textChanged) {
+        await planApi.updatePlan(plan.planId, { planDescription: text });
+      }
+      if (pendingPhotos.length > 0) {
+        await planApi.uploadPlanImages(
+          plan.planId,
+          pendingPhotos.map((p) => p.file)
+        );
+      }
+      discardPendingPhotos();
+      setIsEditingReview(false);
+      toast.success('여행 기록이 저장되었어요!');
+      refetch();
+    } catch (err) {
+      console.error('여행 기록 저장 실패:', err);
+      toast.error('여행 기록 저장에 실패했어요. 다시 시도해주세요.');
+    } finally {
+      setIsSavingReview(false);
+    }
   };
 
   const handleAddReviewPhoto = (files: FileList | null) => {
     if (!files) return;
-    const remain = 6 - reviewPhotos.length;
-    const urls = Array.from(files)
-      .slice(0, remain)
-      .map((f) => URL.createObjectURL(f));
-    if (urls.length) setReviewPhotos((prev) => [...prev, ...urls]);
+    const remain = MAX_REVIEW_PHOTOS - savedPhotos.length - pendingPhotos.length;
+    const next = Array.from(files)
+      .slice(0, Math.max(0, remain))
+      .map((file) => ({ file, url: URL.createObjectURL(file) }));
+    if (next.length) setPendingPhotos((prev) => [...prev, ...next]);
+    if (reviewPhotoInputRef.current) reviewPhotoInputRef.current.value = '';
   };
 
-  const handleRemovePhoto = (index: number) => {
-    setReviewPhotos((prev) => prev.filter((_, i) => i !== index));
+  const handleRemovePendingPhoto = (index: number) => {
+    setPendingPhotos((prev) => {
+      const target = prev[index];
+      if (target) URL.revokeObjectURL(target.url);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   // ── 스탬프 인증 ──
@@ -400,7 +451,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   const scrollToReview = () => {
     reviewRef.current?.scrollIntoView({ behavior: 'smooth' });
-    setIsEditingReview(true);
+    startEditingReview();
   };
 
   return (
@@ -564,7 +615,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           <h2 className="font-bold text-gray-900 text-sm">나의 여행 기록</h2>
           {!isEditingReview && (
             <button
-              onClick={() => setIsEditingReview(true)}
+              onClick={startEditingReview}
               className="text-xs text-gray-400 hover:text-gray-600 underline"
             >
               수정
@@ -581,53 +632,72 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               className="w-full text-base p-2 outline-none resize-none h-20 text-gray-700"
             />
             <div className="grid grid-cols-3 gap-1.5 px-2 mb-2">
-              {reviewPhotos.map((photo, i) => (
+              {/* 이미 저장된 사진 — 삭제 API 가 이미지 id 를 요구하는데 상세 응답에 id 가 없어 삭제는 제공하지 않는다 */}
+              {savedPhotos.map((photo, i) => (
                 <div
-                  key={i}
+                  key={`saved-${i}`}
                   className="relative aspect-square rounded-lg overflow-hidden border border-gray-200"
                 >
-                  <Image src={photo} alt={`Review ${i}`} fill sizes="100px" className="object-cover" />
+                  <Image src={photo} alt={`여행 기록 사진 ${i + 1}`} fill sizes="100px" className="object-cover" />
+                </div>
+              ))}
+              {pendingPhotos.map((photo, i) => (
+                <div
+                  key={photo.url}
+                  className="relative aspect-square rounded-lg overflow-hidden border border-primary-200"
+                >
+                  <Image src={photo.url} alt={`추가할 사진 ${i + 1}`} fill sizes="100px" className="object-cover" />
                   <button
-                    onClick={() => handleRemovePhoto(i)}
+                    type="button"
+                    onClick={() => handleRemovePendingPhoto(i)}
+                    aria-label="사진 제거"
                     className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md"
                   >
                     <X size={10} />
                   </button>
                 </div>
               ))}
-              {reviewPhotos.length < 6 && (
+              {savedPhotos.length + pendingPhotos.length < MAX_REVIEW_PHOTOS && (
                 <button
+                  type="button"
                   onClick={() => reviewPhotoInputRef.current?.click()}
                   className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-primary-400 hover:text-primary-400 transition-colors"
                 >
                   <ImagePlus size={18} />
-                  <span className="text-[9px] mt-0.5">{reviewPhotos.length}/6</span>
+                  <span className="text-[9px] mt-0.5">
+                    {savedPhotos.length + pendingPhotos.length}/{MAX_REVIEW_PHOTOS}
+                  </span>
                 </button>
               )}
             </div>
             <div className="flex justify-end gap-2 mt-2 border-t border-gray-50 pt-2">
               <button
-                onClick={() => setIsEditingReview(false)}
+                type="button"
+                onClick={handleCancelReview}
+                disabled={isSavingReview}
                 className="text-xs font-bold text-gray-400 px-3 py-1.5"
               >
                 취소
               </button>
               <button
-                onClick={handleSaveReview}
-                className="text-xs font-bold bg-primary-500 text-white px-3 py-1.5 rounded-lg shadow-sm"
+                type="button"
+                onClick={() => void handleSaveReview()}
+                disabled={isSavingReview}
+                className="text-xs font-bold bg-primary-500 text-white px-3 py-1.5 rounded-lg shadow-sm disabled:bg-gray-300 flex items-center gap-1"
               >
-                저장
+                {isSavingReview && <Loader2 size={12} className="animate-spin" />}
+                {isSavingReview ? '저장 중...' : '저장'}
               </button>
             </div>
           </div>
         ) : (
           <div>
             <p className="text-sm text-gray-600 leading-relaxed min-h-[40px] whitespace-pre-wrap">
-              {savedReview || '아직 작성된 기록이 없어요. 여행의 추억을 남겨보세요!'}
+              {plan.planDescription || '아직 작성된 기록이 없어요. 여행의 추억을 남겨보세요!'}
             </p>
-            {reviewPhotos.length > 0 && (
+            {savedPhotos.length > 0 && (
               <div className="grid grid-cols-3 gap-1.5 mt-3">
-                {reviewPhotos.map((photo, i) => (
+                {savedPhotos.map((photo, i) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -635,7 +705,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                     className="aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer shadow-sm relative"
                     onClick={() => setPreviewPhoto(photo)}
                   >
-                    <Image src={photo} alt={`Review ${i}`} fill sizes="100px" className="object-cover" />
+                    <Image src={photo} alt={`여행 기록 사진 ${i + 1}`} fill sizes="100px" className="object-cover" />
                   </motion.div>
                 ))}
               </div>
