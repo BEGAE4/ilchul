@@ -1,3 +1,2 @@
 // 플랜 상세 훅들
-export * from './useCourseDetail';
-export * from './useStampHistory';
+export * from './useComments';

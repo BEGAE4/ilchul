@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Settings, Plus, Bookmark, MapPin } from 'lucide-react';
+import { Settings, Plus, Bookmark, MapPin, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
@@ -189,7 +189,8 @@ export const ProfilePage: React.FC = () => {
 
   const formatIsoDate = (iso: string | null) => {
     if (!iso) return '생성일 미정';
-    const d = new Date(iso);
+    // 서버 날짜는 'yyyy-MM-dd HH:mm' 형식 — Safari/iOS 호환을 위해 ISO(T)로 정규화
+    const d = new Date(iso.replace(' ', 'T'));
     if (Number.isNaN(d.getTime())) return iso;
     return d.toLocaleDateString('ko-KR', {
       year: 'numeric',
@@ -266,26 +267,27 @@ export const ProfilePage: React.FC = () => {
 
         {/* 아바타 + 이름 */}
         <div className="flex items-center gap-4 mb-5">
-          <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md flex-shrink-0">
-            <Image
-              src={user?.avatar ?? 'https://i.pravatar.cc/150?u=me'}
-              alt="프로필"
-              fill
-              sizes="64px"
-              className="object-cover"
-            />
+          <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-gray-100 flex items-center justify-center">
+            {user.avatar ? (
+              <Image
+                src={user.avatar}
+                alt="프로필"
+                fill
+                sizes="64px"
+                className="object-cover"
+              />
+            ) : (
+              <User size={28} className="text-gray-400" />
+            )}
           </div>
           <div>
             <div className="font-bold text-lg text-gray-900">
-              {user?.name ?? '김여행'}
+              {user.name || '여행자'}
             </div>
             {email && (
               <div className="text-xs text-gray-400 mt-0.5">{email}</div>
             )}
-            <div className="text-sm text-gray-500 mt-0.5">
-              여행 레벨 {user?.level ?? 3} · {user?.travelType ?? '힐링 마스터'}
-            </div>
-            {user?.bio && (
+            {user.bio && (
               <p className="text-xs text-gray-400 mt-1">{user.bio}</p>
             )}
           </div>
