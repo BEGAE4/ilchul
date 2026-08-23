@@ -426,7 +426,16 @@ export const ProfilePage: React.FC = () => {
                     return (
                       <div
                         key={plan.planId}
-                        className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-default"
+                        role="link"
+                        tabIndex={0}
+                        onClick={() => router.push(`/my-course/${plan.planId}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            router.push(`/my-course/${plan.planId}`);
+                          }
+                        }}
+                        className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer active:opacity-80"
                       >
                         <div className="relative h-32">
                           <img
