@@ -157,7 +157,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-white min-h-screen">
+      <div className="bg-white min-h-dvh">
         <div className="h-60 w-full bg-gray-200 animate-pulse" />
         <div className="p-5 space-y-3">
           <div className="h-4 w-2/3 bg-gray-200 animate-pulse rounded" />
@@ -172,7 +172,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   // 에러 UI — 데이터 로드 실패 또는 존재하지 않는 플랜
   if (!plan) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+      <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center">
         <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
           <X size={28} className="text-gray-400" />
         </div>
@@ -401,7 +401,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   };
 
   return (
-    <div className="bg-white min-h-screen pb-20 relative">
+    <div className="bg-white min-h-dvh pb-20 relative">
       {/* 숨김 파일 입력 — 스탬프 인증 / 여행기록 사진 / 플랜 사진 */}
       <input
         ref={stampInputRef}

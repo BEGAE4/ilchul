@@ -43,7 +43,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
   const showMoreButton = !isSelfReport(currentUser, userTarget);
 
   return (
-    <div className="pb-24 bg-gray-50 min-h-screen">
+    <div className="pb-24 bg-gray-50 min-h-dvh">
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
         <button

@@ -140,7 +140,7 @@ export const SearchPage: React.FC = () => {
   const showRecent = isFocused && inputValue.trim().length === 0 && recentSearches.length > 0;
 
   return (
-    <div className="relative p-5 pb-24">
+    <div className="relative flex-1 p-5 pb-24">
       {/* 검색창 */}
       <form onSubmit={handleSearchSubmit} className="relative mb-6">
         <input

@@ -180,7 +180,7 @@ export function SettingsPage() {
   // === Edit Profile ===
   if (section === 'editProfile') {
     return (
-      <div className="flex flex-col min-h-screen bg-white">
+      <div className="flex flex-col min-h-dvh bg-white">
         <SectionHeader title="프로필 수정" onBack={() => setSection('main')} />
         <div className="flex-1 p-5">
           <div className="flex justify-center mb-8">
@@ -247,7 +247,7 @@ export function SettingsPage() {
   // === Notification Settings ===
   if (section === 'notification') {
     return (
-      <div className="flex flex-col min-h-screen bg-white">
+      <div className="flex flex-col min-h-dvh bg-white">
         <SectionHeader title="알림 설정" onBack={() => setSection('main')} />
         <div className="flex-1">
           <div className="px-5 py-4 border-b border-gray-50">
@@ -293,7 +293,7 @@ export function SettingsPage() {
   // === Privacy Settings ===
   if (section === 'privacy') {
     return (
-      <div className="flex flex-col min-h-screen bg-white">
+      <div className="flex flex-col min-h-dvh bg-white">
         <SectionHeader title="개인정보 및 보안" onBack={() => setSection('main')} />
         <div className="flex-1">
           <div className="px-5 py-4 border-b border-gray-50">
@@ -316,7 +316,7 @@ export function SettingsPage() {
   // === About ===
   if (section === 'about') {
     return (
-      <div className="flex flex-col min-h-screen bg-white">
+      <div className="flex flex-col min-h-dvh bg-white">
         <SectionHeader title="앱 정보" onBack={() => setSection('main')} />
         <div className="flex-1 p-5">
           <div className="text-center mb-8 mt-6">
@@ -357,7 +357,7 @@ export function SettingsPage() {
 
   // === Main Settings ===
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-dvh bg-white">
       <div className="bg-white sticky top-0 z-10 border-b border-gray-100">
         <div className="flex items-center p-4">
           <button
