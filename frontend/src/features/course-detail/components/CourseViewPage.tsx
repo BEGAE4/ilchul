@@ -294,15 +294,21 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
           <Clock size={20} className="text-primary-500" /> 여행 플랜 타임라인
         </h2>
-        <div className="relative pl-2 space-y-8 before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-primary-200 before:to-gray-100 before:content-['']">
+        {/* 세로 라인과 점은 같은 기준(left-2, 중심 8px)에 놓는다.
+            이전에는 컨테이너 pl-2 안쪽의 아이템 left-0 에 점을 두어 라인보다 7px 오른쪽에 찍혔다. */}
+        <div className="relative space-y-8 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-primary-200 before:to-gray-100 before:content-['']">
           {places.map((stop) => (
             <div key={stop.planPlaceId} className="relative pl-8">
-              <span className="absolute left-0 top-1.5 -ml-px h-4 w-4 rounded-full border-2 border-white bg-primary-500 shadow-sm z-10" />
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1">
-                <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded w-fit mb-1">
-                  {stop.visitTime}
-                </span>
-                <span className="text-xs text-gray-400 font-medium ml-auto sm:ml-2">
+              <span className="absolute left-2 top-1 -translate-x-1/2 h-4 w-4 rounded-full border-2 border-white bg-primary-500 shadow-sm z-10" />
+              <div className="flex flex-row items-center justify-between mb-1 min-h-6">
+                {stop.visitTime ? (
+                  <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded w-fit">
+                    {stop.visitTime}
+                  </span>
+                ) : (
+                  <span />
+                )}
+                <span className="text-xs text-gray-400 font-medium ml-auto">
                   {stop.categoryName}
                 </span>
               </div>
