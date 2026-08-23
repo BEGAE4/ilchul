@@ -25,7 +25,14 @@ function resolve(raw: string | null | undefined, fallback: string): { src: strin
   if (v.startsWith('/') || v.startsWith('data:') || v.startsWith('blob:')) return { src: v, remote: false };
   try {
     const u = new URL(v);
-    if (u.protocol === 'http:' || u.protocol === 'https:') return { src: v, remote: true };
+    if (u.protocol === 'https:') return { src: v, remote: true };
+    if (u.protocol === 'http:') {
+      // 카카오 프로필(http://img1.kakaocdn.net/…)처럼 http 로 오는 URL 은 https 페이지에서
+      // 혼합 콘텐츠로 차단될 수 있다. 로컬 개발 서버를 제외하고 https 로 승격한다.
+      const isLocal = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+      if (!isLocal) u.protocol = 'https:';
+      return { src: u.toString(), remote: true };
+    }
   } catch {
     /* 무효 URL */
   }
