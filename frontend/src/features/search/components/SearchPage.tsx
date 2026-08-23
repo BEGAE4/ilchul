@@ -311,7 +311,7 @@ export const SearchPage: React.FC = () => {
       {/* 지금 뜨는 여행지 */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-3">
-          <Flame size={16} className="text-orange-500" />
+          <Flame size={16} className="text-accent-500" />
           <h2 className="font-bold text-gray-900">지금 뜨는 여행지</h2>
         </div>
         <div className="space-y-2.5">
@@ -322,7 +322,7 @@ export const SearchPage: React.FC = () => {
               className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition active:scale-[0.98]"
             >
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                idx < 3 ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-500'
+                idx < 3 ? 'bg-accent-500 text-white' : 'bg-gray-100 text-gray-500'
               }`}>
                 {idx + 1}
               </span>
@@ -343,7 +343,7 @@ export const SearchPage: React.FC = () => {
       {/* 지금 뜨는 플랜 */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <Flame size={16} className="text-violet-500" />
+          <Flame size={16} className="text-primary-500" />
           <h2 className="font-bold text-gray-900">지금 뜨는 플랜</h2>
         </div>
         <div className="space-y-2.5">
@@ -354,7 +354,7 @@ export const SearchPage: React.FC = () => {
               className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition active:scale-[0.98]"
             >
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                idx < 3 ? 'bg-violet-500 text-white' : 'bg-gray-100 text-gray-500'
+                idx < 3 ? 'bg-primary-500 text-white' : 'bg-gray-100 text-gray-500'
               }`}>
                 {idx + 1}
               </span>

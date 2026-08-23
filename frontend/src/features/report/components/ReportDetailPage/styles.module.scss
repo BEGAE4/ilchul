@@ -60,8 +60,8 @@
 }
 
 .status__resolved {
-  background: #f0fdf4;
-  color: #16a34a;
+  background: var(--color-primary-50);
+  color: var(--color-primary-600);
 }
 
 .status__rejected {
@@ -88,8 +88,8 @@
 .targetTypeBadge {
   flex-shrink: 0;
   padding: 3px 8px;
-  background: #e0e7ff;
-  color: #4f46e5;
+  background: var(--color-primary-50);
+  color: var(--color-primary-600);
   font-size: 12px;
   font-weight: 600;
   border-radius: 6px;
@@ -188,7 +188,7 @@
 // 처리 결과
 .resolutionCard {
   padding: 14px 16px;
-  background: #f0fdf4;
+  background: var(--color-primary-50);
   border-radius: 12px;
   border: 1px solid #bbf7d0;
 }
@@ -196,7 +196,7 @@
 .resolutionText {
   font-size: 14px;
   font-weight: 500;
-  color: #16a34a;
+  color: var(--color-primary-600);
   margin: 0;
 }
 
