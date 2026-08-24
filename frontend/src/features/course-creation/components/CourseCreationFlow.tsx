@@ -41,6 +41,8 @@ import {
 import type { Place } from '@/shared/types';
 import { mapRecommendedPlaces } from '../utils/recommendedPlaces';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
+import { useUserStore } from '@/shared/lib/stores/useUserStore';
+import { fetchMyPageProfile } from '@/features/my-page/api/my-page.api';
 
 // 추천 장소 이미지는 출처(카카오 CDN 등)를 미리 알 수 없어 next.config의 remotePatterns로 감쌀 수 없다.
 // 미등록 호스트는 next/image가 렌더 중에 예외를 던지므로 최적화를 끄고, 빈 src·로드 실패는 자리 표시로 대체한다.
@@ -191,9 +193,32 @@ function formatTimeLabel(value: string): string {
   return HALF_HOUR_LABELS.get(value) ?? value;
 }
 
-function buildDefaultPlanTitle(mindState: string | undefined): string {
-  const trimmed = (mindState ?? '').trim();
-  return trimmed ? `${trimmed.slice(0, 10)} 힐링 플랜` : '나만의 힐링 플랜';
+// 설문의 마음 상태 → 제목에 넣을 짧은 수식어. MIND_STATES 의 label 과 1:1 로 맞춘다.
+const MIND_STATE_ADJECTIVE: Record<string, string> = {
+  '그냥 기운이 없고 지쳤어요': '지친',
+  '마음이 좀 울적하고 속상해요': '울적한',
+  '답답하고 짜증이 많아졌어요': '답답한',
+  '무기력하고 재미가 없어요': '무기력한',
+  '기분이 좋아요, 뭔가 하고 싶어요': '설레는',
+  '생각이 많아졌어요, 정리가 필요해요': '생각 많은',
+  '아무 감정도 없이 멍한 느낌이에요': '멍한',
+};
+
+const PLAN_TITLE_MAX = 30;
+
+// 기본 제목: "{수식어} {닉네임}님을 위한 힐링 플랜" (예: "울적한 연주님을 위한 힐링 플랜")
+// 이전에는 감정 문장 앞 10글자를 그대로 잘라 붙여("생각이 많아졌어요, 힐링 플랜") 어색했다.
+// 입력 maxLength(30)를 넘으면 닉네임 → 수식어 순으로 줄인다.
+function buildDefaultPlanTitle(mindState: string | undefined, nickname?: string): string {
+  const adjective = MIND_STATE_ADJECTIVE[(mindState ?? '').trim()] ?? '';
+  const name = (nickname ?? '').trim();
+  const candidates = [
+    name && adjective ? `${adjective} ${name}님을 위한 힐링 플랜` : '',
+    name ? `${name}님을 위한 힐링 플랜` : '',
+    adjective ? `${adjective} 당신을 위한 힐링 플랜` : '',
+    '나를 위한 힐링 플랜',
+  ].filter(Boolean);
+  return candidates.find((t) => t.length <= PLAN_TITLE_MAX) ?? '나를 위한 힐링 플랜';
 }
 
 function formatDayLabel(dateStr: string, todayStr: string): string {
@@ -272,6 +297,21 @@ export const CourseCreationFlow: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   // 저장 직전에 사용자가 직접 정하는 값 — 이전에는 감정 문구에서 자동 생성되고 비공개로 고정돼 있었다
   const [planTitle, setPlanTitle] = useState('');
+  // 기본 제목에 닉네임을 넣는다. 플랜 생성으로 바로 들어오면 스토어가 비어 있을 수 있어 프로필을 채운다.
+  const { user, isLoggedIn, updateProfile } = useUserStore();
+  useEffect(() => {
+    if (!isLoggedIn || user.name) return;
+    let isMounted = true;
+    fetchMyPageProfile()
+      .then((data) => {
+        if (!isMounted) return;
+        updateProfile({ name: data.userNickname, avatar: data.userImg, title: data.userIntro, bio: data.userIntro });
+      })
+      .catch(() => undefined);
+    return () => {
+      isMounted = false;
+    };
+  }, [isLoggedIn, user.name, updateProfile]);
   const [isPlanVisible, setIsPlanVisible] = useState(false);
   // 최종 플랜 단계의 서버 계산 프리뷰 (소요시간/이동거리)
   const [serverPreview, setServerPreview] = useState<PlanPreviewResponse | null>(null);
@@ -394,7 +434,7 @@ export const CourseCreationFlow: React.FC = () => {
         return;
       }
       const preview = await planApi.createPlanPreview({
-        planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState),
+        planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState, user.name),
         planDescription,
         isPlanVisible,
         ...buildPlanContext(),
@@ -432,7 +472,7 @@ export const CourseCreationFlow: React.FC = () => {
         })
         .filter((p) => Number.isInteger(p.placeId));
       const created = await planApi.createPlan({
-        planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState),
+        planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState, user.name),
         planDescription,
         isPlanVisible,
         requiredTime: serverPreview.requiredTime,
@@ -465,7 +505,7 @@ export const CourseCreationFlow: React.FC = () => {
       const selected = recommendedPlaces.filter((p) => selectedPlaceIds.includes(p.id));
       setFinalStops(selected);
       // 사용자가 아직 제목을 손대지 않았다면 기본값을 채워 편집 출발점으로 삼는다
-      if (!planTitle.trim()) setPlanTitle(buildDefaultPlanTitle(surveyData.mindState));
+      if (!planTitle.trim()) setPlanTitle(buildDefaultPlanTitle(surveyData.mindState, user.name));
       setStep('finalPlan');
       void requestPreview(selected);
     } else if (step === 'finalPlan') {
@@ -1714,7 +1754,7 @@ export const CourseCreationFlow: React.FC = () => {
             type="text"
             value={planTitle}
             onChange={(e) => setPlanTitle(e.target.value)}
-            placeholder={buildDefaultPlanTitle(surveyData.mindState)}
+            placeholder={buildDefaultPlanTitle(surveyData.mindState, user.name)}
             maxLength={30}
             className="w-full mb-3 p-3 border border-gray-200 rounded-xl bg-gray-50 font-bold text-gray-900 outline-none focus:border-primary-400 focus:bg-white transition-colors"
           />
