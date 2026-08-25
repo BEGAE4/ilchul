@@ -37,9 +37,12 @@ export default function Home() {
 
   // 위치 정보 — 권한 응답을 기다리지 않고 기본 좌표로 먼저 조회하고,
   // 실제 좌표가 확정되면 baseParams 변경으로 주변 섹션이 자동 재조회된다.
+  // 단, 실제 좌표 주변에 등록된 장소가 없으면(빈 응답) 기본 좌표로 되돌린다.
   const geo = useGeolocation();
-  const effectiveLat = geo.coords?.lat ?? DEFAULT_COORDS.lat;
-  const effectiveLng = geo.coords?.lng ?? DEFAULT_COORDS.lng;
+  const [fallbackToDefault, setFallbackToDefault] = useState(false);
+  const realCoords = fallbackToDefault ? null : geo.coords;
+  const effectiveLat = realCoords?.lat ?? DEFAULT_COORDS.lat;
+  const effectiveLng = realCoords?.lng ?? DEFAULT_COORDS.lng;
 
   // API 훅
   const nearbyPlaces = useNearbyPopularPlaces({
@@ -54,6 +57,17 @@ export default function Home() {
   });
   const nationwidePlaces = useNationwidePopularPlaces({ limit: 6 });
   const nationwidePlans = useNationwidePopularPlans({ limit: 3 });
+
+  // 실제 좌표 기준 주변 장소가 비어 있으면 기본 좌표(서울)로 폴백
+  useEffect(() => {
+    if (
+      realCoords &&
+      !nearbyPlaces.isLoading &&
+      nearbyPlaces.items.length === 0
+    ) {
+      setFallbackToDefault(true);
+    }
+  }, [realCoords, nearbyPlaces.isLoading, nearbyPlaces.items.length]);
 
   // 인트로 리다이렉트
   useEffect(() => {
