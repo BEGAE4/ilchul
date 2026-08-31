@@ -27,15 +27,11 @@ fi
 docker compose -f docker-compose.nginx.yml config --quiet
 docker compose -f docker-compose.nginx.yml up -d
 
-# 3. 롤백 타겟 및 포트 세팅
+# 3. 롤백 타겟 결정
 if [ "$CURRENT_ENV" = "blue" ]; then
     ROLLBACK_ENV="green"
-    BACKEND_PORT=8082
-    FRONTEND_PORT=3002
 else
     ROLLBACK_ENV="blue"
-    BACKEND_PORT=8081
-    FRONTEND_PORT=3001
 fi
 
 echo "현재 활성 환경: $CURRENT_ENV"
@@ -44,8 +40,9 @@ echo "롤백 대상 환경: $ROLLBACK_ENV"
 # 4. 중지되었던 이전 버전 컨테이너 깨우기
 echo "🚀 $ROLLBACK_ENV 컨테이너를 다시 시작합니다..."
 # 공통 yml 없이 단독 실행 파일만 사용
+docker network inspect shared-infra >/dev/null
 docker compose -f "docker-compose.${ROLLBACK_ENV}.yml" config --quiet
-docker compose -f "docker-compose.${ROLLBACK_ENV}.yml" start
+docker compose -f "docker-compose.${ROLLBACK_ENV}.yml" up -d
 
 # 5. 두 컨테이너가 실제로 healthy가 될 때까지 대기
 BACKEND_CONTAINER="ilchul-backend-${ROLLBACK_ENV}"
@@ -54,8 +51,8 @@ for attempt in $(seq 1 30); do
     BACKEND_HEALTH=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$BACKEND_CONTAINER")
     FRONTEND_HEALTH=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$FRONTEND_CONTAINER")
     if [ "$BACKEND_HEALTH" = "healthy" ] && [ "$FRONTEND_HEALTH" = "healthy" ] \
-        && curl --fail --silent --show-error "http://127.0.0.1:${BACKEND_PORT}/actuator/health" >/dev/null \
-        && curl --fail --silent --show-error "http://127.0.0.1:${FRONTEND_PORT}/intro" >/dev/null; then
+        && docker exec "$BACKEND_CONTAINER" sh -lc 'wget --quiet --spider "http://127.0.0.1:$SERVER_PORT/actuator/health"' \
+        && docker exec "$FRONTEND_CONTAINER" sh -lc 'wget --quiet --spider "http://127.0.0.1:$PORT/intro"'; then
         break
     fi
     if [ "$attempt" -eq 30 ]; then
