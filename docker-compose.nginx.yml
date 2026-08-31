@@ -1,0 +1,27 @@
+name: ilchul-nginx-gateway
+
+services:
+  ilchul-nginx:
+    image: nginx@sha256:5aca99593157f4ae539a5dec1092a0ad8762f8e2eb1789085a13a0f5622369f6
+    container_name: ilchul-nginx
+    ports:
+      - "127.0.0.1:18090:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/runtime:/etc/nginx/runtime:ro
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - ilchul-network
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t && test -r /etc/nginx/runtime/active.conf"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  ilchul-network:
+    external: true
+    name: ilchul-network

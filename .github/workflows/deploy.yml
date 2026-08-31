@@ -139,7 +139,7 @@ jobs:
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_KEY }}
           port: ${{ secrets.ORACLE_PORT }}
-          source: docker-compose.blue.yml,docker-compose.green.yml,rollback.sh,.env.deploy
+          source: docker-compose.blue.yml,docker-compose.green.yml,docker-compose.nginx.yml,nginx,rollback.sh,.env.deploy
           target: /home/begae/ilchul
 
       - name: Deploy inactive environment
@@ -186,6 +186,39 @@ jobs:
             chmod 600 .env
 
             printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+
+            install -d -m 0755 nginx/runtime
+            install -m 0644 "nginx/upstreams/${CURRENT_ENV}.conf" nginx/runtime/active.conf.new
+            mv nginx/runtime/active.conf.new nginx/runtime/active.conf
+            docker compose -f docker-compose.nginx.yml config --quiet
+            docker compose -f docker-compose.nginx.yml pull
+            docker compose -f docker-compose.nginx.yml up -d
+
+            for attempt in $(seq 1 30); do
+              GATEWAY_HEALTH=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' ilchul-nginx)
+              if [ "$GATEWAY_HEALTH" = "healthy" ]; then
+                break
+              fi
+              if [ "$attempt" -eq 30 ]; then
+                docker logs --tail 100 ilchul-nginx || true
+                exit 1
+              fi
+              echo "Waiting for Ilchul Nginx gateway: ${GATEWAY_HEALTH} (${attempt}/30)"
+              sleep 2
+            done
+
+            docker exec ilchul-nginx nginx -t
+            docker exec ilchul-nginx nginx -s reload
+            curl --fail --silent --show-error \
+              --retry 10 \
+              --retry-delay 1 \
+              --retry-connrefused \
+              -H "Host: il-chul.com" \
+              -H "X-Real-IP: 127.0.0.1" \
+              -H "X-Forwarded-For: 127.0.0.1" \
+              -H "X-Forwarded-Proto: https" \
+              http://127.0.0.1:18090/intro >/dev/null
+
             docker compose -f "docker-compose.${TARGET_ENV}.yml" config --quiet
             docker compose -f "docker-compose.${TARGET_ENV}.yml" pull
             docker compose -f "docker-compose.${TARGET_ENV}.yml" up -d
@@ -223,27 +256,33 @@ jobs:
           script: |
             set -eu
             PROJECT_PATH="/home/begae/ilchul"
-            GLOBAL_NGINX="nginx"
+            ILCHUL_NGINX="ilchul-nginx"
             cd "$PROJECT_PATH"
 
             TARGET_ENV=$(tr -d '[:space:]' < target_environment.txt)
             CURRENT_ENV=$(tr -d '[:space:]' < previous_environment.txt)
-            TARGET_CONFIG="/etc/nginx/conf.d/ilchul/ilchul-${TARGET_ENV}.conf"
-            CURRENT_CONFIG="/etc/nginx/conf.d/ilchul/ilchul-${CURRENT_ENV}.conf"
-            ACTIVE_CONFIG="/etc/nginx/conf.d/ilchul/ilchul-active-env.conf"
+            ACTIVE_CONFIG="$PROJECT_PATH/nginx/runtime/active.conf"
 
-            docker exec "$GLOBAL_NGINX" nginx -t
-            docker exec "$GLOBAL_NGINX" ln -sf "$TARGET_CONFIG" "$ACTIVE_CONFIG"
-            docker exec "$GLOBAL_NGINX" nginx -t
-            docker exec "$GLOBAL_NGINX" nginx -s reload
+            activate_environment() {
+              active_environment=$1
+              source_config="$PROJECT_PATH/nginx/upstreams/${active_environment}.conf"
+              install -m 0644 "$source_config" "${ACTIVE_CONFIG}.new"
+              mv "${ACTIVE_CONFIG}.new" "$ACTIVE_CONFIG"
+              docker exec "$ILCHUL_NGINX" nginx -t || return 1
+              docker exec "$ILCHUL_NGINX" nginx -s reload || return 1
+            }
+
+            if ! activate_environment "$TARGET_ENV"; then
+              echo "Nginx config switch failed; restoring ${CURRENT_ENV}"
+              activate_environment "$CURRENT_ENV"
+              exit 1
+            fi
 
             FRONTEND_STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/intro)
             AUTH_STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/api/plan/1)
             if [ "$FRONTEND_STATUS" != "200" ] || [ "$AUTH_STATUS" != "401" ]; then
               echo "Smoke test failed: frontend=${FRONTEND_STATUS}, unauthenticated_api=${AUTH_STATUS}"
-              docker exec "$GLOBAL_NGINX" ln -sf "$CURRENT_CONFIG" "$ACTIVE_CONFIG"
-              docker exec "$GLOBAL_NGINX" nginx -t
-              docker exec "$GLOBAL_NGINX" nginx -s reload
+              activate_environment "$CURRENT_ENV"
               exit 1
             fi
 
