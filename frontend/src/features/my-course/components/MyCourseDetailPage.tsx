@@ -759,11 +759,14 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           </p>
         </div>
 
-        <div className="space-y-6 relative pl-4 border-l-2 border-gray-100">
+        {/* 세로 라인과 점을 같은 기준(left-2, 중심 8px)에 놓는다 — CourseViewPage 와 같은 방식.
+            이전에는 border-l-2 + pl-4 컨테이너 안에서 점을 -left-[21px] 로 찍어
+            점 중심(5px)이 선 중심(1px)보다 4px 오른쪽에 놓였다 (QA C-03). */}
+        <div className="relative space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:-translate-x-1/2 before:bg-gray-100 before:content-['']">
           {stops.map((stop, index) => (
-            <div key={stop.planPlaceId} className="relative pl-6">
+            <div key={stop.planPlaceId} className="relative pl-9">
               <div
-                className={`absolute -left-[21px] top-0 w-4 h-4 rounded-full border-2 z-10 bg-white ${
+                className={`absolute left-2 -translate-x-1/2 top-0 w-4 h-4 rounded-full border-2 z-10 bg-white ${
                   stop.isStamped ? 'border-primary-500' : 'border-gray-300'
                 }`}
               >
