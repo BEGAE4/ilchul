@@ -11,6 +11,7 @@ import { fetchMyPlans } from '@/features/my-page/api/my-page.api';
 import type { MyPlan } from '@/features/my-page/types/plan.types';
 import { fetchPlanDetail, updatePlanPlaces } from '@/features/plan/api/plan.api';
 import { toNumericPlaceId } from '@/features/place/utils/placeId';
+import { useUserStore } from '@/shared/lib/stores/useUserStore';
 
 const NEW_PLAN_ID = '__new__';
 const FALLBACK_THUMB =
@@ -35,10 +36,14 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addedSuccess, setAddedSuccess] = useState(false);
   const [addedPlanTitle, setAddedPlanTitle] = useState('');
+  const authChecked = useUserStore((s) => s.authChecked);
+  const isLoggedIn = useUserStore((s) => s.isLoggedIn);
+  // 비로그인이면 내 플랜 조회(401) 대신 로그인 안내를 보여준다 (QA A #9)
+  const needsLogin = authChecked && !isLoggedIn;
 
   // 시트가 열릴 때마다 내 플랜 목록을 새로 조회한다
   useEffect(() => {
-    if (!open) return;
+    if (!open || needsLogin) return;
     let cancelled = false;
     (async () => {
       setIsLoadingPlans(true);
@@ -58,7 +63,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, needsLogin]);
 
   const handleConfirm = async () => {
     if (!place || isSubmitting) return;
@@ -133,12 +138,13 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
     <AnimatePresence>
       {open && (
         <>
+          {/* 시트·배경은 하단 네비(z-index 100)보다 위에 둔다 — 시트 하단 버튼이 네비에 가려 눌리지 않던 문제 (QA A) */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-y-0 app-frame bg-black/50 z-50"
+            className="fixed inset-y-0 app-frame bg-black/50 z-[110]"
             onClick={handleClose}
           />
           <motion.div
@@ -146,7 +152,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 400 }}
-            className="fixed bottom-0 app-frame z-50"
+            className="fixed bottom-0 app-frame z-[120]"
           >
             <div className="bg-white rounded-t-2xl px-5 pt-3 pb-8 max-h-[70vh] flex flex-col">
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 shrink-0" />
@@ -160,7 +166,24 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                 </button>
               </div>
 
-              {addedSuccess ? (
+              {needsLogin ? (
+                <div className="flex flex-col items-center py-6 text-center">
+                  <p className="text-sm font-bold text-gray-900 mb-1">로그인이 필요해요</p>
+                  <p className="text-xs text-gray-500 mb-6">
+                    장소를 내 플랜에 담으려면 먼저 로그인해주세요.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleClose();
+                      router.push('/login');
+                    }}
+                    className="w-full py-3 bg-primary-500 text-white font-bold rounded-xl active:scale-[0.98] transition-transform"
+                  >
+                    로그인하러 가기
+                  </button>
+                </div>
+              ) : addedSuccess ? (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
