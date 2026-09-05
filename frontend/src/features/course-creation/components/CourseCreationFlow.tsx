@@ -269,6 +269,7 @@ export const CourseCreationFlow: React.FC = () => {
     step,
     previousStep,
     surveyData,
+    recommendedPlaces,
     selectedPlaceIds,
     finalStops,
     viewingPlaceId,
@@ -277,6 +278,7 @@ export const CourseCreationFlow: React.FC = () => {
     setStep,
     setPreviousStep,
     updateSurvey,
+    setRecommendedPlaces,
     togglePlaceSelection,
     clearPlaceSelection,
     setFinalStops,
@@ -317,8 +319,6 @@ export const CourseCreationFlow: React.FC = () => {
   const [serverPreview, setServerPreview] = useState<PlanPreviewResponse | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  // 설문 기반 장소 추천 결과 (POST /api/place/recommend)
-  const [recommendedPlaces, setRecommendedPlaces] = useState<Place[]>([]);
   // 추천 API 실패/빈 응답 시 안내 문구 — 목록 대신 재시도 UI를 보여준다
   const [recommendError, setRecommendError] = useState<string | null>(null);
   // 카카오맵 SDK 로드 상태 — 출발지 검색/역지오코딩에 services 라이브러리 사용
@@ -327,10 +327,18 @@ export const CourseCreationFlow: React.FC = () => {
   const [addressResults, setAddressResults] = useState<KeywordPlaceResult[]>([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
 
-  // 새로고침/재진입 시 sessionStorage에 저장해둔 설문 입력을 복원한다.
-  // 스토어가 skipHydration이라 마운트 후 여기서 한 번만 수동 복원한다.
+  // 새로고침/재진입 시 sessionStorage 에 저장해둔 설문 입력·추천 결과·선택 장소를 복원한다.
+  // 스토어가 skipHydration 이라 마운트 후 여기서 한 번만 수동 복원한다.
+  // 최종 플랜 단계로 복원되면 서버 프리뷰(소요시간/거리)는 저장하지 않았으므로 다시 요청한다.
   useEffect(() => {
-    void useSurveyStore.persist.rehydrate();
+    void Promise.resolve(useSurveyStore.persist.rehydrate()).then(() => {
+      const s = useSurveyStore.getState();
+      if (s.step === 'finalPlan' && s.finalStops.length > 0) {
+        void requestPreview(s.finalStops);
+      }
+    });
+    // requestPreview 는 렌더마다 새로 만들어지지만 복원은 마운트 시 한 번만 해야 한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 출발지 검색어 디바운스 → 카카오 키워드 장소 검색
