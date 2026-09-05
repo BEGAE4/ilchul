@@ -9,13 +9,15 @@ interface Options {
   lng: number | null;
   limit?: number;
   enabled?: boolean;
+  cacheKey?: string;
 }
 
-export function useNearbyPopularPlaces({ lat, lng, limit, enabled = true }: Options) {
+export function useNearbyPopularPlaces({ lat, lng, limit, enabled = true, cacheKey }: Options) {
   return usePaginatedList<PopularPlace, { lat: number; lng: number }>({
     fetchFn: fetchNearbyPopularPlaces,
     baseParams: { lat: lat ?? 0, lng: lng ?? 0 },
     limit,
     enabled: enabled && lat !== null && lng !== null,
+    cacheKey,
   });
 }

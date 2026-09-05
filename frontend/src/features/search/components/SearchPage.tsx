@@ -176,10 +176,15 @@ export const SearchPage: React.FC = () => {
         >
           {isAutocompleting ? (
             <div className="px-4 py-6 text-center text-sm text-gray-400">검색 중...</div>
-          ) : suggestions.length === 0 ? (
-            <div className="px-4 py-6 text-center text-sm text-gray-400">검색 결과가 없어요</div>
           ) : (
             <>
+              {/* 자동완성 결과가 없어도 "전체 검색"으로 검색할 수 있게 버튼은 항상 노출한다 */}
+              {suggestions.length === 0 && (
+                <div className="px-4 pt-6 pb-2 text-center text-sm text-gray-400">
+                  추천 검색어가 없어요
+                </div>
+              )}
+
               {/* 장소 그룹 */}
               {placeSuggestions.length > 0 && (
                 <>
@@ -257,7 +262,10 @@ export const SearchPage: React.FC = () => {
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
-                deleteRecentSearches(recentSearches)
+                // 화면에는 최대 8건만 보이지만, 서버에 그 이상 쌓여 있을 수 있으므로
+                // 전체 목록을 다시 조회한 뒤 모두 삭제한다.
+                fetchRecentSearches()
+                  .then((all) => deleteRecentSearches(all.length ? all : recentSearches))
                   .then(() => setRecentSearches([]))
                   .catch(() => {});
               }}

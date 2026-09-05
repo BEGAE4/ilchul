@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { useNearbyPopularPlaces } from '../../hooks/useNearbyPopularPlaces';
+import { useScrollRestoration } from '@/shared/hooks/useScrollRestoration';
 import { ListPageShell } from '../ListPageShell';
 import { PopularPlaceCard } from '../PopularPlaceCard';
 import styles from './styles.module.scss';
+
+const CACHE_KEY = 'place-popular-nearby';
 
 export function PopularPlaceListPage() {
   const router = useRouter();
@@ -31,12 +34,16 @@ export function PopularPlaceListPage() {
   } = useNearbyPopularPlaces({
     lat: geo.coords?.lat ?? null,
     lng: geo.coords?.lng ?? null,
+    cacheKey: CACHE_KEY,
   });
 
   const sentinelRef = useInfiniteScroll({
     enabled: hasNext && !isLoadingMore && !error,
     onIntersect: loadMore,
   });
+
+  // 목록 → 상세 → 뒤로가기 시 스크롤 위치 복원
+  useScrollRestoration(CACHE_KEY, !isLoading && items.length > 0);
 
   const showShellLoading =
     isLoading || geo.status === 'idle' || geo.status === 'loading';

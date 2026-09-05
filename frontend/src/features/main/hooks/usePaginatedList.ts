@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PaginatedResponse } from '../types';
+import { readListState, saveListState } from '@/shared/lib/listStateCache';
 
 type FetchParams<P> = P & { page: number; limit: number };
 
@@ -10,6 +11,9 @@ interface UsePaginatedListOptions<T, P extends Record<string, unknown>> {
   baseParams: P;
   limit?: number;
   enabled?: boolean;
+  // 지정하면 무한 스크롤로 누적된 목록/페이지 상태를 세션에 저장하고,
+  // 뒤로가기로 돌아왔을 때 복원한다(재요청 없이 이전 스크롤 위치까지 유지).
+  cacheKey?: string;
 }
 
 interface UsePaginatedListResult<T> {
@@ -30,7 +34,7 @@ export function usePaginatedList<
   T extends { id: string | number },
   P extends Record<string, unknown>,
 >(options: UsePaginatedListOptions<T, P>): UsePaginatedListResult<T> {
-  const { fetchFn, baseParams, limit = DEFAULT_LIMIT, enabled = true } = options;
+  const { fetchFn, baseParams, limit = DEFAULT_LIMIT, enabled = true, cacheKey } = options;
 
   const [items, setItems] = useState<T[]>([]);
   const [page, setPage] = useState(1);
@@ -87,10 +91,30 @@ export function usePaginatedList<
 
   useEffect(() => {
     if (!enabled) return;
+    // 뒤로가기 등으로 돌아온 경우: 세션에 저장된 누적 목록이 있으면 복원하고 재요청하지 않는다.
+    // StrictMode(dev)에서 effect가 두 번 실행돼도 항상 캐시를 재확인하므로(가드 ref 미사용)
+    // 두 번째 실행이 loadPage 로 새로 받아와 캐시를 덮어쓰지 않는다.
+    if (cacheKey) {
+      const cached = readListState<T>(cacheKey);
+      if (cached && cached.items.length > 0) {
+        setItems(cached.items);
+        setPage(cached.page);
+        setHasNext(cached.hasNext);
+        setTotalCount(cached.totalCount);
+        setIsLoading(false);
+        return;
+      }
+    }
     loadPage(1, 'initial');
     // baseParamsKey changes drive reload, loadPage already depends on it
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseParamsKey, enabled]);
+
+  // 누적 상태를 세션에 저장 (무한 스크롤/복원 후에도 최신 상태 유지)
+  useEffect(() => {
+    if (!cacheKey || items.length === 0) return;
+    saveListState(cacheKey, { items, page, hasNext, totalCount });
+  }, [cacheKey, items, page, hasNext, totalCount]);
 
   const loadMore = useCallback(() => {
     if (isLoading || isLoadingMore || !hasNext) return;

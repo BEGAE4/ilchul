@@ -152,7 +152,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 400 }}
-            className="fixed bottom-0 app-frame z-[110]"
+            className="fixed bottom-0 app-frame z-[120]"
           >
             <div className="bg-white rounded-t-2xl px-5 pt-3 pb-8 max-h-[70vh] flex flex-col">
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4 shrink-0" />
