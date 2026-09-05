@@ -63,7 +63,7 @@ export const FeedPage: React.FC = () => {
       id: 'profile',
       label: '프로필',
       icon: UserRound,
-      onClick: () => router.push('/my-page'),
+      onClick: () => router.push('/profile'),
     },
   ];
 

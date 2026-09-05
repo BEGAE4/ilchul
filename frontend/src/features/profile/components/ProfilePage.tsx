@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from '@/shared/ui/SafeImage';
 import PlanCover from '@/shared/ui/PlanCover';
@@ -24,6 +24,11 @@ type MainTab = 'plans' | 'bookmarks';
 export const ProfilePage: React.FC = () => {
   const router = useRouter();
   const { ready } = useRequireAuth();
+
+  // 클라이언트 페이지라 metadata 를 export 할 수 없어 문서 제목을 직접 지정한다 (P-13)
+  useEffect(() => {
+    document.title = '마이페이지 · 일출';
+  }, []);
   const { user, email, updateProfile } = useUserStore();
   const [mainTab, setMainTab] = useState<MainTab>('plans');
   const [plansLoading, setPlansLoading] = useState(true);
@@ -78,28 +83,24 @@ export const ProfilePage: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadSummary = async () => {
-      try {
-        setSummaryLoading(true);
-        setSummaryError(null);
-        const data = await fetchMyPageSummary();
-        if (isMounted) setSummary(data);
-      } catch (err) {
-        console.error('마이페이지 요약 정보 로드 실패:', err);
-        if (isMounted) setSummaryError('마이페이지 요약 정보를 불러오지 못했어요.');
-      } finally {
-        if (isMounted) setSummaryLoading(false);
-      }
-    };
-
-    loadSummary();
-    return () => {
-      isMounted = false;
-    };
+  // 통계 요약 로드. 공개/비공개 전환 후에도 다시 호출해 타일을 최신화한다 (P-05).
+  const loadSummary = useCallback(async () => {
+    try {
+      setSummaryLoading(true);
+      setSummaryError(null);
+      const data = await fetchMyPageSummary();
+      setSummary(data);
+    } catch (err) {
+      console.error('마이페이지 요약 정보 로드 실패:', err);
+      setSummaryError('마이페이지 요약 정보를 불러오지 못했어요.');
+    } finally {
+      setSummaryLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadSummary();
+  }, [loadSummary]);
 
   useEffect(() => {
     let isMounted = true;
@@ -131,11 +132,12 @@ export const ProfilePage: React.FC = () => {
       try {
         const data = await fetchMyPageProfile();
         if (isMounted) {
+          // 서버가 null 로 내려줄 수 있어 '' 로 정규화한다 (프로필 편집 크래시 방지, P-01)
           updateProfile({
-            name: data.userNickname,
-            avatar: data.userImg,
-            title: data.userIntro,
-            bio: data.userIntro,
+            name: data.userNickname ?? '',
+            avatar: data.userImg ?? '',
+            title: data.userIntro ?? '',
+            bio: data.userIntro ?? '',
           });
         }
       } catch (err) {
@@ -227,7 +229,12 @@ export const ProfilePage: React.FC = () => {
       setPlanVisibilityLoading(prev => ({ ...prev, [planId]: true }));
       await setMyPlanVisibility(planId);
       setPlanVisibility(prev => ({ ...prev, [planId]: next }));
-      toast.success(next ? '플랜을 공개했어요.' : '플랜을 비공개로 전환했어요.');
+      toast.success(next ? '플랜을 공개했어요.' : '플랜을 비공개로 전환했어요.', {
+        // 연속 토글 시 토스트가 쌓이지 않도록 같은 id 로 교체한다 (P-08)
+        id: 'plan-visibility',
+      });
+      // 공개/비공개가 바뀌면 '공개 플랜' 통계 타일도 갱신되어야 한다 (P-05)
+      void loadSummary();
     } catch (err) {
       console.error('플랜 공개여부 설정 실패:', err);
       toast.error('플랜 공개 여부 설정에 실패했어요.');
@@ -260,6 +267,7 @@ export const ProfilePage: React.FC = () => {
           <h1 className="text-2xl font-bold text-gray-900">마이페이지</h1>
           <button
             onClick={() => router.push('/profile/settings')}
+            aria-label="설정"
             className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
           >
             <Settings size={24} />
