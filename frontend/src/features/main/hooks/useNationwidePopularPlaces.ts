@@ -6,12 +6,14 @@ import { usePaginatedList } from './usePaginatedList';
 
 interface Options {
   limit?: number;
+  cacheKey?: string;
 }
 
-export function useNationwidePopularPlaces({ limit }: Options = {}) {
+export function useNationwidePopularPlaces({ limit, cacheKey }: Options = {}) {
   return usePaginatedList<PopularPlace, Record<string, never>>({
     fetchFn: fetchNationwidePopularPlaces,
     baseParams: {},
     limit,
+    cacheKey,
   });
 }

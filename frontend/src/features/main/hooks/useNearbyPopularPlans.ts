@@ -8,13 +8,15 @@ interface Options {
   lat: number | null;
   lng: number | null;
   limit?: number;
+  cacheKey?: string;
 }
 
-export function useNearbyPopularPlans({ lat, lng, limit }: Options) {
+export function useNearbyPopularPlans({ lat, lng, limit, cacheKey }: Options) {
   return usePaginatedList<PopularPlan, { lat: number; lng: number }>({
     fetchFn: fetchNearbyPopularPlans,
     baseParams: { lat: lat ?? 0, lng: lng ?? 0 },
     limit,
     enabled: lat !== null && lng !== null,
+    cacheKey,
   });
 }

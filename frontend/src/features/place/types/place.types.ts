@@ -12,6 +12,12 @@ export interface PlaceDetail {
   placeImageUrl: string;
   x: number;
   y: number;
+  // 좋아요/스크랩 상태·카운트. 현재 BE 응답에는 없어 optional이며,
+  // BE가 추가해주면 새로고침 후에도 상태가 유지된다. (문서: B-05)
+  likeCount?: number;
+  isLiked?: boolean;
+  bookmarkCount?: number;
+  isBookmarked?: boolean;
 }
 
 // 장소 검색 응답 항목 (SearchPlaceResponseDto)
