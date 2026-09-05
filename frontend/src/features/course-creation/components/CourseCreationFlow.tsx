@@ -1265,8 +1265,11 @@ export const CourseCreationFlow: React.FC = () => {
           <LogoLoader />
         </div>
         <div>
+          {/* 닉네임은 기본 플랜 제목과 같은 출처(user.name)를 쓴다. 아직 못 받았으면 '당신' (QA C-04) */}
           <h2 className="text-xl font-bold text-gray-900 mb-2">
-            김여행님에게 맞는 곳을<br />찾는 중입니다.
+            {user.name ? `${user.name}님에게` : '당신에게'} 맞는 곳을
+            <br />
+            찾는 중입니다.
           </h2>
           <p className="text-gray-500 text-sm">잠시만 기다려주세요...</p>
         </div>
