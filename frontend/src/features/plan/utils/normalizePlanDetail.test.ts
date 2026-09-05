@@ -89,6 +89,12 @@ describe('normalizePlanDetail', () => {
     expect(normalizePlanDetail(raw).planPlaceDetailDtos[0].stayDescription).toBe('조용한 북카페');
   });
 
+  it('planImages 가 없으면 빈 배열, 있으면 그대로 둔다 (C-07 대비)', () => {
+    expect(normalizePlanDetail(plan()).planImages).toEqual([]);
+    const withIds = plan({ planImages: [{ planImageId: 7, imageUrl: 'https://cdn/a.jpg' }] });
+    expect(normalizePlanDetail(withIds).planImages).toEqual([{ planImageId: 7, imageUrl: 'https://cdn/a.jpg' }]);
+  });
+
   it('planDescription 이 null 이어도 죽지 않는다', () => {
     const raw = plan({
       planDescription: null as unknown as string,

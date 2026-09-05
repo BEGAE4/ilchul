@@ -160,6 +160,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   // 플랜 사진 관리
   const [isPhotoSheetOpen, setIsPhotoSheetOpen] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
 
   if (isLoading) {
     return (
@@ -449,6 +450,29 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
       if (planImageInputRef.current) planImageInputRef.current.value = '';
     }
   };
+
+  // ── 플랜 사진 삭제 — 상세 응답에 planImages(ID 포함) 가 있을 때만 버튼이 보인다 ──
+  const handleDeletePlanImage = async (planImageId: number) => {
+    if (deletingImageId !== null) return;
+    setDeletingImageId(planImageId);
+    try {
+      await planApi.deletePlanImages(plan.planId, [planImageId]);
+      toast.success('사진을 삭제했어요.');
+      refetch();
+    } catch (err) {
+      console.error('플랜 사진 삭제 실패:', err);
+      toast.error('사진 삭제에 실패했어요. 다시 시도해주세요.');
+    } finally {
+      setDeletingImageId(null);
+    }
+  };
+
+  // ID 가 오면 그것을, 아니면 URL 만으로 목록을 만든다. ID 없는 항목은 삭제 불가.
+  const photoItems: { planImageId: number | null; imageUrl: string }[] =
+    (plan.planImages ?? []).length > 0
+      ? (plan.planImages ?? []).map((p) => ({ planImageId: p.planImageId, imageUrl: p.imageUrl }))
+      : plan.planImageUrls.map((url) => ({ planImageId: null, imageUrl: url }));
+  const canDeletePhotos = photoItems.some((p) => p.planImageId !== null);
 
   const scrollToReview = () => {
     reviewRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1097,16 +1121,34 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-gray-900">플랜 사진 관리</h3>
-              <span className="text-xs text-gray-400">{plan.planImageUrls.length}장</span>
+              <span className="text-xs text-gray-400">{photoItems.length}장</span>
             </div>
             <div className="grid grid-cols-3 gap-1.5 mb-4">
-              {plan.planImageUrls.map((url, i) => (
+              {photoItems.map((item, i) => (
                 <div
-                  key={`${url}-${i}`}
+                  key={`${item.imageUrl}-${i}`}
                   className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer"
-                  onClick={() => setPreviewPhoto(url)}
+                  onClick={() => setPreviewPhoto(item.imageUrl)}
                 >
-                  <ReviewPhoto src={url} alt={`플랜 사진 ${i + 1}`} />
+                  <ReviewPhoto src={item.imageUrl} alt={`플랜 사진 ${i + 1}`} />
+                  {item.planImageId !== null && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleDeletePlanImage(item.planImageId as number);
+                      }}
+                      disabled={deletingImageId !== null}
+                      aria-label="사진 삭제"
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md disabled:opacity-50"
+                    >
+                      {deletingImageId === item.planImageId ? (
+                        <Loader2 size={10} className="animate-spin" />
+                      ) : (
+                        <X size={10} />
+                      )}
+                    </button>
+                  )}
                 </div>
               ))}
               <button
@@ -1118,9 +1160,11 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                 <span className="text-[9px] mt-0.5">{isUploadingImages ? '업로드 중...' : '추가'}</span>
               </button>
             </div>
-            <p className="text-[11px] text-gray-400 mb-3">
-              * 사진 삭제는 서버 이미지 ID 제공이 준비되면 지원될 예정이에요.
-            </p>
+            {!canDeletePhotos && (
+              <p className="text-[11px] text-gray-400 mb-3">
+                * 사진 삭제는 서버가 이미지 ID를 내려주면 지원돼요. 지금은 추가만 할 수 있어요.
+              </p>
+            )}
             <button
               onClick={() => setIsPhotoSheetOpen(false)}
               className="w-full py-3 text-gray-400 font-bold text-sm"

@@ -30,6 +30,7 @@ export function normalizePlanDetail(raw: PlanDetail): PlanDetail {
     ...raw,
     tags: Array.isArray(raw.tags) ? raw.tags : [],
     planImageUrls: Array.isArray(raw.planImageUrls) ? raw.planImageUrls : [],
+    planImages: Array.isArray(raw.planImages) ? raw.planImages : [],
     planPlaceDetailDtos,
   };
 }

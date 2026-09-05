@@ -24,6 +24,14 @@ export interface PlanPlaceDetail {
   stayTime: number;
 }
 
+// 플랜 이미지 항목 — 명세(260822)에는 없고 백엔드에 요청한 필드 (QA C-07).
+// DELETE /api/plan/{planId}/images?imageIds= 가 ID 를 요구하는데 planImageUrls 는 URL 뿐이라
+// 삭제 UI 를 연결할 수 없었다. 응답에 포함되면 사진 관리 시트의 삭제 버튼이 자동으로 켜진다.
+export interface PlanImageItem {
+  planImageId: number;
+  imageUrl: string;
+}
+
 // 플랜 상세 조회 응답 (PlanDetailDto) — 래핑 없이 직접 반환
 export interface PlanDetail {
   planId: number;
@@ -46,6 +54,8 @@ export interface PlanDetail {
   userNickname: string;
   userAvatar: string;
   planImageUrls: string[];
+  // 백엔드 미제공 시 undefined/null → normalizePlanDetail 이 [] 로 채운다
+  planImages?: PlanImageItem[] | null;
   tags: string[];
   thumbnailUrl: string;
   planPlaceDetailDtos: PlanPlaceDetail[];
