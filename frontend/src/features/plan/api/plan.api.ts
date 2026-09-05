@@ -111,9 +111,8 @@ export async function uploadPlanImages(planId: number, images: File[]): Promise<
 }
 
 // 플랜 이미지 삭제 — 명세 query int[]. 반복 파라미터(imageIds=1&imageIds=2)로 직렬화
-// NOTE(미연결): 명세(260822) PlanDetailDto.planImageUrls 가 string[](URL만)이라 개별 이미지 ID를
-// 프론트가 알 수 없어 UI(MyCourseDetailPage 이미지 삭제 버튼)를 연결하지 못함.
-// 백엔드가 상세 응답에 이미지 ID(예: planImages: {id, url}[])를 내려주면 연결한다.
+// 상세 응답이 planImages: {planImageId, imageUrl}[] 를 내려주면 MyCourseDetailPage 사진 관리 시트가
+// 삭제 버튼을 켠다. 아직 planImageUrls(string[]) 만 오면 버튼은 숨겨진다 (QA C-07, 백엔드 요청 중).
 export async function deletePlanImages(planId: number, imageIds: number[]): Promise<PlanDetail> {
   const { data } = await apiClient.delete<PlanDetail>(`/api/plan/${planId}/images`, {
     params: { imageIds },
