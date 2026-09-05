@@ -35,6 +35,7 @@ import { motion } from 'motion/react';
 import { usePlanDetail, usePlanActions, planApi, type PlanPlaceDetail, type PlanPreviewResponse } from '@/features/plan';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
+import { ReviewPhoto } from './ReviewPhoto';
 
 function timeToMin(t: string): number {
   const [h, m] = t.split(':').map(Number);
@@ -632,13 +633,13 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               className="w-full text-base p-2 outline-none resize-none h-20 text-gray-700"
             />
             <div className="grid grid-cols-3 gap-1.5 px-2 mb-2">
-              {/* 이미 저장된 사진 — 삭제 API 가 이미지 id 를 요구하는데 상세 응답에 id 가 없어 삭제는 제공하지 않는다 */}
+              {/* 이미 저장된 사진 — 삭제는 '플랜 사진 관리' 시트에서 (이미지 ID 가 올 때만 가능) */}
               {savedPhotos.map((photo, i) => (
                 <div
                   key={`saved-${i}`}
                   className="relative aspect-square rounded-lg overflow-hidden border border-gray-200"
                 >
-                  <Image src={photo} alt={`여행 기록 사진 ${i + 1}`} fill sizes="100px" className="object-cover" />
+                  <ReviewPhoto src={photo} alt={`여행 기록 사진 ${i + 1}`} />
                 </div>
               ))}
               {pendingPhotos.map((photo, i) => (
@@ -705,7 +706,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                     className="aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer shadow-sm relative"
                     onClick={() => setPreviewPhoto(photo)}
                   >
-                    <Image src={photo} alt={`여행 기록 사진 ${i + 1}`} fill sizes="100px" className="object-cover" />
+                    <ReviewPhoto src={photo} alt={`여행 기록 사진 ${i + 1}`} />
                   </motion.div>
                 ))}
               </div>
@@ -1105,7 +1106,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer"
                   onClick={() => setPreviewPhoto(url)}
                 >
-                  <Image src={url} alt={`Plan ${i}`} fill sizes="100px" className="object-cover" />
+                  <ReviewPhoto src={url} alt={`플랜 사진 ${i + 1}`} />
                 </div>
               ))}
               <button
