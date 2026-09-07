@@ -29,8 +29,10 @@ export function SettingsPage() {
   const { user, settings, updateSettings, updateProfile, setLoggedIn } = useUserStore();
   const [section, setSection] = useState<SettingsSection>('main');
 
-  const [editName, setEditName] = useState(user.name);
-  const [editTitle, setEditTitle] = useState(user.title);
+  // userIntro/userNickname 는 서버에서 null 로 내려올 수 있다(자기소개 미입력 신규 가입자).
+  // null 이 그대로 들어오면 아래 글자수 카운터({editTitle.length})에서 크래시가 난다 (QA P-01).
+  const [editName, setEditName] = useState(user.name ?? '');
+  const [editTitle, setEditTitle] = useState(user.title ?? '');
   const [isSaving, setIsSaving] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -44,13 +46,13 @@ export function SettingsPage() {
       .then((data) => {
         if (!isMounted) return;
         updateProfile({
-          name: data.userNickname,
-          avatar: data.userImg,
-          title: data.userIntro,
-          bio: data.userIntro,
+          name: data.userNickname ?? '',
+          avatar: data.userImg ?? '',
+          title: data.userIntro ?? '',
+          bio: data.userIntro ?? '',
         });
-        setEditName(data.userNickname);
-        setEditTitle(data.userIntro);
+        setEditName(data.userNickname ?? '');
+        setEditTitle(data.userIntro ?? '');
       })
       .catch((err) => console.error('프로필 정보 로드 실패:', err));
     return () => {
@@ -70,12 +72,12 @@ export function SettingsPage() {
         newUserProfileImg: user.avatar,
       });
 
-      // 응답 데이터로 로컬 스토어 갱신
+      // 응답 데이터로 로컬 스토어 갱신 (null → '' 정규화, P-01)
       updateProfile({
-        name: updated.userNickname,
-        avatar: updated.userImg,
-        title: updated.userIntro,
-        bio: updated.userIntro,
+        name: updated.userNickname ?? '',
+        avatar: updated.userImg ?? '',
+        title: updated.userIntro ?? '',
+        bio: updated.userIntro ?? '',
       });
 
       setSection('main');
@@ -121,6 +123,7 @@ export function SettingsPage() {
       <div className="flex items-center p-4">
         <button
           onClick={onBack}
+          aria-label="뒤로가기"
           className="p-2 -ml-2 text-gray-700 rounded-full active:bg-gray-100"
         >
           <ArrowLeft size={24} />
@@ -198,7 +201,11 @@ export function SettingsPage() {
                   <User size={40} className="text-gray-400" />
                 )}
               </div>
-              <button className="absolute bottom-0 right-0 w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white">
+              <button
+                type="button"
+                aria-label="프로필 사진 변경"
+                className="absolute bottom-0 right-0 w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white"
+              >
                 <Camera size={14} />
               </button>
             </div>
@@ -213,7 +220,7 @@ export function SettingsPage() {
                 maxLength={12}
                 className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-base focus:outline-none focus:border-primary-400"
               />
-              <div className="text-xs text-gray-400 mt-1 text-right">{editName.length}/12</div>
+              <div className="text-xs text-gray-400 mt-1 text-right">{(editName ?? '').length}/12</div>
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-500 mb-2">한줄 소개</label>
@@ -226,7 +233,7 @@ export function SettingsPage() {
                 className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-base focus:outline-none focus:border-primary-400"
               />
               <div className="text-xs text-gray-400 mt-1 text-right">
-                {editTitle.length}/20
+                {(editTitle ?? '').length}/20
               </div>
             </div>
           </div>
@@ -338,6 +345,8 @@ export function SettingsPage() {
               </button>
             ))}
           </div>
+          {/* TODO(P-10): 아래 사업자 정보(대표·등록번호·주소)는 임시 더미값이다.
+              법정 표시사항이므로 배포 전 기획·법무가 확정한 실제 값으로 교체해야 한다. */}
           <div className="text-center">
             <p className="text-[10px] text-gray-400 leading-relaxed">
               (주)일출 | 대표: 김일출
@@ -347,7 +356,7 @@ export function SettingsPage() {
               서울시 강남구 테헤란로 123
               <br />
               <br />
-              Copyright &copy; 2024 일출. All rights reserved.
+              Copyright &copy; {new Date().getFullYear()} 일출. All rights reserved.
             </p>
           </div>
         </div>
@@ -362,6 +371,7 @@ export function SettingsPage() {
         <div className="flex items-center p-4">
           <button
             onClick={() => router.back()}
+            aria-label="뒤로가기"
             className="p-2 -ml-2 text-gray-700 rounded-full active:bg-gray-100"
           >
             <ArrowLeft size={24} />
@@ -373,13 +383,14 @@ export function SettingsPage() {
       <div className="flex-1 overflow-y-auto">
         {/* 프로필 미리보기 */}
         <div className="px-5 py-5 border-b border-gray-100">
-          <div
+          <button
+            type="button"
             onClick={() => {
-              setEditName(user.name);
-              setEditTitle(user.title);
+              setEditName(user.name ?? '');
+              setEditTitle(user.title ?? '');
               setSection('editProfile');
             }}
-            className="flex items-center gap-4 cursor-pointer active:bg-gray-50 -mx-2 px-2 py-2 rounded-xl transition-colors"
+            className="w-full text-left flex items-center gap-4 cursor-pointer active:bg-gray-50 -mx-2 px-2 py-2 rounded-xl transition-colors"
           >
             <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0 bg-gray-100 flex items-center justify-center">
               {user.avatar ? (
@@ -399,7 +410,7 @@ export function SettingsPage() {
               <div className="text-xs text-gray-500 mt-0.5 truncate">{user.title}</div>
             </div>
             <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
-          </div>
+          </button>
         </div>
 
         <div className="py-2">
@@ -463,6 +474,7 @@ export function SettingsPage() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-[300px] relative">
             <button
               onClick={() => setShowLogoutModal(false)}
+              aria-label="닫기"
               className="absolute top-3 right-3 text-gray-400"
             >
               <X size={20} />
@@ -495,6 +507,7 @@ export function SettingsPage() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-[300px] relative">
             <button
               onClick={() => setShowDeleteModal(false)}
+              aria-label="닫기"
               className="absolute top-3 right-3 text-gray-400"
             >
               <X size={20} />

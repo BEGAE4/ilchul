@@ -58,3 +58,10 @@ storybook-static
 /.tmp-notion-export/
 /.tmp-notion-refetch/
 /scripts/
+
+# QA 자동화 산출물 — 브라우저 프로필(로그인 쿠키)·의존성·로그·스크린샷은 커밋하지 않는다
+/cc/result/*_qa_scripts/node_modules/
+/cc/result/*_qa_scripts/profile/
+/cc/result/*_qa_scripts/logs/
+/cc/result/*_qa_scripts/screens/
+/cc/result/*_screens/

@@ -53,7 +53,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     fetchMyPageProfile()
       .then((data) => {
         if (!isMounted) return;
-        updateProfile({ name: data.userNickname, avatar: data.userImg, title: data.userIntro, bio: data.userIntro });
+        updateProfile({ name: data.userNickname ?? '', avatar: data.userImg ?? '', title: data.userIntro ?? '', bio: data.userIntro ?? '' });
       })
       .catch(() => undefined);
     return () => {

@@ -28,7 +28,7 @@ export const FeedDetailPage: React.FC<FeedDetailPageProps> = ({ post }) => {
     { id: 'search', label: '검색', icon: Search, onClick: () => router.push('/search') },
     { id: 'explore', label: '홈', icon: Hexagon, active: true, onClick: () => router.push('/') },
     { id: 'mood', label: '힐링', icon: Smile, onClick: () => router.push('/mood') },
-    { id: 'profile', label: '프로필', icon: UserRound, onClick: () => router.push('/my-page') },
+    { id: 'profile', label: '프로필', icon: UserRound, onClick: () => router.push('/profile') },
   ];
 
   return (
