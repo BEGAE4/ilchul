@@ -20,6 +20,7 @@ import {
   X,
   Plus,
   User,
+  Pencil,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -172,9 +173,11 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     }
   };
 
+  // 복제된 플랜은 내 소유이므로 편집 가능한 나의 플랜 화면으로 보낸다.
+  // (/course 공개 상세로 보내면 더보기 메뉴에 편집 항목이 없어 빈 시트만 떴다)
   const goToMyCourse = () => {
     if (savedCourseId) {
-      router.push(`/course/${savedCourseId}`);
+      router.push(`/my-course/${savedCourseId}`);
     }
     setShowSaveModal(false);
     setSavedCourseId(null);
@@ -557,7 +560,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
 
       {/* ─── 모달: 일정 담기 ─── */}
       {showSaveModal && (
-        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-[120] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowSaveModal(false)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-6">
             {!savedCourseId ? (
@@ -622,10 +625,24 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
 
       {/* ─── 더보기 메뉴 ─── */}
       {isMenuOpen && (
-        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
+        <div className="fixed inset-y-0 app-frame z-[120] flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsMenuOpen(false)} />
           <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+            {/* 내 플랜(복제해 온 플랜 포함)은 저장·신고 항목이 모두 빠져 시트가 비어 보였다.
+                편집은 나의 플랜 화면에서 하므로 그쪽으로 보내는 항목을 둔다. */}
+            {isMyPlan && (
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  router.push(`/my-course/${plan.planId}`);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
+              >
+                <Pencil size={18} className="text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">나의 플랜에서 편집하기</span>
+              </button>
+            )}
             {!isMyPlan && (
               <button
                 onClick={() => {
@@ -681,7 +698,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       {/* BottomMenu는 items: MenuItem[] 배열만 지원하고 children/slot 미지원이므로
           기존 isMenuOpen 패턴(인라인 bottom-sheet)을 재사용한다 (PR-4 범위 내 최소 침습) */}
       {commentMenuTarget !== null && (
-        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
+        <div className="fixed inset-y-0 app-frame z-[120] flex items-end">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setCommentMenuTarget(null)}
@@ -709,7 +726,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
 
       {/* ─── 댓글 삭제 확인 모달 ─── */}
       {deleteTarget && (
-        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-[120] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setDeleteTarget(null)} />
           <div className="relative w-full max-w-[320px] bg-white rounded-2xl p-6 shadow-lg">
             <h3 className="text-gray-900 text-lg font-bold mb-2">댓글을 삭제하시겠어요?</h3>

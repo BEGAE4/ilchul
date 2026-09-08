@@ -676,7 +676,7 @@ export const CourseCreationFlow: React.FC = () => {
   // ════════════════════════════════════════════
   // ── 이탈 확인 모달 JSX ──
   const exitModal = showExitModal && (
-    <div className="fixed inset-y-0 app-frame bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-y-0 app-frame bg-black/50 z-[120] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-6 w-full max-w-[300px]">
         <h2 className="font-bold text-lg text-gray-900 mb-2">나가시겠어요?</h2>
         <p className="text-sm text-gray-500 mb-5 leading-relaxed">
