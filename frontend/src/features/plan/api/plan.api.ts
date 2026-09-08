@@ -82,6 +82,10 @@ export async function createPlanPreview(body: {
 }
 
 // 장소 스탬프 인증 — multipart (사진 + 현재 좌표)
+// 좌표는 `location.x` / `location.y` 폼 필드로 보낸다 (서버가 @ModelAttribute 로 바인딩).
+// 이전에는 location 을 application/json Blob 파트로 보내 운영에서 항상 400 "잘못된 입력값입니다." 였다
+// (2026-09-08 운영 확인: JSON 파트·{lat,lng}·request 파트 전부 400/500, 폼 필드만 200/422).
+// 좌표가 없으면 서버가 500 을 내므로 호출부(MyCourseDetailPage)가 위치 없이 보내지 않게 막는다.
 export async function stampPlanPlace(
   planPlaceId: number,
   image: File,
@@ -90,7 +94,8 @@ export async function stampPlanPlace(
   const form = new FormData();
   form.append('image', image);
   if (location) {
-    form.append('location', new Blob([JSON.stringify(location)], { type: 'application/json' }));
+    form.append('location.x', String(location.x));
+    form.append('location.y', String(location.y));
   }
   const { data } = await apiClient.post<StampPlanPlaceResponse>(
     `/api/plan-place/${planPlaceId}/stamp`,
