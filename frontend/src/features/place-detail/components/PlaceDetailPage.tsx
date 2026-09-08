@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   Heart,
   MapPin,
-  Clock,
   Phone,
   Share2,
   Plus,
@@ -27,68 +26,6 @@ import { usePlaceDetail, usePlaceActions } from '@/features/place';
 import { Map as KakaoMap, MapMarker } from 'react-kakao-maps-sdk';
 import { useKakaoMapLoader } from '@/shared/lib/kakao';
 
-// 카테고리별 장소 상세 정보
-const PLACE_DETAILS: Record<
-  string,
-  { description: string; hours: string; phone: string; tags: string[] }
-> = {
-  맛집: {
-    description: '현지인들도 줄 서서 먹는 인기 맛집이에요. 정성 가득한 한 끼를 즐겨보세요.',
-    hours: '11:00 - 21:00',
-    phone: '02-1234-5678',
-    tags: ['웨이팅 맛집', '가성비', '분위기 좋은'],
-  },
-  카페: {
-    description: '감성적인 인테리어와 특별한 음료로 유명한 카페입니다. 여유로운 시간을 보내기 좋아요.',
-    hours: '10:00 - 22:00',
-    phone: '02-2345-6789',
-    tags: ['감성카페', '디저트 맛집', '포토스팟'],
-  },
-  관광지: {
-    description: '사계절 아름다운 풍경을 감상할 수 있는 인기 관광지예요.',
-    hours: '상시 개방',
-    phone: '1588-1234',
-    tags: ['인생샷', '자연경관', '추천 명소'],
-  },
-  문화: {
-    description: '역사와 문화가 살아 숨 쉬는 특별한 공간입니다. 여행의 깊이를 더해보세요.',
-    hours: '09:00 - 18:00',
-    phone: '033-456-7890',
-    tags: ['역사탐방', '전통체험', '교육적'],
-  },
-  복합문화: {
-    description: '쇼핑, 문화, 맛집이 한데 모인 복합문화공간이에요. 하루 종일 즐길 수 있어요.',
-    hours: '10:30 - 22:00',
-    phone: '02-3456-7890',
-    tags: ['쇼핑', '데이트', '원스톱'],
-  },
-  쇼핑: {
-    description: '트렌디한 브랜드부터 로컬 편집숍까지 다양한 쇼핑을 즐길 수 있는 공간이에요.',
-    hours: '10:00 - 21:30',
-    phone: '031-567-8901',
-    tags: ['트렌디', '쇼핑천국', '주말 나들이'],
-  },
-  공원: {
-    description: '도심 속 푸른 쉼터, 산책과 피크닉을 즐기기 좋은 공원이에요.',
-    hours: '상시 개방',
-    phone: '02-4567-8901',
-    tags: ['피크닉', '산책로', '반려견 동반'],
-  },
-  힐링: {
-    description: '지친 일상에서 벗어나 몸과 마음을 재충전할 수 있는 힐링 스팟이에요.',
-    hours: '09:00 - 20:00',
-    phone: '064-789-0123',
-    tags: ['힐링', '휴식', '자연 속'],
-  },
-};
-
-const DEFAULT_DETAIL = {
-  description: '여행자들 사이에서 입소문 난 인기 장소입니다. 직접 방문해서 그 매력을 느껴보세요.',
-  hours: '09:00 - 18:00',
-  phone: '1588-0000',
-  tags: ['인기', '추천', '당일치기'],
-};
-
 interface PlaceDetailPageProps {
   placeId: string;
 }
@@ -103,6 +40,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
   const {
     place: serverPlace,
     reviews: serverReviews,
+    reviewsError,
     hasMoreReviews,
     isFetchingMoreReviews,
     fetchMoreReviews,
@@ -111,12 +49,19 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
     relatedPlans: serverPlans,
     isLoading: isServerLoading,
     error: serverError,
+    requiresAuth,
   } = usePlaceDetail(placeId);
   const [reviewInput, setReviewInput] = useState('');
   // 위치 미니맵용 카카오맵 SDK 로드 상태
   const [isKakaoLoading, kakaoError] = useKakaoMapLoader();
-  // 좋아요/스크랩: POST·DELETE /api/place/{placeId}/likes|scraps 응답값으로 상태 확정
-  const placeActions = usePlaceActions(placeId);
+  // 좋아요/스크랩: POST·DELETE /api/place/{placeId}/likes|scraps 응답값으로 상태 확정.
+  // 상세 응답에 초기 상태가 있으면(BE 추가 시) 새로고침 후에도 유지된다. (B-05)
+  const placeActions = usePlaceActions(placeId, {
+    initialIsLiked: serverPlace?.isLiked,
+    initialLikeCount: serverPlace?.likeCount,
+    initialIsScrapped: serverPlace?.isBookmarked,
+    initialScrapCount: serverPlace?.bookmarkCount,
+  });
 
   const bookmarked = placeActions.isScrapped;
   const liked = placeActions.isLiked;
@@ -130,7 +75,14 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
 
   // 서버에 없는 장소(목데이터 id 등)이거나 조회 실패 시 에러 화면
   if (!serverPlace || !placeActions.isServerPlace) {
-    return <PlaceDetailError message={serverError} onBack={() => router.back()} />;
+    return (
+      <PlaceDetailError
+        message={serverError}
+        requiresAuth={requiresAuth}
+        onBack={() => router.back()}
+        onLogin={() => router.push('/login')}
+      />
+    );
   }
 
   const place: BestPlace = {
@@ -144,7 +96,6 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
     likes: placeActions.likeCount,
   };
 
-  const detail = PLACE_DETAILS[place.category] || DEFAULT_DETAIL;
   const phone = serverPlace.phone || '';
 
   // 후기: v5 후기 API 데이터 (별점 없음)
@@ -251,31 +202,10 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
         </button>
       </div>
 
-      {/* 설명 + 해시태그 */}
-      <div className="p-5">
-        <p className="text-sm text-gray-700 leading-relaxed">{detail.description}</p>
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {detail.tags.map((tag) => (
-            <span
-              key={tag}
-              className="px-2.5 py-1 bg-primary-50 text-primary-600 text-[11px] font-bold rounded-full"
-            >
-              #{tag}
-            </span>
-          ))}
-        </div>
-      </div>
-
       {/* 정보 섹션 */}
-      <div className="px-5 pb-5 space-y-3">
-        <div className="flex items-center gap-3 p-3.5 bg-gray-50 rounded-xl">
-          <Clock size={16} className="text-gray-400 shrink-0" />
-          <div className="flex-1">
-            <div className="text-[10px] text-gray-400 mb-0.5">영업시간</div>
-            {/* v5 상세 응답에 영업시간 없음 */}
-            <div className="text-sm font-bold text-gray-900">-</div>
-          </div>
-        </div>
+      {/* NOTE: v5 상세 응답(PlaceDetailResponseDto)에 소개글/해시태그/영업시간 필드가 없어
+          해당 UI는 표시하지 않는다. BE에 필드 추가 시 복원 예정 (문서: cc/result 참고) */}
+      <div className="px-5 pt-5 pb-5 space-y-3">
         <div className="flex items-center gap-3 p-3.5 bg-gray-50 rounded-xl">
           <Phone size={16} className="text-gray-400 shrink-0" />
           <div className="flex-1">
@@ -359,9 +289,16 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
         </div>
 
         <div className="space-y-4">
-          {displayReviews.length === 0 && (
-            <p className="text-center py-4 text-xs text-gray-400">아직 후기가 없어요. 첫 후기를 남겨보세요!</p>
-          )}
+          {displayReviews.length === 0 &&
+            (reviewsError ? (
+              <p className="text-center py-4 text-xs text-gray-400">
+                후기를 불러오지 못했어요. 잠시 후 다시 시도해주세요.
+              </p>
+            ) : (
+              <p className="text-center py-4 text-xs text-gray-400">
+                아직 후기가 없어요. 첫 후기를 남겨보세요!
+              </p>
+            ))}
           {displayReviews.map((review, idx) => (
             <motion.div
               key={review.id}
@@ -499,18 +436,47 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
 }
 
 /* ── Error ── */
-function PlaceDetailError({ message, onBack }: { message: string | null; onBack: () => void }) {
+function PlaceDetailError({
+  message,
+  requiresAuth = false,
+  onBack,
+  onLogin,
+}: {
+  message: string | null;
+  requiresAuth?: boolean;
+  onBack: () => void;
+  onLogin?: () => void;
+}) {
   return (
     <div className="bg-white min-h-dvh flex flex-col items-center justify-center px-6 text-center">
       <MapPin size={40} className="text-gray-300 mb-4" />
-      <p className="text-base font-bold text-gray-900 mb-1">장소를 찾을 수 없어요</p>
+      <p className="text-base font-bold text-gray-900 mb-1">
+        {requiresAuth ? '로그인이 필요해요' : '장소를 찾을 수 없어요'}
+      </p>
       <p className="text-sm text-gray-500 mb-6">{message || '존재하지 않거나 삭제된 장소예요.'}</p>
-      <button
-        onClick={onBack}
-        className="px-5 py-2.5 bg-primary-500 text-white text-sm font-bold rounded-xl active:scale-[0.98] transition-transform"
-      >
-        돌아가기
-      </button>
+      {requiresAuth && onLogin ? (
+        <div className="flex flex-col items-center gap-2 w-full max-w-[240px]">
+          <button
+            onClick={onLogin}
+            className="w-full px-5 py-2.5 bg-primary-500 text-white text-sm font-bold rounded-xl active:scale-[0.98] transition-transform"
+          >
+            로그인하러 가기
+          </button>
+          <button
+            onClick={onBack}
+            className="w-full px-5 py-2.5 text-gray-500 text-sm font-bold active:text-gray-700"
+          >
+            돌아가기
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={onBack}
+          className="px-5 py-2.5 bg-primary-500 text-white text-sm font-bold rounded-xl active:scale-[0.98] transition-transform"
+        >
+          돌아가기
+        </button>
+      )}
     </div>
   );
 }

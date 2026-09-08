@@ -1,5 +1,7 @@
 .body {
-  padding: 16px 20px 32px;
+  // 헤더(Header)가 position: fixed(높이 56px)라 본문이 그 아래로 가려지지 않도록
+  // 상단 패딩에 헤더 높이를 더해준다.
+  padding: calc(56px + 16px) 20px 32px;
 }
 
 .totalCount {

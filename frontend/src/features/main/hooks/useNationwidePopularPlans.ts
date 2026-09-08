@@ -6,12 +6,16 @@ import { usePaginatedList } from './usePaginatedList';
 
 interface Options {
   limit?: number;
+  enabled?: boolean;
+  cacheKey?: string;
 }
 
-export function useNationwidePopularPlans({ limit }: Options = {}) {
+export function useNationwidePopularPlans({ limit, enabled = true, cacheKey }: Options = {}) {
   return usePaginatedList<PopularPlan, Record<string, never>>({
     fetchFn: fetchNationwidePopularPlans,
     baseParams: {},
     limit,
+    enabled,
+    cacheKey,
   });
 }

@@ -30,15 +30,37 @@ import type { BestPlace } from '@/shared/types';
 const DEFAULT_COORDS = { lat: 37.5665, lng: 126.978 };
 const INTRO_SEEN_KEY = 'ilchul_intro_seen';
 
+// 섹션 단위 API 실패 표시 + 재시도 (QA A #7 — 실패가 "데이터 없음"처럼 보이던 문제)
+const SectionError = ({ onRetry }: { onRetry: () => void }) => (
+  <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+    <p className="text-xs text-gray-500">목록을 불러오지 못했어요</p>
+    <button
+      type="button"
+      onClick={onRetry}
+      className="px-3 py-1.5 text-xs font-bold text-primary-600 bg-primary-50 rounded-full active:scale-95 transition-transform"
+    >
+      다시 시도
+    </button>
+  </div>
+);
+
+const SectionEmpty = ({ message }: { message: string }) => (
+  <p className="py-6 text-center text-xs text-gray-400">{message}</p>
+);
+
 export default function Home() {
   const router = useRouter();
   const navItems = getNavItems('home', path => router.push(path));
   const [selectedPlace, setSelectedPlace] = useState<PopularPlace | null>(null);
 
+  // 인트로 분기가 끝나기 전에는 API·위치 권한 요청을 시작하지 않는다.
+  // 첫 방문 시 홈이 먼저 마운트되어 API 5건 + 권한 팝업이 인트로보다 먼저 뜨던 문제 (QA A #5).
+  const [introChecked, setIntroChecked] = useState(false);
+
   // 위치 정보 — 권한 응답을 기다리지 않고 기본 좌표로 먼저 조회하고,
   // 실제 좌표가 확정되면 baseParams 변경으로 주변 섹션이 자동 재조회된다.
   // 단, 실제 좌표 주변에 등록된 장소가 없으면(빈 응답) 기본 좌표로 되돌린다.
-  const geo = useGeolocation();
+  const geo = useGeolocation(introChecked);
   const [fallbackToDefault, setFallbackToDefault] = useState(false);
   const realCoords = fallbackToDefault ? null : geo.coords;
   const effectiveLat = realCoords?.lat ?? DEFAULT_COORDS.lat;
@@ -49,37 +71,68 @@ export default function Home() {
     lat: effectiveLat,
     lng: effectiveLng,
     limit: 5,
+    enabled: introChecked,
   });
   const nearbyPlans = useNearbyPopularPlans({
     lat: effectiveLat,
     lng: effectiveLng,
     limit: 5,
+    enabled: introChecked,
   });
-  const nationwidePlaces = useNationwidePopularPlaces({ limit: 6 });
-  const nationwidePlans = useNationwidePopularPlans({ limit: 3 });
+  const nationwidePlaces = useNationwidePopularPlaces({
+    limit: 6,
+    enabled: introChecked,
+  });
+  const nationwidePlans = useNationwidePopularPlans({
+    limit: 3,
+    enabled: introChecked,
+  });
 
   // 실제 좌표 기준 주변 장소가 비어 있으면 기본 좌표(서울)로 폴백
+  // API 실패로 비어 있는 경우는 폴백 대상이 아니다(에러 UI 로 표시).
   useEffect(() => {
     if (
       realCoords &&
       !nearbyPlaces.isLoading &&
+      !nearbyPlaces.error &&
       nearbyPlaces.items.length === 0
     ) {
       setFallbackToDefault(true);
     }
-  }, [realCoords, nearbyPlaces.isLoading, nearbyPlaces.items.length]);
+  }, [
+    realCoords,
+    nearbyPlaces.isLoading,
+    nearbyPlaces.error,
+    nearbyPlaces.items.length,
+  ]);
 
-  // 인트로 리다이렉트
+  // 인트로 리다이렉트 — replace 로 보내 인트로에서 뒤로가기 시 홈이 다시 인트로로
+  // 보내는 루프를 막는다 (QA A #3). 본 적이 있으면 그때부터 API·위치 요청을 시작한다.
   useEffect(() => {
-    const hasSeenIntro = localStorage.getItem(INTRO_SEEN_KEY);
-    if (hasSeenIntro !== 'true') {
-      router.push('/intro');
+    let hasSeenIntro: string | null = null;
+    try {
+      hasSeenIntro = localStorage.getItem(INTRO_SEEN_KEY);
+    } catch {
+      hasSeenIntro = 'true';
     }
+    if (hasSeenIntro !== 'true') {
+      router.replace('/intro');
+      return;
+    }
+    setIntroChecked(true);
   }, [router]);
 
   const isInitialLoading =
+    !introChecked ||
     (nationwidePlaces.isLoading && nationwidePlaces.items.length === 0) ||
     (nationwidePlans.isLoading && nationwidePlans.items.length === 0);
+
+  // 위치를 쓸 수 없거나(거부·타임아웃·미지원) 주변에 데이터가 없어 기본 좌표로 보여줄 때 안내 (QA A #8)
+  const locationNotice = fallbackToDefault
+    ? '내 주변에 등록된 장소가 없어 서울 기준으로 보여드려요'
+    : geo.status === 'denied' || geo.status === 'unsupported'
+      ? '위치 정보를 사용할 수 없어 서울 기준으로 보여드려요'
+      : null;
 
   // 주변 섹션은 좌표 확정 여부와 무관하게 자리(스켈레톤)를 유지한다
   const nearbyPlacesLoading =
@@ -105,6 +158,10 @@ export default function Home() {
         <div className="relative mb-2">
           {nearbyPlacesLoading ? (
             <Skeleton variant="image" height={320} />
+          ) : nearbyPlaces.error && nearbyPlaces.items.length === 0 ? (
+            <div className="h-80 w-full bg-gray-100 flex items-center justify-center">
+              <SectionError onRetry={nearbyPlaces.retry} />
+            </div>
           ) : (
             <ScrollCarousel
               autoPlay
@@ -164,6 +221,9 @@ export default function Home() {
               더보기 <ArrowRight size={12} />
             </button>
           </div>
+          {locationNotice && (
+            <p className="px-5 pb-3 -mt-2 text-xs text-gray-400">{locationNotice}</p>
+          )}
           <div className="px-4">
             {nearbyPlacesLoading ? (
               <div className="flex gap-2.5 overflow-hidden">
@@ -173,6 +233,10 @@ export default function Home() {
                   </div>
                 ))}
               </div>
+            ) : nearbyPlaces.error && nearbyPlaces.items.length === 0 ? (
+              <SectionError onRetry={nearbyPlaces.retry} />
+            ) : nearbyPlaces.items.length === 0 ? (
+              <SectionEmpty message="주변에 등록된 장소가 아직 없어요" />
             ) : (
               <ScrollCarousel slidesToShow={2.4} gap={10}>
                 {nearbyPlaces.items.map((place, idx) => (
@@ -251,6 +315,10 @@ export default function Home() {
           <div className="px-4">
             {nearbyPlansLoading ? (
               <SkeletonCard />
+            ) : nearbyPlans.error && nearbyPlans.items.length === 0 ? (
+              <SectionError onRetry={nearbyPlans.retry} />
+            ) : nearbyPlans.items.length === 0 ? (
+              <SectionEmpty message="주변에 등록된 플랜이 아직 없어요" />
             ) : (
               <ScrollCarousel slidesToShow={1.15} gap={12}>
                 {nearbyPlans.items.slice(0, 5).map((plan, index) => (
@@ -325,6 +393,9 @@ export default function Home() {
               더보기 <ArrowRight size={12} />
             </button>
           </div>
+          {nationwidePlaces.error && nationwidePlaces.items.length === 0 && (
+            <SectionError onRetry={nationwidePlaces.retry} />
+          )}
           <div className="grid grid-cols-2 gap-3">
             {nationwidePlaces.items.map((place, idx) => (
               <div
@@ -397,6 +468,9 @@ export default function Home() {
             </button>
           </div>
           <div className="px-5 space-y-3">
+            {nationwidePlans.error && nationwidePlans.items.length === 0 && (
+              <SectionError onRetry={nationwidePlans.retry} />
+            )}
             {nationwidePlans.items.map((plan, index) => (
               <div
                 key={String(plan.id)}

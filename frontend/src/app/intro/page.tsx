@@ -16,7 +16,7 @@ export default function IntroPage() {
     // 이미 intro를 본 경우 로그인 페이지로 바로 이동
     // const hasSeenIntro = localStorage.getItem(INTRO_SEEN_KEY);
     // if (hasSeenIntro === 'true') {
-    //   router.push('/login');
+    //   router.replace('/login');
     //   return;
     // }
 
@@ -47,7 +47,7 @@ export default function IntroPage() {
       setTimeout(() => {
         // intro를 본 것으로 표시
         localStorage.setItem(INTRO_SEEN_KEY, 'true');
-        router.push('/login');
+        router.replace('/login');
       }, 200);
     }, 5000); // 2900 + 200 + 1600 + 200 = 5000
 
@@ -58,9 +58,11 @@ export default function IntroPage() {
     };
   }, [router]);
 
+  // 인트로 → 로그인 이동은 replace 를 쓴다. push 면 홈에서 뒤로가기 시 인트로로
+  // 되돌아가고, 인트로에서 뒤로가기 시 홈이 다시 인트로로 보내는 루프가 생긴다 (QA A #3).
   const handleSkip = () => {
     localStorage.setItem(INTRO_SEEN_KEY, 'true');
-    router.push('/login');
+    router.replace('/login');
   };
 
   return (

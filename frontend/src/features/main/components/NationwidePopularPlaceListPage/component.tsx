@@ -3,9 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { useNationwidePopularPlaces } from '../../hooks/useNationwidePopularPlaces';
+import { useScrollRestoration } from '@/shared/hooks/useScrollRestoration';
 import { ListPageShell } from '../ListPageShell';
 import { PopularPlaceCard } from '../PopularPlaceCard';
 import styles from './styles.module.scss';
+
+const CACHE_KEY = 'place-popular-nationwide';
 
 export function NationwidePopularPlaceListPage() {
   const router = useRouter();
@@ -19,12 +22,15 @@ export function NationwidePopularPlaceListPage() {
     totalCount,
     loadMore,
     retry,
-  } = useNationwidePopularPlaces();
+  } = useNationwidePopularPlaces({ cacheKey: CACHE_KEY });
 
   const sentinelRef = useInfiniteScroll({
     enabled: hasNext && !isLoadingMore && !error,
     onIntersect: loadMore,
   });
+
+  // 목록 → 상세 → 뒤로가기 시 스크롤 위치 복원
+  useScrollRestoration(CACHE_KEY, !isLoading && items.length > 0);
 
   return (
     <ListPageShell

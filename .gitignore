@@ -3,3 +3,6 @@
 .env
 .env.*
 .tour-api
+
+# oh-my-claudecode 세션/상태 (project-memory.json 은 이미 추적 중이라 영향 없음)
+**/.omc/

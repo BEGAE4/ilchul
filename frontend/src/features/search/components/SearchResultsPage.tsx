@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
@@ -19,14 +19,10 @@ import type { BestPlace } from '@/shared/types';
 import { ScrollCarousel } from '@/shared/ui/ScrollCarousel';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
 import { SearchResultsSkeleton } from '@/shared/ui/Skeleton';
-import { searchAll } from '@/features/search/api/search.api';
-import type {
-  SearchPlaceResult,
-  SearchPlanResult,
-  SearchResultResponse,
-} from '@/features/search/types/search.types';
-
-const SEARCH_LIMIT = 30;
+import { useInfiniteScroll } from '@/features/main/hooks';
+import { useScrollRestoration } from '@/shared/hooks/useScrollRestoration';
+import { useSearchResults } from '@/features/search/hooks/useSearchResults';
+import type { SearchPlaceResult, SearchPlanResult } from '@/features/search/types/search.types';
 
 function mapSearchPlaceToBestPlace(item: SearchPlaceResult): BestPlace {
   return {
@@ -50,57 +46,74 @@ function formatRequiredTime(minutes: number): string {
 type ViewTab = '전체' | '플랜' | '장소';
 const VIEW_TABS: ViewTab[] = ['전체', '플랜', '장소'];
 
+function isViewTab(value: string | null): value is ViewTab {
+  return value === '전체' || value === '플랜' || value === '장소';
+}
+
 export const SearchResultsPage: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
-  const initialTab = (searchParams.get('tab') as ViewTab) || '전체';
+  const tabParam = searchParams.get('tab');
+  const initialTab: ViewTab = isViewTab(tabParam) ? tabParam : '전체';
 
   const [activeViewTab, setActiveViewTab] = useState<ViewTab>(initialTab);
   const [selectedPlace, setSelectedPlace] = useState<BestPlace | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [result, setResult] = useState<SearchResultResponse | null>(null);
 
-  // 통합 검색 — GET /api/search (장소 + 플랜)
-  React.useEffect(() => {
-    if (!query) {
-      setResult(null);
-      setIsLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setIsLoading(true);
-    searchAll(query, { page: 1, limit: SEARCH_LIMIT })
-      .then((data) => {
-        if (!cancelled) setResult(data);
-      })
-      .catch((err) => {
-        console.error('통합 검색 실패:', err);
-        if (!cancelled) setResult(null);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [query]);
+  const {
+    places,
+    plans,
+    placeTotalCount,
+    planTotalCount,
+    hasNextPlace,
+    hasNextPlan,
+    isLoading,
+    isLoadingMore,
+    isError,
+    loadMore,
+    retry,
+  } = useSearchResults(query);
 
-  const filteredCourses = useMemo<SearchPlanResult[]>(
-    () => [...(result?.plans ?? [])].sort((a, b) => b.likeCount - a.likeCount),
-    [result]
+  // 탭 전환을 URL(tab=)에 반영해 새로고침·공유·뒤로가기에도 유지되게 한다.
+  const changeTab = (tab: ViewTab) => {
+    setActiveViewTab(tab);
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (tab !== '전체') params.set('tab', tab);
+    router.replace(`/search/results?${params.toString()}`, { scroll: false });
+  };
+
+  // 뒤로가기 등으로 URL tab이 바뀌면 활성 탭도 맞춘다.
+  useEffect(() => {
+    const next: ViewTab = isViewTab(tabParam) ? tabParam : '전체';
+    setActiveViewTab(next);
+  }, [tabParam]);
+
+  const courses = useMemo<SearchPlanResult[]>(() => plans, [plans]);
+  const placeCards = useMemo<BestPlace[]>(
+    () => places.map(mapSearchPlaceToBestPlace),
+    [places]
   );
 
-  const filteredPlaces = useMemo<BestPlace[]>(
-    () =>
-      [...(result?.places ?? [])]
-        .sort((a, b) => b.likeCount - a.likeCount)
-        .map(mapSearchPlaceToBestPlace),
-    [result]
-  );
+  const totalCourses = planTotalCount;
+  const totalPlaces = placeTotalCount;
 
-  const totalCourses = result?.planTotalCount ?? filteredCourses.length;
-  const totalPlaces = result?.placeTotalCount ?? filteredPlaces.length;
+  // 장소·플랜 탭에서만 무한 스크롤(더 보기). 전체 탭은 미리보기라 페이징하지 않는다.
+  // 활성 탭에 더 불러올 데이터가 있을 때만 활성화한다.
+  const canLoadMore =
+    !isError &&
+    ((activeViewTab === '장소' && hasNextPlace) ||
+      (activeViewTab === '플랜' && hasNextPlan));
+  const sentinelRef = useInfiniteScroll({
+    enabled: canLoadMore && !isLoadingMore,
+    onIntersect: loadMore,
+  });
+
+  // 목록 → 상세 → 뒤로가기 시 스크롤 위치 복원 (탭별로 스크롤 높이가 다르므로 탭도 키에 포함)
+  useScrollRestoration(
+    query ? `search:${query}:${activeViewTab}` : null,
+    !isLoading && !isError && !!query
+  );
 
   if (isLoading) {
     return <SearchResultsSkeleton />;
@@ -112,7 +125,14 @@ export const SearchResultsPage: React.FC = () => {
       <div className="sticky top-0 bg-white z-10 border-b border-gray-100">
         <div className="flex items-center justify-between p-4">
           <button
-            onClick={() => router.push('/search')}
+            onClick={() => {
+              // 히스토리가 있으면 pop 해서 브라우저 뒤로가기와 일관되게, 없으면 /search 로.
+              if (typeof window !== 'undefined' && window.history.length > 1) {
+                router.back();
+              } else {
+                router.push('/search');
+              }
+            }}
             className="p-2 -ml-2 text-gray-700 active:bg-gray-100 rounded-full"
           >
             <ArrowLeft size={24} />
@@ -140,7 +160,7 @@ export const SearchResultsPage: React.FC = () => {
             return (
               <button
                 key={tab}
-                onClick={() => setActiveViewTab(tab)}
+                onClick={() => changeTab(tab)}
                 className={`flex-1 pb-2.5 text-sm font-bold text-center transition-all border-b-2 ${
                   activeViewTab === tab
                     ? 'text-gray-900 border-gray-900'
@@ -163,8 +183,38 @@ export const SearchResultsPage: React.FC = () => {
 
       {/* Content */}
       <div className="bg-gray-50 min-h-dvh">
+        {/* 검색어 없음 */}
+        {!query && (
+          <div className="text-center py-16 px-5">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search size={24} className="text-gray-300" />
+            </div>
+            <p className="text-sm font-bold text-gray-500 mb-1">검색어를 입력해주세요</p>
+            <p className="text-xs text-gray-400">장소, 플랜, 지역명으로 검색할 수 있어요</p>
+          </div>
+        )}
+
+        {/* 검색 실패 — "결과 없음"과 구분 */}
+        {query && isError && (
+          <div className="text-center py-16 px-5">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search size={24} className="text-gray-300" />
+            </div>
+            <p className="text-sm font-bold text-gray-500 mb-1">검색 결과를 불러오지 못했어요</p>
+            <p className="text-xs text-gray-400 mb-4">
+              네트워크 상태를 확인한 뒤 다시 시도해주세요
+            </p>
+            <button
+              onClick={retry}
+              className="px-5 py-2.5 bg-primary-500 text-white text-sm font-bold rounded-xl active:scale-[0.98] transition-transform"
+            >
+              다시 시도
+            </button>
+          </div>
+        )}
+
         {/* 전체 탭 */}
-        {activeViewTab === '전체' && (
+        {query && !isError && activeViewTab === '전체' && (
           <div>
             {totalCourses === 0 && totalPlaces === 0 && (
               <div className="text-center py-16 px-5">
@@ -179,16 +229,16 @@ export const SearchResultsPage: React.FC = () => {
             )}
 
             {/* 장소 섹션 — 수평 스크롤 */}
-            {filteredPlaces.length > 0 && (
+            {placeCards.length > 0 && (
               <div className="pt-4 pb-2">
                 <div className="px-5 mb-2.5 flex justify-between items-center">
                   <h3 className="text-sm font-bold text-gray-900">
                     장소
-                    <span className="ml-1.5 text-primary-500">{filteredPlaces.length}</span>
+                    <span className="ml-1.5 text-primary-500">{totalPlaces}</span>
                   </h3>
-                  {filteredPlaces.length > 3 && (
+                  {totalPlaces > 3 && (
                     <button
-                      onClick={() => setActiveViewTab('장소')}
+                      onClick={() => changeTab('장소')}
                       className="text-xs text-gray-400 font-bold flex items-center gap-0.5"
                     >
                       전체보기 <ChevronDown size={12} className="rotate-[-90deg]" />
@@ -197,7 +247,7 @@ export const SearchResultsPage: React.FC = () => {
                 </div>
                 <div className="px-4">
                   <ScrollCarousel gap={10}>
-                    {filteredPlaces.slice(0, 6).map((place) => (
+                    {placeCards.slice(0, 6).map((place) => (
                       <PlaceCardSmall
                         key={place.id}
                         place={place}
@@ -211,23 +261,23 @@ export const SearchResultsPage: React.FC = () => {
             )}
 
             {/* 플랜 섹션 — 수직 리스트 */}
-            {filteredCourses.length > 0 && (
+            {courses.length > 0 && (
               <div className="pt-4 px-4">
                 <div className="px-1 mb-3 flex justify-between items-center">
                   <h3 className="text-sm font-bold text-gray-900">
                     플랜
-                    <span className="ml-1.5 text-primary-500">{filteredCourses.length}</span>
+                    <span className="ml-1.5 text-primary-500">{totalCourses}</span>
                   </h3>
-                  {filteredCourses.length > 3 && (
+                  {totalCourses > 3 && (
                     <button
-                      onClick={() => setActiveViewTab('플랜')}
+                      onClick={() => changeTab('플랜')}
                       className="text-xs text-gray-400 font-bold flex items-center gap-0.5"
                     >
                       전체보기 <ChevronDown size={12} className="rotate-[-90deg]" />
                     </button>
                   )}
                 </div>
-                {filteredCourses.slice(0, 4).map((course) => (
+                {courses.slice(0, 4).map((course) => (
                   <CourseCard
                     key={course.planId}
                     course={course}
@@ -240,7 +290,7 @@ export const SearchResultsPage: React.FC = () => {
         )}
 
         {/* 플랜 탭 */}
-        {activeViewTab === '플랜' && (
+        {query && !isError && activeViewTab === '플랜' && (
           <div className="p-4">
             <div className="flex items-center justify-between mb-4 ml-1">
               <p className="text-sm text-gray-500">
@@ -248,25 +298,34 @@ export const SearchResultsPage: React.FC = () => {
               </p>
             </div>
 
-            {filteredCourses.length === 0 && (
+            {courses.length === 0 && (
               <div className="text-center py-12">
                 <Route size={32} className="text-gray-200 mx-auto mb-3" />
                 <p className="text-sm text-gray-400 font-medium">검색 결과가 없어요</p>
               </div>
             )}
 
-            {filteredCourses.map((course) => (
+            {courses.map((course) => (
               <CourseCard
                 key={course.planId}
                 course={course}
                 onClick={() => router.push(`/course/${course.planId}`)}
               />
             ))}
+
+            {/* 무한 스크롤 */}
+            <div ref={sentinelRef} className="h-px w-full" />
+            {isLoadingMore && (
+              <p className="text-center py-4 text-xs text-gray-400">더 불러오는 중...</p>
+            )}
+            {courses.length > 0 && !hasNextPlan && !isLoadingMore && (
+              <p className="text-center py-4 text-xs text-gray-300">마지막 결과입니다.</p>
+            )}
           </div>
         )}
 
         {/* 장소 탭 */}
-        {activeViewTab === '장소' && (
+        {query && !isError && activeViewTab === '장소' && (
           <div className="p-4">
             <div className="flex items-center justify-between mb-4 ml-1">
               <p className="text-sm text-gray-500">
@@ -274,7 +333,7 @@ export const SearchResultsPage: React.FC = () => {
               </p>
             </div>
 
-            {filteredPlaces.length === 0 && (
+            {placeCards.length === 0 && (
               <div className="text-center py-12">
                 <MapPin size={32} className="text-gray-200 mx-auto mb-3" />
                 <p className="text-sm text-gray-400 font-medium">검색 결과가 없어요</p>
@@ -283,7 +342,7 @@ export const SearchResultsPage: React.FC = () => {
 
             {/* 2열 그리드 */}
             <div className="grid grid-cols-2 gap-3">
-              {filteredPlaces.map((place) => (
+              {placeCards.map((place) => (
                 <PlaceCardGrid
                   key={place.id}
                   place={place}
@@ -292,6 +351,15 @@ export const SearchResultsPage: React.FC = () => {
                 />
               ))}
             </div>
+
+            {/* 무한 스크롤 */}
+            <div ref={sentinelRef} className="h-px w-full" />
+            {isLoadingMore && (
+              <p className="text-center py-4 text-xs text-gray-400">더 불러오는 중...</p>
+            )}
+            {placeCards.length > 0 && !hasNextPlace && !isLoadingMore && (
+              <p className="text-center py-4 text-xs text-gray-300">마지막 결과입니다.</p>
+            )}
           </div>
         )}
       </div>

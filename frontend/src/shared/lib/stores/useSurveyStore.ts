@@ -2,22 +2,17 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { SurveyData, Place, StartingPoint } from '@/shared/types';
 import { DEFAULT_START_COORD } from '@/shared/lib/constants/coords';
+import { resolveResumeStep, type SurveyStep } from './surveyResume';
 
-export type SurveyStep =
-  | 'landing'
-  | 'survey1'
-  | 'survey2'
-  | 'survey3'
-  | 'generating'
-  | 'startPoint'
-  | 'placeSelect'
-  | 'placeDetail'
-  | 'finalPlan';
+export type { SurveyStep } from './surveyResume';
 
 interface SurveyState {
   step: SurveyStep;
   previousStep: SurveyStep;
   surveyData: Partial<SurveyData>;
+  // 설문 기반 장소 추천 결과 (POST /api/place/recommend). 새로고침 후에도 장소 선택 단계를
+  // 그대로 복원할 수 있도록 컴포넌트 state 가 아니라 스토어에 둔다 (QA C-05).
+  recommendedPlaces: Place[];
   selectedPlaceIds: string[];
   finalStops: Place[];
   viewingPlaceId: string | null;
@@ -27,6 +22,7 @@ interface SurveyState {
   setStep: (step: SurveyStep) => void;
   setPreviousStep: (step: SurveyStep) => void;
   updateSurvey: (key: keyof SurveyData, value: string) => void;
+  setRecommendedPlaces: (places: Place[]) => void;
   togglePlaceSelection: (placeId: string) => void;
   clearPlaceSelection: () => void;
   setFinalStops: (stops: Place[]) => void;
@@ -46,17 +42,13 @@ const initialState = {
   step: 'landing' as SurveyStep,
   previousStep: 'landing' as SurveyStep,
   surveyData: {} as Partial<SurveyData>,
+  recommendedPlaces: [] as Place[],
   selectedPlaceIds: [] as string[],
   finalStops: [] as Place[],
   viewingPlaceId: null,
   isRecalculating: false,
   startingPoint: initialStartingPoint,
 };
-
-// 새로고침 후 그대로 이어서 진행해도 화면이 성립하는 단계들.
-// placeSelect 이후는 추천 결과가 컴포넌트 상태(recommendedPlaces)라 함께 복원되지 않으므로,
-// 설문 입력은 살리되 출발지 단계로 되돌려 다시 추천을 받게 한다.
-const RESUMABLE_STEPS: SurveyStep[] = ['landing', 'survey1', 'survey2', 'survey3', 'startPoint'];
 
 export const useSurveyStore = create<SurveyState>()(
   persist(
@@ -71,6 +63,8 @@ export const useSurveyStore = create<SurveyState>()(
         set((state) => ({
           surveyData: { ...state.surveyData, [key]: value },
         })),
+
+      setRecommendedPlaces: (recommendedPlaces) => set({ recommendedPlaces }),
 
       togglePlaceSelection: (placeId) =>
         set((state) => {
@@ -101,19 +95,21 @@ export const useSurveyStore = create<SurveyState>()(
       // 서버 렌더 결과와 어긋나지 않도록 첫 렌더는 기본 상태로 두고,
       // 컴포넌트 마운트 후 rehydrate()로 복원한다.
       skipHydration: true,
+      // 화면을 다시 세울 때 필요한 입력·결과만 저장한다. 서버 프리뷰(소요시간/거리)는
+      // 컴포넌트 state 로 남기고 finalPlan 복원 시 다시 요청한다.
       partialize: (state) => ({
         step: state.step,
+        previousStep: state.previousStep,
         surveyData: state.surveyData,
         startingPoint: state.startingPoint,
+        recommendedPlaces: state.recommendedPlaces,
+        selectedPlaceIds: state.selectedPlaceIds,
+        finalStops: state.finalStops,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<SurveyState>;
-        const step = !saved.step
-          ? current.step
-          : RESUMABLE_STEPS.includes(saved.step)
-            ? saved.step
-            : 'startPoint';
-        return { ...current, ...saved, step };
+        const merged = { ...current, ...saved };
+        return { ...merged, step: saved.step ? resolveResumeStep(merged) : current.step };
       },
     }
   )

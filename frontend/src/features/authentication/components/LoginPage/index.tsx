@@ -3,22 +3,17 @@
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { redirectToSocialLogin } from '@/features/authentication/api';
+import { resolveLoginErrorMessage } from '@/features/authentication/utils/loginErrorMessage';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import styles from './login.module.scss';
-
-const ERROR_MESSAGES: Record<string, string> = {
-  kakao_cancelled: '카카오 로그인이 취소되었습니다. 다시 시도해 주세요.',
-  kakao_failed: '카카오 로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
-  google_cancelled: '구글 로그인이 취소되었습니다. 다시 시도해 주세요.',
-  google_failed: '구글 로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
-  naver_cancelled: '네이버 로그인이 취소되었습니다. 다시 시도해 주세요.',
-  naver_failed: '네이버 로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
-};
 
 export function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const error = searchParams.get('error');
+  const errorMessage = resolveLoginErrorMessage(
+    searchParams.has('error'),
+    searchParams.get('error')
+  );
   const authChecked = useUserStore((state) => state.authChecked);
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
 
@@ -33,12 +28,16 @@ export function LoginPage() {
   const handleGoogleLogin = () => redirectToSocialLogin('google');
   const handleNaverLogin = () => redirectToSocialLogin('naver');
 
+  // 로그인 확인이 끝나기 전에는 버튼을 감춰, 로그인 사용자가 이 페이지를 지나칠 때
+  // 버튼이 잠깐 보였다 사라지는 플래시를 막는다 (QA A #10). 타이틀·로고는 그대로 둔다.
+  const showButtons = authChecked && !isLoggedIn;
+
   return (
     <div className={styles.loginPage}>
       <div className={styles.container}>
-        {error && (
-          <div className={styles.errorMessage}>
-            {ERROR_MESSAGES[error] ?? '로그인 중 오류가 발생했습니다.'}
+        {errorMessage && (
+          <div className={styles.errorMessage} role="alert">
+            {errorMessage}
           </div>
         )}
         <div className={styles.header}>
@@ -55,7 +54,11 @@ export function LoginPage() {
           </div>
         </div>
 
-        <div className={styles.loginButtons}>
+        <div
+          className={styles.loginButtons}
+          style={showButtons ? undefined : { visibility: 'hidden' }}
+          aria-hidden={!showButtons}
+        >
           <button
             type="button"
             className={`${styles.loginButton} ${styles.kakaoButton}`}
