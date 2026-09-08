@@ -303,8 +303,12 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     try {
       const location = await getCurrentLocation();
       if (!location) {
-        // 위치 권한 거부/미지원/timeout 시에도 인증은 진행 — 위치 없이 전송됨을 안내만 한다
-        toast.info('현재 위치를 확인할 수 없어 위치 정보 없이 인증했어요.');
+        // 서버는 좌표로 인증 범위를 판정하고, 좌표가 없으면 500 을 낸다 (2026-09-08 운영 확인).
+        // 이전에는 위치 없이도 전송해 항상 실패 토스트로 끝났다. 보내지 않고 위치 허용을 안내한다.
+        toast.error('현재 위치를 확인할 수 없어요.', {
+          description: '위치 권한을 허용한 뒤 다시 시도해주세요.',
+        });
+        return;
       }
       await planApi.stampPlanPlace(verifyingStopId, file, location);
       toast.success('정거장 인증 완료!');
