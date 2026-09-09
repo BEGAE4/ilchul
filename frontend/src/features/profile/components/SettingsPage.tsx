@@ -201,15 +201,23 @@ export function SettingsPage() {
                   <User size={40} className="text-gray-400" />
                 )}
               </div>
+              {/* 프로필 사진 변경은 서버에 이미지 업로드 엔드포인트가 없어 아직 지원하지 않는다.
+                  (프로필 수정 API 는 이미지 URL 문자열만 받는다 — BE 요청 문서 참고)
+                  누르면 아무 일도 안 일어나던 버튼이라 비활성 상태와 안내를 명시한다. */}
               <button
                 type="button"
-                aria-label="프로필 사진 변경"
-                className="absolute bottom-0 right-0 w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white"
+                disabled
+                aria-label="프로필 사진 변경 (준비 중)"
+                title="프로필 사진 변경은 준비 중이에요"
+                className="absolute bottom-0 right-0 w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white cursor-not-allowed"
               >
                 <Camera size={14} />
               </button>
             </div>
           </div>
+          <p className="text-center text-[11px] text-gray-400 -mt-6 mb-6">
+            프로필 사진 변경은 준비 중이에요. 소셜 계정 사진이 표시돼요.
+          </p>
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-bold text-gray-500 mb-2">닉네임</label>

@@ -35,12 +35,9 @@ import { motion } from 'motion/react';
 import { usePlanDetail, usePlanActions, planApi, type PlanPlaceDetail, type PlanPreviewResponse } from '@/features/plan';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
+import { HALF_HOURS, timeToMin } from '@/features/plan/utils/schedule';
 import { ReviewPhoto } from './ReviewPhoto';
 
-function timeToMin(t: string): number {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + (m || 0);
-}
 function formatMinutes(min: number): string {
   const h = Math.floor(Math.abs(min) / 60);
   const m = Math.abs(min) % 60;
@@ -79,19 +76,6 @@ function getCoursePhase(tripStart?: string, tripEnd?: string): CoursePhase {
   return 'during';
 }
 
-const HALF_HOURS: { value: string; label: string }[] = [];
-for (let i = 0; i < 24; i++) {
-  for (const m of [0, 30]) {
-    const h = i.toString().padStart(2, '0');
-    const mm = m.toString().padStart(2, '0');
-    const period = i < 12 ? '오전' : '오후';
-    const dispH = i === 0 ? 12 : i <= 12 ? i : i - 12;
-    HALF_HOURS.push({
-      value: `${h}:${mm}`,
-      label: `${period} ${dispH}시${m === 30 ? ' 30분' : ''}`,
-    });
-  }
-}
 
 // 현재 위치 조회 (실패/거부 시 null — 좌표 없이도 인증 요청은 전송)
 function getCurrentLocation(): Promise<{ x: number; y: number } | null> {
