@@ -1,11 +1,11 @@
 #!/bin/bash
 # begae 계정 및 분리된 컨테이너 구조에 최적화된 롤백 스크립트
 
-set -e
+set -euo pipefail
 
 # 1. 경로 및 설정 (사용자 환경에 맞게 수정됨)
 PROJECT_PATH="/home/begae/ilchul"
-GLOBAL_NGINX="nginx"  # 사용자님의 컨테이너 이름 확인 (nginx 또는 nginx_server)
+ILCHUL_NGINX="ilchul-nginx"
 cd "$PROJECT_PATH"
 
 echo "=== 🔄 Blue-Green Rollback Start ==="
@@ -18,15 +18,20 @@ else
     exit 1
 fi
 
-# 3. 롤백 타겟 및 포트 세팅
+ACTIVE_CONFIG="$PROJECT_PATH/nginx/runtime/active.conf"
+install -d -m 0755 "$PROJECT_PATH/nginx/runtime"
+if [ ! -f "$ACTIVE_CONFIG" ]; then
+    install -m 0644 "$PROJECT_PATH/nginx/upstreams/${CURRENT_ENV}.conf" "${ACTIVE_CONFIG}.new"
+    mv "${ACTIVE_CONFIG}.new" "$ACTIVE_CONFIG"
+fi
+docker compose -f docker-compose.nginx.yml config --quiet
+docker compose -f docker-compose.nginx.yml up -d
+
+# 3. 롤백 타겟 결정
 if [ "$CURRENT_ENV" = "blue" ]; then
     ROLLBACK_ENV="green"
-    BACKEND_PORT=8082
-    FRONTEND_PORT=3002
 else
     ROLLBACK_ENV="blue"
-    BACKEND_PORT=8081
-    FRONTEND_PORT=3001
 fi
 
 echo "현재 활성 환경: $CURRENT_ENV"
@@ -35,8 +40,9 @@ echo "롤백 대상 환경: $ROLLBACK_ENV"
 # 4. 중지되었던 이전 버전 컨테이너 깨우기
 echo "🚀 $ROLLBACK_ENV 컨테이너를 다시 시작합니다..."
 # 공통 yml 없이 단독 실행 파일만 사용
+docker network inspect shared-infra >/dev/null
 docker compose -f "docker-compose.${ROLLBACK_ENV}.yml" config --quiet
-docker compose -f "docker-compose.${ROLLBACK_ENV}.yml" start
+docker compose -f "docker-compose.${ROLLBACK_ENV}.yml" up -d
 
 # 5. 두 컨테이너가 실제로 healthy가 될 때까지 대기
 BACKEND_CONTAINER="ilchul-backend-${ROLLBACK_ENV}"
@@ -45,8 +51,8 @@ for attempt in $(seq 1 30); do
     BACKEND_HEALTH=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$BACKEND_CONTAINER")
     FRONTEND_HEALTH=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$FRONTEND_CONTAINER")
     if [ "$BACKEND_HEALTH" = "healthy" ] && [ "$FRONTEND_HEALTH" = "healthy" ] \
-        && curl --fail --silent --show-error "http://127.0.0.1:${BACKEND_PORT}/actuator/health" >/dev/null \
-        && curl --fail --silent --show-error "http://127.0.0.1:${FRONTEND_PORT}/intro" >/dev/null; then
+        && docker exec "$BACKEND_CONTAINER" sh -lc 'wget --quiet --spider "http://127.0.0.1:$SERVER_PORT/actuator/health"' \
+        && docker exec "$FRONTEND_CONTAINER" sh -lc 'wget --quiet --spider "http://127.0.0.1:$PORT/intro"'; then
         break
     fi
     if [ "$attempt" -eq 30 ]; then
@@ -71,21 +77,27 @@ fi
 
 # 8. Nginx 트래픽 전환
 echo "🌐 Nginx 트래픽 스위칭: $ROLLBACK_ENV"
-ACTIVE_CONFIG="/etc/nginx/conf.d/ilchul/ilchul-active-env.conf"
-ROLLBACK_CONFIG="/etc/nginx/conf.d/ilchul/ilchul-${ROLLBACK_ENV}.conf"
-CURRENT_CONFIG="/etc/nginx/conf.d/ilchul/ilchul-${CURRENT_ENV}.conf"
-docker exec "$GLOBAL_NGINX" nginx -t
-docker exec "$GLOBAL_NGINX" ln -sf "$ROLLBACK_CONFIG" "$ACTIVE_CONFIG"
-docker exec "$GLOBAL_NGINX" nginx -t
-docker exec "$GLOBAL_NGINX" nginx -s reload
+activate_environment() {
+    active_environment=$1
+    source_config="$PROJECT_PATH/nginx/upstreams/${active_environment}.conf"
+    install -m 0644 "$source_config" "${ACTIVE_CONFIG}.new"
+    mv "${ACTIVE_CONFIG}.new" "$ACTIVE_CONFIG"
+    docker exec "$ILCHUL_NGINX" nginx -t || return 1
+    docker exec "$ILCHUL_NGINX" nginx -s reload || return 1
+}
+
+if ! activate_environment "$ROLLBACK_ENV"; then
+    echo "❌ Nginx 설정 전환 실패: $CURRENT_ENV 환경으로 복원합니다."
+    activate_environment "$CURRENT_ENV"
+    docker compose -f "docker-compose.${ROLLBACK_ENV}.yml" stop
+    exit 1
+fi
 
 FRONTEND_STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/intro)
 AUTH_STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/api/plan/1)
 if [ "$FRONTEND_STATUS" != "200" ] || [ "$AUTH_STATUS" != "401" ]; then
     echo "❌ 롤백 후 스모크 테스트 실패: frontend=${FRONTEND_STATUS}, unauthenticated_api=${AUTH_STATUS}"
-    docker exec "$GLOBAL_NGINX" ln -sf "$CURRENT_CONFIG" "$ACTIVE_CONFIG"
-    docker exec "$GLOBAL_NGINX" nginx -t
-    docker exec "$GLOBAL_NGINX" nginx -s reload
+    activate_environment "$CURRENT_ENV"
     docker compose -f "docker-compose.${ROLLBACK_ENV}.yml" stop
     exit 1
 fi

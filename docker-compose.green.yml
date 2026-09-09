@@ -2,8 +2,6 @@ services:
   ilchul-backend-green:
     image: ${BACKEND_IMAGE}
     container_name: ilchul-backend-green
-    ports:
-      - "127.0.0.1:8082:${BACKEND_SERVER_PORT}"
     env_file:
       - .env
     environment:
@@ -11,6 +9,7 @@ services:
     restart: unless-stopped
     networks:
       - ilchul-network
+      - shared-infra
       - monitoring_net
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${BACKEND_SERVER_PORT}/actuator/health || exit 1"]
@@ -22,8 +21,6 @@ services:
   ilchul-frontend-green:
     image: ${FRONTEND_IMAGE}
     container_name: ilchul-frontend-green
-    ports:
-      - "127.0.0.1:3002:${FRONTEND_SERVER_PORT}"
     environment:
       - PORT=${FRONTEND_SERVER_PORT}
       - HOSTNAME=0.0.0.0
@@ -33,7 +30,6 @@ services:
     restart: unless-stopped
     networks:
       - ilchul-network
-      - monitoring_net
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:${FRONTEND_SERVER_PORT} || exit 1"]
       interval: 10s
@@ -45,6 +41,9 @@ networks:
   ilchul-network:
     external: true
     name: ilchul-network
+  shared-infra:
+    external: true
+    name: shared-infra
   monitoring_net:
     external: true
     name: monitoring_net
