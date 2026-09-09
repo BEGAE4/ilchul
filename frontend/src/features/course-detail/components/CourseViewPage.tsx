@@ -32,6 +32,8 @@ import { useReport, ReportDialog, ReportMenuItem } from '@/features/report';
 import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStorage';
 import type { CurrentUser, ReportTarget } from '@/features/report';
 import { usePlanDetail, usePlanActions, planApi } from '@/features/plan';
+import { HALF_HOURS, addMinutesToTime, todayLocalDate } from '@/features/plan/utils/schedule';
+import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
 import { useComments } from '../hooks/useComments';
 
 interface CourseViewPageProps {
@@ -94,6 +96,11 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savedCourseId, setSavedCourseId] = useState<string | null>(null);
+  // 일정 담기 — 날짜·시간을 여기서 정한다. 복제 API 는 날짜를 반영하지 않으므로
+  // 복제 후 수정 API 로 시작·종료 일시를 채운다 (안 채우면 상세에서 일정이 비어 보인다).
+  const [saveDate, setSaveDate] = useState(todayLocalDate());
+  const [saveStartTime, setSaveStartTime] = useState('10:00');
+  const [isSaving, setIsSaving] = useState(false);
   // 어느 댓글의 메뉴인지 추적 — race condition 차단 (Architect C-3)
   const [commentMenuTarget, setCommentMenuTarget] = useState<ReportTarget | null>(null);
 
@@ -161,15 +168,28 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     setShowSaveModal(true);
   };
 
+  // 종료 시간은 플랜 소요시간으로 자동 계산한다(사용자가 두 번 고르지 않게).
+  const saveEndTime = addMinutesToTime(saveStartTime, plan.requiredTime);
+
   const confirmSave = async () => {
+    if (!saveDate || !saveStartTime || isSaving) return;
+    setIsSaving(true);
     try {
-      // 빠른 담기 플로우 — scheduledDate 미선택이므로 오늘 날짜(YYYY-MM-DD)를 기본값으로 전송
-      const scheduledDate = new Date().toISOString().slice(0, 10);
-      const res = await planApi.clonePlan(plan.planId, { scheduledDate });
+      const res = await planApi.clonePlan(plan.planId, { scheduledDate: saveDate });
+      // 복제 API 는 scheduledDate 를 실제로 반영하지 않아 새 플랜의 일정이 비어 있다.
+      // 수정 API 로 채워야 상세에서 날짜·시작 시간이 보이고 위치 인증 기간도 잡힌다.
+      await planApi
+        .updatePlan(res.planId, {
+          tripStartDate: toServerDateTime(saveDate, saveStartTime),
+          tripEndDate: toServerDateTime(saveDate, saveEndTime),
+        })
+        .catch(() => undefined);
       setSavedCourseId(String(res.planId));
       toast.success('내 일정에 담았어요!');
     } catch {
       toast.error('일정 담기에 실패했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -568,11 +588,52 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                 <p className="text-sm text-gray-500 mb-1">
                   <span className="font-bold text-gray-700">&ldquo;{plan.planTitle}&rdquo;</span>
                 </p>
-                <p className="text-sm text-gray-500 mb-5">
-                  이 플랜을 내 일정에 추가하시겠어요?
-                  <br />
-                  담은 후 날짜와 순서를 수정할 수 있어요.
+                <p className="text-sm text-gray-500 mb-4">
+                  언제 떠날지 정해주세요. 담은 후에도 바꿀 수 있어요.
                 </p>
+                <div className="space-y-3 mb-5 text-left">
+                  <div>
+                    <label
+                      htmlFor="save-date"
+                      className="text-xs font-bold text-gray-500 mb-1 block"
+                    >
+                      여행 날짜
+                    </label>
+                    <input
+                      id="save-date"
+                      type="date"
+                      value={saveDate}
+                      onChange={(e) => setSaveDate(e.target.value)}
+                      min={todayLocalDate()}
+                      className="w-full p-3 border border-gray-200 rounded-xl text-base"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="save-start-time"
+                      className="text-xs font-bold text-gray-500 mb-1 block"
+                    >
+                      시작 시간
+                    </label>
+                    <select
+                      id="save-start-time"
+                      value={saveStartTime}
+                      onChange={(e) => setSaveStartTime(e.target.value)}
+                      className="w-full p-3 border border-gray-200 rounded-xl text-sm appearance-none"
+                    >
+                      {HALF_HOURS.map((h) => (
+                        <option key={h.value} value={h.value}>
+                          {h.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      소요시간 {durationLabel} 기준으로 종료 시간은{' '}
+                      {HALF_HOURS.find((h) => h.value === saveEndTime)?.label ?? saveEndTime} 로
+                      설정돼요.
+                    </p>
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowSaveModal(false)}
@@ -582,9 +643,10 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   </button>
                   <button
                     onClick={confirmSave}
-                    className="flex-1 py-3 bg-primary-500 font-bold rounded-xl text-sm text-white shadow-md shadow-primary-200"
+                    disabled={!saveDate || !saveStartTime || isSaving}
+                    className="flex-1 py-3 bg-primary-500 font-bold rounded-xl text-sm text-white shadow-md shadow-primary-200 disabled:bg-gray-300 disabled:shadow-none"
                   >
-                    담기
+                    {isSaving ? '담는 중...' : '담기'}
                   </button>
                 </div>
               </>
