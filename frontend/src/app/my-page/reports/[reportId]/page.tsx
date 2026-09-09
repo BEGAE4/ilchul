@@ -1,4 +1,5 @@
 import { ReportDetailPage } from '@/features/report/components/ReportDetailPage';
+import { RequireAuth } from '@/features/authentication/components/RequireAuth';
 
 interface Props {
   params: Promise<{ reportId: string }>;
@@ -6,5 +7,9 @@ interface Props {
 
 export default async function Page({ params }: Props) {
   const { reportId } = await params;
-  return <ReportDetailPage reportId={reportId} />;
+  return (
+    <RequireAuth>
+      <ReportDetailPage reportId={reportId} />
+    </RequireAuth>
+  );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { SettingsPage } from '@/features/profile/components/SettingsPage';
+import { RequireAuth } from '@/features/authentication/components/RequireAuth';
 import PageLayout from '@/shared/ui/PageLayout';
 
 export const metadata: Metadata = {
@@ -8,8 +9,10 @@ export const metadata: Metadata = {
 
 export default function Settings() {
   return (
-    <PageLayout>
-      <SettingsPage />
-    </PageLayout>
+    <RequireAuth>
+      <PageLayout>
+        <SettingsPage />
+      </PageLayout>
+    </RequireAuth>
   );
 }
