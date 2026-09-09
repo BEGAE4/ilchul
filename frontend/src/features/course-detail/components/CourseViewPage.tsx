@@ -275,16 +275,15 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
             <Bookmark size={14} className="text-primary-500" /> {scrapCount}
           </div>
         </div>
-        <button
-          onClick={planActions.toggleLike}
-          className="bg-gray-50 p-3 rounded-lg active:bg-gray-100 transition-colors"
-        >
+        {/* 소요시간·스크랩과 나란한 통계 표시라 좋아요도 읽기 전용으로 둔다.
+            좋아요 토글은 상단 하트 버튼과 하단 액션 바에서만 한다. */}
+        <div className="bg-gray-50 p-3 rounded-lg">
           <div className="text-xs text-gray-500 mb-1">좋아요</div>
           <div className="font-bold text-gray-900 flex items-center justify-center gap-1">
             <Heart size={14} className={liked ? 'text-red-500 fill-red-500' : 'text-gray-400'} />
             {likeCount}
           </div>
-        </button>
+        </div>
       </div>
 
       {/* 설명 */}
