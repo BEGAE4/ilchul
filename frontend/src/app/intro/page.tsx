@@ -7,16 +7,27 @@ import styles from './intro.module.scss';
 const logoImage = '/logo.svg';
 const INTRO_SEEN_KEY = 'ilchul_intro_seen';
 
+// 인트로가 끝나면 홈으로 보낸다. 홈·인기 목록은 비로그인도 볼 수 있는데
+// 예전에는 로그인 화면으로 보내 신규 사용자가 홈을 아예 못 봤다.
+// 로그인은 마이페이지·담기처럼 필요한 시점에 유도한다.
+function markIntroSeen() {
+  try {
+    localStorage.setItem(INTRO_SEEN_KEY, 'true');
+  } catch {
+    /* localStorage 사용 불가 환경(사파리 개인정보 보호 등)은 무시 */
+  }
+}
+
 export default function IntroPage() {
   const router = useRouter();
   const [currentScene, setCurrentScene] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // 이미 intro를 본 경우 로그인 페이지로 바로 이동
+    // 이미 intro를 본 경우 홈으로 바로 이동
     // const hasSeenIntro = localStorage.getItem(INTRO_SEEN_KEY);
     // if (hasSeenIntro === 'true') {
-    //   router.replace('/login');
+    //   router.replace('/');
     //   return;
     // }
 
@@ -41,13 +52,12 @@ export default function IntroPage() {
       }, 200);
     }, 2900); // 1200 + 200 + 1500
 
-    // 세 번째 장면 (일출) - 1.6초 후 로그인 페이지로 이동 (총 5초)
+    // 세 번째 장면 (일출) - 1.6초 후 홈으로 이동 (총 5초)
     const timer3 = setTimeout(() => {
       setIsVisible(false);
       setTimeout(() => {
-        // intro를 본 것으로 표시
-        localStorage.setItem(INTRO_SEEN_KEY, 'true');
-        router.replace('/login');
+        markIntroSeen();
+        router.replace('/');
       }, 200);
     }, 5000); // 2900 + 200 + 1600 + 200 = 5000
 
@@ -58,11 +68,11 @@ export default function IntroPage() {
     };
   }, [router]);
 
-  // 인트로 → 로그인 이동은 replace 를 쓴다. push 면 홈에서 뒤로가기 시 인트로로
+  // 인트로 → 홈 이동은 replace 를 쓴다. push 면 홈에서 뒤로가기 시 인트로로
   // 되돌아가고, 인트로에서 뒤로가기 시 홈이 다시 인트로로 보내는 루프가 생긴다 (QA A #3).
   const handleSkip = () => {
-    localStorage.setItem(INTRO_SEEN_KEY, 'true');
-    router.replace('/login');
+    markIntroSeen();
+    router.replace('/');
   };
 
   return (
