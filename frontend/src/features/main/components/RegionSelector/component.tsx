@@ -1,70 +1,53 @@
 'use client';
 
-import { useState } from 'react';
 import { ChevronDown, LocateFixed, Check } from 'lucide-react';
 import { REGIONS } from '../../constants/regions';
 import type { RegionState } from '../../hooks/useRegion';
 
 interface RegionSelectorProps {
   state: RegionState;
+  /** 시트 열림 상태. 히어로 빈 상태의 CTA 에서도 열 수 있어 밖에서 제어한다. */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 /**
- * 홈 상단의 지역 영역. 히어로 배너 바로 위에 놓여, 히어로 상단 페이드와 이어져
- * 하나의 섹션처럼 보인다. 화살표를 누르면 시/도 17개 선택 시트가 열린다.
+ * 홈 최상단의 브랜드 + 지역 영역. 별도 헤더 없이 소제목("당일치기 힐링 플래너 일출")과
+ * 로고를 지역명 줄에 함께 두어 한 덩어리로 보이게 한다. 히어로 배너 바로 위에 놓여
+ * 히어로 상단 페이드와 이어진다. 지역명을 누르면 시/도 17개 선택 시트가 열린다.
+ *
+ * 지역명 오른쪽의 "선택 · 변경 · 내 위치" 알약은 두지 않는다 — 지역명 자체가 시트를 여는
+ * 버튼이고, 위치 인식 실패는 아래 섹션의 안내 문구가 설명한다.
  */
-export function RegionSelector({ state }: RegionSelectorProps) {
-  const { region, source, isLocating, setRegion, resetToCurrentLocation } = state;
-  const [open, setOpen] = useState(false);
-
-  const title = isLocating
-    ? '위치를 확인하는 중이에요'
-    : source === 'default'
-      ? '위치를 확인하지 못했어요'
-      : '지금 당신의 지역은?';
+export function RegionSelector({ state, open, onOpenChange }: RegionSelectorProps) {
+  const { region, isLocating, setRegion, resetToCurrentLocation } = state;
+  const setOpen = onOpenChange;
 
   return (
     <>
-      <div className="bg-white px-5 pt-6 pb-5 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p
-            className={`text-sm font-medium mb-1.5 ${
-              source === 'default' && !isLocating ? 'text-accent-500' : 'text-gray-400'
-            }`}
-          >
-            {title}
-          </p>
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            aria-haspopup="dialog"
-            aria-label={`지역 선택. 현재 ${region.name}`}
-            className="flex items-center gap-2 active:opacity-70 transition-opacity"
-          >
-            {isLocating ? (
-              <span className="h-8 w-24 rounded-lg bg-gray-100 animate-pulse" />
-            ) : (
-              <span className="text-[32px] leading-none font-bold text-gray-900 truncate">
-                {region.name}
-              </span>
-            )}
-            <ChevronDown size={22} className="text-primary-500 shrink-0" strokeWidth={2.5} />
-          </button>
-        </div>
-
-        {source === 'gps' ? (
-          <span className="shrink-0 mt-1 px-3 py-2 rounded-full bg-primary-50 text-primary-600 text-xs font-bold">
-            내 위치
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="shrink-0 mt-1 px-3 py-2 rounded-full bg-primary-500 text-white text-xs font-bold active:scale-95 transition-transform"
-          >
-            {source === 'manual' ? '변경' : '선택'}
-          </button>
-        )}
+      <div className="bg-white px-5 pt-6 pb-5">
+        <p className="text-xs text-gray-400 mb-2">
+          당일치기 힐링 플래너 <span className="font-bold text-gray-900">일출</span>
+        </p>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-haspopup="dialog"
+          aria-label={`지역 선택. 현재 ${region.name}`}
+          className="flex items-center gap-2.5 min-w-0 active:opacity-70 transition-opacity"
+        >
+          {/* next/image 는 dangerouslyAllowSVG 없이 로컬 SVG 를 400 으로 거절한다 (인트로·로그인과 동일) */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.svg" alt="" aria-hidden width={30} height={30} className="shrink-0" />
+          {isLocating ? (
+            <span className="h-8 w-24 rounded-lg bg-gray-100 animate-pulse" />
+          ) : (
+            <span className="text-[32px] leading-none font-bold text-gray-900 truncate">
+              {region.name}
+            </span>
+          )}
+          <ChevronDown size={22} className="text-primary-500 shrink-0" strokeWidth={2.5} />
+        </button>
       </div>
 
       {open && (

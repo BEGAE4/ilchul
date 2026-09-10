@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from '@/shared/ui/SafeImage';
 import {
@@ -19,6 +19,7 @@ import { HomePageSkeleton, Skeleton, SkeletonCard } from '@/shared/ui/Skeleton';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
 import { useRegion } from '@/features/main/hooks/useRegion';
 import { RegionSelector } from '@/features/main/components/RegionSelector';
+import { HeroEmpty } from '@/features/main/components/HeroEmpty';
 import { DEFAULT_REGION } from '@/features/main/constants/regions';
 import { useNearbyPopularPlaces } from '@/features/main/hooks/useNearbyPopularPlaces';
 import { useNearbyPopularPlans } from '@/features/main/hooks/useNearbyPopularPlans';
@@ -52,6 +53,9 @@ export default function Home() {
   const router = useRouter();
   const navItems = getNavItems('home', path => router.push(path));
   const [selectedPlace, setSelectedPlace] = useState<PopularPlace | null>(null);
+  // 지역 선택 시트 — 지역 바와 히어로 빈 상태 양쪽에서 열 수 있어 페이지가 들고 있는다
+  const [regionSheetOpen, setRegionSheetOpen] = useState(false);
+  const nationwidePlacesRef = useRef<HTMLDivElement>(null);
 
   // 인트로 분기가 끝나기 전에는 API·위치 권한 요청을 시작하지 않는다.
   // 첫 방문 시 홈이 먼저 마운트되어 API 5건 + 권한 팝업이 인트로보다 먼저 뜨던 문제 (QA A #5).
@@ -149,6 +153,21 @@ export default function Home() {
   const nearbyPlansLoading =
     nearbyPlans.isLoading && nearbyPlans.items.length === 0;
 
+  // 주변 장소가 0건 — 등록된 장소가 없는 지역을 직접 고른 경우가 대부분이다.
+  // GPS 로 잡은 지역이면 기본 지역으로 폴백할 여지가 남아 있으므로(canFallback)
+  // 그 결과를 기다리고, 폴백이 끝났거나 애초에 폴백 대상이 아닐 때만 빈 상태를 보여준다.
+  const nearbyPlacesEmpty =
+    !nearbyPlacesLoading &&
+    !nearbyPlaces.error &&
+    nearbyPlaces.items.length === 0 &&
+    !canFallback;
+
+  const scrollToNationwidePlaces = () =>
+    nationwidePlacesRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+
   const handleCourseClick = (id: string) => router.push(`/course/${id}`);
   const handlePlaceNavigate = (id: string) => router.push(`/place/${id}`);
 
@@ -164,21 +183,33 @@ export default function Home() {
     <PageLayout bottomNavItems={navItems}>
       <div className="bg-gray-50 flex-1 pb-10">
         {/* ───── 지역 선택 ───── */}
-        <RegionSelector state={regionState} />
+        <RegionSelector
+          state={regionState}
+          open={regionSheetOpen}
+          onOpenChange={setRegionSheetOpen}
+        />
 
         {/* ───── 섹션 1: 비주얼 슬라이드 배너 ─────
             상단에 흰색 페이드를 얹어 위 지역 영역과 한 덩어리로 이어 보이게 한다 */}
         <div className="relative mb-2">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-24 z-10 bg-gradient-to-b from-white via-white/60 to-transparent"
-          />
+          {!nearbyPlacesEmpty && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-24 z-10 bg-gradient-to-b from-white via-white/60 to-transparent"
+            />
+          )}
           {nearbyPlacesLoading ? (
             <Skeleton variant="image" height={320} />
           ) : nearbyPlaces.error && nearbyPlaces.items.length === 0 ? (
             <div className="h-80 w-full bg-gray-100 flex items-center justify-center">
               <SectionError onRetry={nearbyPlaces.retry} />
             </div>
+          ) : nearbyPlacesEmpty ? (
+            <HeroEmpty
+              regionName={shownRegionName}
+              onPickRegion={() => setRegionSheetOpen(true)}
+              onSeeNationwide={scrollToNationwidePlaces}
+            />
           ) : (
             <ScrollCarousel
               autoPlay
@@ -253,7 +284,9 @@ export default function Home() {
             ) : nearbyPlaces.error && nearbyPlaces.items.length === 0 ? (
               <SectionError onRetry={nearbyPlaces.retry} />
             ) : nearbyPlaces.items.length === 0 ? (
-              <SectionEmpty message="주변에 등록된 장소가 아직 없어요" />
+              <SectionEmpty
+                message={`${shownRegionName}에 등록된 장소가 아직 없어요`}
+              />
             ) : (
               <ScrollCarousel slidesToShow={2.4} gap={10}>
                 {nearbyPlaces.items.map((place, idx) => (
@@ -335,7 +368,9 @@ export default function Home() {
             ) : nearbyPlans.error && nearbyPlans.items.length === 0 ? (
               <SectionError onRetry={nearbyPlans.retry} />
             ) : nearbyPlans.items.length === 0 ? (
-              <SectionEmpty message="주변에 등록된 플랜이 아직 없어요" />
+              <SectionEmpty
+                message={`${shownRegionName}에 등록된 플랜이 아직 없어요`}
+              />
             ) : (
               <ScrollCarousel slidesToShow={1.15} gap={12}>
                 {nearbyPlans.items.slice(0, 5).map((plan, index) => (
@@ -390,7 +425,7 @@ export default function Home() {
         </div>
 
         {/* ───── 전국 인기 장소 ───── */}
-        <div className="px-5 mb-8">
+        <div ref={nationwidePlacesRef} className="px-5 mb-8 scroll-mt-16">
           <div className="mb-4 flex justify-between items-center">
             <div>
               <div className="flex items-center gap-2 mb-1">
