@@ -25,8 +25,6 @@ export function LoginPage() {
   }, [authChecked, isLoggedIn, router]);
 
   const handleKakaoLogin = () => redirectToSocialLogin('kakao');
-  const handleGoogleLogin = () => redirectToSocialLogin('google');
-  const handleNaverLogin = () => redirectToSocialLogin('naver');
 
   // 로그인 확인이 끝나기 전에는 버튼을 감춰, 로그인 사용자가 이 페이지를 지나칠 때
   // 버튼이 잠깐 보였다 사라지는 플래시를 막는다 (QA A #10). 타이틀·로고는 그대로 둔다.
@@ -59,6 +57,8 @@ export function LoginPage() {
           style={showButtons ? undefined : { visibility: 'hidden' }}
           aria-hidden={!showButtons}
         >
+          {/* 구글은 OAuth redirect_uri 불일치로 로그인이 불가하고(BE 요청 §1-1),
+              네이버도 완주 확인이 안 돼 카카오만 노출한다. 서버 설정이 정리되면 되살린다. */}
           <button
             type="button"
             className={`${styles.loginButton} ${styles.kakaoButton}`}
@@ -66,26 +66,6 @@ export function LoginPage() {
           >
             <span className={styles.buttonText}>
               <span className={styles.buttonTextBold}>카카오</span> 로그인
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className={`${styles.loginButton} ${styles.googleButton}`}
-            onClick={handleGoogleLogin}
-          >
-            <span className={styles.buttonText}>
-              <span className={styles.buttonTextBold}>구글</span> 로그인
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className={`${styles.loginButton} ${styles.naverButton}`}
-            onClick={handleNaverLogin}
-          >
-            <span className={styles.buttonText}>
-              <span className={styles.buttonTextBold}>네이버</span> 로그인
             </span>
           </button>
         </div>

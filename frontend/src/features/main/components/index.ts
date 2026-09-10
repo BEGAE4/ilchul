@@ -5,3 +5,4 @@ export * from './PopularPlaceCard';
 export * from './PopularPlaceListPage';
 export * from './PopularPlanCard';
 export * from './PopularPlanListPage';
+export { RegionSelector } from './RegionSelector';

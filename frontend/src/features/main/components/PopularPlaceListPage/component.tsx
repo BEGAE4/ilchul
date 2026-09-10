@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useGeolocation } from '../../hooks/useGeolocation';
+import { useRegion } from '../../hooks/useRegion';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { useNearbyPopularPlaces } from '../../hooks/useNearbyPopularPlaces';
 import { useScrollRestoration } from '@/shared/hooks/useScrollRestoration';
@@ -14,13 +14,14 @@ const CACHE_KEY = 'place-popular-nearby';
 
 export function PopularPlaceListPage() {
   const router = useRouter();
-  const geo = useGeolocation();
+  const { region, source: regionSource, isLocating } = useRegion();
 
+  // 직접 고른 지역이 있으면 그 지역을 보여주고, 위치를 못 잡았을 때만 전국 목록으로 넘긴다.
   useEffect(() => {
-    if (geo.status === 'denied' || geo.status === 'unsupported') {
+    if (regionSource === 'default' && !isLocating) {
       router.replace('/place/popular/nationwide');
     }
-  }, [geo.status, router]);
+  }, [regionSource, isLocating, router]);
 
   const {
     items,
@@ -32,10 +33,13 @@ export function PopularPlaceListPage() {
     loadMore,
     retry,
   } = useNearbyPopularPlaces({
-    lat: geo.coords?.lat ?? null,
-    lng: geo.coords?.lng ?? null,
+    lat: region.lat,
+    lng: region.lng,
     cacheKey: CACHE_KEY,
   });
+
+  const pageTitle =
+    regionSource === 'manual' ? `${region.name} 인기 장소` : '내 주변 인기 장소';
 
   const sentinelRef = useInfiniteScroll({
     enabled: hasNext && !isLoadingMore && !error,
@@ -46,11 +50,11 @@ export function PopularPlaceListPage() {
   useScrollRestoration(CACHE_KEY, !isLoading && items.length > 0);
 
   const showShellLoading =
-    isLoading || geo.status === 'idle' || geo.status === 'loading';
+    isLoading || isLocating;
 
   return (
     <ListPageShell
-      title="내 주변 인기 장소"
+      title={pageTitle}
       totalCount={totalCount}
       isLoading={showShellLoading}
       isLoadingMore={isLoadingMore}
