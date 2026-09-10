@@ -34,6 +34,7 @@ public class PlanDetailDto {
     private String userNickname;
     private String userAvatar;
     private List<String> planImageUrls;
+    private List<PlanImageDto> planImages;
     private List<String> tags;
     private String thumbnailUrl;
     private DeparturePoint departurePoint;
@@ -69,8 +70,20 @@ public class PlanDetailDto {
                 .planPlaceDetailDtos(places)
                 .thumbnailUrl(first.getImageUrl())
                 .planImageUrls(plan.getPlanImages().stream().map(PlanImage::getImageUrl).toList())
+                .planImages(plan.getPlanImages().stream().map(PlanImageDto::from).toList())
                 .departurePoint(plan.getDeparturePoint())
                 .build();
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public static class PlanImageDto {
+        private Integer planImageId;
+        private String imageUrl;
+
+        public static PlanImageDto from(PlanImage image) {
+            return new PlanImageDto(image.getPlanImageId(), image.getImageUrl());
+        }
     }
 
     @Getter
@@ -105,7 +118,8 @@ public class PlanDetailDto {
                     .isStamped(flat.getIsStamped())
                     .categoryName(flat.getCategoryName())
                     .stayTime(flat.getStayTime())
-                    .stayDescription(flat.getPlanDescription())
+                    // PlanPlace does not store a place-specific description.
+                    .stayDescription(null)
                     .build();
         }
     }

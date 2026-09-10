@@ -83,7 +83,8 @@ public class PlaceController {
             @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
             @Parameter(description = "장소 ID", example = "1") @PathVariable Integer placeId
     ) {
-        return ResponseEntity.ok().body(placeService.getPlaceDetail(placeId));
+        Integer userId = user != null ? user.getUserId() : null;
+        return ResponseEntity.ok().body(placeService.getPlaceDetail(placeId, userId));
     }
 
 

@@ -353,12 +353,15 @@ public class PlanServiceImpl implements PlanService{
 
         validatePlanOwner(plan, userId);
 
-        imageIds.forEach(imageId -> {
-            PlanImage planImage = planImageRepository.findById(imageId)
-                    .orElseThrow(() -> new CustomException(PlanImageErrorCode.PLAN_IMAGE_NOT_FOUND));
+        // Validate every image before removing any file from external storage.
+        List<PlanImage> imagesToDelete = imageIds.stream()
+                .distinct()
+                .map(imageId -> planImageRepository.findByPlanImageIdAndPlan_PlanId(imageId, planId)
+                        .orElseThrow(() -> new CustomException(PlanImageErrorCode.PLAN_IMAGE_NOT_FOUND)))
+                .toList();
 
+        imagesToDelete.forEach(planImage -> {
             imageStorageService.delete(planImage.getImageKey());
-
             planImageRepository.delete(planImage);
         });
 

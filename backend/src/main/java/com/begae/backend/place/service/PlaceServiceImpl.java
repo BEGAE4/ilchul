@@ -5,11 +5,16 @@ import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.like.domain.Like;
+import com.begae.backend.like.enums.LikeType;
+import com.begae.backend.like.repository.LikeRepository;
 import com.begae.backend.place.component.PromptRegistry;
 import com.begae.backend.place.domain.Place;
+import com.begae.backend.place.domain.ScrappedPlace;
 import com.begae.backend.place.dto.*;
 import com.begae.backend.place.exception.PlaceErrorCode;
 import com.begae.backend.place.repository.PlaceRepository;
+import com.begae.backend.place.repository.ScrappedPlaceRepository;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.dto.PopularPlanItemDto;
 import com.begae.backend.plan.repository.PlanRepository;
@@ -49,6 +54,8 @@ public class PlaceServiceImpl implements PlaceService {
     private final WebClient kakaoWebClient;
     private final WebClient googleWebClient;
     private final PlaceRepository placeRepository;
+    private final LikeRepository likeRepository;
+    private final ScrappedPlaceRepository scrappedPlaceRepository;
     private final PlanRepository planRepository;
     private final PromptRegistry promptRegistry;
 
@@ -254,8 +261,20 @@ public class PlaceServiceImpl implements PlaceService {
     }
 
     @Override
-    public PlaceDetailResponseDto getPlaceDetail(Integer placeId) {
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public PlaceDetailResponseDto getPlaceDetail(Integer placeId, Integer userId) {
         Place place = placeRepository.findById(placeId).orElseThrow(() -> new CustomException(PlaceErrorCode.PLACE_NOT_FOUND));
+
+        boolean isLiked = false;
+        boolean isBookmarked = false;
+        if (userId != null) {
+            isLiked = likeRepository.findByUser_UserIdAndTypeIdAndLikeType(userId, placeId, LikeType.PLACE)
+                    .map(Like::getLikeStatus)
+                    .orElse(false);
+            isBookmarked = scrappedPlaceRepository.findByUser_UserIdAndPlace_PlaceId(userId, placeId)
+                    .map(ScrappedPlace::isScrapped)
+                    .orElse(false);
+        }
 
         return PlaceDetailResponseDto.builder()
                 .placeId(place.getPlaceId())
@@ -268,6 +287,10 @@ public class PlaceServiceImpl implements PlaceService {
                 .placeImageUrl(place.getPlaceImageUrl())
                 .x(place.getX())
                 .y(place.getY())
+                .likeCount(place.getLikeCount() != null ? place.getLikeCount() : 0)
+                .isLiked(isLiked)
+                .bookmarkCount(place.getScrapCount() != null ? place.getScrapCount() : 0)
+                .isBookmarked(isBookmarked)
                 .build();
     }
 
