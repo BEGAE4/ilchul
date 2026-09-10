@@ -17,7 +17,9 @@ import { getNavItems } from '@/shared/lib/constants/navItems';
 import { ScrollCarousel } from '@/shared/ui/ScrollCarousel';
 import { HomePageSkeleton, Skeleton, SkeletonCard } from '@/shared/ui/Skeleton';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
-import { useGeolocation } from '@/features/main/hooks/useGeolocation';
+import { useRegion } from '@/features/main/hooks/useRegion';
+import { RegionSelector } from '@/features/main/components/RegionSelector';
+import { DEFAULT_REGION } from '@/features/main/constants/regions';
 import { useNearbyPopularPlaces } from '@/features/main/hooks/useNearbyPopularPlaces';
 import { useNearbyPopularPlans } from '@/features/main/hooks/useNearbyPopularPlans';
 import { useNationwidePopularPlaces } from '@/features/main/hooks/useNationwidePopularPlaces';
@@ -26,8 +28,6 @@ import { getSafeImageSrc } from '@/features/main/utils/image';
 import type { PopularPlace } from '@/features/main/types';
 import type { BestPlace } from '@/shared/types';
 
-// 위치 미허용 시 서울 기본 좌표
-const DEFAULT_COORDS = { lat: 37.5665, lng: 126.978 };
 const INTRO_SEEN_KEY = 'ilchul_intro_seen';
 
 // 섹션 단위 API 실패 표시 + 재시도 (QA A #7 — 실패가 "데이터 없음"처럼 보이던 문제)
@@ -57,14 +57,17 @@ export default function Home() {
   // 첫 방문 시 홈이 먼저 마운트되어 API 5건 + 권한 팝업이 인트로보다 먼저 뜨던 문제 (QA A #5).
   const [introChecked, setIntroChecked] = useState(false);
 
-  // 위치 정보 — 권한 응답을 기다리지 않고 기본 좌표로 먼저 조회하고,
-  // 실제 좌표가 확정되면 baseParams 변경으로 주변 섹션이 자동 재조회된다.
-  // 단, 실제 좌표 주변에 등록된 장소가 없으면(빈 응답) 기본 좌표로 되돌린다.
-  const geo = useGeolocation(introChecked);
+  // 지역 — 직접 고른 지역 > 위치로 인식한 지역 > 기본값(서울).
+  // 주변 섹션은 이 지역의 대표 좌표로 조회한다.
+  const regionState = useRegion(introChecked);
+  const { region, source: regionSource, isLocating } = regionState;
+
+  // 지역 주변에 등록된 장소가 없으면 기본 지역(서울)으로 되돌린다.
   const [fallbackToDefault, setFallbackToDefault] = useState(false);
-  const realCoords = fallbackToDefault ? null : geo.coords;
-  const effectiveLat = realCoords?.lat ?? DEFAULT_COORDS.lat;
-  const effectiveLng = realCoords?.lng ?? DEFAULT_COORDS.lng;
+  const canFallback = regionSource === 'gps' && !fallbackToDefault;
+  const effectiveLat = canFallback ? region.lat : fallbackToDefault ? DEFAULT_REGION.lat : region.lat;
+  const effectiveLng = canFallback ? region.lng : fallbackToDefault ? DEFAULT_REGION.lng : region.lng;
+  const shownRegionName = fallbackToDefault ? DEFAULT_REGION.name : region.name;
 
   // API 훅
   const nearbyPlaces = useNearbyPopularPlaces({
@@ -88,11 +91,12 @@ export default function Home() {
     enabled: introChecked,
   });
 
-  // 실제 좌표 기준 주변 장소가 비어 있으면 기본 좌표(서울)로 폴백
-  // API 실패로 비어 있는 경우는 폴백 대상이 아니다(에러 UI 로 표시).
+  // 위치로 인식한 지역에 등록된 장소가 없으면 기본 지역(서울)으로 폴백.
+  // 직접 고른 지역은 사용자의 의사이므로 폴백하지 않는다.
+  // API 실패로 비어 있는 경우도 폴백 대상이 아니다(에러 UI 로 표시).
   useEffect(() => {
     if (
-      realCoords &&
+      regionSource === 'gps' &&
       !nearbyPlaces.isLoading &&
       !nearbyPlaces.error &&
       nearbyPlaces.items.length === 0
@@ -100,11 +104,16 @@ export default function Home() {
       setFallbackToDefault(true);
     }
   }, [
-    realCoords,
+    regionSource,
     nearbyPlaces.isLoading,
     nearbyPlaces.error,
     nearbyPlaces.items.length,
   ]);
+
+  // 지역을 직접 바꾸면 폴백 상태를 푼다
+  useEffect(() => {
+    setFallbackToDefault(false);
+  }, [region.id, regionSource]);
 
   // 인트로 리다이렉트 — replace 로 보내 인트로에서 뒤로가기 시 홈이 다시 인트로로
   // 보내는 루프를 막는다 (QA A #3). 본 적이 있으면 그때부터 API·위치 요청을 시작한다.
@@ -127,11 +136,11 @@ export default function Home() {
     (nationwidePlaces.isLoading && nationwidePlaces.items.length === 0) ||
     (nationwidePlans.isLoading && nationwidePlans.items.length === 0);
 
-  // 위치를 쓸 수 없거나(거부·타임아웃·미지원) 주변에 데이터가 없어 기본 좌표로 보여줄 때 안내 (QA A #8)
+  // 지역을 자동으로 못 잡았거나, 잡은 지역에 데이터가 없어 기본 지역으로 보여줄 때 안내 (QA A #8)
   const locationNotice = fallbackToDefault
-    ? '내 주변에 등록된 장소가 없어 서울 기준으로 보여드려요'
-    : geo.status === 'denied' || geo.status === 'unsupported'
-      ? '위치 정보를 사용할 수 없어 서울 기준으로 보여드려요'
+    ? `${region.name} 주변에 등록된 장소가 없어 ${DEFAULT_REGION.name} 기준으로 보여드려요`
+    : regionSource === 'default' && !isLocating
+      ? `위치를 확인하지 못해 ${DEFAULT_REGION.name} 기준으로 보여드려요. 위 지역명을 눌러 직접 고를 수 있어요`
       : null;
 
   // 주변 섹션은 좌표 확정 여부와 무관하게 자리(스켈레톤)를 유지한다
@@ -154,8 +163,16 @@ export default function Home() {
   return (
     <PageLayout bottomNavItems={navItems}>
       <div className="bg-gray-50 flex-1 pb-10">
-        {/* ───── 섹션 1: 비주얼 슬라이드 배너 ───── */}
+        {/* ───── 지역 선택 ───── */}
+        <RegionSelector state={regionState} />
+
+        {/* ───── 섹션 1: 비주얼 슬라이드 배너 ─────
+            상단에 흰색 페이드를 얹어 위 지역 영역과 한 덩어리로 이어 보이게 한다 */}
         <div className="relative mb-2">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-24 z-10 bg-gradient-to-b from-white via-white/60 to-transparent"
+          />
           {nearbyPlacesLoading ? (
             <Skeleton variant="image" height={320} />
           ) : nearbyPlaces.error && nearbyPlaces.items.length === 0 ? (
@@ -211,7 +228,7 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <Navigation size={16} className="text-primary-500" />
               <h2 className="text-lg font-bold text-gray-900">
-                주변 인기 장소
+                {shownRegionName} 인기 장소
               </h2>
             </div>
             <button
@@ -298,11 +315,11 @@ export default function Home() {
               <div className="flex items-center gap-2 mb-1">
                 <Flame size={16} className="text-accent-500" />
                 <h2 className="text-lg font-bold text-gray-900">
-                  실시간 베스트 플랜
+                  {shownRegionName} 베스트 플랜
                 </h2>
               </div>
               <p className="text-xs text-gray-500">
-                지금 내 주변에서 가장 핫한 플랜
+                지금 {shownRegionName}에서 가장 핫한 플랜
               </p>
             </div>
             <button

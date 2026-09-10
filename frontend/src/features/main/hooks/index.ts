@@ -5,3 +5,4 @@ export * from './useNearbyPopularPlaces';
 export * from './useNearbyPopularPlans';
 export * from './useNationwidePopularPlaces';
 export * from './useNationwidePopularPlans';
+export * from './useRegion';
