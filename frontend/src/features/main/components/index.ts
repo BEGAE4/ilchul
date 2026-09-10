@@ -1,3 +1,4 @@
+export * from './HeroEmpty';
 export * from './ListPageShell';
 export * from './NationwidePopularPlaceListPage';
 export * from './NationwidePopularPlanListPage';

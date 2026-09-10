@@ -1,0 +1,1 @@
+export { HeroEmpty } from './component';

@@ -16,6 +16,7 @@ import {
   fetchMyPageSummary,
   setMyPlanVisibility,
 } from '@/features/my-page/api';
+import { PlanVisibilityToggle } from './PlanVisibilityToggle';
 import type { MyPlan, ScrappedPlan } from '@/features/my-page/types/plan.types';
 import type { MyPageSummary } from '@/features/my-page/types/summary.types';
 
@@ -441,6 +442,8 @@ export const ProfilePage: React.FC = () => {
                         tabIndex={0}
                         onClick={() => router.push(`/my-course/${plan.planId}`)}
                         onKeyDown={(e) => {
+                          // 카드 안의 공개 스위치에서 누른 Space/Enter 는 카드 이동이 아니다
+                          if (e.target !== e.currentTarget) return;
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             router.push(`/my-course/${plan.planId}`);
@@ -457,33 +460,14 @@ export const ProfilePage: React.FC = () => {
                             sizes="(max-width: 480px) 100vw, 480px"
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                          <div className="absolute top-3 left-3">
-                            <button
-                              type="button"
-                              disabled={isToggling}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                void handleTogglePlanVisibility(plan.planId);
-                              }}
-                              className={`text-[10px] text-white bg-white/20 backdrop-blur-sm rounded px-1.5 py-0.5 transition-colors ${
-                                isToggling ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
-                              }`}
-                              aria-label={
-                                isUnknown
-                                  ? '플랜을 공개로 전환'
-                                  : isPublic
-                                  ? '플랜을 비공개로 전환'
-                                  : '플랜을 공개로 전환'
+                          <div className="absolute top-3 right-3">
+                            <PlanVisibilityToggle
+                              isPublic={isUnknown ? undefined : isPublic}
+                              isLoading={isToggling}
+                              onToggle={() =>
+                                void handleTogglePlanVisibility(plan.planId)
                               }
-                            >
-                              {isToggling
-                                ? '변경중...'
-                                : isUnknown
-                                ? '미설정'
-                                : isPublic
-                                ? '공개'
-                                : '비공개'}
-                            </button>
+                            />
                           </div>
                           <div className="absolute bottom-3 left-3 right-3">
                             <h3 className="font-bold text-white text-sm line-clamp-1">
