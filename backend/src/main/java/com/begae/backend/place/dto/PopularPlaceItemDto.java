@@ -14,6 +14,7 @@ public class PopularPlaceItemDto {
     private String location;
     private String image;
     private Integer ranking;
+    private Integer likeCount;
 
     public static PopularPlaceItemDto of(Place place, int ranking) {
         return PopularPlaceItemDto.builder()
@@ -23,6 +24,7 @@ public class PopularPlaceItemDto {
                 .location(place.getAddressName())
                 .image(place.getPlaceImageUrl())
                 .ranking(ranking)
+                .likeCount(place.getLikeCount())
                 .build();
     }
 }

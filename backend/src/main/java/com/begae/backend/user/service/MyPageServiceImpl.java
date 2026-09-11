@@ -3,6 +3,7 @@ package com.begae.backend.user.service;
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.global.exception.GlobalErrorCode;
 import com.begae.backend.plan.domain.Plan;
+import com.begae.backend.plan.enums.ScrappedStatus;
 import com.begae.backend.plan.exception.PlanErrorCode;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan.repository.ScrappedPlanRepository;
@@ -86,8 +87,10 @@ public class MyPageServiceImpl implements MyPageService {
 
         Integer publicPlanCount = planRepository.countByUserUserIdAndIsPlanVisibleTrue(user.getUserId());
         Integer verifyPlanCount = planRepository.countByUserUserIdAndIsVerifiedTrue(user.getUserId());
-        Integer scrappedByOthersCount = scrappedPlanRepository.countByPlan_User_UserId(user.getUserId());
-        Integer savedCourseCount = scrappedPlanRepository.countByUser_UserId(user.getUserId());
+        Integer scrappedByOthersCount =
+                scrappedPlanRepository.countByPlan_User_UserIdAndScrappedStatus(user.getUserId(), ScrappedStatus.Y);
+        Integer savedCourseCount =
+                scrappedPlanRepository.countByUser_UserIdAndScrappedStatus(user.getUserId(), ScrappedStatus.Y);
 
         return UserProfileSummaryResponseDto
                 .of(publicPlanCount, verifyPlanCount, scrappedByOthersCount, savedCourseCount);
