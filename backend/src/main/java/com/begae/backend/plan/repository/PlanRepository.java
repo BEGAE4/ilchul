@@ -43,7 +43,6 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
         pl.user.userId,
         pl.user.userNickname,
         pl.user.userImg,
-        pli.imageUrl,
         ppl.planPlaceId,
         ppl.place.placeId,
         ppl.travelTime,
@@ -59,7 +58,6 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
     from Plan pl
     left join pl.planPlaces ppl
     left join ppl.place plc
-    left join pl.planImages pli
     where pl.planId = :planId
     order by ppl.orderIndex
 """)

@@ -24,7 +24,6 @@ public class PlanDetailFlatDto {
     private Integer userId;
     private String userNickname;
     private String userImg;
-    private String imageUrl;
     private Integer planPlaceId;
     private Integer placeId;
     private Integer travelTime;
