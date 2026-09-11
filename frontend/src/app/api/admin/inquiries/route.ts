@@ -1,3 +1,4 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 import type {
   AdminInquiryListItem,
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
 
   if (!useMock) {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const baseUrl = getServerApiBaseUrl();
     const cookie = req.headers.get('cookie') ?? '';
     const res = await fetch(`${baseUrl}/api/admin/inquiries?${sp.toString()}`, {
       headers: { ...(cookie ? { cookie } : {}) },

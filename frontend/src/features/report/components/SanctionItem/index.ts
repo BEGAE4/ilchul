@@ -1,0 +1,1 @@
+export { SanctionItem } from './component';

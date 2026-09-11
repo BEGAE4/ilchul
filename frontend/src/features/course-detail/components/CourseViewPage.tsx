@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -16,18 +16,19 @@ import {
   MoreVertical,
   Trash2,
   X,
+  Plus,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
-import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
+import { BottomActionBar } from '@/shared/ui/BottomActionBar';
 import { CourseDetailSkeleton } from '@/shared/ui/Skeleton';
-import { MOCK_COMMENTS } from '@/shared/data/mockData';
 import { useReport, ReportDialog, ReportMenuItem } from '@/features/report';
 import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStorage';
 import type { CurrentUser, ReportTarget } from '@/features/report';
-import type { Comment } from '@/shared/types';
+import { usePlanDetail, usePlanActions, planApi } from '@/features/plan';
+import { useComments } from '../hooks/useComments';
 
 interface CourseViewPageProps {
   courseId: string;
@@ -35,23 +36,10 @@ interface CourseViewPageProps {
 
 export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const router = useRouter();
-  const {
-    getCourseById,
-    courses,
-    toggleBookmark,
-    toggleLike,
-    isBookmarked,
-    isLiked,
-    getLikeCount,
-    cloneCourseToMy,
-  } = useCourseStore();
 
-  const course = getCourseById(courseId);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    setIsLoading(false);
-  }, []);
+  // 플랜 상세는 서버에서만 조회한다. 실패 시 에러 UI를 렌더링한다.
+  const { plan, isLoading: isPlanLoading, error: planError, refetch } = usePlanDetail(courseId);
+  const planActions = usePlanActions(plan);
 
   const { user, isLoggedIn } = useUserStore();
   const currentUser: CurrentUser = {
@@ -61,44 +49,87 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   };
 
   const reportMenuTriggerRef = useRef<HTMLButtonElement>(null);
-  const reportCtx = useReport({ reporterId: currentUser.id });
+  const reportCtx = useReport();
+
+  const {
+    comments,
+    isLoading: isCommentsLoading,
+    hasNext,
+    isFetchingMore,
+    commentText,
+    setCommentText,
+    replyTarget,
+    setReplyTarget,
+    deleteTarget,
+    setDeleteTarget,
+    submitComment,
+    confirmDelete,
+    toggleCommentLike,
+    hideComment,
+    fetchMore,
+  } = useComments(courseId);
 
   const [shareOpen, setShareOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savedCourseId, setSavedCourseId] = useState<string | null>(null);
-  const [commentText, setCommentText] = useState('');
-  const [comments, setComments] = useState<Comment[]>(MOCK_COMMENTS);
-  const [likedComments, setLikedComments] = useState<Set<string>>(new Set());
-  const [commentToDelete, setCommentToDelete] = useState<Comment | null>(null);
   // 어느 댓글의 메뉴인지 추적 — race condition 차단 (Architect C-3)
   const [commentMenuTarget, setCommentMenuTarget] = useState<ReportTarget | null>(null);
 
-  if (isLoading) {
+  if (isPlanLoading) {
     return <CourseDetailSkeleton />;
   }
 
-  if (!course) {
+  // 에러 UI — 데이터 로드 실패 또는 존재하지 않는 플랜
+  if (!plan) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen text-gray-500">
-        <p className="mb-4">플랜을 찾을 수 없습니다.</p>
-        <button onClick={() => router.back()} className="text-blue-500 font-medium">
-          돌아가기
-        </button>
+      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+          <X size={28} className="text-gray-400" />
+        </div>
+        <p className="text-gray-900 font-bold mb-1">
+          {planError ?? '플랜 정보를 불러오지 못했어요.'}
+        </p>
+        <p className="text-sm text-gray-500 mb-6">잠시 후 다시 시도해주세요.</p>
+        <div className="flex gap-2 w-full max-w-xs">
+          <button
+            onClick={() => router.back()}
+            className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm"
+          >
+            돌아가기
+          </button>
+          <button
+            onClick={refetch}
+            className="flex-1 py-3 bg-primary-500 text-white font-bold rounded-xl text-sm shadow-md shadow-primary-200"
+          >
+            다시 시도
+          </button>
+        </div>
       </div>
     );
   }
 
-  const bookmarked = isBookmarked(courseId);
-  const liked = isLiked(courseId);
-  const likeCount = getLikeCount(courseId);
+  const bookmarked = planActions.isScrapped;
+  const liked = planActions.isLiked;
+  const likeCount = planActions.likeCount;
+  const scrapCount = planActions.scrapCount;
 
-  // course가 truthy로 확인된 이후 courseTarget을 구성 (null 케이스는 위에서 early return)
+  const places = [...plan.planPlaceDetailDtos].sort((a, b) => a.orderIndex - b.orderIndex);
+  const heroImage =
+    plan.thumbnailUrl ||
+    plan.planImageUrls[0] ||
+    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1080&auto=format&fit=crop';
+  const locationLabel = places[0]?.address?.split(' ').slice(0, 2).join(' ') || '';
+  const durationLabel =
+    plan.requiredTime >= 60
+      ? `${Math.floor(plan.requiredTime / 60)}시간${plan.requiredTime % 60 ? ` ${plan.requiredTime % 60}분` : ''}`
+      : `${plan.requiredTime}분`;
+
   const courseTarget: ReportTarget = {
     type: 'course',
     id: courseId,
-    ownerId: course.author, // A7: 닉네임 best-effort 매칭
-    title: course.title,
+    ownerId: plan.userNickname, // A7: 닉네임 best-effort 매칭
+    title: plan.planTitle,
     contextUrl: `/course/${courseId}`,
   };
 
@@ -106,84 +137,33 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     setShowSaveModal(true);
   };
 
-  const confirmSave = () => {
-    const cloned = cloneCourseToMy(courseId);
-    if (cloned) {
-      setSavedCourseId(cloned.id);
+  const confirmSave = async () => {
+    try {
+      // 빠른 담기 플로우 — scheduledDate 미선택이므로 오늘 날짜(YYYY-MM-DD)를 기본값으로 전송
+      const scheduledDate = new Date().toISOString().slice(0, 10);
+      const res = await planApi.clonePlan(plan.planId, { scheduledDate });
+      setSavedCourseId(String(res.planId));
       toast.success('내 일정에 담았어요!');
+    } catch {
+      toast.error('일정 담기에 실패했어요. 잠시 후 다시 시도해주세요.');
     }
   };
 
   const goToMyCourse = () => {
     if (savedCourseId) {
-      router.push(`/my-course/${savedCourseId}`);
+      router.push(`/course/${savedCourseId}`);
     }
     setShowSaveModal(false);
     setSavedCourseId(null);
   };
-
-  const handleCommentSubmit = () => {
-    if (!commentText.trim()) return;
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      user: '김여행',
-      avatar: 'https://i.pravatar.cc/150?u=me',
-      text: commentText,
-      date: '방금',
-      likes: 0,
-    };
-    setComments([newComment, ...comments]);
-    setCommentText('');
-    toast.success('댓글이 등록되었어요!');
-  };
-
-  const handleLikeComment = (commentId: string) => {
-    setLikedComments((prev) => {
-      const next = new Set(prev);
-      if (next.has(commentId)) next.delete(commentId);
-      else next.add(commentId);
-      return next;
-    });
-  };
-
-  const confirmDeleteComment = () => {
-    if (!commentToDelete) return;
-    setComments((prev) => prev.filter((c) => c.id !== commentToDelete.id));
-    setLikedComments((prev) => {
-      if (!prev.has(commentToDelete.id)) return prev;
-      const next = new Set(prev);
-      next.delete(commentToDelete.id);
-      return next;
-    });
-    setCommentToDelete(null);
-    toast.success('댓글이 삭제되었어요.');
-  };
-
-  // 관련 플랜 — 태그 매칭 또는 같은 지역 기반 필터링
-  const relatedCourses = courses
-    .filter((c) => c.id !== courseId)
-    .filter(
-      (c) =>
-        c.tags?.some((t) => course.tags?.includes(t)) ||
-        c.location === course.location
-    )
-    .slice(0, 3);
-
-  // 태그/지역 매칭 결과가 3개 미만이면 다른 플랜으로 채움
-  if (relatedCourses.length < 3) {
-    const remaining = courses
-      .filter((c) => c.id !== courseId && !relatedCourses.some((r) => r.id === c.id))
-      .slice(0, 3 - relatedCourses.length);
-    relatedCourses.push(...remaining);
-  }
 
   return (
     <div className="bg-white pb-24 min-h-screen relative">
       {/* 히어로 이미지 */}
       <div className="relative h-64 w-full">
         <Image
-          src={course.thumbnail}
-          alt={course.title}
+          src={heroImage}
+          alt={plan.planTitle}
           fill
           sizes="100vw"
           className="object-cover"
@@ -213,15 +193,15 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/70 to-transparent text-white">
           <div className="flex gap-2 mb-2">
-            {course.tags.map((tag, idx) => (
+            {plan.tags.map((tag, idx) => (
               <span key={idx} className="bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded text-xs">
                 {tag}
               </span>
             ))}
           </div>
-          <h1 className="text-2xl font-bold leading-tight mb-1">{course.title}</h1>
+          <h1 className="text-2xl font-bold leading-tight mb-1">{plan.planTitle}</h1>
           <div className="flex items-center text-sm opacity-90">
-            <MapPin size={14} className="mr-1" /> {course.location}
+            <MapPin size={14} className="mr-1" /> {locationLabel}
           </div>
         </div>
       </div>
@@ -230,28 +210,25 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div
           className="flex items-center gap-3 cursor-pointer active:opacity-70"
-          onClick={() => router.push(`/profile/${course.author}`)}
+          onClick={() => router.push(`/profile/${plan.userId}`)}
         >
           <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-200">
             <Image
-              src={course.authorAvatar}
-              alt={course.author}
+              src={plan.userAvatar || `https://i.pravatar.cc/150?u=${plan.userId}`}
+              alt={plan.userNickname}
               fill
               sizes="40px"
               className="object-cover"
             />
           </div>
           <div>
-            <div className="text-sm font-bold text-gray-900">{course.author}</div>
+            <div className="text-sm font-bold text-gray-900">{plan.userNickname}</div>
             <div className="text-xs text-gray-500">여행 크리에이터</div>
           </div>
         </div>
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            toggleLike(courseId);
-            toast(liked ? '좋아요를 취소했어요.' : '좋아요를 눌렀어요!');
-          }}
+          onClick={planActions.toggleLike}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-full border-2 font-bold text-sm transition-all ${
             liked
               ? 'bg-red-50 border-red-400 text-red-500'
@@ -259,7 +236,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           }`}
         >
           <Heart size={16} className={liked ? 'fill-red-400 text-red-400' : ''} />
-          {likeCount.toLocaleString()}
+          {(likeCount ?? 0).toLocaleString()}
         </motion.button>
       </div>
 
@@ -267,16 +244,16 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       <div className="grid grid-cols-3 gap-1 p-4 text-center">
         <div className="bg-gray-50 p-3 rounded-lg">
           <div className="text-xs text-gray-500 mb-1">소요시간</div>
-          <div className="font-bold text-gray-900">{course.duration}</div>
+          <div className="font-bold text-gray-900">{durationLabel}</div>
         </div>
         <div className="bg-gray-50 p-3 rounded-lg">
           <div className="text-xs text-gray-500 mb-1">스크랩</div>
           <div className="font-bold text-gray-900 flex items-center justify-center gap-1">
-            <Bookmark size={14} className="text-sky-500" /> {course.bookmarks}
+            <Bookmark size={14} className="text-primary-500" /> {scrapCount}
           </div>
         </div>
         <button
-          onClick={() => toggleLike(courseId)}
+          onClick={planActions.toggleLike}
           className="bg-gray-50 p-3 rounded-lg active:bg-gray-100 transition-colors"
         >
           <div className="text-xs text-gray-500 mb-1">좋아요</div>
@@ -289,29 +266,29 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
 
       {/* 설명 */}
       <div className="px-5 py-2 mb-6">
-        <p className="text-gray-600 text-sm leading-relaxed">{course.description}</p>
+        <p className="text-gray-600 text-sm leading-relaxed">{plan.planDescription}</p>
       </div>
 
       {/* 타임라인 */}
       <div className="px-5">
         <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <Clock size={20} className="text-sky-500" /> 여행 플랜 타임라인
+          <Clock size={20} className="text-primary-500" /> 여행 플랜 타임라인
         </h2>
-        <div className="relative pl-2 space-y-8 before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-sky-200 before:to-gray-100 before:content-['']">
-          {course.stops.map((stop) => (
-            <div key={stop.id} className="relative pl-8">
-              <span className="absolute left-0 top-1.5 -ml-px h-4 w-4 rounded-full border-2 border-white bg-sky-500 shadow-sm z-10" />
+        <div className="relative pl-2 space-y-8 before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-primary-200 before:to-gray-100 before:content-['']">
+          {places.map((stop) => (
+            <div key={stop.planPlaceId} className="relative pl-8">
+              <span className="absolute left-0 top-1.5 -ml-px h-4 w-4 rounded-full border-2 border-white bg-primary-500 shadow-sm z-10" />
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1">
-                <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded w-fit mb-1">
-                  {stop.time}
+                <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded w-fit mb-1">
+                  {stop.visitTime}
                 </span>
                 <span className="text-xs text-gray-400 font-medium ml-auto sm:ml-2">
-                  {stop.category}
+                  {stop.categoryName}
                 </span>
               </div>
-              <h3 className="text-base font-bold text-gray-900 mb-1">{stop.name}</h3>
+              <h3 className="text-base font-bold text-gray-900 mb-1">{stop.placeName}</h3>
               <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                {stop.description}
+                {stop.stayDescription || stop.address}
               </p>
             </div>
           ))}
@@ -321,164 +298,235 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       {/* 댓글 */}
       <div className="px-5 py-4 border-t border-gray-100 mt-6">
         <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <MessageCircle size={20} className="text-sky-500" /> 댓글
+          <MessageCircle size={20} className="text-primary-500" /> 댓글
         </h2>
         <div className="mb-4">
+          {replyTarget && (
+            <div className="flex items-center justify-between bg-primary-50 border border-primary-200 rounded-lg px-3 py-2 mb-2 text-sm text-primary-700">
+              <span><span className="font-bold">@{replyTarget.username}</span>에게 답글</span>
+              <button onClick={() => setReplyTarget(null)} aria-label="답글 취소">
+                <X size={14} />
+              </button>
+            </div>
+          )}
           <textarea
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            placeholder="댓글을 입력하세요..."
-            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-sky-500 text-base"
+            placeholder={replyTarget ? `@${replyTarget.username}에게 답글...` : '댓글을 입력하세요...'}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary-500 text-base"
             rows={2}
             maxLength={500}
           />
           <button
-            onClick={handleCommentSubmit}
-            className="mt-2 w-full bg-sky-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform"
+            onClick={submitComment}
+            className="mt-2 w-full bg-primary-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-primary-200 active:scale-[0.98] transition-transform"
           >
-            댓글 작성
+            {replyTarget ? '답글 작성' : '댓글 작성'}
           </button>
         </div>
-        <div className="space-y-4">
-          {comments.map((comment) => (
-            <div key={comment.id} className="flex items-start gap-3">
-              <div className="relative w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
-                <Image src={comment.avatar} alt="Avatar" fill sizes="36px" className="object-cover" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-bold text-gray-900">{comment.user}</div>
-                  <div className="text-xs text-gray-500">{comment.date}</div>
-                </div>
-                <p className="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg border border-gray-100 mt-1">
-                  {comment.text}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <button
-                    onClick={() => handleLikeComment(comment.id)}
-                    className={`text-sm ${likedComments.has(comment.id) ? 'text-red-500' : 'text-gray-500'}`}
-                  >
-                    <ThumbsUp size={16} />
-                  </button>
-                  <span className="text-sm text-gray-500">
-                    {likedComments.has(comment.id) ? comment.likes + 1 : comment.likes}
-                  </span>
-                  {comment.user === currentUser.name ? (
-                    // 본인 댓글: 삭제 버튼 유지
-                    <button
-                      onClick={() => setCommentToDelete(comment)}
-                      aria-label="댓글 삭제"
-                      className="ml-auto text-gray-400 hover:text-red-500 active:text-red-600"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  ) : (
-                    // 타인 댓글: 신고 진입점 ⋮ 버튼 (Q6: BottomMenu 단일 트리거)
-                    <button
-                      onClick={() =>
-                        setCommentMenuTarget({
-                          type: 'comment',
-                          id: comment.id,
-                          ownerId: comment.user,
-                          courseId,
-                          snippet: comment.text.slice(0, 60),
-                          contextUrl: `/course/${courseId}#comment-${comment.id}`,
-                        })
-                      }
-                      aria-label="댓글 더보기"
-                      className="ml-auto text-gray-400 hover:text-gray-600 active:text-gray-700"
-                    >
-                      <MoreVertical size={16} />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 관련 플랜 */}
-      {relatedCourses.length > 0 && (
-        <div className="px-5 py-6 border-t border-gray-100 bg-gray-50">
-          <h2 className="font-bold text-lg mb-4">이런 플랜도 좋아하실 거예요</h2>
-          <div className="space-y-3">
-            {relatedCourses.map((rc) => (
-              <div
-                key={rc.id}
-                onClick={() => router.push(`/course/${rc.id}`)}
-                className="flex gap-3 bg-white rounded-xl p-3 border border-gray-100 shadow-sm cursor-pointer active:scale-[0.99] transition-transform"
-              >
-                <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                  <Image src={rc.thumbnail} alt={rc.title} fill sizes="80px" className="object-cover" />
-                </div>
-                <div className="flex-1 flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-bold text-sm text-gray-900 line-clamp-1 mb-1">{rc.title}</h3>
-                    <p className="text-xs text-gray-500 line-clamp-1">{rc.description}</p>
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-1">
-                    <span className="flex items-center gap-0.5">
-                      <MapPin size={10} /> {rc.location}
-                    </span>
-                    <span>·</span>
-                    <span className="flex items-center gap-0.5">
-                      <Heart size={10} className="text-red-400" /> {rc.likes}
-                    </span>
-                  </div>
+        {isCommentsLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-start gap-3 animate-pulse">
+                <div className="w-9 h-9 rounded-full bg-gray-200 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 bg-gray-200 rounded w-24" />
+                  <div className="h-10 bg-gray-100 rounded-lg" />
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="space-y-4">
+            {comments.map((comment) => (
+              <div key={comment.replyId}>
+                {/* 부모 댓글 */}
+                <div className="flex items-start gap-3">
+                  <div className="relative w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
+                    <Image src={comment.avatar} alt="Avatar" fill sizes="36px" className="object-cover" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-bold text-gray-900">{comment.user}</div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(comment.createdAt).toLocaleDateString('ko-KR')}
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100 mt-1 whitespace-pre-wrap">
+                      {comment.isDeleted ? '삭제된 댓글입니다.' : comment.content}
+                    </p>
+                    {!comment.isDeleted && (
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <button
+                        onClick={() => toggleCommentLike(comment.replyId, comment.isLiked, null)}
+                        className={`flex items-center gap-1 text-sm ${comment.isLiked ? 'text-primary-500' : 'text-gray-400'}`}
+                      >
+                        <ThumbsUp size={14} />
+                        <span>{comment.likeCount}</span>
+                      </button>
+                      <button
+                        onClick={() =>
+                          setReplyTarget({
+                            replyId: comment.replyId,
+                            username: comment.user,
+                            userId: comment.userId,
+                          })
+                        }
+                        className="text-xs text-gray-400 hover:text-primary-500"
+                      >
+                        답글
+                      </button>
+                      {comment.user === currentUser.name ? (
+                        <button
+                          onClick={() =>
+                            setDeleteTarget({ replyId: comment.replyId, content: comment.content, parentId: null })
+                          }
+                          aria-label="댓글 삭제"
+                          className="ml-auto text-gray-400 hover:text-red-500"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() =>
+                            setCommentMenuTarget({
+                              type: 'comment',
+                              id: String(comment.replyId),
+                              ownerId: comment.user,
+                              courseId,
+                              snippet: comment.content.slice(0, 60),
+                              contextUrl: `/course/${courseId}#comment-${comment.replyId}`,
+                            })
+                          }
+                          aria-label="댓글 더보기"
+                          className="ml-auto text-gray-400 hover:text-gray-600"
+                        >
+                          <MoreVertical size={14} />
+                        </button>
+                      )}
+                    </div>
+                    )}
+                  </div>
+                </div>
 
-      {/* Sticky 하단 FAB */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 flex gap-2 justify-center max-w-[480px] mx-auto z-50">
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            toggleLike(courseId);
-            toast(liked ? '좋아요를 취소했어요.' : '좋아요를 눌렀어요!');
-          }}
-          className={`p-3.5 rounded-xl border transition-colors ${
-            liked ? 'bg-red-50 border-red-200 text-red-500' : 'bg-gray-50 border-gray-200 text-gray-400'
-          }`}
-        >
-          <Heart size={22} className={liked ? 'fill-red-500' : ''} />
-        </motion.button>
-        <motion.button
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            toggleBookmark(courseId);
-            toast.success(bookmarked ? '저장을 해제했어요.' : '플랜을 저장했어요!');
-          }}
-          className={`p-3.5 rounded-xl border transition-colors ${
-            bookmarked
-              ? 'bg-amber-50 border-amber-200 text-amber-500'
-              : 'bg-gray-50 border-gray-200 text-gray-400'
-          }`}
-        >
-          <Bookmark size={22} className={bookmarked ? 'fill-amber-500' : ''} />
-        </motion.button>
-        <button
-          onClick={handleSaveCourse}
-          className="flex-1 bg-sky-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform"
-        >
-          이 플랜으로 일정 담기
-        </button>
+                {/* 대댓글 */}
+                {comment.replies.replies.length > 0 && (
+                  <div className="ml-12 mt-3 space-y-3 border-l-2 border-gray-100 pl-3">
+                    {comment.replies.replies.map((reply) => (
+                      <div key={reply.replyId} className="flex items-start gap-3">
+                        <div className="relative w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
+                          <Image src={reply.avatar} alt="Avatar" fill sizes="28px" className="object-cover" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs font-bold text-gray-900">{reply.user}</div>
+                            <div className="text-[10px] text-gray-400">
+                              {new Date(reply.createdAt).toLocaleDateString('ko-KR')}
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100 mt-1 whitespace-pre-wrap">
+                            {reply.isDeleted ? '삭제된 댓글입니다.' : reply.content}
+                          </p>
+                          {!reply.isDeleted && (
+                          <div className="flex items-center gap-3 mt-1">
+                            <button
+                              onClick={() => toggleCommentLike(reply.replyId, reply.isLiked, comment.replyId)}
+                              className={`flex items-center gap-1 text-xs ${reply.isLiked ? 'text-primary-500' : 'text-gray-400'}`}
+                            >
+                              <ThumbsUp size={12} />
+                              <span>{reply.likeCount}</span>
+                            </button>
+                            {reply.user === currentUser.name ? (
+                              <button
+                                onClick={() =>
+                                  setDeleteTarget({
+                                    replyId: reply.replyId,
+                                    content: reply.content,
+                                    parentId: comment.replyId,
+                                  })
+                                }
+                                aria-label="답글 삭제"
+                                className="ml-auto text-gray-400 hover:text-red-500"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() =>
+                                  setCommentMenuTarget({
+                                    type: 'comment',
+                                    id: String(reply.replyId),
+                                    ownerId: reply.user,
+                                    courseId,
+                                    snippet: reply.content.slice(0, 60),
+                                    contextUrl: `/course/${courseId}#comment-${reply.replyId}`,
+                                  })
+                                }
+                                aria-label="답글 더보기"
+                                className="ml-auto text-gray-400 hover:text-gray-600"
+                              >
+                                <MoreVertical size={12} />
+                              </button>
+                            )}
+                          </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {hasNext && (
+              <button
+                onClick={fetchMore}
+                disabled={isFetchingMore}
+                className="w-full py-2.5 text-sm text-primary-600 font-medium border border-primary-200 rounded-xl hover:bg-primary-50 disabled:opacity-50"
+              >
+                {isFetchingMore ? '불러오는 중...' : '댓글 더 보기'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
+
+      <BottomActionBar
+        iconActions={[
+          {
+            id: 'like',
+            icon: Heart,
+            label: '좋아요',
+            active: liked,
+            activeTone: 'like',
+            filled: true,
+            onClick: planActions.toggleLike,
+          },
+          {
+            id: 'bookmark',
+            icon: Bookmark,
+            label: '스크랩',
+            active: bookmarked,
+            activeTone: 'bookmark',
+            filled: true,
+            onClick: planActions.toggleScrap,
+          },
+        ]}
+        primaryLabel="이 플랜으로 일정 담기"
+        primaryIcon={Plus}
+        onPrimaryClick={handleSaveCourse}
+      />
 
       {/* ─── 모달: 일정 담기 ─── */}
       {showSaveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowSaveModal(false)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-6">
             {!savedCourseId ? (
               <>
                 <h3 className="font-bold text-lg mb-2 text-gray-900">내 일정으로 담기</h3>
                 <p className="text-sm text-gray-500 mb-1">
-                  <span className="font-bold text-gray-700">&ldquo;{course.title}&rdquo;</span>
+                  <span className="font-bold text-gray-700">&ldquo;{plan.planTitle}&rdquo;</span>
                 </p>
                 <p className="text-sm text-gray-500 mb-5">
                   이 플랜을 내 일정에 추가하시겠어요?
@@ -494,7 +542,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   </button>
                   <button
                     onClick={confirmSave}
-                    className="flex-1 py-3 bg-sky-500 font-bold rounded-xl text-sm text-white shadow-md shadow-sky-200"
+                    className="flex-1 py-3 bg-primary-500 font-bold rounded-xl text-sm text-white shadow-md shadow-primary-200"
                   >
                     담기
                   </button>
@@ -523,7 +571,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   </button>
                   <button
                     onClick={goToMyCourse}
-                    className="flex-1 py-3 bg-sky-500 font-bold rounded-xl text-sm text-white shadow-md shadow-sky-200"
+                    className="flex-1 py-3 bg-primary-500 font-bold rounded-xl text-sm text-white shadow-md shadow-primary-200"
                   >
                     플랜 보기
                   </button>
@@ -536,13 +584,13 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
 
       {/* ─── 더보기 메뉴 ─── */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-50 flex items-end">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsMenuOpen(false)} />
           <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
             <button
               onClick={() => {
-                toggleBookmark(courseId);
+                planActions.toggleScrap();
                 setIsMenuOpen(false);
               }}
               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
@@ -579,7 +627,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         onHideContent={(t) => {
           if (t.type === 'comment') {
             // 댓글 신고 후 숨기기: 해당 댓글만 페이지에서 즉시 제거 + 로컬 스토리지에도 기록
-            setComments((prev) => prev.filter((c) => c.id !== t.id));
+            hideComment(t.id);
             hiddenReportsStorage.add(t);
           } else {
             // 플랜 신고 후 숨기기: 로컬 스토리지 기록 + 페이지 이탈
@@ -593,7 +641,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       {/* BottomMenu는 items: MenuItem[] 배열만 지원하고 children/slot 미지원이므로
           기존 isMenuOpen 패턴(인라인 bottom-sheet)을 재사용한다 (PR-4 범위 내 최소 침습) */}
       {commentMenuTarget !== null && (
-        <div className="fixed inset-0 z-50 flex items-end">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setCommentMenuTarget(null)}
@@ -620,33 +668,33 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       )}
 
       {/* ─── 댓글 삭제 확인 모달 ─── */}
-      {commentToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setCommentToDelete(null)} />
+      {deleteTarget && (
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setDeleteTarget(null)} />
           <div className="relative w-full max-w-[320px] bg-white rounded-2xl p-6 shadow-lg">
             <h3 className="text-gray-900 text-lg font-bold mb-2">댓글을 삭제하시겠어요?</h3>
             <p className="text-gray-500 text-sm mb-4 leading-relaxed">
               삭제된 댓글은 복구할 수 없습니다.
             </p>
             <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100 mb-5 line-clamp-3">
-              {commentToDelete.text}
+              {deleteTarget.content}
             </p>
             <div className="flex gap-3">
               <button
-                onClick={() => setCommentToDelete(null)}
+                onClick={() => setDeleteTarget(null)}
                 className="flex-1 bg-gray-100 text-gray-700 font-bold py-2.5 px-4 rounded-xl text-sm hover:bg-gray-200"
               >
                 취소
               </button>
               <button
-                onClick={confirmDeleteComment}
+                onClick={confirmDelete}
                 className="flex-1 bg-red-500 text-white font-bold py-2.5 px-4 rounded-xl text-sm shadow-md shadow-red-200 hover:bg-red-600"
               >
                 삭제하기
               </button>
             </div>
             <button
-              onClick={() => setCommentToDelete(null)}
+              onClick={() => setDeleteTarget(null)}
               aria-label="닫기"
               className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
             >
@@ -656,7 +704,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         </div>
       )}
 
-      <ShareBottomSheet isOpen={shareOpen} onClose={() => setShareOpen(false)} title={course.title} />
+      <ShareBottomSheet isOpen={shareOpen} onClose={() => setShareOpen(false)} title={plan.planTitle} />
     </div>
   );
 }

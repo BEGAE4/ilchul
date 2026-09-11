@@ -30,14 +30,14 @@ export const getNavItems = (
   },
   {
     id: 'create',
-    label: '플랜작성',
+    label: '플랜생성',
     icon: PlusSquare,
     active: activeTab === 'create',
     onClick: () => onNavigate(TAB_ROUTES.create),
   },
   {
     id: 'profile',
-    label: '마이',
+    label: '마이페이지',
     icon: User,
     active: activeTab === 'profile',
     onClick: () => onNavigate(TAB_ROUTES.profile),

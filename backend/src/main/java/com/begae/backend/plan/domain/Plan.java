@@ -37,8 +37,9 @@ public class Plan extends BaseEntity {
     @Column(name = "is_plan_visible")
     private Boolean isPlanVisible;
 
-    @Column(name = "is_blinded")
-    private Boolean isBlinded;
+    @Builder.Default
+    @Column(name = "is_blinded", nullable = false)
+    private Boolean isBlinded = false;
 
     @Column(name = "plan_description")
     private String planDescription;

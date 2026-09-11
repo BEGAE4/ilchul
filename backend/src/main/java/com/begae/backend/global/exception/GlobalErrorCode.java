@@ -14,7 +14,8 @@ public enum GlobalErrorCode implements ErrorCode {
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "G003", "알 수 없는 문제가 발생했습니다. 잠시 후 다시 시도해주세요. 오류가 계속되면 관리자에게 문의해주세요."),
     ENTITY_NOT_FOUND(HttpStatus.NOT_FOUND, "G004", "엔티티를 찾을 수 없습니다."),
     HANDLE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "G005", "접근 권한이 없습니다."),
-    ADMIN_ACCESS_DENIED(HttpStatus.FORBIDDEN, "G006", "관리자 권한이 필요합니다.");
+    ADMIN_ACCESS_DENIED(HttpStatus.FORBIDDEN, "G006", "관리자 권한이 필요합니다."),
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "G007", "로그인이 필요한 요청입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

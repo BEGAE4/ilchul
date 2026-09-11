@@ -111,8 +111,8 @@
   &:focus {
     outline: none;
     ring: 2px;
-    ring-color: rgb(59, 130, 246);
-    border-color: rgb(59, 130, 246);
+    ring-color: var(--color-primary-500);
+    border-color: var(--color-primary-500);
   }
 }
 
@@ -148,8 +148,8 @@
   &:focus {
     outline: none;
     ring: 2px;
-    ring-color: rgb(59, 130, 246);
-    border-color: rgb(59, 130, 246);
+    ring-color: var(--color-primary-500);
+    border-color: var(--color-primary-500);
   }
 }
 

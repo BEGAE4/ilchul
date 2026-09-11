@@ -22,8 +22,8 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
           className="w-full h-full object-cover"
         />
         {course.isVerified && (
-          <div className="absolute top-2 left-2 bg-blue-500/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
-            <BadgeCheck size={12} className="fill-white text-blue-500" />
+          <div className="absolute top-2 left-2 bg-primary-500/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
+            <BadgeCheck size={12} className="fill-white text-primary-500" />
             <span>인증된 플랜</span>
           </div>
         )}
@@ -38,8 +38,8 @@ export const CourseCard: React.FC<CourseCardProps> = ({ course, onClick }) => {
           <h3 className="font-bold text-gray-900 text-lg leading-tight line-clamp-2 flex-1 mr-2">
             {course.title}
           </h3>
-          <div className="flex items-center text-blue-500 font-semibold text-sm shrink-0">
-            <Heart size={14} className="fill-blue-100 text-blue-400 mr-1" />
+          <div className="flex items-center text-primary-500 font-semibold text-sm shrink-0">
+            <Heart size={14} className="fill-primary-100 text-primary-400 mr-1" />
             {course.bookmarks}
           </div>
         </div>

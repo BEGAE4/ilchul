@@ -33,8 +33,10 @@ public class PlanDetailDto {
     private Integer userId;
     private String userNickname;
     private String userAvatar;
-    private List<String> planImageUrls;
     private List<PlanImageDto> planImages;
+    /** @deprecated {@link #planImages} 사용. 하위호환용으로 유지. */
+    @Deprecated
+    private List<String> planImageUrls;
     private List<String> tags;
     private String thumbnailUrl;
     private DeparturePoint departurePoint;
@@ -47,6 +49,14 @@ public class PlanDetailDto {
         List<PlanPlaceDetailDto> places = flats.stream()
                 .filter(f -> f.getPlanPlaceId() != null)
                 .map(PlanPlaceDetailDto::from)
+                .toList();
+
+        List<PlanImageDto> planImages = plan.getPlanImages().stream()
+                .map(PlanImageDto::from)
+                .toList();
+
+        List<String> planImageUrls = planImages.stream()
+                .map(PlanImageDto::getImageUrl)
                 .toList();
 
         return PlanDetailDto.builder()
@@ -68,21 +78,26 @@ public class PlanDetailDto {
                 .userNickname(first.getUserNickname())
                 .userAvatar(first.getUserImg())
                 .planPlaceDetailDtos(places)
-                .thumbnailUrl(first.getImageUrl())
-                .planImageUrls(plan.getPlanImages().stream().map(PlanImage::getImageUrl).toList())
-                .planImages(plan.getPlanImages().stream().map(PlanImageDto::from).toList())
+                .thumbnailUrl(planImageUrls.isEmpty() ? null : planImageUrls.getFirst())
+                .planImages(planImages)
+                .planImageUrls(planImageUrls)
                 .departurePoint(plan.getDeparturePoint())
                 .build();
     }
 
     @Getter
+    @Builder
+    @NoArgsConstructor
     @AllArgsConstructor
     public static class PlanImageDto {
         private Integer planImageId;
         private String imageUrl;
 
         public static PlanImageDto from(PlanImage image) {
-            return new PlanImageDto(image.getPlanImageId(), image.getImageUrl());
+            return PlanImageDto.builder()
+                    .planImageId(image.getPlanImageId())
+                    .imageUrl(image.getImageUrl())
+                    .build();
         }
     }
 
@@ -100,7 +115,6 @@ public class PlanDetailDto {
         private String roadAddress;
         private Integer orderIndex;
         private String visitTime;
-        private String stayDescription;
         private Boolean isStamped;
         private Integer travelTime;
         private Integer stayTime;
@@ -118,8 +132,6 @@ public class PlanDetailDto {
                     .isStamped(flat.getIsStamped())
                     .categoryName(flat.getCategoryName())
                     .stayTime(flat.getStayTime())
-                    // PlanPlace does not store a place-specific description.
-                    .stayDescription(null)
                     .build();
         }
     }

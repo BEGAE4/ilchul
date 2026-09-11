@@ -26,16 +26,14 @@ import {
   EyeOff,
   Timer,
   Info,
+  Images,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useCourseStore } from '@/shared/lib/stores/useCourseStore';
+import { usePlanDetail, planApi, type PlanPlaceDetail, type PlanPreviewResponse } from '@/features/plan';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 
-const SAMPLE_REVIEW_PHOTOS = [
-  'https://images.unsplash.com/photo-1522383225653-ed111181a951?q=80&w=1080&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1080&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1080&auto=format&fit=crop',
-];
+const FALLBACK_THUMBNAIL =
+  'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1080&auto=format&fit=crop';
 
 function timeToMin(t: string): number {
   const [h, m] = t.split(':').map(Number);
@@ -48,25 +46,27 @@ function formatMinutes(min: number): string {
   if (m === 0) return `${h}시간`;
   return `${h}시간 ${m}분`;
 }
-function parseStayMin(t: string): number {
-  const match = t.match(/(\d+)/);
-  return match ? parseInt(match[1], 10) : 60;
-}
 function formatCreatedAt(iso?: string): string {
   if (!iso) return '방금 전';
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+// ISO date-time → 'YYYY-MM-DD' / 'HH:mm'
+function isoDate(iso?: string): string {
+  return iso ? iso.slice(0, 10) : '';
+}
+function isoTime(iso?: string): string {
+  return iso && iso.length >= 16 ? iso.slice(11, 16) : '';
 }
 
 type CoursePhase = 'before' | 'during' | 'after';
-function getCoursePhase(date?: string, startTime?: string, endTime?: string): CoursePhase {
-  if (!date || !startTime || !endTime) return 'during';
+function getCoursePhase(tripStart?: string, tripEnd?: string): CoursePhase {
+  if (!tripStart || !tripEnd) return 'during';
   const now = new Date();
-  const [y, mo, d] = date.split('-').map(Number);
-  const [sh, sm] = startTime.split(':').map(Number);
-  const [eh, em] = endTime.split(':').map(Number);
-  const start = new Date(y, mo - 1, d, sh, sm);
-  const end = new Date(y, mo - 1, d, eh, em);
+  const start = new Date(tripStart);
+  const end = new Date(tripEnd);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 'during';
   if (now < start) return 'before';
   if (now > end) return 'after';
   return 'during';
@@ -86,131 +86,307 @@ for (let i = 0; i < 24; i++) {
   }
 }
 
+// 현재 위치 조회 (실패/거부 시 null — 좌표 없이도 인증 요청은 전송)
+function getCurrentLocation(): Promise<{ x: number; y: number } | null> {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ x: pos.coords.longitude, y: pos.coords.latitude }),
+      () => resolve(null),
+      { timeout: 5000 }
+    );
+  });
+}
+
 interface MyCourseDetailPageProps {
   courseId: string;
 }
 
 export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const router = useRouter();
-  const { myCourses, updateMyCourse, deleteMyCourse, addMyCourse } = useCourseStore();
-  const course = myCourses.find((c) => c.id === courseId);
+
+  // 플랜 상세는 서버에서만 조회한다. 실패 시 에러 UI를 렌더링한다.
+  const { plan, isLoading, error: planError, refetch } = usePlanDetail(courseId);
 
   const reviewRef = useRef<HTMLDivElement>(null);
+  const stampInputRef = useRef<HTMLInputElement>(null);
+  const reviewPhotoInputRef = useRef<HTMLInputElement>(null);
+  const planImageInputRef = useRef<HTMLInputElement>(null);
 
+  // 여행 기록 — 서버 API 부재로 세션 로컬 상태 (v5에 리뷰 저장 엔드포인트 없음)
   const [isEditingReview, setIsEditingReview] = useState(false);
-  const [reviewText, setReviewText] = useState(course?.review || '');
+  const [reviewText, setReviewText] = useState('');
+  const [savedReview, setSavedReview] = useState('');
   const [reviewPhotos, setReviewPhotos] = useState<string[]>([]);
-  const [verifyingStopId, setVerifyingStopId] = useState<string | null>(null);
+
+  const [verifyingStopId, setVerifyingStopId] = useState<number | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
-  const [renameText, setRenameText] = useState(course?.title || '');
-  const [isReorderMode, setIsReorderMode] = useState(false);
+  const [renameText, setRenameText] = useState('');
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationShown, setCelebrationShown] = useState(false);
+
+  // 순서 편집 — 로컬로 순서를 바꾼 뒤 완료 시 프리뷰 → 확정(update) 순으로 저장
+  const [orderedPlaces, setOrderedPlaces] = useState<PlanPlaceDetail[] | null>(null);
+  const [reorderPreview, setReorderPreview] = useState<PlanPreviewResponse | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   const [isCloneOpen, setIsCloneOpen] = useState(false);
   const [cloneDate, setCloneDate] = useState('');
   const [cloneStartTime, setCloneStartTime] = useState('');
   const [cloneEndTime, setCloneEndTime] = useState('');
+  const [isCloning, setIsCloning] = useState(false);
 
-  if (!course) {
+  // 플랜 사진 관리
+  const [isPhotoSheetOpen, setIsPhotoSheetOpen] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-gray-400">
-        플랜을 찾을 수 없습니다.
+      <div className="bg-white min-h-screen">
+        <div className="h-60 w-full bg-gray-200 animate-pulse" />
+        <div className="p-5 space-y-3">
+          <div className="h-4 w-2/3 bg-gray-200 animate-pulse rounded" />
+          <div className="h-4 w-1/2 bg-gray-200 animate-pulse rounded" />
+          <div className="h-24 w-full bg-gray-100 animate-pulse rounded-xl" />
+          <div className="h-24 w-full bg-gray-100 animate-pulse rounded-xl" />
+        </div>
       </div>
     );
   }
 
-  const phase = getCoursePhase(course.scheduledDate, course.scheduledStartTime, course.scheduledEndTime);
+  // 에러 UI — 데이터 로드 실패 또는 존재하지 않는 플랜
+  if (!plan) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+          <X size={28} className="text-gray-400" />
+        </div>
+        <p className="text-gray-900 font-bold mb-1">
+          {planError ?? '플랜 정보를 불러오지 못했어요.'}
+        </p>
+        <p className="text-sm text-gray-500 mb-6">잠시 후 다시 시도해주세요.</p>
+        <div className="flex gap-2 w-full max-w-xs">
+          <button
+            onClick={() => router.back()}
+            className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm"
+          >
+            돌아가기
+          </button>
+          <button
+            onClick={refetch}
+            className="flex-1 py-3 bg-primary-500 text-white font-bold rounded-xl text-sm shadow-md shadow-primary-200"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const serverPlaces = [...plan.planPlaceDetailDtos].sort((a, b) => a.orderIndex - b.orderIndex);
+  const stops = orderedPlaces ?? serverPlaces;
+  const isReorderMode = orderedPlaces !== null;
+
+  const thumbnail = plan.thumbnailUrl || plan.planImageUrls[0] || FALLBACK_THUMBNAIL;
+  const locationLabel = serverPlaces[0]?.address?.split(' ').slice(0, 2).join(' ') || '미정';
+  const scheduledDate = isoDate(plan.tripStartDate);
+  const startTime = isoTime(plan.tripStartDate);
+  const endTime = isoTime(plan.tripEndDate);
+
+  const phase = getCoursePhase(plan.tripStartDate, plan.tripEndDate);
   const canEdit = phase !== 'after';
   const canVerify = phase === 'during';
-  const allVerified = course.stops.every((s) => s.isVerified);
+  const allVerified = stops.length > 0 && stops.every((s) => s.isStamped);
 
-  const totalStayMin = course.stops.reduce((sum, s) => sum + parseStayMin(s.time || '60분'), 0);
-  const travelMin = Math.max(0, course.stops.length - 1) * 15;
-  const estimatedTotalMin = totalStayMin + travelMin;
-  const availableMin =
-    course.scheduledStartTime && course.scheduledEndTime
-      ? timeToMin(course.scheduledEndTime) - timeToMin(course.scheduledStartTime)
-      : 0;
+  const estimatedTotalMin = plan.requiredTime;
+  const availableMin = startTime && endTime ? timeToMin(endTime) - timeToMin(startTime) : 0;
 
-  const completedStops = course.stops.filter((s) => s.isVerified).length;
-  const progress = (completedStops / course.stops.length) * 100;
+  const completedStops = stops.filter((s) => s.isStamped).length;
+  const progress = stops.length > 0 ? (completedStops / stops.length) * 100 : 0;
 
   const handleSaveReview = () => {
-    updateMyCourse(course.id, { review: reviewText });
+    // 서버에 여행 기록 저장 API가 없어 화면 상태로만 유지 (백엔드 추가 시 연동)
+    setSavedReview(reviewText);
     setIsEditingReview(false);
     toast.success('여행 기록이 저장되었어요!');
   };
 
-  const handleAddPhoto = () => {
-    if (reviewPhotos.length >= 6) return;
-    const nextPhoto = SAMPLE_REVIEW_PHOTOS[reviewPhotos.length % SAMPLE_REVIEW_PHOTOS.length];
-    setReviewPhotos((prev) => [...prev, nextPhoto]);
-    toast.success('사진이 추가되었어요!');
+  const handleAddReviewPhoto = (files: FileList | null) => {
+    if (!files) return;
+    const remain = 6 - reviewPhotos.length;
+    const urls = Array.from(files)
+      .slice(0, remain)
+      .map((f) => URL.createObjectURL(f));
+    if (urls.length) setReviewPhotos((prev) => [...prev, ...urls]);
   };
 
   const handleRemovePhoto = (index: number) => {
     setReviewPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleVerify = () => {
-    if (!verifyingStopId) return;
+  // ── 스탬프 인증 ──
+  const handleStampFileSelected = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file || verifyingStopId === null) return;
     setIsVerifying(true);
-    setTimeout(() => {
-      const updatedStops = course.stops.map((s) =>
-        s.id === verifyingStopId
-          ? {
-              ...s,
-              isVerified: true,
-              verifiedImage:
-                'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=400&auto=format&fit=crop',
-            }
-          : s
-      );
-      updateMyCourse(course.id, { stops: updatedStops });
-      setIsVerifying(false);
-      setVerifyingStopId(null);
+    try {
+      const location = await getCurrentLocation();
+      if (!location) {
+        // 위치 권한 거부/미지원/timeout 시에도 인증은 진행 — 위치 없이 전송됨을 안내만 한다
+        toast.info('현재 위치를 확인할 수 없어 위치 정보 없이 인증했어요.');
+      }
+      await planApi.stampPlanPlace(verifyingStopId, file, location);
       toast.success('정거장 인증 완료!');
-      const nowAllVerified = updatedStops.every((s) => s.isVerified);
+      setVerifyingStopId(null);
+      refetch();
+      const nowAllVerified = stops.every((s) => s.planPlaceId === verifyingStopId || s.isStamped);
       if (nowAllVerified && !celebrationShown) {
-        updateMyCourse(course.id, { completedAt: new Date().toISOString() });
         setTimeout(() => {
           setShowCelebration(true);
           setCelebrationShown(true);
         }, 600);
       }
-    }, 2000);
+    } catch (err) {
+      console.error('스탬프 인증 실패:', err);
+      toast.error('인증에 실패했어요.', {
+        description: '위치와 네트워크 상태를 확인한 뒤 다시 시도해주세요.',
+      });
+    } finally {
+      setIsVerifying(false);
+      if (stampInputRef.current) stampInputRef.current.value = '';
+    }
   };
 
+  // ── 순서 편집 (프리뷰 → 확정) ──
   const handleMoveStop = (index: number, direction: 'up' | 'down') => {
-    const newStops = [...course.stops];
+    const base = orderedPlaces ?? serverPlaces;
+    const next = [...base];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= newStops.length) return;
-    [newStops[index], newStops[targetIndex]] = [newStops[targetIndex], newStops[index]];
-    updateMyCourse(course.id, { stops: newStops });
+    if (targetIndex < 0 || targetIndex >= next.length) return;
+    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    setOrderedPlaces(next);
   };
 
-  const handleClone = () => {
-    if (!cloneDate || !cloneStartTime || !cloneEndTime) return;
-    const cloned = {
-      ...course,
-      id: `my-${Date.now()}`,
-      scheduledDate: cloneDate,
-      scheduledStartTime: cloneStartTime,
-      scheduledEndTime: cloneEndTime,
-      createdAt: new Date().toISOString(),
-      completedAt: undefined,
-      review: '',
-      stops: course.stops.map((s) => ({ ...s, isVerified: false, verifiedImage: undefined })),
-    };
-    addMyCourse(cloned);
-    setIsCloneOpen(false);
-    router.push(`/my-course/${cloned.id}`);
+  const buildPlacesBody = (list: PlanPlaceDetail[]) =>
+    list.map((p, i) => ({ planPlaceId: p.planPlaceId, placeId: p.placeId, order: i + 1 }));
+
+  const handleFinishReorder = async () => {
+    if (!orderedPlaces) return;
+    const changed = orderedPlaces.some(
+      (p, i) => p.planPlaceId !== serverPlaces[i]?.planPlaceId
+    );
+    if (!changed) {
+      setOrderedPlaces(null);
+      return;
+    }
+    setIsPreviewLoading(true);
+    try {
+      const preview = await planApi.updatePlanPreview(plan.planId, {
+        // 백엔드가 요청의 출발지로 이동시간을 계산하므로 상세 응답의 출발지를 그대로 재전송
+        departurePoint: plan.departurePoint ?? undefined,
+        places: buildPlacesBody(orderedPlaces),
+      });
+      setReorderPreview(preview);
+    } catch (err) {
+      console.error('순서 변경 프리뷰 실패:', err);
+      toast.error('변경 결과 계산에 실패했어요. 다시 시도해주세요.');
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
+  const confirmReorder = async () => {
+    if (!orderedPlaces) return;
+    setIsSavingOrder(true);
+    try {
+      await planApi.updatePlanPlaces(plan.planId, {
+        departurePoint: plan.departurePoint ?? undefined,
+        places: buildPlacesBody(orderedPlaces),
+      });
+      toast.success('플랜 순서가 저장되었어요!');
+      setReorderPreview(null);
+      setOrderedPlaces(null);
+      refetch();
+    } catch (err) {
+      console.error('순서 저장 실패:', err);
+      toast.error('순서 저장에 실패했어요. 다시 시도해주세요.');
+    } finally {
+      setIsSavingOrder(false);
+    }
+  };
+
+  // ── 복제 ──
+  const handleClone = async () => {
+    if (!cloneDate || !cloneStartTime || !cloneEndTime || isCloning) return;
+    setIsCloning(true);
+    try {
+      const res = await planApi.clonePlan(plan.planId, { scheduledDate: cloneDate });
+      // 복제 API는 날짜만 받으므로 시간은 수정 API로 반영 (실패해도 복제 자체는 유지)
+      await planApi
+        .updatePlan(res.planId, {
+          tripStartDate: `${cloneDate}T${cloneStartTime}:00`,
+          tripEndDate: `${cloneDate}T${cloneEndTime}:00`,
+        })
+        .catch(() => undefined);
+      setIsCloneOpen(false);
+      toast.success('플랜이 복제되었어요!');
+      router.push(`/my-course/${res.planId}`);
+    } catch (err) {
+      console.error('플랜 복제 실패:', err);
+      toast.error('플랜 복제에 실패했어요. 다시 시도해주세요.');
+    } finally {
+      setIsCloning(false);
+    }
+  };
+
+  // ── 이름 수정 / 삭제 ──
+  const handleRename = async () => {
+    try {
+      await planApi.updatePlan(plan.planId, { planTitle: renameText });
+      setIsRenameOpen(false);
+      toast.success('플랜 이름이 수정되었어요!');
+      refetch();
+    } catch (err) {
+      console.error('플랜 이름 수정 실패:', err);
+      toast.error('이름 수정에 실패했어요. 다시 시도해주세요.');
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await planApi.deletePlan(plan.planId);
+      toast.success('플랜이 삭제되었어요.');
+      router.push('/profile');
+    } catch (err) {
+      console.error('플랜 삭제 실패:', err);
+      toast.error('플랜 삭제에 실패했어요. 다시 시도해주세요.');
+    }
+  };
+
+  // ── 플랜 사진 업로드 ──
+  const handleUploadPlanImages = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setIsUploadingImages(true);
+    try {
+      await planApi.uploadPlanImages(plan.planId, Array.from(files));
+      toast.success('사진이 업로드되었어요!');
+      refetch();
+    } catch (err) {
+      console.error('플랜 사진 업로드 실패:', err);
+      toast.error('사진 업로드에 실패했어요. 다시 시도해주세요.');
+    } finally {
+      setIsUploadingImages(false);
+      if (planImageInputRef.current) planImageInputRef.current.value = '';
+    }
   };
 
   const scrollToReview = () => {
@@ -220,9 +396,35 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   return (
     <div className="bg-white min-h-screen pb-20 relative">
+      {/* 숨김 파일 입력 — 스탬프 인증 / 여행기록 사진 / 플랜 사진 */}
+      <input
+        ref={stampInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => handleStampFileSelected(e.target.files)}
+      />
+      <input
+        ref={reviewPhotoInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => handleAddReviewPhoto(e.target.files)}
+      />
+      <input
+        ref={planImageInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => handleUploadPlanImages(e.target.files)}
+      />
+
       {/* 헤더 이미지 */}
       <div className="relative h-60 w-full">
-        <Image src={course.thumbnail} alt={course.title} fill sizes="100vw" className="object-cover" />
+        <Image src={thumbnail} alt={plan.planTitle} fill sizes="100vw" className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
         <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start text-white">
           <button
@@ -250,18 +452,18 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
           <div className="flex items-center gap-2 mb-2">
             <span className="bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold border border-white/10">
-              {course.location}
+              {locationLabel}
             </span>
             <span
               className={`backdrop-blur-sm px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 ${
-                course.isPublic ? 'bg-sky-500/80' : 'bg-gray-800/80'
+                plan.isPlanVisible ? 'bg-primary-500/80' : 'bg-gray-800/80'
               }`}
             >
-              {course.isPublic ? <Eye size={10} /> : <EyeOff size={10} />}
-              {course.isPublic ? '공개 중' : '비공개'}
+              {plan.isPlanVisible ? <Eye size={10} /> : <EyeOff size={10} />}
+              {plan.isPlanVisible ? '공개 중' : '비공개'}
             </span>
           </div>
-          <h1 className="text-2xl font-bold leading-tight">{course.title}</h1>
+          <h1 className="text-2xl font-bold leading-tight">{plan.planTitle}</h1>
         </div>
       </div>
 
@@ -269,8 +471,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
       <div className="px-5 py-4 bg-white border-b border-gray-100">
         <div className="flex items-center justify-between mb-2">
           <div className="text-sm text-gray-500">
-            <span className="font-bold text-gray-700">생성</span>{' '}
-            {formatCreatedAt(course.createdAt)}
+            <span className="font-bold text-gray-700">생성</span> {formatCreatedAt(plan.createAt)}
           </div>
           <div
             className={`text-xs font-bold px-2 py-1 rounded-full ${
@@ -285,15 +486,15 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           </div>
         </div>
 
-        {course.scheduledDate && (
+        {scheduledDate && (
           <div className="flex items-center gap-3 mb-3 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-            <Calendar size={14} className="text-sky-500" />
-            <span>{course.scheduledDate}</span>
-            {course.scheduledStartTime && course.scheduledEndTime && (
+            <Calendar size={14} className="text-primary-500" />
+            <span>{scheduledDate}</span>
+            {startTime && endTime && (
               <>
-                <Clock size={14} className="text-sky-500" />
+                <Clock size={14} className="text-primary-500" />
                 <span>
-                  {course.scheduledStartTime} ~ {course.scheduledEndTime}
+                  {startTime} ~ {endTime}
                 </span>
               </>
             )}
@@ -302,8 +503,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
         <div className="flex items-center justify-between mb-2">
           <div className="text-xs font-bold text-gray-400">
-            진행률{' '}
-            <span className="text-sky-500 text-sm ml-1">{Math.round(progress)}%</span>
+            진행률 <span className="text-primary-500 text-sm ml-1">{Math.round(progress)}%</span>
           </div>
           {availableMin > 0 && (
             <div className="text-xs text-gray-400">
@@ -314,23 +514,21 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         </div>
         <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-sky-500"
+            className="h-full bg-primary-500"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 1, ease: 'easeOut' }}
           />
         </div>
 
-        {(allVerified || course.completedAt) && (
+        {allVerified && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             className="mt-3 flex items-center gap-2 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100"
           >
             <BadgeCheck size={16} className="text-emerald-500" />
-            <span className="text-xs font-bold text-emerald-600">
-              플랜 완주 완료 · {course.completedAt ? formatCreatedAt(course.completedAt) : '방금 전'}
-            </span>
+            <span className="text-xs font-bold text-emerald-600">플랜 완주 완료</span>
           </motion.div>
         )}
       </div>
@@ -350,7 +548,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         </div>
 
         {isEditingReview ? (
-          <div className="bg-white p-2 rounded-xl border border-sky-200 shadow-sm">
+          <div className="bg-white p-2 rounded-xl border border-primary-200 shadow-sm">
             <textarea
               value={reviewText}
               onChange={(e) => setReviewText(e.target.value)}
@@ -374,8 +572,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               ))}
               {reviewPhotos.length < 6 && (
                 <button
-                  onClick={handleAddPhoto}
-                  className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-sky-400 hover:text-sky-400 transition-colors"
+                  onClick={() => reviewPhotoInputRef.current?.click()}
+                  className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-primary-400 hover:text-primary-400 transition-colors"
                 >
                   <ImagePlus size={18} />
                   <span className="text-[9px] mt-0.5">{reviewPhotos.length}/6</span>
@@ -391,7 +589,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               </button>
               <button
                 onClick={handleSaveReview}
-                className="text-xs font-bold bg-sky-500 text-white px-3 py-1.5 rounded-lg shadow-sm"
+                className="text-xs font-bold bg-primary-500 text-white px-3 py-1.5 rounded-lg shadow-sm"
               >
                 저장
               </button>
@@ -400,7 +598,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         ) : (
           <div>
             <p className="text-sm text-gray-600 leading-relaxed min-h-[40px] whitespace-pre-wrap">
-              {course.review || '아직 작성된 기록이 없어요. 여행의 추억을 남겨보세요!'}
+              {savedReview || '아직 작성된 기록이 없어요. 여행의 추억을 남겨보세요!'}
             </p>
             {reviewPhotos.length > 0 && (
               <div className="grid grid-cols-3 gap-1.5 mt-3">
@@ -427,15 +625,16 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           <h2 className="font-bold text-lg text-gray-900">플랜 타임라인</h2>
           {isReorderMode ? (
             <button
-              onClick={() => setIsReorderMode(false)}
-              className="flex items-center gap-1 text-xs font-bold text-sky-600 bg-sky-50 px-3 py-1.5 rounded-full"
+              onClick={handleFinishReorder}
+              disabled={isPreviewLoading}
+              className="flex items-center gap-1 text-xs font-bold text-primary-600 bg-primary-50 px-3 py-1.5 rounded-full disabled:opacity-50"
             >
-              <Check size={14} /> 완료
+              <Check size={14} /> {isPreviewLoading ? '계산 중...' : '완료'}
             </button>
           ) : (
             canEdit && (
               <button
-                onClick={() => setIsReorderMode(true)}
+                onClick={() => setOrderedPlaces(serverPlaces)}
                 className="text-xs text-gray-400 underline"
               >
                 순서 편집
@@ -444,15 +643,13 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           )}
         </div>
 
-        {course.scheduledStartTime && course.scheduledEndTime && (
-          <div className="flex items-center gap-2 mb-2 text-xs text-sky-600 bg-sky-50 px-3 py-2 rounded-lg">
+        {startTime && endTime && (
+          <div className="flex items-center gap-2 mb-2 text-xs text-primary-600 bg-primary-50 px-3 py-2 rounded-lg">
             <Timer size={14} />
-            <span className="font-bold">{course.scheduledStartTime}</span>
+            <span className="font-bold">{startTime}</span>
             <span>~</span>
-            <span className="font-bold">{course.scheduledEndTime}</span>
-            <span className="text-sky-400 ml-1">
-              · 예상 완료 {formatMinutes(estimatedTotalMin)}
-            </span>
+            <span className="font-bold">{endTime}</span>
+            <span className="text-primary-400 ml-1">· 예상 완료 {formatMinutes(estimatedTotalMin)}</span>
           </div>
         )}
 
@@ -468,130 +665,117 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         </div>
 
         <div className="space-y-6 relative pl-4 border-l-2 border-gray-100">
-          {course.stops.map((stop, index) => {
-            const stayMin = parseStayMin(stop.time || '60분');
-            return (
-              <div key={stop.id} className="relative pl-6">
-                <div
-                  className={`absolute -left-[21px] top-0 w-4 h-4 rounded-full border-2 z-10 bg-white ${
-                    stop.isVerified ? 'border-sky-500' : 'border-gray-300'
-                  }`}
-                >
-                  {stop.isVerified && (
-                    <div className="w-2 h-2 bg-sky-500 rounded-full m-0.5" />
-                  )}
-                </div>
-
-                <div
-                  className={`relative bg-white rounded-xl border p-4 transition-all ${
-                    stop.isVerified ? 'border-sky-200 shadow-md shadow-sky-50' : 'border-gray-100 shadow-sm'
-                  }`}
-                >
-                  {stop.isVerified && (
-                    <motion.div
-                      initial={{ scale: 2, opacity: 0, rotate: -20 }}
-                      animate={{ scale: 1, opacity: 1, rotate: -12 }}
-                      className="absolute -right-2 -top-4 w-16 h-16 pointer-events-none z-20"
-                    >
-                      <div className="w-full h-full border-4 border-red-500/30 rounded-full flex items-center justify-center rotate-12">
-                        <span className="text-red-500/40 font-black text-xs uppercase tracking-widest border-y-2 border-red-500/30 py-1 rotate-[-12deg]">
-                          Visited
-                        </span>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded mb-1 inline-block">
-                        {stop.category}
-                      </span>
-                      <h3 className="font-bold text-gray-900">{stop.name}</h3>
-                    </div>
-                    {stop.isVerified ? (
-                      <div className="flex items-center gap-1 text-sky-600 text-xs font-bold bg-sky-50 px-2 py-1 rounded-full">
-                        <BadgeCheck size={14} /> 인증됨
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-400 font-medium">{stop.time}</span>
-                    )}
-                  </div>
-
-                  <p className="text-sm text-gray-500 mb-2">{stop.description}</p>
-
-                  <div className="flex items-center gap-3 text-[11px] text-gray-400 bg-gray-50 p-2 rounded-lg mb-3">
-                    <span className="flex items-center gap-1">
-                      <Clock size={10} /> 추천 체류 {stayMin}분
-                    </span>
-                    {index < course.stops.length - 1 && (
-                      <span className="flex items-center gap-1">이동 약 15분</span>
-                    )}
-                  </div>
-
-                  {isReorderMode ? (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleMoveStop(index, 'up')}
-                        disabled={index === 0}
-                        className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-lg border border-gray-200 text-gray-500 text-sm font-bold disabled:opacity-30"
-                      >
-                        <ChevronUp size={16} /> 위로
-                      </button>
-                      <button
-                        onClick={() => handleMoveStop(index, 'down')}
-                        disabled={index === course.stops.length - 1}
-                        className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-lg border border-gray-200 text-gray-500 text-sm font-bold disabled:opacity-30"
-                      >
-                        <ChevronDown size={16} /> 아래로
-                      </button>
-                    </div>
-                  ) : stop.isVerified && stop.verifiedImage ? (
-                    <div className="w-full h-32 rounded-lg overflow-hidden relative">
-                      <Image
-                        src={stop.verifiedImage}
-                        alt="Verified"
-                        fill
-                        sizes="100%"
-                        className="object-cover"
-                      />
-                      <div className="absolute bottom-2 right-2 flex items-center gap-1 text-white text-[10px] bg-black/50 px-2 py-1 rounded-full backdrop-blur-sm">
-                        <MapPin size={10} /> 위치 인증 완료
-                      </div>
-                    </div>
-                  ) : canVerify ? (
-                    <button
-                      onClick={() => setVerifyingStopId(stop.id)}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-gray-300 text-gray-500 text-sm font-bold hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                    >
-                      <Camera size={16} /> 사진 찍고 인증하기
-                    </button>
-                  ) : (
-                    <div className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-gray-50 text-gray-300 text-sm">
-                      <Camera size={16} />
-                      {phase === 'before' ? '여행 시작 후 인증 가능' : '인증 기간 종료'}
-                    </div>
-                  )}
-                </div>
+          {stops.map((stop, index) => (
+            <div key={stop.planPlaceId} className="relative pl-6">
+              <div
+                className={`absolute -left-[21px] top-0 w-4 h-4 rounded-full border-2 z-10 bg-white ${
+                  stop.isStamped ? 'border-primary-500' : 'border-gray-300'
+                }`}
+              >
+                {stop.isStamped && <div className="w-2 h-2 bg-primary-500 rounded-full m-0.5" />}
               </div>
-            );
-          })}
+
+              <div
+                className={`relative bg-white rounded-xl border p-4 transition-all ${
+                  stop.isStamped ? 'border-primary-200 shadow-md shadow-primary-50' : 'border-gray-100 shadow-sm'
+                }`}
+              >
+                {stop.isStamped && (
+                  <motion.div
+                    initial={{ scale: 2, opacity: 0, rotate: -20 }}
+                    animate={{ scale: 1, opacity: 1, rotate: -12 }}
+                    className="absolute -right-2 -top-4 w-16 h-16 pointer-events-none z-20"
+                  >
+                    <div className="w-full h-full border-4 border-red-500/30 rounded-full flex items-center justify-center rotate-12">
+                      <span className="text-red-500/40 font-black text-xs uppercase tracking-widest border-y-2 border-red-500/30 py-1 rotate-[-12deg]">
+                        Visited
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded mb-1 inline-block">
+                      {stop.categoryName}
+                    </span>
+                    <h3 className="font-bold text-gray-900">{stop.placeName}</h3>
+                  </div>
+                  {stop.isStamped ? (
+                    <div className="flex items-center gap-1 text-primary-600 text-xs font-bold bg-primary-50 px-2 py-1 rounded-full">
+                      <BadgeCheck size={14} /> 인증됨
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400 font-medium">{stop.visitTime}</span>
+                  )}
+                </div>
+
+                <p className="text-sm text-gray-500 mb-2">{stop.stayDescription || stop.address}</p>
+
+                <div className="flex items-center gap-3 text-[11px] text-gray-400 bg-gray-50 p-2 rounded-lg mb-3">
+                  <span className="flex items-center gap-1">
+                    <Clock size={10} /> 추천 체류 {stop.stayTime || 60}분
+                  </span>
+                  {index < stops.length - 1 && (
+                    <span className="flex items-center gap-1">
+                      이동 약 {stops[index + 1]?.travelTime || 15}분
+                    </span>
+                  )}
+                </div>
+
+                {isReorderMode ? (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleMoveStop(index, 'up')}
+                      disabled={index === 0}
+                      className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-lg border border-gray-200 text-gray-500 text-sm font-bold disabled:opacity-30"
+                    >
+                      <ChevronUp size={16} /> 위로
+                    </button>
+                    <button
+                      onClick={() => handleMoveStop(index, 'down')}
+                      disabled={index === stops.length - 1}
+                      className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-lg border border-gray-200 text-gray-500 text-sm font-bold disabled:opacity-30"
+                    >
+                      <ChevronDown size={16} /> 아래로
+                    </button>
+                  </div>
+                ) : canVerify && !stop.isStamped ? (
+                  <button
+                    onClick={() => setVerifyingStopId(stop.planPlaceId)}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-gray-300 text-gray-500 text-sm font-bold hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                  >
+                    <Camera size={16} /> 사진 찍고 인증하기
+                  </button>
+                ) : !stop.isStamped ? (
+                  <div className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-gray-50 text-gray-300 text-sm">
+                    <Camera size={16} />
+                    {phase === 'before' ? '여행 시작 후 인증 가능' : '인증 기간 종료'}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* ─── 모달: 위치 인증 ─── */}
-      {!!verifyingStopId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setVerifyingStopId(null)} />
+      {verifyingStopId !== null && (
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => !isVerifying && setVerifyingStopId(null)}
+          />
           <div className="relative w-full max-w-xs bg-white rounded-3xl p-6">
             <div className="flex flex-col items-center text-center">
               {isVerifying ? (
                 <>
-                  <div className="w-16 h-16 bg-sky-50 rounded-full flex items-center justify-center mb-4 relative">
-                    <div className="absolute inset-0 border-4 border-sky-100 rounded-full animate-ping" />
-                    <MapPin size={32} className="text-sky-500 animate-bounce" />
+                  <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mb-4 relative">
+                    <div className="absolute inset-0 border-4 border-primary-100 rounded-full animate-ping" />
+                    <MapPin size={32} className="text-primary-500 animate-bounce" />
                   </div>
-                  <h3 className="font-bold text-lg text-gray-900 mb-1">위치 확인 중...</h3>
-                  <p className="text-sm text-gray-500">현재 위치와 장소를 대조하고 있어요.</p>
+                  <h3 className="font-bold text-lg text-gray-900 mb-1">인증 중...</h3>
+                  <p className="text-sm text-gray-500">사진과 현재 위치를 확인하고 있어요.</p>
                 </>
               ) : (
                 <>
@@ -605,8 +789,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                     사진을 찍어 방문을 인증해주세요!
                   </p>
                   <button
-                    onClick={handleVerify}
-                    className="w-full bg-sky-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-200 active:scale-95 transition-transform mb-3"
+                    onClick={() => stampInputRef.current?.click()}
+                    className="w-full bg-primary-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary-200 active:scale-95 transition-transform mb-3"
                   >
                     카메라 켜기
                   </button>
@@ -623,9 +807,51 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         </div>
       )}
 
+      {/* ─── 모달: 순서 변경 프리뷰 확인 ─── */}
+      {reorderPreview && (
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setReorderPreview(null)} />
+          <div className="relative w-full max-w-xs bg-white rounded-2xl p-5">
+            <h3 className="font-bold text-lg mb-1">순서 변경 저장</h3>
+            <p className="text-xs text-gray-400 mb-4">변경된 순서 기준으로 다시 계산했어요.</p>
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg text-sm">
+                <span className="text-gray-500">예상 소요시간</span>
+                <span className="font-bold text-gray-900">
+                  {formatMinutes(estimatedTotalMin)}
+                  <span className="text-primary-500"> → {formatMinutes(reorderPreview.requiredTime)}</span>
+                </span>
+              </div>
+              <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg text-sm">
+                <span className="text-gray-500">총 이동 거리</span>
+                <span className="font-bold text-gray-900">
+                  {plan.totalDistance}km
+                  <span className="text-primary-500"> → {reorderPreview.totalDistance}km</span>
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setReorderPreview(null)}
+                className="flex-1 py-2.5 bg-gray-100 text-gray-600 font-bold rounded-lg text-sm"
+              >
+                계속 편집
+              </button>
+              <button
+                onClick={confirmReorder}
+                disabled={isSavingOrder}
+                className="flex-1 py-2.5 bg-primary-500 text-white font-bold rounded-lg text-sm disabled:opacity-50"
+              >
+                {isSavingOrder ? '저장 중...' : '저장하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── 모달: 사진 미리보기 ─── */}
       {!!previewPhoto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/90" onClick={() => setPreviewPhoto(null)} />
           <div className="relative max-w-full max-h-[70vh] rounded-xl overflow-hidden">
             <Image src={previewPhoto} alt="Preview" width={400} height={400} className="object-contain" />
@@ -641,7 +867,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* ─── 모달: 복제 ─── */}
       {isCloneOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setIsCloneOpen(false)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-5">
             <h3 className="font-bold text-lg mb-1">플랜 복제하기</h3>
@@ -699,9 +925,10 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               </button>
               <button
                 onClick={handleClone}
-                className="flex-1 py-2.5 bg-sky-500 text-white font-bold rounded-lg text-sm"
+                disabled={isCloning}
+                className="flex-1 py-2.5 bg-primary-500 text-white font-bold rounded-lg text-sm disabled:opacity-50"
               >
-                복제하기
+                {isCloning ? '복제 중...' : '복제하기'}
               </button>
             </div>
           </div>
@@ -710,7 +937,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* ─── 모달: 이름 수정 ─── */}
       {isRenameOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setIsRenameOpen(false)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-5">
             <h3 className="font-bold text-lg mb-4">플랜 이름 수정</h3>
@@ -728,11 +955,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                 취소
               </button>
               <button
-                onClick={() => {
-                  updateMyCourse(course.id, { title: renameText });
-                  setIsRenameOpen(false);
-                }}
-                className="flex-1 py-2.5 bg-sky-500 text-white font-bold rounded-lg text-sm"
+                onClick={handleRename}
+                className="flex-1 py-2.5 bg-primary-500 text-white font-bold rounded-lg text-sm"
               >
                 확인
               </button>
@@ -743,7 +967,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* ─── 모달: 삭제 확인 ─── */}
       {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setIsDeleteConfirmOpen(false)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-5">
             <h3 className="font-bold text-lg mb-2">플랜 삭제 확인</h3>
@@ -756,10 +980,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                 취소
               </button>
               <button
-                onClick={() => {
-                  deleteMyCourse(course.id);
-                  router.push('/profile');
-                }}
+                onClick={handleDelete}
                 className="flex-1 py-2.5 bg-red-500 text-white font-bold rounded-lg text-sm"
               >
                 삭제
@@ -769,9 +990,51 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         </div>
       )}
 
+      {/* ─── 바텀시트: 플랜 사진 관리 ─── */}
+      {isPhotoSheetOpen && (
+        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setIsPhotoSheetOpen(false)} />
+          <div className="relative w-full bg-white rounded-t-3xl p-5 shadow-xl max-h-[70vh] overflow-y-auto">
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-gray-900">플랜 사진 관리</h3>
+              <span className="text-xs text-gray-400">{plan.planImageUrls.length}장</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5 mb-4">
+              {plan.planImageUrls.map((url, i) => (
+                <div
+                  key={`${url}-${i}`}
+                  className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer"
+                  onClick={() => setPreviewPhoto(url)}
+                >
+                  <Image src={url} alt={`Plan ${i}`} fill sizes="100px" className="object-cover" />
+                </div>
+              ))}
+              <button
+                onClick={() => planImageInputRef.current?.click()}
+                disabled={isUploadingImages}
+                className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-primary-400 hover:text-primary-400 transition-colors disabled:opacity-50"
+              >
+                <ImagePlus size={20} />
+                <span className="text-[9px] mt-0.5">{isUploadingImages ? '업로드 중...' : '추가'}</span>
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-400 mb-3">
+              * 사진 삭제는 서버 이미지 ID 제공이 준비되면 지원될 예정이에요.
+            </p>
+            <button
+              onClick={() => setIsPhotoSheetOpen(false)}
+              className="w-full py-3 text-gray-400 font-bold text-sm"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ─── 더보기 메뉴 ─── */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-50 flex items-end">
+        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsMenuOpen(false)} />
           <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
@@ -779,7 +1042,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
               <>
                 <button
                   onClick={() => {
-                    setRenameText(course.title);
+                    setRenameText(plan.planTitle);
                     setIsRenameOpen(true);
                     setIsMenuOpen(false);
                   }}
@@ -790,7 +1053,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                 </button>
                 <button
                   onClick={() => {
-                    setIsReorderMode(true);
+                    setOrderedPlaces(serverPlaces);
                     setIsMenuOpen(false);
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
@@ -800,6 +1063,16 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                 </button>
               </>
             )}
+            <button
+              onClick={() => {
+                setIsPhotoSheetOpen(true);
+                setIsMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
+            >
+              <Images size={18} className="text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">플랜 사진 관리</span>
+            </button>
             <button
               onClick={() => {
                 setIsCloneOpen(true);
@@ -832,7 +1105,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* ─── 완주 축하 오버레이 ─── */}
       {showCelebration && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-6">
+        <div className="fixed inset-y-0 app-frame z-50 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm p-6">
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -842,17 +1115,17 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             <div className="text-5xl mb-4">🎉</div>
             <h2 className="text-xl font-black text-gray-900 mb-2">플랜 완주!</h2>
             <p className="text-sm text-gray-500 mb-1">
-              <span className="font-bold text-gray-700">{course.title}</span>
+              <span className="font-bold text-gray-700">{plan.planTitle}</span>
             </p>
             <p className="text-sm text-gray-500 mb-6">
-              {course.stops.length}개 정거장을 모두 방문했어요 ✨
+              {stops.length}개 정거장을 모두 방문했어요 ✨
             </p>
             <button
               onClick={() => {
                 setShowCelebration(false);
                 scrollToReview();
               }}
-              className="w-full bg-sky-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-200 active:scale-95 transition-transform"
+              className="w-full bg-primary-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary-200 active:scale-95 transition-transform"
             >
               여행 기록 남기기
             </button>
@@ -869,7 +1142,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
       <ShareBottomSheet
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
-        title={course.title}
+        title={plan.planTitle}
       />
     </div>
   );

@@ -1,0 +1,156 @@
+.card {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &--active {
+    border-color: #fca5a5;
+    background: #fff;
+  }
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+// 제재 유형 배지
+.typeBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.badge--warning {
+  background: #fef9c3;
+  color: #a16207;
+}
+
+.badge--blinded {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.badge--tempban {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.badge--permban {
+  background: #111827;
+  color: #fff;
+}
+
+// 활성 여부 배지
+.activeBadge {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 999px;
+
+  &--on {
+    background: #fef2f2;
+    color: #ef4444;
+  }
+
+  &--off {
+    background: #f3f4f6;
+    color: #9ca3af;
+  }
+}
+
+// 대상
+.target {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.targetType {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  background: #e0e7ff;
+  color: #4f46e5;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 5px;
+}
+
+.targetTitle {
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// 운영자 메시지
+.message {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.55;
+  margin: 0;
+  padding: 10px 12px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border-left: 3px solid #e5e7eb;
+}
+
+// 메타 정보
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.metaItem {
+  font-size: 12px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dday {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ef4444;
+  background: #fef2f2;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+// 이의제기 버튼
+.appealBtn {
+  width: 100%;
+  padding: 11px;
+  background: #f3f4f6;
+  color: #9ca3af;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  border-radius: 10px;
+  cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  &:disabled {
+    opacity: 0.7;
+  }
+}
+
+.appealNote {
+  font-size: 11px;
+  color: #d1d5db;
+}

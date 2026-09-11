@@ -1,0 +1,71 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1785043803911,
+  "projectRoot": "/Users/jaidy/Documents/develop/ilchul/ilchul-02/ilchul",
+  "techStack": {
+    "languages": [],
+    "frameworks": [],
+    "packageManager": null,
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [],
+    "gitBranches": {
+      "defaultBranch": "dev",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "backend": {
+      "path": "backend",
+      "purpose": null,
+      "fileCount": 7,
+      "lastAccessed": 1785043803906,
+      "keyFiles": [
+        "Dockerfile",
+        "build.gradle",
+        "gradlew",
+        "gradlew.bat",
+        "settings.gradle"
+      ]
+    },
+    "frontend": {
+      "path": "frontend",
+      "purpose": null,
+      "fileCount": 18,
+      "lastAccessed": 1785043803906,
+      "keyFiles": [
+        "CLAUDE.md",
+        "Dockerfile",
+        "README.md",
+        "eslint.config.mjs",
+        "next-env.d.ts"
+      ]
+    },
+    "backend/src": {
+      "path": "backend/src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1785043803906,
+      "keyFiles": []
+    }
+  },
+  "hotPaths": [],
+  "userDirectives": []
+}

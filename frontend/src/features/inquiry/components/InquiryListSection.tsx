@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { PenLine } from 'lucide-react';
 import { fetchMyInquiries } from '../api/inquiry.api';
-import type { Inquiry, InquiryStatus } from '../types/inquiry.types';
+import type { InquiryListItem, InquiryStatus } from '../types/inquiry.types';
 import { InquiryCard } from './InquiryCard';
 
 interface InquiryListSectionProps {
@@ -12,22 +12,29 @@ interface InquiryListSectionProps {
 }
 
 const TABS: { id: InquiryStatus; label: string }[] = [
-  { id: 'pending', label: '답변 대기' },
-  { id: 'answered', label: '답변 완료' },
+  { id: 'PENDING', label: '답변 대기' },
+  { id: 'ANSWERED', label: '답변 완료' },
 ];
 
 export const InquiryListSection = ({ onSelectInquiry, onCreateNew }: InquiryListSectionProps) => {
-  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
-  const [activeTab, setActiveTab] = useState<InquiryStatus>('pending');
+  const [inquiries, setInquiries] = useState<InquiryListItem[]>([]);
+  const [activeTab, setActiveTab] = useState<InquiryStatus>('PENDING');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchMyInquiries()
-      .then(setInquiries)
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  const filtered = inquiries.filter((i) => i.status === activeTab);
+    let alive = true;
+    setIsLoading(true);
+    fetchMyInquiries(activeTab)
+      .then((res) => {
+        if (alive) setInquiries(res.items);
+      })
+      .finally(() => {
+        if (alive) setIsLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [activeTab]);
 
   return (
     <div className="flex flex-col flex-1">
@@ -37,12 +44,12 @@ export const InquiryListSection = ({ onSelectInquiry, onCreateNew }: InquiryList
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex-1 py-3 text-sm font-semibold transition-colors relative ${
-              activeTab === tab.id ? 'text-sky-500' : 'text-gray-400'
+              activeTab === tab.id ? 'text-primary-500' : 'text-gray-400'
             }`}
           >
             {tab.label}
             {activeTab === tab.id && (
-              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-500 rounded-full" />
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500 rounded-full" />
             )}
           </button>
         ))}
@@ -62,16 +69,16 @@ export const InquiryListSection = ({ onSelectInquiry, onCreateNew }: InquiryList
               </div>
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : inquiries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
             <span className="text-4xl mb-3">📭</span>
             <p className="text-sm">
-              {activeTab === 'pending' ? '답변 대기 중인 문의가 없어요' : '답변 완료된 문의가 없어요'}
+              {activeTab === 'PENDING' ? '답변 대기 중인 문의가 없어요' : '답변 완료된 문의가 없어요'}
             </p>
           </div>
         ) : (
           <div>
-            {filtered.map((inquiry) => (
+            {inquiries.map((inquiry) => (
               <InquiryCard
                 key={inquiry.inquiryId}
                 inquiry={inquiry}
@@ -85,7 +92,7 @@ export const InquiryListSection = ({ onSelectInquiry, onCreateNew }: InquiryList
       <div className="sticky bottom-0 p-4 bg-white border-t border-gray-100">
         <button
           onClick={onCreateNew}
-          className="w-full flex items-center justify-center gap-2 bg-sky-500 text-white font-bold py-4 rounded-xl active:scale-[0.98] transition-all text-sm"
+          className="w-full flex items-center justify-center gap-2 bg-primary-500 text-white font-bold py-4 rounded-xl active:scale-[0.98] transition-all text-sm"
         >
           <PenLine size={16} />
           문의하기

@@ -22,7 +22,10 @@ public class SwaggerConfig {
                         .name(jwtSchemeName)
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
-                        .bearerFormat("JWT"));
+                        .bearerFormat("JWT")
+                        .description("""
+                                같은 브라우저에서 서비스에 로그인되어 있으면 AccessToken 쿠키가 자동으로 전송되므로 별도 입력이 필요 없습니다.
+                                쿠키가 없는 환경에서는 액세스 토큰을 직접 입력해 Authorization 헤더로 보낼 수 있습니다."""));
 
         return new OpenAPI()
                 .info(new Info()

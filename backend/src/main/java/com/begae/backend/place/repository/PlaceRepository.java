@@ -13,14 +13,13 @@ import java.util.Optional;
 
 @Repository
 public interface PlaceRepository extends JpaRepository<Place, Integer> {
-    Optional<Place> findPlaceBySourceId(String sourceId);
+    Optional<Place> findPlaceBySourceAndSourceId(String source, String sourceId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Place p WHERE p.placeId = :placeId")
     Optional<Place> findByIdWithLock(@Param("placeId") Integer placeId);
 
-    // plan에 얼마나 포함되어있는지 기준으로 조회
-    // TODO: likes 컬럼 추가 시 ORDER BY plan_count → likes DESC 로 변경
+    // 좋아요 수 기준 인기 장소 조회 (동률 시 place_id ASC 로 안정 정렬)
     @Query(value = """
             SELECT pl.place_id
             FROM place pl
@@ -35,7 +34,7 @@ public interface PlaceRepository extends JpaRepository<Place, Integer> {
                     + sin(radians(:lat)) * sin(radians(pl.y))
                   ))) <= :radiusKm
             GROUP BY pl.place_id
-            ORDER BY COUNT(pp.plan_place_id) DESC
+            ORDER BY pl.like_count DESC, pl.place_id ASC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     List<Integer> findPopularPlaceIds(
@@ -68,8 +67,7 @@ public interface PlaceRepository extends JpaRepository<Place, Integer> {
 
     List<Place> findByPlaceIdIn(List<Integer> placeIds);
 
-    // plan에 얼마나 포함되어있는지 기준으로 조회
-    // TODO: likes 컬럼 추가 시 ORDER BY plan_count → likes DESC 로 변경
+    // 좋아요 수 기준 전국 인기 장소 조회 (동률 시 place_id ASC 로 안정 정렬)
     @Query(value = """
             SELECT pl.place_id
             FROM place pl
@@ -77,7 +75,7 @@ public interface PlaceRepository extends JpaRepository<Place, Integer> {
             JOIN plan p ON p.plan_id = pp.plan_id
             WHERE p.is_plan_visible = true
             GROUP BY pl.place_id
-            ORDER BY COUNT(pp.plan_place_id) DESC
+            ORDER BY pl.like_count DESC, pl.place_id ASC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     List<Integer> findNationwidePopularPlaceIds(

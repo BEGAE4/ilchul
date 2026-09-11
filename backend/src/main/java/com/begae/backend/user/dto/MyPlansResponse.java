@@ -1,7 +1,7 @@
 package com.begae.backend.user.dto;
 
 import com.begae.backend.plan.domain.Plan;
-import com.begae.backend.plan_place.domain.PlanPlaceImage;
+import com.begae.backend.plan.domain.PlanImage;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -41,9 +41,8 @@ public class MyPlansResponse {
 
         public static PlanSummary from(Plan plan) {
 
-            String firstImage = plan.getPlanPlaces().stream()
-                    .flatMap(planPlace -> planPlace.getPlanPlaceImages().stream())
-                    .map(PlanPlaceImage::getImageUrl)
+            String firstImage = plan.getPlanImages().stream()
+                    .map(PlanImage::getImageUrl)
                     .filter(url -> url != null && !url.isBlank())
                     .findFirst()
                     .orElse(null);

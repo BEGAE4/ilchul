@@ -224,7 +224,7 @@ export const CourseDetailContent: React.FC<CourseDetailContentProps> = ({
                           className={styles.stampOrderBadge}
                           style={{
                             backgroundColor: stamp.isCompleted
-                              ? '#0066cc'
+                              ? 'var(--color-primary-700)'
                               : '#666666',
                           }}
                         >

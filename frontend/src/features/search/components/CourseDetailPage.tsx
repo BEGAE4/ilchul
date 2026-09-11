@@ -74,7 +74,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({
             <div className="text-xs text-gray-500">여행 크리에이터</div>
           </div>
         </div>
-        <button className="bg-sky-50 text-sky-600 px-4 py-1.5 rounded-full text-xs font-bold">
+        <button className="bg-primary-50 text-primary-600 px-4 py-1.5 rounded-full text-xs font-bold">
           팔로우
         </button>
       </div>
@@ -88,7 +88,7 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({
         <div className="bg-gray-50 p-3 rounded-lg">
           <div className="text-xs text-gray-500 mb-1">저장</div>
           <div className="font-bold text-gray-900 flex items-center justify-center gap-1">
-            <span className="text-blue-500">🔖</span> {course.bookmarks}
+            <span className="text-primary-500">🔖</span> {course.bookmarks}
           </div>
         </div>
         <div className="bg-gray-50 p-3 rounded-lg">
@@ -107,16 +107,16 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({
       {/* Timeline */}
       <div className="px-5">
         <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
-          <Clock size={20} className="text-sky-500" /> 여행 플랜 타임라인
+          <Clock size={20} className="text-primary-500" /> 여행 플랜 타임라인
         </h2>
 
-        <div className="relative pl-2 space-y-8 before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-sky-200 before:to-gray-100 before:content-['']">
+        <div className="relative pl-2 space-y-8 before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-primary-200 before:to-gray-100 before:content-['']">
           {course.stops.map((stop) => (
             <div key={stop.id} className="relative pl-8">
-              <span className="absolute left-0 top-1.5 -ml-px h-4 w-4 rounded-full border-2 border-white bg-sky-500 shadow-sm z-10" />
+              <span className="absolute left-0 top-1.5 -ml-px h-4 w-4 rounded-full border-2 border-white bg-primary-500 shadow-sm z-10" />
 
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1">
-                <span className="text-xs font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded w-fit mb-1 sm:mb-0">
+                <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded w-fit mb-1 sm:mb-0">
                   {stop.time}
                 </span>
                 <span className="text-xs text-gray-400 font-medium ml-auto sm:ml-2">
@@ -136,8 +136,8 @@ export const CourseDetailPage: React.FC<CourseDetailPageProps> = ({
       </div>
 
       {/* Floating Action Button */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 flex justify-center w-[360px] mx-auto z-50">
-        <button className="w-full bg-sky-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-sky-200 active:scale-[0.98] transition-transform">
+      <div className="fixed bottom-0 app-frame p-4 bg-white border-t border-gray-100 flex justify-center z-50">
+        <button className="w-full bg-primary-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary-200 active:scale-[0.98] transition-transform">
           이 플랜으로 일정 담기
         </button>
       </div>

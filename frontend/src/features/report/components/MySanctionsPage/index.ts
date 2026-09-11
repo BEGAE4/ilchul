@@ -1,0 +1,1 @@
+export { MySanctionsPage } from './component';

@@ -64,12 +64,12 @@ export const SavedCoursesTab: React.FC = () => {
                     e.stopPropagation();
                     toggleBookmark(course.id);
                   }}
-                  className="p-1.5 text-blue-500"
+                  className="p-1.5 text-primary-500"
                 >
                   <Bookmark
                     size={16}
-                    fill={bookmarkedIds.has(course.id) ? '#3b82f6' : 'none'}
-                    color="#3b82f6"
+                    fill={bookmarkedIds.has(course.id) ? 'var(--color-primary-500)' : 'none'}
+                    color="var(--color-primary-500)"
                   />
                 </button>
               </div>

@@ -1,3 +1,4 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getMockInquiryDetail,
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
   const { inquiryId } = await ctx.params;
 
   if (!useMock) {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const baseUrl = getServerApiBaseUrl();
     const cookie = req.headers.get('cookie') ?? '';
     const res = await fetch(`${baseUrl}/api/admin/inquiries/${inquiryId}`, {
       headers: { ...(cookie ? { cookie } : {}) },
@@ -33,7 +34,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   const body = await req.json().catch(() => ({}));
 
   if (!useMock) {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const baseUrl = getServerApiBaseUrl();
     const cookie = req.headers.get('cookie') ?? '';
     const res = await fetch(`${baseUrl}/api/admin/inquiries/${inquiryId}`, {
       method: 'PATCH',

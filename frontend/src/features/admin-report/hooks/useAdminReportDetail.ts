@@ -7,9 +7,10 @@ import {
   patchAdminReportStatus as patchApi,
 } from '../api';
 import type { AdminReportDetail } from '../types';
+import type { ReportStatus } from '@/features/report/types/report';
 
 interface PatchBody {
-  status: 'REVIEWING' | 'REJECTED';
+  status: ReportStatus;
   note?: string;
 }
 

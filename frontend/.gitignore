@@ -46,9 +46,15 @@ storybook-static
 # claude code 
 # /.claude/*
 # /cc/*
+/cc/input/*
 
 # sample
 /src/samples/*
 
 # omc
 /.omc/*
+
+# notion temp
+/.tmp-notion-export/
+/.tmp-notion-refetch/
+/scripts/

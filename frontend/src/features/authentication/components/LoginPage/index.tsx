@@ -1,7 +1,9 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { redirectToSocialLogin } from '@/features/authentication/api';
+import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import styles from './login.module.scss';
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -14,8 +16,18 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 export function LoginPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
+  const authChecked = useUserStore((state) => state.authChecked);
+  const isLoggedIn = useUserStore((state) => state.isLoggedIn);
+
+  // 로그인 확인 완료 후 이미 로그인 상태면 홈으로 이동 (로그인 성공 후 재진입 방지)
+  useEffect(() => {
+    if (authChecked && isLoggedIn) {
+      router.replace('/');
+    }
+  }, [authChecked, isLoggedIn, router]);
 
   const handleKakaoLogin = () => redirectToSocialLogin('kakao');
   const handleGoogleLogin = () => redirectToSocialLogin('google');

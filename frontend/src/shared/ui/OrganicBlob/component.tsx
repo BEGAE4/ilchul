@@ -36,7 +36,12 @@ const OrganicBlob: React.FC<OrganicBlobProps> = ({
         '70% 30% 30% 70% / 30% 70% 70% 30%',
         '60% 40% 30% 70% / 60% 30% 70% 40%',
       ],
-      backgroundColor: ['#bae6fd', '#7dd3fc', '#38bdf8', '#bae6fd'],
+      backgroundColor: [
+        'var(--color-primary-200)',
+        'var(--color-primary-300)',
+        'var(--color-primary-400)',
+        'var(--color-primary-200)',
+      ],
       transition: {
         duration: 2,
         repeat: Infinity,
@@ -47,7 +52,7 @@ const OrganicBlob: React.FC<OrganicBlobProps> = ({
       scale: 1,
       rotate: 0,
       borderRadius: '50%',
-      backgroundColor: '#38bdf8',
+      backgroundColor: 'var(--color-primary-400)',
       transition: {
         duration: 0.8,
         type: 'spring' as const,
@@ -59,12 +64,12 @@ const OrganicBlob: React.FC<OrganicBlobProps> = ({
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
       <motion.div
-        className="w-48 h-48 bg-sky-200 opacity-80 blur-xl absolute"
+        className="w-48 h-48 bg-primary-200 opacity-80 blur-xl absolute"
         animate={state}
         variants={blobVariants}
       />
       <motion.div
-        className="w-40 h-40 bg-gradient-to-br from-sky-300 to-blue-400 shadow-lg"
+        className="w-40 h-40 bg-gradient-to-br from-primary-300 to-primary-400 shadow-lg"
         animate={state}
         variants={blobVariants}
       />

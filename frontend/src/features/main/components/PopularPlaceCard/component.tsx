@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { Heart } from 'lucide-react';
+import { getSafeImageSrc } from '../../utils/image';
 import type { PopularPlaceCardProps } from './types';
 import styles from './styles.module.scss';
 
@@ -14,7 +15,7 @@ export function PopularPlaceCard({ place, onClick }: PopularPlaceCardProps) {
     >
       <div className="relative h-32 overflow-hidden">
         <Image
-          src={place.image}
+          src={getSafeImageSrc(place.image)}
           alt={place.name}
           fill
           sizes="(max-width: 480px) 50vw, 200px"
@@ -25,7 +26,7 @@ export function PopularPlaceCard({ place, onClick }: PopularPlaceCardProps) {
         </div>
       </div>
       <div className="p-3">
-        <div className="text-[10px] font-bold text-sky-600 mb-0.5">
+        <div className="text-[10px] font-bold text-primary-600 mb-0.5">
           {place.category}
         </div>
         <h3 className="font-bold text-sm text-gray-900 mb-1 line-clamp-1">
@@ -34,7 +35,7 @@ export function PopularPlaceCard({ place, onClick }: PopularPlaceCardProps) {
         <div className="flex items-center justify-between">
           <span className="text-xs text-gray-400 truncate">{place.location}</span>
           <div className="flex items-center gap-0.5 text-xs text-gray-400 shrink-0">
-            <Heart size={10} /> {place.likes.toLocaleString()}
+            <Heart size={10} /> {(place.likes ?? 0).toLocaleString()}
           </div>
         </div>
       </div>

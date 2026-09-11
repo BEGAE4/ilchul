@@ -1,10 +1,10 @@
 // ReportDialog 색상 토큰
-// 주의: 라디오 선택 상태(sky 계열)와 제출 버튼(red 계열)이 의도적으로 다름.
+// 주의: 라디오 선택 상태(primary 계열)와 제출 버튼(red 계열)이 의도적으로 다름.
 // 선택 상태는 "선택됨" 피드백(정보성), 제출 버튼은 "destructive 액션" 시각 신호.
 $report-color-destructive: #ef4444;      // red-500
 $report-color-destructive-hover: #dc2626; // red-600
-$report-color-selected-bg: #f0f9ff;      // sky-50
-$report-color-selected-border: #38bdf8;  // sky-400
+$report-color-selected-bg: var(--color-primary-50);       // primary-50
+$report-color-selected-border: var(--color-primary-400);  // primary-400
 $report-color-disabled-bg: #d1d5db;      // gray-300
 $report-color-disabled-text: #6b7280;    // gray-500
 $report-color-cancel-bg: #f3f4f6;        // gray-100
@@ -12,7 +12,13 @@ $report-color-cancel-text: #4b5563;      // gray-600
 
 .overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: var(--container-app);
+  translate: -50% 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 199;
 }
@@ -20,15 +26,16 @@ $report-color-cancel-text: #4b5563;      // gray-600
 .sheet {
   position: fixed;
   bottom: var(--keyboard-offset, 0px);
-  left: 0;
-  right: 0;
+  left: 50%;
+  right: auto;
+  width: 100%;
+  max-width: var(--container-app);
+  translate: -50% 0;
   background: white;
   border-radius: 20px 20px 0 0;
   z-index: 200;
   max-height: 85vh;
   overflow-y: auto;
-  max-width: 480px;
-  margin: 0 auto;
   // 키보드 회피는 bottom 변수로 처리 — transform을 쓰면 fixed 자식에 영향을 주므로 bottom 사용
 }
 
@@ -141,7 +148,7 @@ $report-color-cancel-text: #4b5563;      // gray-600
   box-sizing: border-box;
 
   &:focus {
-    border-color: #93c5fd; // blue-300
+    border-color: var(--color-primary-300);
   }
 
   &::placeholder {
@@ -266,6 +273,20 @@ $report-color-cancel-text: #4b5563;      // gray-600
 
   &:active {
     background: $report-color-destructive-hover;
+  }
+}
+
+.reportDetailLink {
+  display: block;
+  text-align: center;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #6b7280;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: #374151;
   }
 }
 

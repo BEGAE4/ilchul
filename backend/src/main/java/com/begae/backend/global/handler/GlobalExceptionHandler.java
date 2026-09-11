@@ -12,6 +12,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -63,7 +64,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler({
             MethodArgumentTypeMismatchException.class,
-            ConstraintViolationException.class
+            ConstraintViolationException.class,
+            HttpMessageNotReadableException.class
     })
     protected ResponseEntity<ErrorResponse> handleBadRequestException(Exception e) {
         log.error("handleBadRequestException", e);

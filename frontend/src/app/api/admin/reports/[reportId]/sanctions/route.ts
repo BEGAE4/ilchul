@@ -1,3 +1,4 @@
+import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 import { applyMockSanction } from '../../_mock';
 
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
   const body = await req.json().catch(() => ({}));
 
   if (!useMock) {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const baseUrl = getServerApiBaseUrl();
     const cookie = req.headers.get('cookie') ?? '';
     const res = await fetch(`${baseUrl}/api/admin/reports/${reportId}/sanctions`, {
       method: 'POST',
