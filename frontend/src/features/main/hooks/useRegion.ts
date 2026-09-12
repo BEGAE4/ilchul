@@ -16,8 +16,15 @@ export interface RegionState {
   /** 위치 응답을 기다리는 중 — 지역명 자리에 스켈레톤을 보여줄 때 쓴다 */
   isLocating: boolean;
   setRegion: (id: string) => void;
-  /** 직접 고른 지역을 지우고 현재 위치로 되돌린다 */
+  /** 직접 고른 지역을 지우고 현재 위치로 되돌린다 (위치를 다시 묻는다) */
   resetToCurrentLocation: () => void;
+  /**
+   * 위치를 못 잡은 이유. 기본 지역(서울)을 보여줄 때만 값이 있다.
+   * denied: 권한 거부 / failed: 시간 초과 등 일시적 실패 / unsupported: 위치 기능 없음
+   */
+  locateFailure: 'denied' | 'failed' | 'unsupported' | null;
+  /** 위치를 다시 묻는다 */
+  retryLocate: () => void;
 }
 
 function readStored(): string | null {
@@ -58,6 +65,9 @@ export function useRegion(enabled = true): RegionState {
     }
   }, []);
 
+  const { retry } = geo;
+  // 이전에는 직접 고른 지역만 지웠다. 위치 요청은 마운트당 한 번이라, 이미 실패한 뒤에 누르면
+  // 위치를 다시 묻지 않고 서울만 다시 보여줬다.
   const resetToCurrentLocation = useCallback(() => {
     setManualId(null);
     try {
@@ -65,14 +75,28 @@ export function useRegion(enabled = true): RegionState {
     } catch {
       /* 무시 */
     }
-  }, []);
+    retry();
+  }, [retry]);
 
   if (manualRegion) {
-    return { region: manualRegion, source: 'manual', isLocating: false, setRegion, resetToCurrentLocation };
+    return {
+      region: manualRegion,
+      source: 'manual',
+      isLocating: false,
+      setRegion,
+      resetToCurrentLocation,
+      locateFailure: null,
+      retryLocate: retry,
+    };
   }
 
   const detected = resolveRegionByCoord(geo.coords);
   const isLocating = !hydrated || (enabled && (geo.status === 'idle' || geo.status === 'loading'));
+
+  const locateFailure =
+    !detected && !isLocating && (geo.status === 'denied' || geo.status === 'failed' || geo.status === 'unsupported')
+      ? geo.status
+      : null;
 
   return {
     region: detected ?? DEFAULT_REGION,
@@ -80,5 +104,7 @@ export function useRegion(enabled = true): RegionState {
     isLocating,
     setRegion,
     resetToCurrentLocation,
+    locateFailure,
+    retryLocate: retry,
   };
 }

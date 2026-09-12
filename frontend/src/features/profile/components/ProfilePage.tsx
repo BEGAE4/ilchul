@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from '@/shared/ui/SafeImage';
-import PlanCover from '@/shared/ui/PlanCover';
+import CoverImage from '@/shared/ui/CoverImage';
 import { Settings, Plus, Bookmark, MapPin, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ import {
   setMyPlanVisibility,
 } from '@/features/my-page/api';
 import { PlanVisibilityToggle } from './PlanVisibilityToggle';
+import { sortMyPlansNewest, sortScrappedPlansNewest } from '@/features/my-page/utils/sortPlans';
 import type { MyPlan, ScrappedPlan } from '@/features/my-page/types/plan.types';
 import type { MyPageSummary } from '@/features/my-page/types/summary.types';
 
@@ -59,7 +60,8 @@ export const ProfilePage: React.FC = () => {
         setPlansError(null);
         const data = await fetchMyPlans();
         if (isMounted) {
-          setPlans(data);
+          // 서버 순서가 정해져 있지 않아 생성 최신순으로 맞춘다
+          setPlans(sortMyPlansNewest(data));
           setPlanVisibility(prev => {
             const next = { ...prev };
             data.forEach((plan) => {
@@ -111,7 +113,7 @@ export const ProfilePage: React.FC = () => {
         setScrappedLoading(true);
         setScrappedError(null);
         const data = await fetchScrappedPlans();
-        if (isMounted) setScrappedPlans(data);
+        if (isMounted) setScrappedPlans(sortScrappedPlansNewest(data));
       } catch (err) {
         console.error('저장한 플랜 로드 실패:', err);
         if (isMounted) setScrappedError('저장한 플랜을 불러오지 못했어요.');
@@ -375,7 +377,7 @@ export const ProfilePage: React.FC = () => {
                       className="relative rounded-xl overflow-hidden shadow-sm border border-gray-100 active:scale-[0.99] transition-transform cursor-pointer"
                     >
                       <div className="relative h-36">
-                        <PlanCover
+                        <CoverImage
                           src={plan.planImages?.[0]}
                           alt={plan.planTitle}
                           seed={plan.planId}
@@ -452,7 +454,7 @@ export const ProfilePage: React.FC = () => {
                         className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer active:opacity-80"
                       >
                         <div className="relative h-32">
-                          <PlanCover
+                          <CoverImage
                             src={plan.planImages?.[0]}
                             alt={plan.planTitle}
                             seed={plan.planId}

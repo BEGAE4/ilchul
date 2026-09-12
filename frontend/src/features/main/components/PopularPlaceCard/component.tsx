@@ -1,8 +1,7 @@
 'use client';
 
-import Image from '@/shared/ui/SafeImage';
+import CoverImage from '@/shared/ui/CoverImage';
 import { Heart } from 'lucide-react';
-import { getSafeImageSrc } from '../../utils/image';
 import type { PopularPlaceCardProps } from './types';
 import styles from './styles.module.scss';
 
@@ -14,12 +13,13 @@ export function PopularPlaceCard({ place, onClick }: PopularPlaceCardProps) {
       className={`${styles.card} group bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 active:scale-[0.98] transition-transform`}
     >
       <div className="relative h-32 overflow-hidden">
-        <Image
-          src={getSafeImageSrc(place.image)}
+        <CoverImage
+          src={place.image}
           alt={place.name}
-          fill
+          seed={place.id}
+          size="sm"
           sizes="(max-width: 480px) 50vw, 200px"
-          className="object-cover transition-transform group-hover:scale-110 duration-500"
+          imageClassName="transition-transform group-hover:scale-110 duration-500"
         />
         <div className="absolute top-2 left-2 min-w-5 h-5 px-1 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded text-[10px] text-white font-bold">
           {place.ranking}

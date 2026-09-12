@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { fetchMyPageProfile } from '@/features/my-page/api/my-page.api';
 import { useRouter } from 'next/navigation';
 import Image from '@/shared/ui/SafeImage';
-import PlanCover from '@/shared/ui/PlanCover';
+import CoverImage from '@/shared/ui/CoverImage';
 import {
   ArrowLeft,
   Heart,
@@ -33,7 +33,6 @@ import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStor
 import type { CurrentUser, ReportTarget } from '@/features/report';
 import { usePlanDetail, usePlanActions, planApi } from '@/features/plan';
 import { HALF_HOURS, addMinutesToTime, todayLocalDate } from '@/features/plan/utils/schedule';
-import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
 import { useComments } from '../hooks/useComments';
 
 interface CourseViewPageProps {
@@ -96,8 +95,10 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savedCourseId, setSavedCourseId] = useState<string | null>(null);
-  // 일정 담기 — 날짜·시간을 여기서 정한다. 복제 API 는 날짜를 반영하지 않으므로
-  // 복제 후 수정 API 로 시작·종료 일시를 채운다 (안 채우면 상세에서 일정이 비어 보인다).
+  // 담기 후 일정 저장까지 됐는지 — 완료 안내 문구를 가른다
+  const [savedScheduleOk, setSavedScheduleOk] = useState(true);
+  // 일정 담기 — 날짜·시간을 여기서 정한다. 운영 복제 API 는 scheduledDate 를 반영하지 않고
+  // 일정을 비워 두므로(2026-09-11 확인) 복제 후 수정 API 로 시작·종료 일시를 채운다.
   const [saveDate, setSaveDate] = useState(todayLocalDate());
   const [saveStartTime, setSaveStartTime] = useState('10:00');
   const [isSaving, setIsSaving] = useState(false);
@@ -143,7 +144,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const scrapCount = planActions.scrapCount;
 
   const places = [...plan.planPlaceDetailDtos].sort((a, b) => a.orderIndex - b.orderIndex);
-  // 대표 이미지: 업로드 썸네일 → 플랜 이미지 → 첫 번째 장소 사진. 모두 없으면 PlanCover 가 '사진 없음' UI 를 그린다.
+  // 대표 이미지: 업로드 썸네일 → 플랜 이미지 → 첫 번째 장소 사진. 모두 없으면 CoverImage 가 기본 커버를 그린다.
   const heroImage =
     plan.thumbnailUrl || plan.planImageUrls[0] || places.find((p) => p.placeImage)?.placeImage || null;
   const locationLabel = places[0]?.address?.split(' ').slice(0, 2).join(' ') || '';
@@ -175,17 +176,21 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     if (!saveDate || !saveStartTime || isSaving) return;
     setIsSaving(true);
     try {
-      const res = await planApi.clonePlan(plan.planId, { scheduledDate: saveDate });
-      // 복제 API 는 scheduledDate 를 실제로 반영하지 않아 새 플랜의 일정이 비어 있다.
-      // 수정 API 로 채워야 상세에서 날짜·시작 시간이 보이고 위치 인증 기간도 잡힌다.
-      await planApi
-        .updatePlan(res.planId, {
-          tripStartDate: toServerDateTime(saveDate, saveStartTime),
-          tripEndDate: toServerDateTime(saveDate, saveEndTime),
-        })
-        .catch(() => undefined);
+      // 복제 API 가 일정을 비워 두므로 복제 직후 일정까지 채운다 (clonePlanWithSchedule 참고)
+      const res = await planApi.clonePlanWithSchedule(plan.planId, {
+        date: saveDate,
+        startTime: saveStartTime,
+        endTime: saveEndTime,
+      });
       setSavedCourseId(String(res.planId));
-      toast.success('내 일정에 담았어요!');
+      setSavedScheduleOk(res.scheduleSaved);
+      if (res.scheduleSaved) {
+        toast.success('내 일정에 담았어요!');
+      } else {
+        toast.warning('플랜은 담았지만 일정을 저장하지 못했어요.', {
+          description: '내 플랜에서 여행 일정을 다시 설정해주세요.',
+        });
+      }
     } catch {
       toast.error('일정 담기에 실패했어요. 잠시 후 다시 시도해주세요.');
     } finally {
@@ -207,7 +212,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     <div className="bg-white pb-24 min-h-dvh relative">
       {/* 히어로 이미지 */}
       <div className="relative h-64 w-full">
-        <PlanCover src={heroImage} alt={plan.planTitle} seed={plan.planId} size="lg" priority />
+        <CoverImage src={heroImage} alt={plan.planTitle} seed={plan.planId} size="lg" priority />
         <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start bg-gradient-to-b from-black/40 to-transparent">
           <button
             onClick={() => router.back()}
@@ -656,10 +661,21 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   <Check size={24} strokeWidth={3} />
                 </div>
                 <h3 className="font-bold text-lg mb-2 text-gray-900">일정에 담았어요!</h3>
+                {/* 날짜·시간은 담기 모달에서 이미 정했다. 일정 저장이 실패했을 때만 다시 설정하라고 안내한다. */}
                 <p className="text-sm text-gray-500 mb-6">
-                  내 플랜 상세에서 날짜를 설정하고
-                  <br />
-                  여행을 시작해보세요.
+                  {savedScheduleOk ? (
+                    <>
+                      {saveDate} {saveStartTime} 출발 일정으로 담았어요.
+                      <br />
+                      내 플랜에서 언제든 바꿀 수 있어요.
+                    </>
+                  ) : (
+                    <>
+                      일정은 저장하지 못했어요.
+                      <br />
+                      내 플랜에서 여행 일정을 다시 설정해주세요.
+                    </>
+                  )}
                 </p>
                 <div className="flex gap-2">
                   <button

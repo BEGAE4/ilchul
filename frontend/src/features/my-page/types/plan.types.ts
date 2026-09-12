@@ -26,6 +26,8 @@ export interface ScrappedPlan {
   isPlanVisible: boolean; // 원본 플랜 공개 여부
   requiredTime: number; // 소요 시간 (분)
   planImages: string[];
+  // 내가 저장한 시각. v6 명세에는 없어 백엔드에 추가 요청 — 오기 전까지는 서버 순서를 따른다.
+  scrappedAt?: string | null;
 }
 
 export interface ScrappedPlansResponse {

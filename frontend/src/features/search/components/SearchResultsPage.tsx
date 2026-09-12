@@ -13,8 +13,7 @@ import {
   Route,
   Search,
 } from 'lucide-react';
-import Image from '@/shared/ui/SafeImage';
-import PlanCover from '@/shared/ui/PlanCover';
+import CoverImage from '@/shared/ui/CoverImage';
 import type { BestPlace } from '@/shared/types';
 import { ScrollCarousel } from '@/shared/ui/ScrollCarousel';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
@@ -390,7 +389,7 @@ function CourseCard({ course, onClick }: CourseCardProps) {
       onClick={onClick}
     >
       <div className="relative h-40 bg-gray-100">
-        <PlanCover
+        <CoverImage
           src={course.thumbnailUrl}
           alt={course.planTitle}
           seed={course.planId}
@@ -445,7 +444,7 @@ const PlaceCardSmall: React.FC<{
     onClick={onClick}
   >
     <div className="relative h-24 overflow-hidden">
-      <Image src={place.image} alt={place.name} fill sizes="144px" className="object-cover" />
+      <CoverImage src={place.image} alt={place.name} seed={place.id} size="sm" sizes="144px" />
       <button
         onClick={(e) => { e.stopPropagation(); onAdd(); }}
         className="absolute bottom-1.5 right-1.5 p-1 bg-white/90 backdrop-blur-sm rounded-full shadow text-primary-500 active:scale-90 transition-transform"
@@ -476,12 +475,13 @@ const PlaceCardGrid: React.FC<{
     onClick={onClick}
   >
     <div className="relative h-32 overflow-hidden">
-      <Image
+      <CoverImage
         src={place.image}
         alt={place.name}
-        fill
+        seed={place.id}
+        size="sm"
         sizes="(max-width: 480px) 50vw, 240px"
-        className="object-cover transition-transform group-hover:scale-110 duration-500"
+        imageClassName="transition-transform group-hover:scale-110 duration-500"
       />
       <button
         onClick={(e) => { e.stopPropagation(); onAdd(); }}
