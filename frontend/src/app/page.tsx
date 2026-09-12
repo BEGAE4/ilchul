@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from '@/shared/ui/SafeImage';
+import CoverImage from '@/shared/ui/CoverImage';
 import {
   Heart,
   MapPin,
@@ -25,7 +25,6 @@ import { useNearbyPopularPlaces } from '@/features/main/hooks/useNearbyPopularPl
 import { useNearbyPopularPlans } from '@/features/main/hooks/useNearbyPopularPlans';
 import { useNationwidePopularPlaces } from '@/features/main/hooks/useNationwidePopularPlaces';
 import { useNationwidePopularPlans } from '@/features/main/hooks/useNationwidePopularPlans';
-import { getSafeImageSrc } from '@/features/main/utils/image';
 import type { PopularPlace } from '@/features/main/types';
 import type { BestPlace } from '@/shared/types';
 
@@ -223,12 +222,12 @@ export default function Home() {
                   className="relative h-80 w-full cursor-pointer"
                   onClick={() => handlePlaceNavigate(place.id)}
                 >
-                  <Image
-                    src={getSafeImageSrc(place.image)}
+                  <CoverImage
+                    src={place.image}
                     alt={place.name}
-                    fill
+                    seed={place.id}
+                    size="lg"
                     sizes="100vw"
-                    className="object-cover"
                     priority
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -296,12 +295,12 @@ export default function Home() {
                     onClick={() => handlePlaceNavigate(place.id)}
                   >
                     <div className="relative h-28 overflow-hidden">
-                      <Image
-                        src={getSafeImageSrc(place.image)}
+                      <CoverImage
+                        src={place.image}
                         alt={place.name}
-                        fill
+                        seed={place.id}
+                        size="sm"
                         sizes="160px"
-                        className="object-cover"
                       />
                       <div className="absolute top-2 left-2 w-5 h-5 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded text-[10px] text-white font-bold">
                         {idx + 1}
@@ -380,12 +379,12 @@ export default function Home() {
                     onClick={() => handleCourseClick(String(plan.id))}
                   >
                     <div className="relative h-40">
-                      <Image
-                        src={getSafeImageSrc(plan.thumbnail)}
+                      <CoverImage
+                        src={plan.thumbnail}
                         alt={plan.title}
-                        fill
+                        seed={plan.id}
+                        size="md"
                         sizes="320px"
-                        className="object-cover"
                       />
                       <div className="absolute top-3 left-3 w-8 h-8 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded-lg text-white font-bold italic border border-white/20">
                         {index + 1}
@@ -456,12 +455,13 @@ export default function Home() {
                 onClick={() => handlePlaceNavigate(place.id)}
               >
                 <div className="relative h-32 overflow-hidden">
-                  <Image
-                    src={getSafeImageSrc(place.image)}
+                  <CoverImage
+                    src={place.image}
                     alt={place.name}
-                    fill
+                    seed={place.id}
+                    size="sm"
                     sizes="160px"
-                    className="object-cover transition-transform group-hover:scale-110 duration-500"
+                    imageClassName="transition-transform group-hover:scale-110 duration-500"
                   />
                   <div className="absolute top-2 left-2 w-5 h-5 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded text-[10px] text-white font-bold">
                     {idx + 1}
@@ -530,12 +530,12 @@ export default function Home() {
                 onClick={() => handleCourseClick(String(plan.id))}
               >
                 <div className="relative w-28 shrink-0">
-                  <Image
-                    src={getSafeImageSrc(plan.thumbnail)}
+                  <CoverImage
+                    src={plan.thumbnail}
                     alt={plan.title}
-                    fill
+                    seed={plan.id}
+                    size="sm"
                     sizes="112px"
-                    className="object-cover"
                   />
                   <div className="absolute top-2 left-2 w-6 h-6 flex items-center justify-center bg-black/70 backdrop-blur-sm rounded text-white text-xs font-bold italic border border-white/20">
                     {index + 1}
