@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from '@/shared/ui/SafeImage';
+import CoverImage from '@/shared/ui/CoverImage';
 import { Search, X, MapPin, Heart, Flame, ArrowRight, Clock as ClockIcon, TrendingUp } from 'lucide-react';
 import {
   fetchRecentSearches,
@@ -335,7 +335,7 @@ export const SearchPage: React.FC = () => {
                 {idx + 1}
               </span>
               <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
-                <Image src={place.image} alt={place.name} fill sizes="40px" className="object-cover" />
+                <CoverImage src={place.image} alt={place.name} seed={place.id} size="xs" sizes="40px" />
               </div>
               <div className="text-left flex-1">
                 <p className="text-sm font-bold">{place.name}</p>
@@ -367,7 +367,7 @@ export const SearchPage: React.FC = () => {
                 {idx + 1}
               </span>
               <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0">
-                <Image src={course.thumbnail} alt={course.title} fill sizes="40px" className="object-cover" />
+                <CoverImage src={course.thumbnail} alt={course.title} seed={course.id} size="xs" sizes="40px" />
               </div>
               <div className="text-left flex-1">
                 <p className="text-sm font-bold line-clamp-1">{course.title}</p>

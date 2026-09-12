@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Check, Plus, MapPin, Loader2 } from 'lucide-react';
-import Image, { PLACEHOLDER_IMAGE } from '@/shared/ui/SafeImage';
+import CoverImage from '@/shared/ui/CoverImage';
 import { toast } from 'sonner';
 import type { BestPlace } from '@/shared/types';
 import { fetchMyPlans } from '@/features/my-page/api/my-page.api';
@@ -14,8 +14,6 @@ import { toNumericPlaceId } from '@/features/place/utils/placeId';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 
 const NEW_PLAN_ID = '__new__';
-const FALLBACK_THUMB =
-  PLACEHOLDER_IMAGE;
 
 interface PlaceAddSheetProps {
   open: boolean;
@@ -207,12 +205,12 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                 <>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl mb-4 shrink-0">
                     <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0">
-                      <Image
+                      <CoverImage
                         src={place.image}
                         alt={place.name}
-                        fill
+                        seed={place.id}
+                        size="xs"
                         sizes="48px"
-                        className="object-cover"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -277,12 +275,12 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                             }`}
                           >
                             <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-gray-100">
-                              <Image
-                                src={plan.planImages?.[0] || FALLBACK_THUMB}
+                              <CoverImage
+                                src={plan.planImages?.[0]}
                                 alt={plan.planTitle}
-                                fill
+                                seed={plan.planId}
+                                size="xs"
                                 sizes="40px"
-                                className="object-cover"
                               />
                             </div>
                             <div className="flex-1 min-w-0">

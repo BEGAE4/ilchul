@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Image from '@/shared/ui/SafeImage';
-import PlanCover from '@/shared/ui/PlanCover';
+import CoverImage from '@/shared/ui/CoverImage';
 import {
   ArrowLeft,
   Calendar,
@@ -35,7 +35,7 @@ import { motion } from 'motion/react';
 import { usePlanDetail, usePlanActions, planApi, type PlanPlaceDetail, type PlanPreviewResponse } from '@/features/plan';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
-import { HALF_HOURS, timeToMin } from '@/features/plan/utils/schedule';
+import { HALF_HOURS, timeToMin, addMinutesToTime, todayLocalDate } from '@/features/plan/utils/schedule';
 import { ReviewPhoto } from './ReviewPhoto';
 
 function formatMinutes(min: number): string {
@@ -64,9 +64,11 @@ function isoTime(iso?: string): string {
   return iso && iso.length >= 16 ? iso.slice(11, 16) : '';
 }
 
-type CoursePhase = 'before' | 'during' | 'after';
+// unscheduled: 담기·복제한 플랜처럼 여행 일시가 비어 있는 상태.
+// 이전에는 일시가 없으면 'during' 으로 봐서 '여행 중' 배지와 인증 버튼이 떴다.
+type CoursePhase = 'unscheduled' | 'before' | 'during' | 'after';
 function getCoursePhase(tripStart?: string, tripEnd?: string): CoursePhase {
-  if (!tripStart || !tripEnd) return 'during';
+  if (!tripStart || !tripEnd) return 'unscheduled';
   const now = new Date();
   const start = parseServerDate(tripStart);
   const end = parseServerDate(tripEnd);
@@ -76,8 +78,14 @@ function getCoursePhase(tripStart?: string, tripEnd?: string): CoursePhase {
   return 'during';
 }
 
+const PHASE_LABEL: Record<CoursePhase, string> = {
+  unscheduled: '일정 미정',
+  before: '여행 전',
+  during: '여행 중',
+  after: '여행 완료',
+};
 
-// 현재 위치 조회 (실패/거부 시 null — 좌표 없이도 인증 요청은 전송)
+// 현재 위치 조회 (실패/거부/미지원 시 null — 서버가 좌표 없는 인증을 500 으로 거절하므로 호출부가 전송을 막는다)
 function getCurrentLocation(): Promise<{ x: number; y: number } | null> {
   return new Promise((resolve) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
@@ -141,6 +149,14 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const [cloneEndTime, setCloneEndTime] = useState('');
   const [isCloning, setIsCloning] = useState(false);
 
+  // 여행 일정(날짜·시작·종료) 수정 — 담기·복제한 플랜은 서버가 일정을 비워 두고,
+  // 일정이 지난 플랜은 이름·순서 편집이 막히므로 여기서 다시 잡을 수 있어야 한다.
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleStartTime, setScheduleStartTime] = useState('');
+  const [scheduleEndTime, setScheduleEndTime] = useState('');
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
+
   // 플랜 사진 관리
   const [isPhotoSheetOpen, setIsPhotoSheetOpen] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
@@ -193,7 +209,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const stops = orderedPlaces ?? serverPlaces;
   const isReorderMode = orderedPlaces !== null;
 
-  // 대표 이미지: 업로드 썸네일 → 플랜 이미지 → 첫 번째 장소 사진. 없으면 PlanCover 의 '사진 없음' UI
+  // 대표 이미지: 업로드 썸네일 → 플랜 이미지 → 첫 번째 장소 사진. 없으면 CoverImage 의 기본 커버
   const thumbnail =
     plan.thumbnailUrl || plan.planImageUrls[0] || serverPlaces.find((p) => p.placeImage)?.placeImage || null;
   const locationLabel = serverPlaces[0]?.address?.split(' ').slice(0, 2).join(' ') || '미정';
@@ -379,22 +395,62 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     if (!cloneDate || !cloneStartTime || !cloneEndTime || isCloning) return;
     setIsCloning(true);
     try {
-      const res = await planApi.clonePlan(plan.planId, { scheduledDate: cloneDate });
-      // 복제 API는 날짜만 받으므로 시간은 수정 API로 반영 (실패해도 복제 자체는 유지)
-      await planApi
-        .updatePlan(res.planId, {
-          tripStartDate: toServerDateTime(cloneDate, cloneStartTime),
-          tripEndDate: toServerDateTime(cloneDate, cloneEndTime),
-        })
-        .catch(() => undefined);
+      // 복제 API 가 일정을 비워 두므로 복제 직후 일정까지 채운다 (clonePlanWithSchedule 참고)
+      const res = await planApi.clonePlanWithSchedule(plan.planId, {
+        date: cloneDate,
+        startTime: cloneStartTime,
+        endTime: cloneEndTime,
+      });
       setIsCloneOpen(false);
-      toast.success('플랜이 복제되었어요!');
+      if (res.scheduleSaved) {
+        toast.success('플랜이 복제되었어요!');
+      } else {
+        toast.warning('플랜은 복제했지만 일정을 저장하지 못했어요.', {
+          description: '복제된 플랜에서 여행 일정을 다시 설정해주세요.',
+        });
+      }
       router.push(`/my-course/${res.planId}`);
     } catch (err) {
       console.error('플랜 복제 실패:', err);
       toast.error('플랜 복제에 실패했어요. 다시 시도해주세요.');
     } finally {
       setIsCloning(false);
+    }
+  };
+
+  // ── 여행 일정 수정 ──
+  // 기존 일정이 있으면 그대로, 없으면 오늘 10:00 + 소요시간으로 채워 편집 출발점으로 삼는다.
+  const openScheduleEditor = () => {
+    const start = startTime || '10:00';
+    setScheduleDate(scheduledDate || todayLocalDate());
+    setScheduleStartTime(start);
+    setScheduleEndTime(endTime || addMinutesToTime(start, plan.requiredTime));
+    setIsScheduleOpen(true);
+    setIsMenuOpen(false);
+  };
+
+  const isScheduleValid =
+    !!scheduleDate &&
+    !!scheduleStartTime &&
+    !!scheduleEndTime &&
+    timeToMin(scheduleEndTime) > timeToMin(scheduleStartTime);
+
+  const handleSaveSchedule = async () => {
+    if (!isScheduleValid || isSavingSchedule) return;
+    setIsSavingSchedule(true);
+    try {
+      await planApi.updatePlan(plan.planId, {
+        tripStartDate: toServerDateTime(scheduleDate, scheduleStartTime),
+        tripEndDate: toServerDateTime(scheduleDate, scheduleEndTime),
+      });
+      setIsScheduleOpen(false);
+      toast.success('여행 일정이 저장되었어요!');
+      refetch();
+    } catch (err) {
+      console.error('여행 일정 저장 실패:', err);
+      toast.error('여행 일정 저장에 실패했어요. 다시 시도해주세요.');
+    } finally {
+      setIsSavingSchedule(false);
     }
   };
 
@@ -497,7 +553,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
       {/* 헤더 이미지 */}
       <div className="relative h-60 w-full">
-        <PlanCover src={thumbnail} alt={plan.planTitle} seed={plan.planId} size="lg" priority />
+        <CoverImage src={thumbnail} alt={plan.planTitle} seed={plan.planId} size="lg" priority />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
         <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start text-white">
           <button
@@ -570,12 +626,12 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                     : 'bg-gray-100 text-gray-500'
               }`}
             >
-              {phase === 'before' ? '여행 전' : phase === 'during' ? '여행 중' : '여행 완료'}
+              {PHASE_LABEL[phase]}
             </div>
           </div>
         </div>
 
-        {scheduledDate && (
+        {scheduledDate ? (
           <div className="flex items-center gap-3 mb-3 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
             <Calendar size={14} className="text-primary-500" />
             <span>{scheduledDate}</span>
@@ -587,6 +643,26 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                 </span>
               </>
             )}
+            <button
+              type="button"
+              onClick={openScheduleEditor}
+              className="ml-auto text-gray-400 underline underline-offset-2"
+            >
+              변경
+            </button>
+          </div>
+        ) : (
+          // 담기·복제한 플랜은 서버가 일정을 비워 둔다. 이전에는 이 줄이 아예 사라져 시간을 볼 수도 고칠 수도 없었다.
+          <div className="flex items-center gap-2 mb-3 text-xs bg-accent-50 border border-accent-100 p-3 rounded-lg">
+            <Calendar size={14} className="text-accent-400 shrink-0" />
+            <span className="text-accent-600">아직 여행 일정이 없어요.</span>
+            <button
+              type="button"
+              onClick={openScheduleEditor}
+              className="ml-auto shrink-0 font-bold text-primary-600 bg-white border border-primary-100 px-2.5 py-1 rounded-full"
+            >
+              일정 설정
+            </button>
           </div>
         )}
 
@@ -766,9 +842,11 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           <p className="text-[11px] text-accent-600 leading-relaxed">
             {canVerify
               ? '각 장소에 도착하면 위치 인증을 해주세요.'
-              : phase === 'before'
-                ? '여행 시작 시간이 되면 위치 인증이 활성화됩니다.'
-                : '여행 기간이 종료되어 인증 및 수정이 불가합니다.'}
+              : phase === 'unscheduled'
+                ? '여행 일정을 정하면 그 시간에 위치 인증이 활성화됩니다.'
+                : phase === 'before'
+                  ? '여행 시작 시간이 되면 위치 인증이 활성화됩니다.'
+                  : '여행 기간이 종료되어 인증 및 수정이 불가합니다. 일정을 다시 정하면 편집할 수 있어요.'}
           </p>
         </div>
 
@@ -861,7 +939,11 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                 ) : !stop.isStamped ? (
                   <div className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-gray-50 text-gray-300 text-sm">
                     <Camera size={16} />
-                    {phase === 'before' ? '여행 시작 후 인증 가능' : '인증 기간 종료'}
+                    {phase === 'unscheduled'
+                      ? '일정 설정 후 인증 가능'
+                      : phase === 'before'
+                        ? '여행 시작 후 인증 가능'
+                        : '인증 기간 종료'}
                   </div>
                 ) : null}
               </div>
@@ -990,7 +1072,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   type="date"
                   value={cloneDate}
                   onChange={(e) => setCloneDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={todayLocalDate()}
                   className="w-full p-3 border border-gray-200 rounded-xl text-base"
                 />
               </div>
@@ -1040,6 +1122,95 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                 className="flex-1 py-2.5 bg-primary-500 text-white font-bold rounded-lg text-sm disabled:opacity-50"
               >
                 {isCloning ? '복제 중...' : '복제하기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 모달: 여행 일정 수정 ─── */}
+      {isScheduleOpen && (
+        <div className="fixed inset-y-0 app-frame z-[120] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => !isSavingSchedule && setIsScheduleOpen(false)}
+          />
+          <div className="relative w-full max-w-xs bg-white rounded-2xl p-5">
+            <h3 className="font-bold text-lg mb-1">여행 일정 수정</h3>
+            <p className="text-xs text-gray-400 mb-4">
+              소요시간 {formatMinutes(plan.requiredTime)} 기준으로 종료 시간을 먼저 채워뒀어요.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="schedule-date" className="text-xs font-bold text-gray-500 mb-1 block">
+                  여행 날짜
+                </label>
+                <input
+                  id="schedule-date"
+                  type="date"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  className="w-full p-3 border border-gray-200 rounded-xl text-base"
+                />
+              </div>
+              <div>
+                <label htmlFor="schedule-start" className="text-xs font-bold text-gray-500 mb-1 block">
+                  시작 시간
+                </label>
+                <select
+                  id="schedule-start"
+                  value={scheduleStartTime}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setScheduleStartTime(next);
+                    // 종료가 시작보다 앞서게 되면 소요시간 기준으로 다시 맞춘다
+                    if (!scheduleEndTime || timeToMin(scheduleEndTime) <= timeToMin(next)) {
+                      setScheduleEndTime(addMinutesToTime(next, plan.requiredTime));
+                    }
+                  }}
+                  className="w-full p-3 border border-gray-200 rounded-xl text-sm appearance-none"
+                >
+                  {HALF_HOURS.map((h) => (
+                    <option key={h.value} value={h.value}>
+                      {h.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="schedule-end" className="text-xs font-bold text-gray-500 mb-1 block">
+                  종료 시간
+                </label>
+                <select
+                  id="schedule-end"
+                  value={scheduleEndTime}
+                  onChange={(e) => setScheduleEndTime(e.target.value)}
+                  className="w-full p-3 border border-gray-200 rounded-xl text-sm appearance-none"
+                >
+                  {HALF_HOURS.filter((h) => timeToMin(h.value) > timeToMin(scheduleStartTime || '00:00')).map(
+                    (h) => (
+                      <option key={h.value} value={h.value}>
+                        {h.label}
+                      </option>
+                    )
+                  )}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setIsScheduleOpen(false)}
+                disabled={isSavingSchedule}
+                className="flex-1 py-2.5 bg-gray-100 text-gray-600 font-bold rounded-lg text-sm"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => void handleSaveSchedule()}
+                disabled={!isScheduleValid || isSavingSchedule}
+                className="flex-1 py-2.5 bg-primary-500 text-white font-bold rounded-lg text-sm disabled:opacity-50"
+              >
+                {isSavingSchedule ? '저장 중...' : '저장'}
               </button>
             </div>
           </div>
@@ -1169,6 +1340,14 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsMenuOpen(false)} />
           <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+            {/* 일정 수정은 지난 여행에도 연다 — 날짜를 다시 잡아야 편집·인증이 다시 가능해진다 */}
+            <button
+              onClick={openScheduleEditor}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
+            >
+              <Calendar size={18} className="text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">여행 일정 수정</span>
+            </button>
             {canEdit && (
               <>
                 <button

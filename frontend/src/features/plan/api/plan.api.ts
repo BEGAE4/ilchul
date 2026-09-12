@@ -15,6 +15,7 @@ import type {
   ScrapPlanResponse,
 } from '../types/plan.types';
 import { normalizePlanDetail } from '../utils/normalizePlanDetail';
+import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
 
 // 플랜 생성 — 출발지/일정/장소까지 일괄 등록
 export async function createPlan(body: CreatePlanBody): Promise<CreatePlanResponse> {
@@ -133,6 +134,37 @@ export async function clonePlan(
 ): Promise<ClonePlanResponse> {
   const { data } = await apiClient.post<ClonePlanResponse>(`/api/plan/${planId}/clone`, body);
   return data;
+}
+
+export interface PlanSchedule {
+  /** 'yyyy-MM-dd' */
+  date: string;
+  /** 'HH:mm' */
+  startTime: string;
+  /** 'HH:mm' */
+  endTime: string;
+}
+
+// 플랜 복제 + 여행 일시 설정.
+// 운영 복제 API 는 scheduledDate 를 받아도 반영하지 않고 tripStartDate/tripEndDate 를 null 로 둔다
+// (2026-09-11 확인, 백엔드 요청 중). 그래서 복제 직후 수정 API 로 일시를 채운다.
+// 복제는 성공하고 일시 저장만 실패할 수 있으므로 결과를 나눠 돌려준다 — 호출부가 사용자에게 알린다.
+// 이전에는 수정 실패를 조용히 삼켜 '담았어요' 토스트 뒤에 일정이 빈 플랜이 남았다.
+export async function clonePlanWithSchedule(
+  planId: number,
+  schedule: PlanSchedule
+): Promise<{ planId: number; scheduleSaved: boolean }> {
+  const res = await clonePlan(planId, { scheduledDate: schedule.date });
+  try {
+    await updatePlan(res.planId, {
+      tripStartDate: toServerDateTime(schedule.date, schedule.startTime),
+      tripEndDate: toServerDateTime(schedule.date, schedule.endTime),
+    });
+    return { planId: res.planId, scheduleSaved: true };
+  } catch (err) {
+    console.error('복제한 플랜의 일정 저장 실패:', err);
+    return { planId: res.planId, scheduleSaved: false };
+  }
 }
 
 // 플랜 좋아요 / 취소

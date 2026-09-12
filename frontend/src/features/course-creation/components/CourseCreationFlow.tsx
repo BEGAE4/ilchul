@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from '@/shared/ui/SafeImage';
+import CoverImage from '@/shared/ui/CoverImage';
 import {
   ArrowLeft,
   Check,
@@ -43,30 +43,6 @@ import { mapRecommendedPlaces } from '../utils/recommendedPlaces';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { fetchMyPageProfile } from '@/features/my-page/api/my-page.api';
-
-// 추천 장소 이미지는 출처(카카오 CDN 등)를 미리 알 수 없어 next.config의 remotePatterns로 감쌀 수 없다.
-// 미등록 호스트는 next/image가 렌더 중에 예외를 던지므로 최적화를 끄고, 빈 src·로드 실패는 자리 표시로 대체한다.
-const PlaceHeroImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) {
-    return (
-      <div className="w-full h-full bg-gradient-to-br from-primary-100 to-primary-50 flex items-center justify-center">
-        <MapPin size={40} className="text-primary-300" />
-      </div>
-    );
-  }
-  return (
-    <Image
-      src={src}
-      alt={alt}
-      fill
-      sizes="100vw"
-      unoptimized
-      className="object-cover"
-      onError={() => setFailed(true)}
-    />
-  );
-};
 
 // 스텝마다 하단 CTA 클래스를 따로 적다 보니 그림자·비활성 색이 제각각이 됐다.
 // 화면이 바뀌어도 같은 버튼으로 읽히도록 한 곳에서 관리한다.
@@ -1652,7 +1628,7 @@ export const CourseCreationFlow: React.FC = () => {
     return (
       <div className="flex flex-col min-h-dvh bg-white">
         <div className="relative h-64 w-full shrink-0">
-          <PlaceHeroImage src={place.image} alt={place.name} />
+          <CoverImage src={place.image} alt={place.name} seed={place.id} size="lg" sizes="100vw" />
           <div className="absolute top-0 left-0 right-0 p-4 flex justify-between bg-gradient-to-b from-black/40 to-transparent">
             <button
               onClick={handleBack}
