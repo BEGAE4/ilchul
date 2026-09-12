@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image, { PLACEHOLDER_IMAGE } from '@/shared/ui/SafeImage';
+import Image from '@/shared/ui/SafeImage';
+import CoverImage from '@/shared/ui/CoverImage';
 import {
   ArrowLeft,
   Heart,
@@ -90,9 +91,8 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
     name: serverPlace.placeName,
     category: serverPlace.categoryName,
     location: serverPlace.roadAddressName || serverPlace.addressName,
-    image:
-      serverPlace.placeImageUrl ||
-      PLACEHOLDER_IMAGE,
+    // 사진이 없으면 빈 값으로 두고 CoverImage 가 기본 커버를 그린다 (구름 사진으로 채우지 않는다)
+    image: serverPlace.placeImageUrl || '',
     likes: placeActions.likeCount,
   };
 
@@ -121,7 +121,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
     <div className="bg-white min-h-dvh pb-24">
       {/* 히어로 이미지 */}
       <div className="relative h-72">
-        <Image src={place.image} alt={place.name} fill sizes="100vw" className="object-cover" />
+        <CoverImage src={place.image} alt={place.name} seed={place.id} size="lg" sizes="100vw" priority />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
 
         {/* 상단 버튼 */}
@@ -353,12 +353,12 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
                   onClick={() => router.push(`/course/${course.id}`)}
                 >
                   <div className="relative h-32">
-                    <Image
+                    <CoverImage
                       src={course.thumbnail}
                       alt={course.title}
-                      fill
+                      seed={course.id}
+                      size="sm"
                       sizes="208px"
-                      className="object-cover"
                     />
                     <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black/50 to-transparent" />
                     <div className="absolute bottom-2 left-2.5 flex gap-1.5">

@@ -80,8 +80,11 @@
   --spacing-safe-right: env(safe-area-inset-right);
 
   /* 앱 프레임 폭 (단일 소스) — 모든 화면·오버레이가 이 폭으로 정렬된다.
-     Tailwind: max-w-app / w-app, SCSS: var(--container-app) */
-  --container-app: 390px;
+     Tailwind: max-w-app / w-app, SCSS: var(--container-app)
+     휴대폰에서는 화면을 꽉 채우고, 태블릿·데스크톱에서만 가운데 정렬 기둥이 되도록
+     현행 폰 최대 폭(iPhone Pro Max 440px)보다 넉넉한 값으로 둔다.
+     390px 이던 시절에는 393~440px 폰에서 양옆에 2~25px 회색 여백이 드러났다. */
+  --container-app: 480px;
 }
 
 /* Pretendard Variable 폰트 정의  */
