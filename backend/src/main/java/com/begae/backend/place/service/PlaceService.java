@@ -17,7 +17,7 @@ public interface PlaceService {
     SearchPlaceResponseDto enrichAndUpsert(KakaoPlaceResponseDto.Document document, String wellnessContentId);
     int upsertPlace(PlaceUpsertCommand command);
     List<SearchPlaceResponseDto> getSearchResult(KakaoPlaceResponseDto kakaoResponse);
-    PlaceDetailResponseDto getPlaceDetail(Integer placeId);
+    PlaceDetailResponseDto getPlaceDetail(Integer placeId, Integer userId);
     PopularPlaceResponseDto getPopularPlaces(Double lat, Double lng, Integer limit, Integer page);
 
     PopularPlaceResponseDto getNationwidePopularPlaces(Integer limit, Integer page);
