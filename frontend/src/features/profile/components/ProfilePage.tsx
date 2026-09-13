@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from '@/shared/ui/SafeImage';
-import CoverImage from '@/shared/ui/CoverImage';
+import { PlanCardCover } from './PlanCardCover';
 import { Settings, Plus, Bookmark, MapPin, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -377,13 +377,7 @@ export const ProfilePage: React.FC = () => {
                       className="relative rounded-xl overflow-hidden shadow-sm border border-gray-100 active:scale-[0.99] transition-transform cursor-pointer"
                     >
                       <div className="relative h-36">
-                        <CoverImage
-                          src={plan.planImages?.[0]}
-                          alt={plan.planTitle}
-                          seed={plan.planId}
-                          size="md"
-                          sizes="(max-width: 480px) 100vw, 480px"
-                        />
+                        <PlanCardCover planId={plan.planId} title={plan.planTitle} src={plan.planImages?.[0]} />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                         <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 bg-white/90 backdrop-blur-sm rounded-full shadow">
                           <Bookmark size={12} fill="var(--color-primary-500)" className="text-primary-500" />
@@ -454,13 +448,7 @@ export const ProfilePage: React.FC = () => {
                         className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 cursor-pointer active:opacity-80"
                       >
                         <div className="relative h-32">
-                          <CoverImage
-                            src={plan.planImages?.[0]}
-                            alt={plan.planTitle}
-                            seed={plan.planId}
-                            size="md"
-                            sizes="(max-width: 480px) 100vw, 480px"
-                          />
+                          <PlanCardCover planId={plan.planId} title={plan.planTitle} src={plan.planImages?.[0]} />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                           <div className="absolute top-3 right-3">
                             <PlanVisibilityToggle
