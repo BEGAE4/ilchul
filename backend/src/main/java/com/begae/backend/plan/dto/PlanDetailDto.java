@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Getter
 @Builder
@@ -68,8 +69,8 @@ public class PlanDetailDto {
                 .planVerified(first.getIsVerified())
                 .isPlanVisible(first.getIsPlanVisible())
                 .planDescription(first.getPlanDescription())
-                .requiredTime(first.getRequiredTime())
-                .totalDistance(first.getTotalDistance())
+                .requiredTime(Objects.requireNonNullElse(first.getRequiredTime(), 0))
+                .totalDistance(Objects.requireNonNullElse(first.getTotalDistance(), 0))
                 .likeCount(first.getLikeCount())
                 .bookmarkCount(first.getScrapCount())
                 .isLiked(isLiked)
