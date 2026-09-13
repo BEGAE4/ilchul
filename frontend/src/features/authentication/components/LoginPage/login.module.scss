@@ -95,6 +95,21 @@
   padding: 0 2.5rem; // 40px
 }
 
+.consentNotice {
+  margin: 0;
+  font-size: 0.75rem; // 12px
+  line-height: 1.5;
+  color: #8a8a8a;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.consentLink {
+  color: #5a5a5a;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .loginButton {
   width: 100%;
   height: 3.375rem; // 54px

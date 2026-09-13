@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { SERVICE_ROUTES } from '@/shared/lib/constants/service';
 import { redirectToSocialLogin } from '@/features/authentication/api';
 import { resolveLoginErrorMessage } from '@/features/authentication/utils/loginErrorMessage';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
@@ -68,6 +70,19 @@ export function LoginPage() {
               <span className={styles.buttonTextBold}>카카오</span> 로그인
             </span>
           </button>
+          {/* 로그인이 곧 가입이라 별도 가입 화면이 없다. 동의 체크박스는 재로그인할 때마다 거치게 되어 고지로 둔다 */}
+          <p className={styles.consentNotice}>
+            로그인하면{' '}
+            <Link href={SERVICE_ROUTES.terms} className={styles.consentLink}>
+              이용약관
+            </Link>
+            과{' '}
+            <Link href={SERVICE_ROUTES.privacy} className={styles.consentLink}>
+              개인정보처리방침
+            </Link>
+            에 동의하게 됩니다.
+            <br />만 14세 미만은 가입할 수 없어요.
+          </p>
         </div>
       </div>
     </div>
