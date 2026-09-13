@@ -87,6 +87,11 @@ public class PlanPlace extends BaseEntity {
         return newPlanPlace;
     }
 
+    public void moveTo(int orderIndex, int travelTime) {
+        this.orderIndex = orderIndex;
+        this.travelTime = travelTime;
+    }
+
     public void stamp() {
         this.isStamped = true;
     }

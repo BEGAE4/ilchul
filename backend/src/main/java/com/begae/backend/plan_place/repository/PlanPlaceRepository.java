@@ -12,7 +12,5 @@ import java.util.Optional;
 public interface PlanPlaceRepository extends JpaRepository<PlanPlace, Integer> {
     List<PlanPlace> findByPlanOrderByOrderIndexAsc(Plan plan);
 
-    void deleteAllByPlan(Plan plan);
-
     Optional<PlanPlace> findByPlanPlaceIdAndPlan_User_UserId(Integer planPlaceId, Integer userId);
 }

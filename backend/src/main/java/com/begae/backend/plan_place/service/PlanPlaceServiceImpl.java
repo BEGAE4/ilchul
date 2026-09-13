@@ -174,7 +174,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                         .isStamped(planPlace.getIsStamped())
                         .build());
             } else {
-                Place place = placesInDb.get(i);
+                Place place = placeById.get(requestPlace.getPlaceId());
                 routes.add(UpdatePlanPreviewResponseDto.PlanPlacePreview.builder()
                         .placeId(place.getPlaceId())
                         .placeName(place.getPlaceName())
@@ -255,33 +255,23 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
 
         getDurationDto duration = getDuration(request.getDeparturePoint(), points);
 
-        List<PlanPlace> routes = new ArrayList<>();
+        // 유지하는 장소는 그 자리에서 순서만 바꿔 planPlaceId 와 스탬프 사진을 보존한다.
+        Set<Integer> keptPlanPlaceIds = new HashSet<>();
+        List<PlanPlace> addedPlanPlaces = new ArrayList<>();
         for(int i = 0; i < places.size(); i++) {
             UpdatePlanPlaceItemDto requestPlace = places.get(i);
+            int travelTime = i >= duration.getSectionDuration().size() ? 0 : duration.getSectionDuration().get(i);
             PlanPlace planPlace = existingMap.get(requestPlace.getPlanPlaceId());
             if(planPlace != null && requestPlace.getPlaceId().equals(planPlace.getPlace().getPlaceId())) {
-                routes.add(PlanPlace.builder()
-                        .place(planPlace.getPlace())
-                        .plan(plan)
-                        .orderIndex(i + 1)
-                        .travelTime(i >= duration.getSectionDuration().size() ? 0 : duration.getSectionDuration().get(i))
-                        .stayTime(planPlace.getStayTime())
-                        .isStamped(planPlace.getIsStamped())
-                        .snapshotPlaceName(planPlace.getSnapshotPlaceName())
-                        .snapshotCategoryName(planPlace.getSnapshotCategoryName())
-                        .snapshotAddressName(planPlace.getSnapshotAddressName())
-                        .snapshotRoadAddressName(planPlace.getSnapshotRoadAddressName())
-                        .snapshotX(planPlace.getSnapshotX())
-                        .snapshotY(planPlace.getSnapshotY())
-                        .planPlaceImages(planPlace.getPlanPlaceImages())
-                        .build());
+                planPlace.moveTo(i + 1, travelTime);
+                keptPlanPlaceIds.add(planPlace.getPlanPlaceId());
             } else {
-                Place place = placesInDb.get(i);
-                routes.add(PlanPlace.builder()
+                Place place = placeById.get(requestPlace.getPlaceId());
+                addedPlanPlaces.add(PlanPlace.builder()
                         .place(place)
                         .plan(plan)
                         .orderIndex(i + 1)
-                        .travelTime(i >= duration.getSectionDuration().size() ? 0 : duration.getSectionDuration().get(i))
+                        .travelTime(travelTime)
                         .stayTime(null)
                         .isStamped(Boolean.FALSE)
                         .snapshotPlaceName(place.getPlaceName())
@@ -290,15 +280,20 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                         .snapshotRoadAddressName(place.getRoadAddressName())
                         .snapshotX(place.getX())
                         .snapshotY(place.getY())
-                        .planPlaceImages(List.of())
                         .build());
             }
-
         }
 
-        planPlaceRepository.deleteAllByPlan(plan);
+        List<String> removedImageKeys = existPlanPlaces.stream()
+                .filter(planPlace -> !keptPlanPlaceIds.contains(planPlace.getPlanPlaceId()))
+                .flatMap(planPlace -> planPlace.getPlanPlaceImages().stream())
+                .map(PlanPlaceImage::getImageKey)
+                .filter(imageKey -> !planPlaceImageRepository.existsByImageKeyAndPlanPlace_PlanNot(imageKey, plan))
+                .toList();
 
-        planPlaceRepository.saveAll(routes);
+        existPlanPlaces.removeIf(planPlace -> !keptPlanPlaceIds.contains(planPlace.getPlanPlaceId()));
+        existPlanPlaces.addAll(addedPlanPlaces);
+        imageFileCleaner.deleteAfterCommit(removedImageKeys);
 
         plan.updateRouteSummary(duration.getTotalDuration(), duration.getTotalDistance(), DeparturePoint.of(request.getDeparturePoint()));
 
