@@ -17,6 +17,7 @@ import { getNavItems } from '@/shared/lib/constants/navItems';
 import { ScrollCarousel } from '@/shared/ui/ScrollCarousel';
 import { HomePageSkeleton, Skeleton, SkeletonCard } from '@/shared/ui/Skeleton';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
+import ServiceFooter from '@/shared/ui/ServiceFooter';
 import { useRegion } from '@/features/main/hooks/useRegion';
 import { RegionSelector } from '@/features/main/components/RegionSelector';
 import { HeroEmpty } from '@/features/main/components/HeroEmpty';
@@ -573,35 +574,7 @@ export default function Home() {
         </div>
 
         {/* ───── Footer ───── */}
-        <footer className="bg-gray-100 border-t border-gray-200 py-10 px-5 text-center">
-          <div className="flex justify-center gap-4 mb-6 text-gray-400">
-            <button
-              onClick={() => router.push('/profile/settings')}
-              className="text-xs hover:text-gray-600"
-            >
-              이용약관
-            </button>
-            <button
-              onClick={() => router.push('/profile/settings')}
-              className="text-xs font-bold hover:text-gray-600"
-            >
-              개인정보처리방침
-            </button>
-            <button
-              onClick={() => router.push('/profile/settings')}
-              className="text-xs hover:text-gray-600"
-            >
-              고객센터
-            </button>
-          </div>
-          <p className="text-[10px] text-gray-400 leading-relaxed mb-4">
-            (주)일출 | 대표: 일출
-            <br />
-            서울시 강남구 테헤란로 123
-            <br />
-            Copyright © 2024 일출. All rights reserved.
-          </p>
-        </footer>
+        <ServiceFooter className="bg-gray-100 border-t border-gray-200 pt-10 pb-14 px-5" />
 
         {/* PlaceAddSheet */}
         <PlaceAddSheet

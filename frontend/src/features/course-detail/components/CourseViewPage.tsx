@@ -31,7 +31,7 @@ import { CourseDetailSkeleton } from '@/shared/ui/Skeleton';
 import { useReport, ReportDialog, ReportMenuItem } from '@/features/report';
 import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStorage';
 import type { CurrentUser, ReportTarget } from '@/features/report';
-import { usePlanDetail, usePlanActions, planApi } from '@/features/plan';
+import { usePlanDetail, usePlanActions, planApi, pickPlanCover } from '@/features/plan';
 import { HALF_HOURS, addMinutesToTime, todayLocalDate } from '@/features/plan/utils/schedule';
 import { useComments } from '../hooks/useComments';
 
@@ -144,9 +144,8 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const scrapCount = planActions.scrapCount;
 
   const places = [...plan.planPlaceDetailDtos].sort((a, b) => a.orderIndex - b.orderIndex);
-  // 대표 이미지: 업로드 썸네일 → 플랜 이미지 → 첫 번째 장소 사진. 모두 없으면 CoverImage 가 기본 커버를 그린다.
-  const heroImage =
-    plan.thumbnailUrl || plan.planImageUrls[0] || places.find((p) => p.placeImage)?.placeImage || null;
+  // 대표 이미지 — 목록 카드와 같은 규칙(pickPlanCover). 모두 없으면 CoverImage 가 기본 커버를 그린다.
+  const heroImage = pickPlanCover(plan);
   const locationLabel = places[0]?.address?.split(' ').slice(0, 2).join(' ') || '';
   const durationLabel =
     plan.requiredTime >= 60

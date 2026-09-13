@@ -32,7 +32,14 @@ import {
   Loader2,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { usePlanDetail, usePlanActions, planApi, type PlanPlaceDetail, type PlanPreviewResponse } from '@/features/plan';
+import {
+  usePlanDetail,
+  usePlanActions,
+  planApi,
+  pickPlanCover,
+  type PlanPlaceDetail,
+  type PlanPreviewResponse,
+} from '@/features/plan';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
 import { HALF_HOURS, timeToMin, addMinutesToTime, todayLocalDate } from '@/features/plan/utils/schedule';
@@ -209,9 +216,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const stops = orderedPlaces ?? serverPlaces;
   const isReorderMode = orderedPlaces !== null;
 
-  // 대표 이미지: 업로드 썸네일 → 플랜 이미지 → 첫 번째 장소 사진. 없으면 CoverImage 의 기본 커버
-  const thumbnail =
-    plan.thumbnailUrl || plan.planImageUrls[0] || serverPlaces.find((p) => p.placeImage)?.placeImage || null;
+  // 대표 이미지 — 목록 카드와 같은 규칙(pickPlanCover). 없으면 CoverImage 의 기본 커버
+  const thumbnail = pickPlanCover(plan);
   const locationLabel = serverPlaces[0]?.address?.split(' ').slice(0, 2).join(' ') || '미정';
   const scheduledDate = isoDate(plan.tripStartDate);
   const startTime = isoTime(plan.tripStartDate);

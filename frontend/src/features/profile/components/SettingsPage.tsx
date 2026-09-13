@@ -6,27 +6,34 @@ import { toast } from 'sonner';
 import Image from '@/shared/ui/SafeImage';
 import {
   ArrowLeft,
-  Bell,
   ChevronRight,
   LogOut,
   Trash2,
   Info,
-  Shield,
   HelpCircle,
   Camera,
   X,
   User,
 } from 'lucide-react';
-import { motion } from 'motion/react';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
+import { SERVICE_ROUTES } from '@/shared/lib/constants/service';
+import ServiceFooter from '@/shared/ui/ServiceFooter';
 import { fetchMyPageProfile, updateMyPageProfile } from '@/features/my-page/api';
 import { logout, deleteUser } from '@/features/authentication/api';
 
-type SettingsSection = 'main' | 'editProfile' | 'notification' | 'privacy' | 'about';
+// 알림 설정·개인정보 및 보안(비공개 프로필) 화면은 뺐다. 토글이 스토어 메모리만 바꾸고 서버에 저장하지 않아
+// 새로고침하면 초기화됐고, 비공개 프로필을 켜도 실제로 숨겨지지 않았다. 서버 기능이 생기면 되살린다.
+type SettingsSection = 'main' | 'editProfile' | 'about';
+
+const ABOUT_LINKS = [
+  { label: '이용약관', href: SERVICE_ROUTES.terms },
+  { label: '개인정보처리방침', href: SERVICE_ROUTES.privacy },
+  { label: '고객센터', href: SERVICE_ROUTES.support },
+] as const;
 
 export function SettingsPage() {
   const router = useRouter();
-  const { user, settings, updateSettings, updateProfile, setLoggedIn } = useUserStore();
+  const { user, updateProfile, setLoggedIn } = useUserStore();
   const [section, setSection] = useState<SettingsSection>('main');
 
   // userIntro/userNickname 는 서버에서 null 로 내려올 수 있다(자기소개 미입력 신규 가입자).
@@ -131,27 +138,6 @@ export function SettingsPage() {
         <span className="font-bold text-lg ml-2">{title}</span>
       </div>
     </div>
-  );
-
-  const ToggleSwitch = ({
-    enabled,
-    onToggle,
-  }: {
-    enabled: boolean;
-    onToggle: () => void;
-  }) => (
-    <button
-      onClick={onToggle}
-      className={`relative w-11 h-6 rounded-full transition-colors ${
-        enabled ? 'bg-primary-500' : 'bg-gray-300'
-      }`}
-    >
-      <motion.div
-        animate={{ x: enabled ? 20 : 2 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        className="absolute top-1 w-4 h-4 bg-white rounded-full shadow"
-      />
-    </button>
   );
 
   const MenuItem = ({
@@ -259,75 +245,6 @@ export function SettingsPage() {
     );
   }
 
-  // === Notification Settings ===
-  if (section === 'notification') {
-    return (
-      <div className="flex flex-col min-h-dvh bg-white">
-        <SectionHeader title="알림 설정" onBack={() => setSection('main')} />
-        <div className="flex-1">
-          <div className="px-5 py-4 border-b border-gray-50">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium text-gray-900">푸시 알림</div>
-                <div className="text-xs text-gray-400 mt-0.5">댓글, 좋아요, 팔로우 알림</div>
-              </div>
-              <ToggleSwitch
-                enabled={settings.pushNotification}
-                onToggle={() =>
-                  updateSettings('pushNotification', !settings.pushNotification)
-                }
-              />
-            </div>
-          </div>
-          <div className="px-5 py-4 border-b border-gray-50">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium text-gray-900">마케팅 알림</div>
-                <div className="text-xs text-gray-400 mt-0.5">이벤트, 매거진, 추천 플랜</div>
-              </div>
-              <ToggleSwitch
-                enabled={settings.marketingNotification}
-                onToggle={() =>
-                  updateSettings('marketingNotification', !settings.marketingNotification)
-                }
-              />
-            </div>
-          </div>
-          <div className="px-5 py-6">
-            <p className="text-xs text-gray-400 leading-relaxed">
-              알림을 끄면 중요한 여행 정보를 놓칠 수 있어요.
-              <br />
-              기기 설정에서도 알림을 관리할 수 있습니다.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // === Privacy Settings ===
-  if (section === 'privacy') {
-    return (
-      <div className="flex flex-col min-h-dvh bg-white">
-        <SectionHeader title="개인정보 및 보안" onBack={() => setSection('main')} />
-        <div className="flex-1">
-          <div className="px-5 py-4 border-b border-gray-50">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-medium text-gray-900">비공개 프로필</div>
-                <div className="text-xs text-gray-400 mt-0.5">다른 유저에게 프로필 숨기기</div>
-              </div>
-              <ToggleSwitch
-                enabled={settings.privateProfile}
-                onToggle={() => updateSettings('privateProfile', !settings.privateProfile)}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // === About ===
   if (section === 'about') {
     return (
@@ -336,16 +253,18 @@ export function SettingsPage() {
         <div className="flex-1 p-5">
           <div className="text-center mb-8 mt-6">
             <div className="w-20 h-20 bg-primary-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <span className="text-3xl">🗺️</span>
+              {/* next/image 는 dangerouslyAllowSVG 없이 로컬 SVG 를 400 으로 거절한다 (로그인·홈과 동일) */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.svg" alt="" aria-hidden width={48} height={48} />
             </div>
             <h2 className="font-bold text-lg text-gray-900 mb-1">일출</h2>
             <p className="text-xs text-gray-500">버전 1.0.0</p>
           </div>
           <div className="space-y-1 mb-8">
-            {['이용약관', '개인정보처리방침', '오픈소스 라이선스', '고객센터'].map((label) => (
+            {ABOUT_LINKS.map(({ label, href }) => (
               <button
                 key={label}
-                onClick={() => toast.info('준비 중이에요.')}
+                onClick={() => router.push(href)}
                 className="w-full flex items-center justify-between px-4 py-3 rounded-xl active:bg-gray-50"
               >
                 <span className="text-sm text-gray-700">{label}</span>
@@ -353,20 +272,7 @@ export function SettingsPage() {
               </button>
             ))}
           </div>
-          {/* TODO(P-10): 아래 사업자 정보(대표·등록번호·주소)는 임시 더미값이다.
-              법정 표시사항이므로 배포 전 기획·법무가 확정한 실제 값으로 교체해야 한다. */}
-          <div className="text-center">
-            <p className="text-[10px] text-gray-400 leading-relaxed">
-              (주)일출 | 대표: 김일출
-              <br />
-              사업자등록번호: 123-45-67890
-              <br />
-              서울시 강남구 테헤란로 123
-              <br />
-              <br />
-              Copyright &copy; {new Date().getFullYear()} 일출. All rights reserved.
-            </p>
-          </div>
+          <ServiceFooter showLinks={false} />
         </div>
       </div>
     );
@@ -424,27 +330,6 @@ export function SettingsPage() {
         <div className="py-2">
           <div className="px-5 py-2">
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
-              알림 및 보안
-            </span>
-          </div>
-          <MenuItem
-            icon={Bell}
-            label="알림 설정"
-            sublabel={settings.pushNotification ? '푸시 알림 켜짐' : '푸시 알림 꺼짐'}
-            onClick={() => setSection('notification')}
-          />
-          <MenuItem
-            icon={Shield}
-            label="개인정보 및 보안"
-            onClick={() => setSection('privacy')}
-          />
-        </div>
-
-        <div className="h-2 bg-gray-50" />
-
-        <div className="py-2">
-          <div className="px-5 py-2">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
               앱 정보
             </span>
           </div>
@@ -454,7 +339,11 @@ export function SettingsPage() {
             sublabel="버전 1.0.0"
             onClick={() => setSection('about')}
           />
-          <MenuItem icon={HelpCircle} label="고객센터 / 문의" onClick={() => toast.info('준비 중이에요.')} />
+          <MenuItem
+            icon={HelpCircle}
+            label="고객센터 / 문의"
+            onClick={() => router.push(SERVICE_ROUTES.support)}
+          />
         </div>
 
         <div className="h-2 bg-gray-50" />
