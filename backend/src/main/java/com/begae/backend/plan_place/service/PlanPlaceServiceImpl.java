@@ -339,6 +339,10 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                 .block();
 
         KakaoNaviResponseDto.Route route = response.getRoutes().getFirst();
+        if(route.getResultCode() != 0) {
+            log.info("경로 탐색 실패 : " + route.getResultMsg() + " code : " + route.getResultCode());
+            return null;
+        }
         int totalDuration = (int) Math.round(route.getSummary().getDuration() / 60.0);
         List<Integer> sectionDuration = route.getSections().stream()
                 .map(section -> (int) Math.round(section.getDuration() / 60.0))
