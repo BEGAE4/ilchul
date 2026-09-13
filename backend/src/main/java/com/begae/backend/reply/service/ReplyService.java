@@ -40,6 +40,7 @@ public class ReplyService {
     @Transactional
     public Integer createReply(Integer userId, Integer planId, CreateReplyRequestDto replyRequestDto) {
         Plan plan = readPlan(planId);
+        plan.validateReadableBy(userId);
         User user = readUser(userId);
 
         String content = replyRequestDto.content();
@@ -107,6 +108,7 @@ public class ReplyService {
 
     @Transactional(readOnly = true)
     public ReplyListResponse getRepliesOfPlan(Integer currentUserId, Integer planId, int size, Integer lastReplyId) {
+        readPlan(planId).validateReadableBy(currentUserId);
         Pageable pageable = PageRequest.of(0, size + 1);
         List<Reply> topReplies = replyRepository.findTopLevelReplies(planId, lastReplyId, pageable);
 
@@ -143,6 +145,7 @@ public class ReplyService {
      */
     @Transactional(readOnly = true)
     public ReplyListResponse getChildReplies(Integer currentUserId, Integer parentId, int size, Integer lastReplyId) {
+        readReply(parentId).getPlan().validateReadableBy(currentUserId);
         Pageable pageable = PageRequest.of(0, size + 1);
         List<Reply> children = replyRepository.findChildRepliesWithPaging(parentId, lastReplyId, pageable);
 
@@ -162,7 +165,7 @@ public class ReplyService {
 
     @Transactional
     public Integer likeReply(Integer userId, Integer replyId) {
-        readReply(replyId);
+        readReply(replyId).getPlan().validateReadableBy(userId);
         readUser(userId);
 
         if (likeReplyRepository.findByUserIdAndReplyId(userId, replyId) != null) {
