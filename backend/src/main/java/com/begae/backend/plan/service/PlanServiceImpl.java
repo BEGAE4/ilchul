@@ -183,6 +183,7 @@ public class PlanServiceImpl implements PlanService{
 
         Plan plan = planRepository.findById(planId)
                 .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
+        plan.validateReadableBy(userId);
 
         boolean isLiked = false;
         boolean isBookmarked = false;
@@ -275,6 +276,7 @@ public class PlanServiceImpl implements PlanService{
         if (originPlan.getUser().getUserId().equals(userId)) {
             throw new CustomException(PlanErrorCode.NOT_COPY_MINE);
         }
+        originPlan.validateReadableBy(userId);
 
         Plan newPlan = Plan.copyOf(originPlan, user);
         planRepository.save(newPlan);
