@@ -4,7 +4,6 @@ import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.like.domain.Like;
 import com.begae.backend.like.enums.LikeType;
 import com.begae.backend.like.repository.LikeRepository;
-import com.begae.backend.place.component.PromptRegistry;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.domain.ScrappedPlace;
 import com.begae.backend.place.dto.*;

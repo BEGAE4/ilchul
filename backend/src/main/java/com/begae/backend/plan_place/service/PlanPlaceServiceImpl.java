@@ -340,8 +340,13 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
 
         KakaoNaviResponseDto.Route route = response.getRoutes().getFirst();
         if(route.getResultCode() != 0) {
-            log.info("경로 탐색 실패 : " + route.getResultMsg() + " code : " + route.getResultCode());
-            return null;
+            // 경로를 못 찾아도 플랜 작성은 막지 않는다. 호출부는 구간 소요시간이 없으면 0으로 채운다.
+            log.warn("경로 탐색 실패 : {} code : {}", route.getResultMsg(), route.getResultCode());
+            return getDurationDto.builder()
+                    .totalDistance(0)
+                    .totalDuration(0)
+                    .sectionDuration(List.of())
+                    .build();
         }
         int totalDuration = (int) Math.round(route.getSummary().getDuration() / 60.0);
         List<Integer> sectionDuration = route.getSections().stream()
