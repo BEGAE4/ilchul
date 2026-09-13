@@ -151,6 +151,10 @@ export function RegionSelector({ state, open, onOpenChange }: RegionSelectorProp
               <LocateFixed size={16} />
               현재 위치로 자동 설정
             </button>
+            {/* 좌표는 resolveRegionByCoord 로 기기 안에서만 쓰고, 주변 조회에는 지역 대표 좌표를 보낸다 */}
+            <p className="text-[11px] text-gray-400 mt-1.5 px-1">
+              현재 위치는 가까운 지역을 고르는 데만 쓰고 서버로 보내지 않아요
+            </p>
 
             <div className="grid grid-cols-3 gap-2.5 mt-4">
               {REGIONS.map((r) => {

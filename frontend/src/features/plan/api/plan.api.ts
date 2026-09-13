@@ -16,6 +16,7 @@ import type {
 } from '../types/plan.types';
 import { normalizePlanDetail } from '../utils/normalizePlanDetail';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
+import { stripImageMetadata, stripImagesMetadata } from '@/shared/lib/image';
 
 // 플랜 생성 — 출발지/일정/장소까지 일괄 등록
 export async function createPlan(body: CreatePlanBody): Promise<CreatePlanResponse> {
@@ -93,7 +94,8 @@ export async function stampPlanPlace(
   location: { x: number; y: number } | null
 ): Promise<StampPlanPlaceResponse> {
   const form = new FormData();
-  form.append('image', image);
+  // 인증 판정은 폼 필드 좌표로 하므로, 사진 속 촬영 위치(EXIF)는 지워서 보낸다
+  form.append('image', await stripImageMetadata(image));
   if (location) {
     form.append('location.x', String(location.x));
     form.append('location.y', String(location.y));
@@ -109,7 +111,7 @@ export async function stampPlanPlace(
 // 플랜 이미지 업로드 (multipart)
 export async function uploadPlanImages(planId: number, images: File[]): Promise<PlanDetail> {
   const form = new FormData();
-  images.forEach((img) => form.append('images', img));
+  (await stripImagesMetadata(images)).forEach((img) => form.append('images', img));
   const { data } = await apiClient.post<PlanDetail>(`/api/plan/${planId}/images`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
