@@ -39,6 +39,8 @@ public class ImageStorageServiceImpl implements ImageStorageService {
     @Override
     public StoredImage upload(MultipartFile file, String directory) {
         validateImageFile(file);
+        // 공개 URL을 만들 수 없는 상태에서 S3에 먼저 올리면 깨진 URL이 저장되므로 업로드 전에 확인한다.
+        properties.normalizedPublicBaseUrl();
 
         String originalFilename = file.getOriginalFilename();
         String contentType = file.getContentType();
@@ -75,6 +77,7 @@ public class ImageStorageServiceImpl implements ImageStorageService {
     @Override
     public StoredImage uploadByUrl(byte[] bytes, String originalFilename, String contentType, String directory) {
         validateImageBytes(bytes, contentType);
+        properties.normalizedPublicBaseUrl();
 
         String extension = extractExtension(originalFilename);
         String imageKey = createImageKey(directory, extension);

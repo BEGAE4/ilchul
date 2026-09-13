@@ -48,6 +48,7 @@ anthropic-api:
 
 oauth:
   redirect-uri: http://localhost/login/success
+  failure-uri: http://localhost/login
   reissue-uri: http://localhost/login/reissue
 
 cloud:

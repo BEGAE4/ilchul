@@ -26,19 +26,28 @@ public class PopularPlanItemDto {
                 .map(place -> place != null ? place.getPlaceImageUrl() : null)
                 .orElse(null);
 
-        String duration = plan.getRequiredTime() != null
-                ? plan.getRequiredTime() + "시간"
-                : null;
-
         return PopularPlanItemDto.builder()
                 .id(plan.getPlanId())
                 .title(plan.getPlanTitle())
                 .description(plan.getPlanDescription())
                 .thumbnail(thumbnail)
-                .location(plan.getDeparturePoint().getName())
-                .duration(duration)
+                .location(plan.getDeparturePoint() != null ? plan.getDeparturePoint().getName() : null)
+                .duration(formatDuration(plan.getRequiredTime()))
                 .likes(plan.getLikeCount())
                 .ranking(ranking)
                 .build();
+    }
+
+    /** requiredTime 은 분 단위다. */
+    public static String formatDuration(Integer requiredMinutes) {
+        if (requiredMinutes == null) {
+            return null;
+        }
+        int hours = requiredMinutes / 60;
+        int minutes = requiredMinutes % 60;
+        if (hours == 0) {
+            return minutes + "분";
+        }
+        return minutes == 0 ? hours + "시간" : hours + "시간 " + minutes + "분";
     }
 }

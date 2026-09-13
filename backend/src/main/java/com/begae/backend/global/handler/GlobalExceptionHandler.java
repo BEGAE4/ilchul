@@ -15,9 +15,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 전역 예외 처리 핸들러
@@ -65,7 +69,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             MethodArgumentTypeMismatchException.class,
             ConstraintViolationException.class,
-            HttpMessageNotReadableException.class
+            HttpMessageNotReadableException.class,
+            MissingServletRequestParameterException.class,
+            MissingServletRequestPartException.class
     })
     protected ResponseEntity<ErrorResponse> handleBadRequestException(Exception e) {
         log.error("handleBadRequestException", e);
@@ -73,6 +79,23 @@ public class GlobalExceptionHandler {
                 ErrorResponse.of(
                         HttpStatus.BAD_REQUEST,
                         GlobalErrorCode.INVALID_INPUT_VALUE.getMessage()
+                )
+        );
+    }
+
+    /**
+     * 매핑되지 않은 경로를 호출할 경우 발생한다.
+     */
+    @ExceptionHandler({
+            NoHandlerFoundException.class,
+            NoResourceFoundException.class
+    })
+    protected ResponseEntity<ErrorResponse> handleNotFoundException(Exception e) {
+        log.warn("handleNotFoundException : {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                ErrorResponse.of(
+                        HttpStatus.NOT_FOUND,
+                        GlobalErrorCode.RESOURCE_NOT_FOUND.getMessage()
                 )
         );
     }

@@ -39,6 +39,11 @@ public class ScrappedPlanServiceImpl implements ScrappedPlanService {
                 .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
 
         Optional<ScrappedPlan> existing = scrappedPlanRepository.findByUser_UserIdAndPlan_PlanId(userId, planId);
+        // 스크랩 취소는 볼 수 없게 된 플랜이어도 허용한다.
+        boolean willScrap = existing.map(scrappedPlan -> !scrappedPlan.isScrapped()).orElse(true);
+        if (willScrap) {
+            plan.validateReadableBy(userId);
+        }
 
         boolean isBookmarked;
         if (existing.isPresent()) {

@@ -39,6 +39,7 @@ public class LikeServiceImpl implements LikeService {
         Plan plan = planRepository.findByIdWithLock(planId).orElseThrow(
                 () -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND)
         );
+        plan.validateReadableBy(userId);
 
         Optional<Like> existingLike = likeRepository
                 .findByUser_UserIdAndTypeIdAndLikeType(userId, plan.getPlanId(), LikeType.PLAN);

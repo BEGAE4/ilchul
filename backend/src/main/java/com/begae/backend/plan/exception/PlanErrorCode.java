@@ -15,7 +15,8 @@ public enum PlanErrorCode implements ErrorCode {
     VERIFIED_PLAN_UPDATE_RESTRICTED(HttpStatus.CONFLICT, "P004", "인증된 플랜은 해당 정보를 수정할 수 없습니다."),
     INVALID_TRIP_DATE_RANGE(HttpStatus.BAD_REQUEST, "P005", "여행 시작일은 여행 종료일보다 늦을 수 없습니다."),
     NOT_COPY_MINE(HttpStatus.CONFLICT, "P006", "본인 플랜은 복사할 수 없습니다."),
-    PLAN_BLINDED(HttpStatus.FORBIDDEN, "P007", "블라인드된 플랜입니다.")
+    PLAN_BLINDED(HttpStatus.FORBIDDEN, "P007", "블라인드된 플랜입니다."),
+    PLAN_PRIVATE(HttpStatus.FORBIDDEN, "P008", "비공개 플랜입니다.")
     ;
 
     private final HttpStatus httpStatus;
