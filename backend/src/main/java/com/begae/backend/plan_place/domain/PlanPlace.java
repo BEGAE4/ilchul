@@ -80,12 +80,9 @@ public class PlanPlace extends BaseEntity {
                 .snapshotX(source.getSnapshotX())
                 .snapshotY(source.getSnapshotY())
                 .isStamped(false)
+                // 스탬프 사진은 원본 사용자의 인증 기록이라 복제하지 않는다.
                 .planPlaceImages(new ArrayList<>())
                 .build();
-
-        source.getPlanPlaceImages().stream()
-                .map(image -> PlanPlaceImage.copyOf(image, newPlanPlace))
-                .forEach(newPlanPlace.getPlanPlaceImages()::add);
 
         return newPlanPlace;
     }

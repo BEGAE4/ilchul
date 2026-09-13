@@ -17,6 +17,7 @@ import com.begae.backend.plan_place.repository.PlanPlaceImageRepository;
 import com.begae.backend.plan_place.repository.PlanPlaceRepository;
 import com.begae.backend.plan_place.util.LocationUtils;
 import com.begae.backend.storage.dto.StoredImage;
+import com.begae.backend.storage.service.ImageFileCleaner;
 import com.begae.backend.storage.service.ImageStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
 
     private final PlanService planService;
     private final ImageStorageService imageStorageService;
+    private final ImageFileCleaner imageFileCleaner;
 
     private final WebClient kakaoNaviWebClient;
     private final WebClient kakaoWebClient;
@@ -422,13 +424,28 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
             throw new CustomException(PlanPlaceErrorCode.ALREADY_VERIFIED);
         }
 
-        if(planPlace.getPlanPlaceImages() != null && !planPlace.getPlanPlaceImages().isEmpty()) {
-            planPlace.getPlanPlaceImages().forEach(image -> imageStorageService.delete(image.getImageKey()));
-            planPlace.getPlanPlaceImages().clear();
+        // request에서 x y 꺼내 planPlace의 x y 기준 범위 안에 있는지 체크
+        // 저장소 파일 작업은 롤백되지 않으므로 검증을 먼저 끝낸다.
+        double distance = LocationUtils.calculateDistance(
+                request.getLocation().getY(),
+                request.getLocation().getX(),
+                planPlace.getSnapshotY(),
+                planPlace.getSnapshotX()
+        );
+
+        if(distance > 150) {
+            throw new CustomException(PlanPlaceErrorCode.OUT_OF_STAMP_RANGE);
         }
+
+        List<String> replacedImageKeys = planPlace.getPlanPlaceImages().stream()
+                .map(PlanPlaceImage::getImageKey)
+                .filter(imageKey -> !planPlaceImageRepository.existsByImageKeyAndPlanPlaceNot(imageKey, planPlace))
+                .toList();
+        planPlace.getPlanPlaceImages().clear();
 
         StoredImage storedImage = imageStorageService.upload(request.getImage(),
                 "planPlace/" + planPlace.getPlanPlaceId() + "/image");
+        imageFileCleaner.deleteIfRolledBack(storedImage.imageKey());
 
         PlanPlaceImage planPlaceImage = PlanPlaceImage.builder()
                                 .imageKey(storedImage.imageKey())
@@ -440,18 +457,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                                 .build();
 
         planPlaceImageRepository.save(planPlaceImage);
-
-        // request에서 x y 꺼내 planPlace의 x y 기준 범위 안에 있는지 체크
-        double distance = LocationUtils.calculateDistance(
-                request.getLocation().getY(),
-                request.getLocation().getX(),
-                planPlace.getSnapshotY(),
-                planPlace.getSnapshotX()
-        );
-
-        if(distance > 150) {
-            throw new CustomException(PlanPlaceErrorCode.OUT_OF_STAMP_RANGE);
-        }
+        imageFileCleaner.deleteAfterCommit(replacedImageKeys);
 
         planPlace.stamp();
 

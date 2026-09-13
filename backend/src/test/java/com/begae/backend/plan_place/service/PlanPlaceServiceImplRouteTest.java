@@ -9,6 +9,7 @@ import com.begae.backend.plan_place.dto.CreatePlanPreviewRequestDto;
 import com.begae.backend.plan_place.dto.CreatePlanPreviewResponseDto;
 import com.begae.backend.plan_place.repository.PlanPlaceImageRepository;
 import com.begae.backend.plan_place.repository.PlanPlaceRepository;
+import com.begae.backend.storage.service.ImageFileCleaner;
 import com.begae.backend.storage.service.ImageStorageService;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
@@ -43,6 +44,7 @@ class PlanPlaceServiceImplRouteTest {
                 mock(PlanPlaceImageRepository.class),
                 mock(PlanService.class),
                 mock(ImageStorageService.class),
+                mock(ImageFileCleaner.class),
                 WebClient.builder().baseUrl(naviServer.url("/").toString()).build(),
                 mock(WebClient.class)
         );
