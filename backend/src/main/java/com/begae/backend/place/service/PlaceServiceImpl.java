@@ -291,10 +291,6 @@ public class PlaceServiceImpl implements PlaceService {
                             .map(place -> place != null ? place.getPlaceImageUrl() : null)
                             .orElse(null);
 
-                    String duration = plan.getRequiredTime() != null
-                            ? plan.getRequiredTime() + "시간"
-                            : null;
-
                     String locationName = plan.getDeparturePoint() != null ? plan.getDeparturePoint().getName() : null;
 
                     return PopularPlanItemDto.builder()
@@ -303,7 +299,7 @@ public class PlaceServiceImpl implements PlaceService {
                             .description(plan.getPlanDescription())
                             .thumbnail(thumbnail)
                             .location(locationName)
-                            .duration(duration)
+                            .duration(PopularPlanItemDto.formatDuration(plan.getRequiredTime()))
                             .likes(plan.getLikeCount())
                             .build();
                 })
