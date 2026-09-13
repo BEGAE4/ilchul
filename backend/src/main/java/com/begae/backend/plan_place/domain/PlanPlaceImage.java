@@ -1,6 +1,7 @@
 package com.begae.backend.plan_place.domain;
 
 import com.begae.backend.global.domain.BaseEntity;
+import com.begae.backend.storage.converter.ImageUrlConverter;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -23,6 +24,7 @@ public class PlanPlaceImage extends BaseEntity {
     private String imageKey;
 
     @Column(name = "image_url", length = 2000)
+    @Convert(converter = ImageUrlConverter.class)
     private String imageUrl;
 
     @Column(name = "original_filename")

@@ -52,7 +52,9 @@ public class PlanDetailDto {
                 .map(PlanPlaceDetailDto::from)
                 .toList();
 
+        // ImageUrlConverter 가 렌더링할 수 없는 값은 null 로 읽는다.
         List<PlanImageDto> planImages = plan.getPlanImages().stream()
+                .filter(image -> image.getImageUrl() != null)
                 .map(PlanImageDto::from)
                 .toList();
 
