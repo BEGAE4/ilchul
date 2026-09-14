@@ -1,8 +1,10 @@
 package com.begae.backend.place.service;
 
+import com.begae.backend.like.repository.LikeRepository;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.dto.PlaceUpsertCommand;
 import com.begae.backend.place.repository.PlaceRepository;
+import com.begae.backend.place.repository.ScrappedPlaceRepository;
 import com.begae.backend.plan.repository.PlanRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -47,6 +49,8 @@ class PlaceUpsertWriterTest {
                 mock(WebClient.class),
                 mock(WebClient.class),
                 mock(PlaceRepository.class),
+                mock(LikeRepository.class),
+                mock(ScrappedPlaceRepository.class),
                 mock(PlanRepository.class),
                 writer);
         PlaceUpsertCommand command = wellnessCommand();

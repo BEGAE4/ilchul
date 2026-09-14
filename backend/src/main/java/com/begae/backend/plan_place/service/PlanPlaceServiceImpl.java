@@ -17,6 +17,7 @@ import com.begae.backend.plan_place.repository.PlanPlaceImageRepository;
 import com.begae.backend.plan_place.repository.PlanPlaceRepository;
 import com.begae.backend.plan_place.util.LocationUtils;
 import com.begae.backend.storage.dto.StoredImage;
+import com.begae.backend.storage.service.ImageFileCleaner;
 import com.begae.backend.storage.service.ImageStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
 
     private final PlanService planService;
     private final ImageStorageService imageStorageService;
+    private final ImageFileCleaner imageFileCleaner;
 
     private final WebClient kakaoNaviWebClient;
     private final WebClient kakaoWebClient;
@@ -172,7 +174,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                         .isStamped(planPlace.getIsStamped())
                         .build());
             } else {
-                Place place = placesInDb.get(i);
+                Place place = placeById.get(requestPlace.getPlaceId());
                 routes.add(UpdatePlanPreviewResponseDto.PlanPlacePreview.builder()
                         .placeId(place.getPlaceId())
                         .placeName(place.getPlaceName())
@@ -253,33 +255,23 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
 
         getDurationDto duration = getDuration(request.getDeparturePoint(), points);
 
-        List<PlanPlace> routes = new ArrayList<>();
+        // 유지하는 장소는 그 자리에서 순서만 바꿔 planPlaceId 와 스탬프 사진을 보존한다.
+        Set<Integer> keptPlanPlaceIds = new HashSet<>();
+        List<PlanPlace> addedPlanPlaces = new ArrayList<>();
         for(int i = 0; i < places.size(); i++) {
             UpdatePlanPlaceItemDto requestPlace = places.get(i);
+            int travelTime = i >= duration.getSectionDuration().size() ? 0 : duration.getSectionDuration().get(i);
             PlanPlace planPlace = existingMap.get(requestPlace.getPlanPlaceId());
             if(planPlace != null && requestPlace.getPlaceId().equals(planPlace.getPlace().getPlaceId())) {
-                routes.add(PlanPlace.builder()
-                        .place(planPlace.getPlace())
-                        .plan(plan)
-                        .orderIndex(i + 1)
-                        .travelTime(i >= duration.getSectionDuration().size() ? 0 : duration.getSectionDuration().get(i))
-                        .stayTime(planPlace.getStayTime())
-                        .isStamped(planPlace.getIsStamped())
-                        .snapshotPlaceName(planPlace.getSnapshotPlaceName())
-                        .snapshotCategoryName(planPlace.getSnapshotCategoryName())
-                        .snapshotAddressName(planPlace.getSnapshotAddressName())
-                        .snapshotRoadAddressName(planPlace.getSnapshotRoadAddressName())
-                        .snapshotX(planPlace.getSnapshotX())
-                        .snapshotY(planPlace.getSnapshotY())
-                        .planPlaceImages(planPlace.getPlanPlaceImages())
-                        .build());
+                planPlace.moveTo(i + 1, travelTime);
+                keptPlanPlaceIds.add(planPlace.getPlanPlaceId());
             } else {
-                Place place = placesInDb.get(i);
-                routes.add(PlanPlace.builder()
+                Place place = placeById.get(requestPlace.getPlaceId());
+                addedPlanPlaces.add(PlanPlace.builder()
                         .place(place)
                         .plan(plan)
                         .orderIndex(i + 1)
-                        .travelTime(i >= duration.getSectionDuration().size() ? 0 : duration.getSectionDuration().get(i))
+                        .travelTime(travelTime)
                         .stayTime(null)
                         .isStamped(Boolean.FALSE)
                         .snapshotPlaceName(place.getPlaceName())
@@ -288,15 +280,20 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                         .snapshotRoadAddressName(place.getRoadAddressName())
                         .snapshotX(place.getX())
                         .snapshotY(place.getY())
-                        .planPlaceImages(List.of())
                         .build());
             }
-
         }
 
-        planPlaceRepository.deleteAllByPlan(plan);
+        List<String> removedImageKeys = existPlanPlaces.stream()
+                .filter(planPlace -> !keptPlanPlaceIds.contains(planPlace.getPlanPlaceId()))
+                .flatMap(planPlace -> planPlace.getPlanPlaceImages().stream())
+                .map(PlanPlaceImage::getImageKey)
+                .filter(imageKey -> !planPlaceImageRepository.existsByImageKeyAndPlanPlace_PlanNot(imageKey, plan))
+                .toList();
 
-        planPlaceRepository.saveAll(routes);
+        existPlanPlaces.removeIf(planPlace -> !keptPlanPlaceIds.contains(planPlace.getPlanPlaceId()));
+        existPlanPlaces.addAll(addedPlanPlaces);
+        imageFileCleaner.deleteAfterCommit(removedImageKeys);
 
         plan.updateRouteSummary(duration.getTotalDuration(), duration.getTotalDistance(), DeparturePoint.of(request.getDeparturePoint()));
 
@@ -339,6 +336,15 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                 .block();
 
         KakaoNaviResponseDto.Route route = response.getRoutes().getFirst();
+        if(route.getResultCode() != 0) {
+            // 경로를 못 찾아도 플랜 작성은 막지 않는다. 호출부는 구간 소요시간이 없으면 0으로 채운다.
+            log.warn("경로 탐색 실패 : {} code : {}", route.getResultMsg(), route.getResultCode());
+            return getDurationDto.builder()
+                    .totalDistance(0)
+                    .totalDuration(0)
+                    .sectionDuration(List.of())
+                    .build();
+        }
         int totalDuration = (int) Math.round(route.getSummary().getDuration() / 60.0);
         List<Integer> sectionDuration = route.getSections().stream()
                 .map(section -> (int) Math.round(section.getDuration() / 60.0))
@@ -413,13 +419,28 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
             throw new CustomException(PlanPlaceErrorCode.ALREADY_VERIFIED);
         }
 
-        if(planPlace.getPlanPlaceImages() != null && !planPlace.getPlanPlaceImages().isEmpty()) {
-            planPlace.getPlanPlaceImages().forEach(image -> imageStorageService.delete(image.getImageKey()));
-            planPlace.getPlanPlaceImages().clear();
+        // request에서 x y 꺼내 planPlace의 x y 기준 범위 안에 있는지 체크
+        // 저장소 파일 작업은 롤백되지 않으므로 검증을 먼저 끝낸다.
+        double distance = LocationUtils.calculateDistance(
+                request.getLocation().getY(),
+                request.getLocation().getX(),
+                planPlace.getSnapshotY(),
+                planPlace.getSnapshotX()
+        );
+
+        if(distance > 150) {
+            throw new CustomException(PlanPlaceErrorCode.OUT_OF_STAMP_RANGE);
         }
+
+        List<String> replacedImageKeys = planPlace.getPlanPlaceImages().stream()
+                .map(PlanPlaceImage::getImageKey)
+                .filter(imageKey -> !planPlaceImageRepository.existsByImageKeyAndPlanPlaceNot(imageKey, planPlace))
+                .toList();
+        planPlace.getPlanPlaceImages().clear();
 
         StoredImage storedImage = imageStorageService.upload(request.getImage(),
                 "planPlace/" + planPlace.getPlanPlaceId() + "/image");
+        imageFileCleaner.deleteIfRolledBack(storedImage.imageKey());
 
         PlanPlaceImage planPlaceImage = PlanPlaceImage.builder()
                                 .imageKey(storedImage.imageKey())
@@ -431,18 +452,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                                 .build();
 
         planPlaceImageRepository.save(planPlaceImage);
-
-        // request에서 x y 꺼내 planPlace의 x y 기준 범위 안에 있는지 체크
-        double distance = LocationUtils.calculateDistance(
-                request.getLocation().getY(),
-                request.getLocation().getX(),
-                planPlace.getSnapshotY(),
-                planPlace.getSnapshotX()
-        );
-
-        if(distance > 150) {
-            throw new CustomException(PlanPlaceErrorCode.OUT_OF_STAMP_RANGE);
-        }
+        imageFileCleaner.deleteAfterCommit(replacedImageKeys);
 
         planPlace.stamp();
 

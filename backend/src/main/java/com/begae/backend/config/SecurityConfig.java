@@ -4,6 +4,7 @@ import com.begae.backend.global.filter.JwtFilter;
 import com.begae.backend.global.handler.JwtAccessDeniedHandler;
 import com.begae.backend.global.handler.JwtAuthenticationFailEntryPoint;
 import com.begae.backend.global.handler.CustomOauth2SuccessHandler;
+import com.begae.backend.global.handler.CustomOauth2FailureHandler;
 import com.begae.backend.global.security.principal.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -26,6 +27,7 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService kakaoUserDetailsService;
     private final CustomOauth2SuccessHandler customOauth2SuccessHandler;
+    private final CustomOauth2FailureHandler customOauth2FailureHandler;
     private final JwtFilter jwtFilter;
     private final JwtAuthenticationFailEntryPoint jwtAuthenticationFailEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
@@ -67,7 +69,8 @@ public class SecurityConfig {
                 .oauth2Login((oauth2) -> oauth2
                         .userInfoEndpoint(userInfoEndpointConfig ->
                                 userInfoEndpointConfig.userService(kakaoUserDetailsService))
-                        .successHandler(customOauth2SuccessHandler))
+                        .successHandler(customOauth2SuccessHandler)
+                        .failureHandler(customOauth2FailureHandler))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(handling -> {
                     handling.authenticationEntryPoint(jwtAuthenticationFailEntryPoint);

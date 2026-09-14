@@ -175,4 +175,15 @@ public class Plan extends BaseEntity {
             throw new CustomException(PlanErrorCode.PLAN_BLINDED);
         }
     }
+
+    /** 작성자가 아니면 공개 목록과 같은 기준(공개 + 블라인드 아님)을 만족해야 볼 수 있다. */
+    public void validateReadableBy(Integer userId) {
+        if (this.user != null && this.user.getUserId().equals(userId)) {
+            return;
+        }
+        validateNotBlinded();
+        if (!Boolean.TRUE.equals(this.isPlanVisible)) {
+            throw new CustomException(PlanErrorCode.PLAN_PRIVATE);
+        }
+    }
 }

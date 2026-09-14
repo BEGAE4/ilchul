@@ -3,6 +3,7 @@ package com.begae.backend.place.domain;
 import com.begae.backend.global.domain.BaseEntity;
 import com.begae.backend.place.dto.PlaceUpsertCommand;
 import com.begae.backend.plan_place.domain.PlanPlace;
+import com.begae.backend.storage.converter.ImageUrlConverter;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -48,6 +49,7 @@ public class Place extends BaseEntity {
     private String placeUrl;
 
     @Column(name = "place_image_url", length = 2000)
+    @Convert(converter = ImageUrlConverter.class)
     private String placeImageUrl;
 
     @Column

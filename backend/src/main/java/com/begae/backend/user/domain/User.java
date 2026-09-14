@@ -9,6 +9,7 @@ import com.begae.backend.reply.domain.Reply;
 import com.begae.backend.report.domain.AdminLog;
 import com.begae.backend.report.domain.Report;
 import com.begae.backend.report.domain.Sanction;
+import com.begae.backend.storage.converter.ImageUrlConverter;
 import com.begae.backend.user.common.SocialType;
 import com.begae.backend.user.common.UserRole;
 import com.begae.backend.user.common.UserStatus;
@@ -54,6 +55,7 @@ public class User extends BaseEntity {
     private String userIntro;
 
     @Column(name = "user_img", length = 2000)
+    @Convert(converter = ImageUrlConverter.class)
     private String userImg;
 
     @Column(name = "warning_count")

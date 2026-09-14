@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 @Getter
 @Builder
@@ -51,7 +52,9 @@ public class PlanDetailDto {
                 .map(PlanPlaceDetailDto::from)
                 .toList();
 
+        // ImageUrlConverter 가 렌더링할 수 없는 값은 null 로 읽는다.
         List<PlanImageDto> planImages = plan.getPlanImages().stream()
+                .filter(image -> image.getImageUrl() != null)
                 .map(PlanImageDto::from)
                 .toList();
 
@@ -68,8 +71,8 @@ public class PlanDetailDto {
                 .planVerified(first.getIsVerified())
                 .isPlanVisible(first.getIsPlanVisible())
                 .planDescription(first.getPlanDescription())
-                .requiredTime(first.getRequiredTime())
-                .totalDistance(first.getTotalDistance())
+                .requiredTime(Objects.requireNonNullElse(first.getRequiredTime(), 0))
+                .totalDistance(Objects.requireNonNullElse(first.getTotalDistance(), 0))
                 .likeCount(first.getLikeCount())
                 .bookmarkCount(first.getScrapCount())
                 .isLiked(isLiked)

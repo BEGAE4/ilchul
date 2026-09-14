@@ -89,8 +89,7 @@ public class MyPageServiceImpl implements MyPageService {
         Integer verifyPlanCount = planRepository.countByUserUserIdAndIsVerifiedTrue(user.getUserId());
         Integer scrappedByOthersCount =
                 scrappedPlanRepository.countByPlan_User_UserIdAndScrappedStatus(user.getUserId(), ScrappedStatus.Y);
-        Integer savedCourseCount =
-                scrappedPlanRepository.countByUser_UserIdAndScrappedStatus(user.getUserId(), ScrappedStatus.Y);
+        Integer savedCourseCount = scrappedPlanRepository.countVisibleScrappedPlans(user.getUserId());
 
         return UserProfileSummaryResponseDto
                 .of(publicPlanCount, verifyPlanCount, scrappedByOthersCount, savedCourseCount);
