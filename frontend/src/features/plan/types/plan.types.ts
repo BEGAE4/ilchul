@@ -155,7 +155,8 @@ export interface PlanPreviewPlace {
   categoryName: string;
   duration: number;
   order: number;
-  stayTime: number;
+  // 운영 생성 프리뷰 응답에는 없다 (2026-09-13 확인) — 없으면 추천 체류시간으로 채운다
+  stayTime?: number;
   isStamped: boolean;
   x: number;
   y: number;
