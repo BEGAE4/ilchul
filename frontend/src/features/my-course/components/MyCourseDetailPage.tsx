@@ -42,11 +42,19 @@ import {
 } from '@/features/plan';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { toServerDateTime, parseServerDate } from '@/shared/lib/format/serverDateTime';
-import { HALF_HOURS, timeToMin, addMinutesToTime, todayLocalDate } from '@/features/plan/utils/schedule';
+import {
+  HALF_HOURS,
+  timeToMin,
+  addMinutesToTime,
+  todayLocalDate,
+  moveTripToDate,
+  tripStartingNow,
+} from '@/features/plan/utils/schedule';
 import { getTripPhase, type TripPhase } from '@/features/plan/utils/tripPhase';
 import { ReviewPhoto } from './ReviewPhoto';
 import { STAMP_COPY } from '../constants/stampCopy';
-import { stampErrorKind } from '../utils/stampFeedback';
+import { stampErrorKind, isTripDateLocked } from '../utils/stampFeedback';
+import { MoveTripToTodayModal } from './MoveTripToTodayModal';
 
 function formatMinutes(min: number): string {
   const h = Math.floor(Math.abs(min) / 60);
@@ -119,6 +127,9 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   const [verifyingStopId, setVerifyingStopId] = useState<number | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  // 여행 날이 아닐 때 '오늘 기록하기'를 누른 장소 — 확인창이 열린 동안만 값이 있다
+  const [moveTargetStopId, setMoveTargetStopId] = useState<number | null>(null);
+  const [isMovingTrip, setIsMovingTrip] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -210,6 +221,16 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const phase = getTripPhase(plan.tripStartDate, plan.tripEndDate);
   const canEdit = phase !== 'after';
   const canVerify = phase === 'during';
+  // 여행 날이 아닐 때 '오늘 기록하기' — 일정을 오늘로 옮길 값과 확인창 문구.
+  // 확인창과 저장이 같은 렌더의 값을 쓰도록 여기서 한 번만 만든다.
+  const today = todayLocalDate();
+  const moveRange =
+    plan.tripStartDate && plan.tripEndDate
+      ? moveTripToDate(plan.tripStartDate, plan.tripEndDate, today)
+      : tripStartingNow(new Date(), plan.requiredTime);
+  const moveDescription = scheduledDate
+    ? STAMP_COPY.moveModal.bodyScheduled(scheduledDate, today)
+    : STAMP_COPY.moveModal.bodyUnscheduled(isoTime(moveRange.tripStartDate), isoTime(moveRange.tripEndDate));
   const allVerified = stops.length > 0 && stops.every((s) => s.isStamped);
 
   const estimatedTotalMin = plan.requiredTime;
@@ -323,6 +344,31 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
       setIsVerifying(false);
       if (stampInputRef.current) stampInputRef.current.value = '';
     }
+  };
+
+  // ── 여행 날이 아닐 때: 일정을 오늘로 옮기고 기억 스탬프로 이어가기 ──
+  // 일정을 먼저 옮긴다. iOS 는 사용자 탭 없이 카메라(파일 입력)를 열 수 없어,
+  // 저장 뒤에는 스탬프 모달을 띄우고 '카메라 켜기'는 사용자가 누른다.
+  // 서버는 스탬프 시각을 검사하지 않는다(2026-09-14 운영 확인: 내일·어제 일정 플랜 모두 200).
+  const handleConfirmMoveToToday = async () => {
+    if (moveTargetStopId === null || isMovingTrip) return;
+    setIsMovingTrip(true);
+    try {
+      await planApi.updatePlan(plan.planId, moveRange);
+      refetch();
+    } catch (err) {
+      if (!isTripDateLocked(err)) {
+        console.error('여행 날짜 변경 실패:', err);
+        toast.error(STAMP_COPY.moveModal.failToast);
+        setIsMovingTrip(false);
+        return;
+      }
+      // 서버가 기록이 있는 플랜의 날짜 변경을 막으면(409) 날짜는 두고 기록만 이어간다.
+      toast.info(STAMP_COPY.moveModal.lockedToast);
+    }
+    setIsMovingTrip(false);
+    setVerifyingStopId(moveTargetStopId);
+    setMoveTargetStopId(null);
   };
 
   // ── 순서 편집 (프리뷰 → 확정) ──
@@ -944,13 +990,18 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                     <Camera size={16} /> {STAMP_COPY.recordButton}
                   </button>
                 ) : !stop.isStamped ? (
-                  <div className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-gray-50 text-gray-300 text-sm">
-                    <Camera size={16} />
-                    {phase === 'unscheduled'
-                      ? '일정 설정 후 인증 가능'
-                      : phase === 'before'
-                        ? '여행 시작 후 인증 가능'
-                        : '인증 기간 종료'}
+                  // 여행 날이 아니어도 막지 않는다 — 그곳에 있다면 오늘을 여행 날로 바꿔 기록한다
+                  <div className="space-y-2">
+                    {phase === 'after' && (
+                      <p className="text-center text-xs text-gray-400">{STAMP_COPY.restedLabel}</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setMoveTargetStopId(stop.planPlaceId)}
+                      className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-gray-50 text-gray-500 text-sm font-medium active:bg-gray-100 transition-colors"
+                    >
+                      <MapPin size={16} /> {STAMP_COPY.recordLaterButton}
+                    </button>
                   </div>
                 ) : null}
               </div>
@@ -1005,6 +1056,16 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ─── 모달: 오늘 여행으로 바꾸고 기록 ─── */}
+      {moveTargetStopId !== null && (
+        <MoveTripToTodayModal
+          description={moveDescription}
+          isSaving={isMovingTrip}
+          onConfirm={() => void handleConfirmMoveToToday()}
+          onCancel={() => setMoveTargetStopId(null)}
+        />
       )}
 
       {/* ─── 모달: 순서 변경 프리뷰 확인 ─── */}
