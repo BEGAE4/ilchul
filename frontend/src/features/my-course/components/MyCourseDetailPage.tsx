@@ -45,6 +45,8 @@ import { toServerDateTime, parseServerDate } from '@/shared/lib/format/serverDat
 import { HALF_HOURS, timeToMin, addMinutesToTime, todayLocalDate } from '@/features/plan/utils/schedule';
 import { getTripPhase, type TripPhase } from '@/features/plan/utils/tripPhase';
 import { ReviewPhoto } from './ReviewPhoto';
+import { STAMP_COPY } from '../constants/stampCopy';
+import { stampErrorKind } from '../utils/stampFeedback';
 
 function formatMinutes(min: number): string {
   const h = Math.floor(Math.abs(min) / 60);
@@ -293,13 +295,13 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
       if (!location) {
         // 서버는 좌표로 인증 범위를 판정하고, 좌표가 없으면 500 을 낸다 (2026-09-08 운영 확인).
         // 이전에는 위치 없이도 전송해 항상 실패 토스트로 끝났다. 보내지 않고 위치 허용을 안내한다.
-        toast.error('현재 위치를 확인할 수 없어요.', {
-          description: '위치 권한을 허용한 뒤 다시 시도해주세요.',
+        toast.error(STAMP_COPY.noLocation.title, {
+          description: STAMP_COPY.noLocation.description,
         });
         return;
       }
       await planApi.stampPlanPlace(verifyingStopId, file, location);
-      toast.success('정거장 인증 완료!');
+      toast.success(STAMP_COPY.successToast);
       setVerifyingStopId(null);
       refetch();
       const nowAllVerified = stops.every((s) => s.planPlaceId === verifyingStopId || s.isStamped);
@@ -310,10 +312,13 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         }, 600);
       }
     } catch (err) {
-      console.error('스탬프 인증 실패:', err);
-      toast.error('인증에 실패했어요.', {
-        description: '위치와 네트워크 상태를 확인한 뒤 다시 시도해주세요.',
+      console.error('기억 스탬프 실패:', err);
+      const kind = stampErrorKind(err);
+      toast.error(STAMP_COPY.error[kind].title, {
+        description: STAMP_COPY.error[kind].description,
       });
+      // 다른 기기 등에서 이미 기록된 곳이면 화면을 서버 상태로 맞춘다
+      if (kind === 'alreadyStamped') refetch();
     } finally {
       setIsVerifying(false);
       if (stampInputRef.current) stampInputRef.current.value = '';
@@ -656,7 +661,10 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
         <div className="flex items-center justify-between mb-2">
           <div className="text-xs font-bold text-gray-400">
-            진행률 <span className="text-primary-500 text-sm ml-1">{Math.round(progress)}%</span>
+            {STAMP_COPY.progressLabel}
+            <span className="text-primary-500 text-sm ml-1">
+              {completedStops}/{stops.length}
+            </span>
           </div>
           {availableMin > 0 && (
             <div className="text-xs text-gray-400">
@@ -681,8 +689,25 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             className="mt-3 flex items-center gap-2 bg-primary-50 px-3 py-2 rounded-lg border border-primary-100"
           >
             <BadgeCheck size={16} className="text-primary-500" />
-            <span className="text-xs font-bold text-primary-600">플랜 완주 완료</span>
+            <span className="text-xs font-bold text-primary-600">{STAMP_COPY.allStampedBanner}</span>
           </motion.div>
+        )}
+
+        {/* 지난 여행에서 일부만 기록했어도 실패처럼 보이지 않게 남긴 만큼 보여준다 */}
+        {phase === 'after' && completedStops > 0 && !allVerified && (
+          <div className="mt-3 flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
+            <BadgeCheck size={16} className="text-gray-400 shrink-0" />
+            <span className="text-xs font-bold text-gray-600">
+              {STAMP_COPY.partialBanner(completedStops, stops.length)}
+            </span>
+            <button
+              type="button"
+              onClick={scrollToReview}
+              className="ml-auto shrink-0 text-xs font-bold text-primary-600 underline underline-offset-2"
+            >
+              {STAMP_COPY.partialBannerAction}
+            </button>
+          </div>
         )}
       </div>
 
@@ -828,13 +853,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         <div className="flex items-start gap-2 mb-4 bg-accent-50 p-3 rounded-lg border border-accent-100">
           <Info size={14} className="text-accent-400 mt-0.5 shrink-0" />
           <p className="text-[11px] text-accent-600 leading-relaxed">
-            {canVerify
-              ? '각 장소에 도착하면 위치 인증을 해주세요.'
-              : phase === 'unscheduled'
-                ? '여행 일정을 정하면 그 시간에 위치 인증이 활성화됩니다.'
-                : phase === 'before'
-                  ? '여행 시작 시간이 되면 위치 인증이 활성화됩니다.'
-                  : '여행 기간이 종료되어 인증 및 수정이 불가합니다. 일정을 다시 정하면 편집할 수 있어요.'}
+            {STAMP_COPY.guide[phase]}
           </p>
         </div>
 
@@ -865,7 +884,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   >
                     <div className="w-full h-full border-4 border-red-500/30 rounded-full flex items-center justify-center rotate-12">
                       <span className="text-red-500/40 font-black text-xs uppercase tracking-widest border-y-2 border-red-500/30 py-1 rotate-[-12deg]">
-                        Visited
+                        {STAMP_COPY.stampMark}
                       </span>
                     </div>
                   </motion.div>
@@ -880,7 +899,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   </div>
                   {stop.isStamped ? (
                     <div className="flex items-center gap-1 text-primary-600 text-xs font-bold bg-primary-50 px-2 py-1 rounded-full">
-                      <BadgeCheck size={14} /> 인증됨
+                      <BadgeCheck size={14} /> {STAMP_COPY.stampedBadge}
                     </div>
                   ) : (
                     <span className="text-xs text-gray-400 font-medium">{stop.visitTime}</span>
@@ -922,7 +941,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                     onClick={() => setVerifyingStopId(stop.planPlaceId)}
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-gray-300 text-gray-500 text-sm font-bold hover:bg-gray-50 active:bg-gray-100 transition-colors"
                   >
-                    <Camera size={16} /> 사진 찍고 인증하기
+                    <Camera size={16} /> {STAMP_COPY.recordButton}
                   </button>
                 ) : !stop.isStamped ? (
                   <div className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-gray-50 text-gray-300 text-sm">
@@ -955,7 +974,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                     <div className="absolute inset-0 border-4 border-primary-100 rounded-full animate-ping" />
                     <MapPin size={32} className="text-primary-500 animate-bounce" />
                   </div>
-                  <h3 className="font-bold text-lg text-gray-900 mb-1">인증 중...</h3>
+                  <h3 className="font-bold text-lg text-gray-900 mb-1">{STAMP_COPY.recordingTitle}</h3>
                   <p className="text-sm text-gray-500">사진과 현재 위치를 확인하고 있어요.</p>
                 </>
               ) : (
@@ -963,11 +982,11 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                     <Camera size={32} className="text-gray-400" />
                   </div>
-                  <h3 className="font-bold text-lg text-gray-900 mb-2">방문 인증하기</h3>
+                  <h3 className="font-bold text-lg text-gray-900 mb-2">{STAMP_COPY.modalTitle}</h3>
                   <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-                    이 장소에 도착하셨나요?
+                    {STAMP_COPY.modalBodyLine1}
                     <br />
-                    사진을 찍어 방문을 인증해주세요!
+                    {STAMP_COPY.modalBodyLine2}
                   </p>
                   <button
                     onClick={() => stampInputRef.current?.click()}
@@ -1411,12 +1430,12 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             className="bg-white rounded-3xl p-8 w-full max-w-xs text-center"
           >
             <div className="text-5xl mb-4">🎉</div>
-            <h2 className="text-xl font-black text-gray-900 mb-2">플랜 완주!</h2>
+            <h2 className="text-xl font-black text-gray-900 mb-2">{STAMP_COPY.celebrationTitle}</h2>
             <p className="text-sm text-gray-500 mb-1">
               <span className="font-bold text-gray-700">{plan.planTitle}</span>
             </p>
             <p className="text-sm text-gray-500 mb-6">
-              {stops.length}개 정거장을 모두 방문했어요 ✨
+              {STAMP_COPY.celebrationBody(stops.length)}
             </p>
             <button
               onClick={() => {
