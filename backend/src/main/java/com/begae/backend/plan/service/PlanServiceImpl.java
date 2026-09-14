@@ -199,7 +199,7 @@ public class PlanServiceImpl implements PlanService{
         return PlanDetailDto.from(flats, isLiked, isBookmarked, plan);
     }
 
-    private static final double SEARCH_RADIUS_KM = 10.0;
+    private static final double SEARCH_RADIUS_KM = 20.0;
 
     @Transactional(readOnly = true)
     @Override
