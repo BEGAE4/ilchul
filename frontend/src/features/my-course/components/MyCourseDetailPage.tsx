@@ -41,9 +41,12 @@ import {
   type PlanPreviewResponse,
 } from '@/features/plan';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
-import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
+import { toServerDateTime, parseServerDate } from '@/shared/lib/format/serverDateTime';
 import { HALF_HOURS, timeToMin, addMinutesToTime, todayLocalDate } from '@/features/plan/utils/schedule';
+import { getTripPhase, type TripPhase } from '@/features/plan/utils/tripPhase';
 import { ReviewPhoto } from './ReviewPhoto';
+import { STAMP_COPY } from '../constants/stampCopy';
+import { stampErrorKind } from '../utils/stampFeedback';
 
 function formatMinutes(min: number): string {
   const h = Math.floor(Math.abs(min) / 60);
@@ -51,11 +54,6 @@ function formatMinutes(min: number): string {
   if (h === 0) return `${m}분`;
   if (m === 0) return `${h}시간`;
   return `${h}시간 ${m}분`;
-}
-// 서버 날짜 문자열 → Date. 'yyyy-MM-dd HH:mm'(@JsonFormat)은 Safari 등에서 Date 파싱이 실패하므로
-// 공백 구분자를 'T'로 치환해 ISO 형태로 맞춘 뒤 파싱한다. ISO('...T...')는 그대로 통과.
-function parseServerDate(value: string): Date {
-  return new Date(value.trim().replace(' ', 'T'));
 }
 function formatCreatedAt(iso?: string): string {
   if (!iso) return '방금 전';
@@ -71,21 +69,7 @@ function isoTime(iso?: string): string {
   return iso && iso.length >= 16 ? iso.slice(11, 16) : '';
 }
 
-// unscheduled: 담기·복제한 플랜처럼 여행 일시가 비어 있는 상태.
-// 이전에는 일시가 없으면 'during' 으로 봐서 '여행 중' 배지와 인증 버튼이 떴다.
-type CoursePhase = 'unscheduled' | 'before' | 'during' | 'after';
-function getCoursePhase(tripStart?: string, tripEnd?: string): CoursePhase {
-  if (!tripStart || !tripEnd) return 'unscheduled';
-  const now = new Date();
-  const start = parseServerDate(tripStart);
-  const end = parseServerDate(tripEnd);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 'during';
-  if (now < start) return 'before';
-  if (now > end) return 'after';
-  return 'during';
-}
-
-const PHASE_LABEL: Record<CoursePhase, string> = {
+const PHASE_LABEL: Record<TripPhase, string> = {
   unscheduled: '일정 미정',
   before: '여행 전',
   during: '여행 중',
@@ -156,8 +140,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const [cloneEndTime, setCloneEndTime] = useState('');
   const [isCloning, setIsCloning] = useState(false);
 
-  // 여행 일정(날짜·시작·종료) 수정 — 담기·복제한 플랜은 서버가 일정을 비워 두고,
-  // 일정이 지난 플랜은 이름·순서 편집이 막히므로 여기서 다시 잡을 수 있어야 한다.
+  // 여행 일정(날짜·시작·종료) 수정 — 담기·복제한 플랜은 서버가 일정을 비워 둔다.
+  // 마감 전이고 기록이 없을 때만 연다. 마감된 여행은 복제해서 새 일정으로 시작한다.
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleStartTime, setScheduleStartTime] = useState('');
@@ -223,8 +207,9 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const startTime = isoTime(plan.tripStartDate);
   const endTime = isoTime(plan.tripEndDate);
 
-  const phase = getCoursePhase(plan.tripStartDate, plan.tripEndDate);
+  const phase = getTripPhase(plan.tripStartDate, plan.tripEndDate);
   const canEdit = phase !== 'after';
+  // 기억 스탬프는 현장에서만 남기므로 여행 날(시작일 00:00 ~ 마감)에만 연다. 날짜를 옮겨 기록하게 하지 않는다.
   const canVerify = phase === 'during';
   const allVerified = stops.length > 0 && stops.every((s) => s.isStamped);
 
@@ -233,6 +218,12 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   const completedStops = stops.filter((s) => s.isStamped).length;
   const progress = stops.length > 0 ? (completedStops / stops.length) * 100 : 0;
+  // 일정 변경은 마감 전까지. 기록을 남긴 여행은 그 날짜의 현장 기록이라 일정을 옮기지 않는다.
+  const canEditSchedule = canEdit && completedStops === 0;
+  // 장소 카드 비활성 문구용 'M/D'
+  const tripDayLabel = scheduledDate
+    ? `${Number(scheduledDate.slice(5, 7))}/${Number(scheduledDate.slice(8, 10))}`
+    : '';
 
   const MAX_REVIEW_PHOTOS = 6;
   const savedPhotos = plan?.planImageUrls ?? [];
@@ -311,13 +302,13 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
       if (!location) {
         // 서버는 좌표로 인증 범위를 판정하고, 좌표가 없으면 500 을 낸다 (2026-09-08 운영 확인).
         // 이전에는 위치 없이도 전송해 항상 실패 토스트로 끝났다. 보내지 않고 위치 허용을 안내한다.
-        toast.error('현재 위치를 확인할 수 없어요.', {
-          description: '위치 권한을 허용한 뒤 다시 시도해주세요.',
+        toast.error(STAMP_COPY.noLocation.title, {
+          description: STAMP_COPY.noLocation.description,
         });
         return;
       }
       await planApi.stampPlanPlace(verifyingStopId, file, location);
-      toast.success('정거장 인증 완료!');
+      toast.success(STAMP_COPY.successToast);
       setVerifyingStopId(null);
       refetch();
       const nowAllVerified = stops.every((s) => s.planPlaceId === verifyingStopId || s.isStamped);
@@ -328,10 +319,13 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         }, 600);
       }
     } catch (err) {
-      console.error('스탬프 인증 실패:', err);
-      toast.error('인증에 실패했어요.', {
-        description: '위치와 네트워크 상태를 확인한 뒤 다시 시도해주세요.',
+      console.error('기억 스탬프 실패:', err);
+      const kind = stampErrorKind(err);
+      toast.error(STAMP_COPY.error[kind].title, {
+        description: STAMP_COPY.error[kind].description,
       });
+      // 다른 기기 등에서 이미 기록된 곳이면 화면을 서버 상태로 맞춘다
+      if (kind === 'alreadyStamped') refetch();
     } finally {
       setIsVerifying(false);
       if (stampInputRef.current) stampInputRef.current.value = '';
@@ -427,8 +421,11 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   // ── 여행 일정 수정 ──
   // 기존 일정이 있으면 그대로, 없으면 오늘 10:00 + 소요시간으로 채워 편집 출발점으로 삼는다.
   const openScheduleEditor = () => {
+    if (!canEditSchedule) return;
     const start = startTime || '10:00';
-    setScheduleDate(scheduledDate || todayLocalDate());
+    const today = todayLocalDate();
+    // 지난 날짜로는 옮길 수 없다. 기존 날짜가 오늘보다 앞이면(1박 일정의 둘째 날 등) 오늘에서 시작한다.
+    setScheduleDate(scheduledDate && scheduledDate >= today ? scheduledDate : today);
     setScheduleStartTime(start);
     setScheduleEndTime(endTime || addMinutesToTime(start, plan.requiredTime));
     setIsScheduleOpen(true);
@@ -437,12 +434,13 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   const isScheduleValid =
     !!scheduleDate &&
+    scheduleDate >= todayLocalDate() &&
     !!scheduleStartTime &&
     !!scheduleEndTime &&
     timeToMin(scheduleEndTime) > timeToMin(scheduleStartTime);
 
   const handleSaveSchedule = async () => {
-    if (!isScheduleValid || isSavingSchedule) return;
+    if (!canEditSchedule || !isScheduleValid || isSavingSchedule) return;
     setIsSavingSchedule(true);
     try {
       await planApi.updatePlan(plan.planId, {
@@ -649,13 +647,15 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                 </span>
               </>
             )}
-            <button
-              type="button"
-              onClick={openScheduleEditor}
-              className="ml-auto text-gray-400 underline underline-offset-2"
-            >
-              변경
-            </button>
+            {canEditSchedule && (
+              <button
+                type="button"
+                onClick={openScheduleEditor}
+                className="ml-auto text-gray-400 underline underline-offset-2"
+              >
+                변경
+              </button>
+            )}
           </div>
         ) : (
           // 담기·복제한 플랜은 서버가 일정을 비워 둔다. 이전에는 이 줄이 아예 사라져 시간을 볼 수도 고칠 수도 없었다.
@@ -674,7 +674,10 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
         <div className="flex items-center justify-between mb-2">
           <div className="text-xs font-bold text-gray-400">
-            진행률 <span className="text-primary-500 text-sm ml-1">{Math.round(progress)}%</span>
+            {STAMP_COPY.progressLabel}
+            <span className="text-primary-500 text-sm ml-1">
+              {completedStops}/{stops.length}
+            </span>
           </div>
           {availableMin > 0 && (
             <div className="text-xs text-gray-400">
@@ -699,8 +702,25 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             className="mt-3 flex items-center gap-2 bg-primary-50 px-3 py-2 rounded-lg border border-primary-100"
           >
             <BadgeCheck size={16} className="text-primary-500" />
-            <span className="text-xs font-bold text-primary-600">플랜 완주 완료</span>
+            <span className="text-xs font-bold text-primary-600">{STAMP_COPY.allStampedBanner}</span>
           </motion.div>
+        )}
+
+        {/* 지난 여행에서 일부만 기록했어도 실패처럼 보이지 않게 남긴 만큼 보여준다 */}
+        {phase === 'after' && completedStops > 0 && !allVerified && (
+          <div className="mt-3 flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-100">
+            <BadgeCheck size={16} className="text-gray-400 shrink-0" />
+            <span className="text-xs font-bold text-gray-600">
+              {STAMP_COPY.partialBanner(completedStops, stops.length)}
+            </span>
+            <button
+              type="button"
+              onClick={scrollToReview}
+              className="ml-auto shrink-0 text-xs font-bold text-primary-600 underline underline-offset-2"
+            >
+              {STAMP_COPY.partialBannerAction}
+            </button>
+          </div>
         )}
       </div>
 
@@ -845,15 +865,19 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
         <div className="flex items-start gap-2 mb-4 bg-accent-50 p-3 rounded-lg border border-accent-100">
           <Info size={14} className="text-accent-400 mt-0.5 shrink-0" />
-          <p className="text-[11px] text-accent-600 leading-relaxed">
-            {canVerify
-              ? '각 장소에 도착하면 위치 인증을 해주세요.'
-              : phase === 'unscheduled'
-                ? '여행 일정을 정하면 그 시간에 위치 인증이 활성화됩니다.'
-                : phase === 'before'
-                  ? '여행 시작 시간이 되면 위치 인증이 활성화됩니다.'
-                  : '여행 기간이 종료되어 인증 및 수정이 불가합니다. 일정을 다시 정하면 편집할 수 있어요.'}
-          </p>
+          <div className="min-w-0">
+            <p className="text-[11px] text-accent-600 leading-relaxed">{STAMP_COPY.guide[phase]}</p>
+            {/* 마감된 여행은 일정을 바꿀 수 없다 — 복제해서 새 일정으로 시작한다 */}
+            {phase === 'after' && (
+              <button
+                type="button"
+                onClick={() => setIsCloneOpen(true)}
+                className="mt-1 text-[11px] font-bold text-primary-600 underline underline-offset-2"
+              >
+                {STAMP_COPY.cloneCta}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 세로 라인과 점을 같은 기준(left-2, 중심 8px)에 놓는다 — CourseViewPage 와 같은 방식.
@@ -883,7 +907,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   >
                     <div className="w-full h-full border-4 border-red-500/30 rounded-full flex items-center justify-center rotate-12">
                       <span className="text-red-500/40 font-black text-xs uppercase tracking-widest border-y-2 border-red-500/30 py-1 rotate-[-12deg]">
-                        Visited
+                        {STAMP_COPY.stampMark}
                       </span>
                     </div>
                   </motion.div>
@@ -898,7 +922,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   </div>
                   {stop.isStamped ? (
                     <div className="flex items-center gap-1 text-primary-600 text-xs font-bold bg-primary-50 px-2 py-1 rounded-full">
-                      <BadgeCheck size={14} /> 인증됨
+                      <BadgeCheck size={14} /> {STAMP_COPY.stampedBadge}
                     </div>
                   ) : (
                     <span className="text-xs text-gray-400 font-medium">{stop.visitTime}</span>
@@ -940,16 +964,20 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                     onClick={() => setVerifyingStopId(stop.planPlaceId)}
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-gray-300 text-gray-500 text-sm font-bold hover:bg-gray-50 active:bg-gray-100 transition-colors"
                   >
-                    <Camera size={16} /> 사진 찍고 인증하기
+                    <Camera size={16} /> {STAMP_COPY.recordButton}
                   </button>
                 ) : !stop.isStamped ? (
-                  <div className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-gray-50 text-gray-300 text-sm">
-                    <Camera size={16} />
-                    {phase === 'unscheduled'
-                      ? '일정 설정 후 인증 가능'
-                      : phase === 'before'
-                        ? '여행 시작 후 인증 가능'
-                        : '인증 기간 종료'}
+                  <div className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-gray-50 text-gray-400 text-sm">
+                    {phase === 'after' ? (
+                      STAMP_COPY.restedLabel
+                    ) : (
+                      <>
+                        <Camera size={16} />
+                        {phase === 'before'
+                          ? STAMP_COPY.lockedBefore(tripDayLabel)
+                          : STAMP_COPY.lockedUnscheduled}
+                      </>
+                    )}
                   </div>
                 ) : null}
               </div>
@@ -973,7 +1001,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                     <div className="absolute inset-0 border-4 border-primary-100 rounded-full animate-ping" />
                     <MapPin size={32} className="text-primary-500 animate-bounce" />
                   </div>
-                  <h3 className="font-bold text-lg text-gray-900 mb-1">인증 중...</h3>
+                  <h3 className="font-bold text-lg text-gray-900 mb-1">{STAMP_COPY.recordingTitle}</h3>
                   <p className="text-sm text-gray-500">사진과 현재 위치를 확인하고 있어요.</p>
                 </>
               ) : (
@@ -981,11 +1009,11 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                     <Camera size={32} className="text-gray-400" />
                   </div>
-                  <h3 className="font-bold text-lg text-gray-900 mb-2">방문 인증하기</h3>
+                  <h3 className="font-bold text-lg text-gray-900 mb-2">{STAMP_COPY.modalTitle}</h3>
                   <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-                    이 장소에 도착하셨나요?
+                    {STAMP_COPY.modalBodyLine1}
                     <br />
-                    사진을 찍어 방문을 인증해주세요!
+                    {STAMP_COPY.modalBodyLine2}
                   </p>
                   <button
                     onClick={() => stampInputRef.current?.click()}
@@ -1156,6 +1184,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   type="date"
                   value={scheduleDate}
                   onChange={(e) => setScheduleDate(e.target.value)}
+                  min={todayLocalDate()}
                   className="w-full p-3 border border-gray-200 rounded-xl text-base"
                 />
               </div>
@@ -1346,14 +1375,24 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsMenuOpen(false)} />
           <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-            {/* 일정 수정은 지난 여행에도 연다 — 날짜를 다시 잡아야 편집·인증이 다시 가능해진다 */}
-            <button
-              onClick={openScheduleEditor}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
-            >
-              <Calendar size={18} className="text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">여행 일정 수정</span>
-            </button>
+            {/* 일정 수정은 마감 전·기록이 없을 때만. 마감된 여행은 아래 '플랜 복제하기'로 새 일정을 만든다 */}
+            {canEditSchedule ? (
+              <button
+                onClick={openScheduleEditor}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
+              >
+                <Calendar size={18} className="text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">여행 일정 수정</span>
+              </button>
+            ) : canEdit ? (
+              <div className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl">
+                <Calendar size={18} className="text-gray-300 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-gray-300">여행 일정 수정</span>
+                  <span className="block text-xs text-gray-400">{STAMP_COPY.scheduleLockedStamped}</span>
+                </span>
+              </div>
+            ) : null}
             {canEdit && (
               <>
                 <button
@@ -1429,12 +1468,12 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             className="bg-white rounded-3xl p-8 w-full max-w-xs text-center"
           >
             <div className="text-5xl mb-4">🎉</div>
-            <h2 className="text-xl font-black text-gray-900 mb-2">플랜 완주!</h2>
+            <h2 className="text-xl font-black text-gray-900 mb-2">{STAMP_COPY.celebrationTitle}</h2>
             <p className="text-sm text-gray-500 mb-1">
               <span className="font-bold text-gray-700">{plan.planTitle}</span>
             </p>
             <p className="text-sm text-gray-500 mb-6">
-              {stops.length}개 정거장을 모두 방문했어요 ✨
+              {STAMP_COPY.celebrationBody(stops.length)}
             </p>
             <button
               onClick={() => {
