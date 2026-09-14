@@ -41,8 +41,9 @@ import {
   type PlanPreviewResponse,
 } from '@/features/plan';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
-import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
+import { toServerDateTime, parseServerDate } from '@/shared/lib/format/serverDateTime';
 import { HALF_HOURS, timeToMin, addMinutesToTime, todayLocalDate } from '@/features/plan/utils/schedule';
+import { getTripPhase, type TripPhase } from '@/features/plan/utils/tripPhase';
 import { ReviewPhoto } from './ReviewPhoto';
 
 function formatMinutes(min: number): string {
@@ -51,11 +52,6 @@ function formatMinutes(min: number): string {
   if (h === 0) return `${m}분`;
   if (m === 0) return `${h}시간`;
   return `${h}시간 ${m}분`;
-}
-// 서버 날짜 문자열 → Date. 'yyyy-MM-dd HH:mm'(@JsonFormat)은 Safari 등에서 Date 파싱이 실패하므로
-// 공백 구분자를 'T'로 치환해 ISO 형태로 맞춘 뒤 파싱한다. ISO('...T...')는 그대로 통과.
-function parseServerDate(value: string): Date {
-  return new Date(value.trim().replace(' ', 'T'));
 }
 function formatCreatedAt(iso?: string): string {
   if (!iso) return '방금 전';
@@ -71,21 +67,7 @@ function isoTime(iso?: string): string {
   return iso && iso.length >= 16 ? iso.slice(11, 16) : '';
 }
 
-// unscheduled: 담기·복제한 플랜처럼 여행 일시가 비어 있는 상태.
-// 이전에는 일시가 없으면 'during' 으로 봐서 '여행 중' 배지와 인증 버튼이 떴다.
-type CoursePhase = 'unscheduled' | 'before' | 'during' | 'after';
-function getCoursePhase(tripStart?: string, tripEnd?: string): CoursePhase {
-  if (!tripStart || !tripEnd) return 'unscheduled';
-  const now = new Date();
-  const start = parseServerDate(tripStart);
-  const end = parseServerDate(tripEnd);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 'during';
-  if (now < start) return 'before';
-  if (now > end) return 'after';
-  return 'during';
-}
-
-const PHASE_LABEL: Record<CoursePhase, string> = {
+const PHASE_LABEL: Record<TripPhase, string> = {
   unscheduled: '일정 미정',
   before: '여행 전',
   during: '여행 중',
@@ -223,7 +205,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const startTime = isoTime(plan.tripStartDate);
   const endTime = isoTime(plan.tripEndDate);
 
-  const phase = getCoursePhase(plan.tripStartDate, plan.tripEndDate);
+  const phase = getTripPhase(plan.tripStartDate, plan.tripEndDate);
   const canEdit = phase !== 'after';
   const canVerify = phase === 'during';
   const allVerified = stops.length > 0 && stops.every((s) => s.isStamped);

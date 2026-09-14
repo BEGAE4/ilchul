@@ -8,3 +8,10 @@
 export function toServerDateTime(date: string, time: string): string {
   return `${date.trim()} ${time.trim().slice(0, 5)}`.trim();
 }
+
+// 서버 날짜 문자열 → Date. 'yyyy-MM-dd HH:mm'(@JsonFormat)은 Safari 등에서 Date 파싱이 실패하므로
+// 공백 구분자를 'T'로 치환해 ISO 형태로 맞춘 뒤 파싱한다. ISO('...T...')는 그대로 통과.
+// 오프셋이 없는 날짜·시각 문자열이라 기기 로컬 시각으로 해석된다.
+export function parseServerDate(value: string): Date {
+  return new Date(value.trim().replace(' ', 'T'));
+}
