@@ -4,7 +4,6 @@ import type { TripPhase } from '@/features/plan/utils/tripPhase';
 
 export const STAMP_COPY = {
   recordButton: '사진으로 머문 곳 기록하기',
-  recordLaterButton: '여기 왔다면 오늘 기록하기',
   restedLabel: '이번엔 쉬어간 곳',
   stampedBadge: '기록됨',
   stampMark: '기억',
@@ -15,27 +14,22 @@ export const STAMP_COPY = {
   successToast: '기억 스탬프를 찍었어요',
   guide: {
     during: '마음에 드는 곳에서 사진 한 장 남겨보세요. 순서도 시간도 자유예요.',
-    before: '여행 날이 되면 바로 기록할 수 있어요. 먼저 가게 됐다면 오늘 여행으로 바꿔 기록해도 돼요.',
-    unscheduled: '일정이 없어도 괜찮아요. 그곳에 있다면 오늘 여행으로 정하고 기록할 수 있어요.',
-    after: '지난 여행이에요. 다시 들렀다면 오늘 여행으로 바꿔 기록할 수 있어요.',
+    before: '여행 날이 되면 하루 종일 기록할 수 있어요.',
+    unscheduled: '일정을 정하면 그날 기록할 수 있어요.',
+    after: '지난 여행이에요. 다시 가고 싶다면 복제해서 새 일정으로 떠나요.',
   } satisfies Record<TripPhase, string>,
+  // 여행 날이 아닐 때 장소 카드의 비활성 문구 ('M/D')
+  lockedBefore: (date: string) => `여행 날(${date})에 기록할 수 있어요`,
+  lockedUnscheduled: '일정을 정하면 그날 기록할 수 있어요',
+  cloneCta: '복제해서 새 일정으로 떠나기',
+  // 기록이 있는 여행은 그 날짜의 현장 기록이라 일정을 옮기지 않는다
+  scheduleLockedStamped: '기록을 남긴 여행은 일정을 바꿀 수 없어요',
   progressLabel: '머문 곳',
   allStampedBanner: '모든 곳에 머물렀어요',
   partialBanner: (stamped: number, total: number) => `이번 여행, ${total}곳 중 ${stamped}곳에 머물렀어요`,
   partialBannerAction: '기록 남기기',
   celebrationTitle: '모든 곳을 담았어요',
   celebrationBody: (total: number) => `${total}곳의 기억 스탬프를 모았어요 ✨`,
-  moveModal: {
-    title: '오늘 여행으로 바꿀까요?',
-    bodyScheduled: (from: string, today: string) =>
-      `여행 날짜를 ${from}에서 오늘(${today})로 옮기고 바로 기록할게요. 시간은 그대로예요.`,
-    bodyUnscheduled: (start: string, end: string) => `오늘 ${start}~${end} 일정으로 정하고 바로 기록할게요.`,
-    confirm: '오늘로 바꾸고 기록하기',
-    saving: '바꾸는 중...',
-    cancel: '그대로 둘게요',
-    failToast: '여행 날짜를 바꾸지 못했어요. 다시 시도해주세요.',
-    lockedToast: '이미 기록이 있는 여행이라 날짜는 그대로 두고 기록할게요.',
-  },
   noLocation: {
     title: '현재 위치를 확인할 수 없어요.',
     description: '위치 권한을 허용한 뒤 다시 시도해주세요.',

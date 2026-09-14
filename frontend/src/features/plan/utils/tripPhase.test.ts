@@ -28,17 +28,23 @@ describe('getTripPhase', () => {
     expect(getTripPhase(start, end, at(2026, 9, 13, 23, 59))).toBe('during');
   });
 
-  it('다음 날 0시가 되면 after', () => {
-    expect(getTripPhase(start, end, at(2026, 9, 14, 0, 0))).toBe('after');
+  it('자정이 지나도 다음 날 06:00 전까지는 during (야간 일정 여유)', () => {
+    expect(getTripPhase('2026-09-13 18:00', '2026-09-13 23:30', at(2026, 9, 14, 0, 30))).toBe('during');
+    expect(getTripPhase(start, end, at(2026, 9, 14, 5, 59))).toBe('during');
+  });
+
+  it('종료일 다음 날 06:00 이 되면 after (마감)', () => {
+    expect(getTripPhase(start, end, at(2026, 9, 14, 6, 0))).toBe('after');
   });
 
   it("서버의 공백 구분 형식('yyyy-MM-dd HH:mm')도 읽는다", () => {
     expect(getTripPhase('2026-09-13 10:00', '2026-09-13 10:22', at(2026, 9, 13, 15))).toBe('during');
   });
 
-  it('1박 일정은 종료일 끝까지 during', () => {
-    expect(getTripPhase('2026-09-13T18:00:00', '2026-09-14T11:00:00', at(2026, 9, 14, 20))).toBe('during');
-    expect(getTripPhase('2026-09-13T18:00:00', '2026-09-14T11:00:00', at(2026, 9, 15, 0, 0))).toBe('after');
+  it('1박 일정은 종료일 다음 날 06:00 까지 during (월 경계 포함)', () => {
+    expect(getTripPhase('2026-09-29T18:00:00', '2026-09-30T11:00:00', at(2026, 9, 30, 20))).toBe('during');
+    expect(getTripPhase('2026-09-29T18:00:00', '2026-09-30T11:00:00', at(2026, 10, 1, 5, 59))).toBe('during');
+    expect(getTripPhase('2026-09-29T18:00:00', '2026-09-30T11:00:00', at(2026, 10, 1, 6, 0))).toBe('after');
   });
 
   it('날짜를 읽을 수 없으면 기록을 막지 않도록 during', () => {

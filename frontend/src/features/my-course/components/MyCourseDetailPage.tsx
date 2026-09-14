@@ -42,19 +42,11 @@ import {
 } from '@/features/plan';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { toServerDateTime, parseServerDate } from '@/shared/lib/format/serverDateTime';
-import {
-  HALF_HOURS,
-  timeToMin,
-  addMinutesToTime,
-  todayLocalDate,
-  moveTripToDate,
-  tripStartingNow,
-} from '@/features/plan/utils/schedule';
+import { HALF_HOURS, timeToMin, addMinutesToTime, todayLocalDate } from '@/features/plan/utils/schedule';
 import { getTripPhase, type TripPhase } from '@/features/plan/utils/tripPhase';
 import { ReviewPhoto } from './ReviewPhoto';
 import { STAMP_COPY } from '../constants/stampCopy';
-import { stampErrorKind, isTripDateLocked } from '../utils/stampFeedback';
-import { MoveTripToTodayModal } from './MoveTripToTodayModal';
+import { stampErrorKind } from '../utils/stampFeedback';
 
 function formatMinutes(min: number): string {
   const h = Math.floor(Math.abs(min) / 60);
@@ -127,9 +119,6 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   const [verifyingStopId, setVerifyingStopId] = useState<number | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  // 여행 날이 아닐 때 '오늘 기록하기'를 누른 장소 — 확인창이 열린 동안만 값이 있다
-  const [moveTargetStopId, setMoveTargetStopId] = useState<number | null>(null);
-  const [isMovingTrip, setIsMovingTrip] = useState(false);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -151,8 +140,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const [cloneEndTime, setCloneEndTime] = useState('');
   const [isCloning, setIsCloning] = useState(false);
 
-  // 여행 일정(날짜·시작·종료) 수정 — 담기·복제한 플랜은 서버가 일정을 비워 두고,
-  // 일정이 지난 플랜은 이름·순서 편집이 막히므로 여기서 다시 잡을 수 있어야 한다.
+  // 여행 일정(날짜·시작·종료) 수정 — 담기·복제한 플랜은 서버가 일정을 비워 둔다.
+  // 마감 전이고 기록이 없을 때만 연다. 마감된 여행은 복제해서 새 일정으로 시작한다.
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleStartTime, setScheduleStartTime] = useState('');
@@ -220,17 +209,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   const phase = getTripPhase(plan.tripStartDate, plan.tripEndDate);
   const canEdit = phase !== 'after';
+  // 기억 스탬프는 현장에서만 남기므로 여행 날(시작일 00:00 ~ 마감)에만 연다. 날짜를 옮겨 기록하게 하지 않는다.
   const canVerify = phase === 'during';
-  // 여행 날이 아닐 때 '오늘 기록하기' — 일정을 오늘로 옮길 값과 확인창 문구.
-  // 확인창과 저장이 같은 렌더의 값을 쓰도록 여기서 한 번만 만든다.
-  const today = todayLocalDate();
-  const moveRange =
-    plan.tripStartDate && plan.tripEndDate
-      ? moveTripToDate(plan.tripStartDate, plan.tripEndDate, today)
-      : tripStartingNow(new Date(), plan.requiredTime);
-  const moveDescription = scheduledDate
-    ? STAMP_COPY.moveModal.bodyScheduled(scheduledDate, today)
-    : STAMP_COPY.moveModal.bodyUnscheduled(isoTime(moveRange.tripStartDate), isoTime(moveRange.tripEndDate));
   const allVerified = stops.length > 0 && stops.every((s) => s.isStamped);
 
   const estimatedTotalMin = plan.requiredTime;
@@ -238,6 +218,12 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   const completedStops = stops.filter((s) => s.isStamped).length;
   const progress = stops.length > 0 ? (completedStops / stops.length) * 100 : 0;
+  // 일정 변경은 마감 전까지. 기록을 남긴 여행은 그 날짜의 현장 기록이라 일정을 옮기지 않는다.
+  const canEditSchedule = canEdit && completedStops === 0;
+  // 장소 카드 비활성 문구용 'M/D'
+  const tripDayLabel = scheduledDate
+    ? `${Number(scheduledDate.slice(5, 7))}/${Number(scheduledDate.slice(8, 10))}`
+    : '';
 
   const MAX_REVIEW_PHOTOS = 6;
   const savedPhotos = plan?.planImageUrls ?? [];
@@ -346,31 +332,6 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     }
   };
 
-  // ── 여행 날이 아닐 때: 일정을 오늘로 옮기고 기억 스탬프로 이어가기 ──
-  // 일정을 먼저 옮긴다. iOS 는 사용자 탭 없이 카메라(파일 입력)를 열 수 없어,
-  // 저장 뒤에는 스탬프 모달을 띄우고 '카메라 켜기'는 사용자가 누른다.
-  // 서버는 스탬프 시각을 검사하지 않는다(2026-09-14 운영 확인: 내일·어제 일정 플랜 모두 200).
-  const handleConfirmMoveToToday = async () => {
-    if (moveTargetStopId === null || isMovingTrip) return;
-    setIsMovingTrip(true);
-    try {
-      await planApi.updatePlan(plan.planId, moveRange);
-      refetch();
-    } catch (err) {
-      if (!isTripDateLocked(err)) {
-        console.error('여행 날짜 변경 실패:', err);
-        toast.error(STAMP_COPY.moveModal.failToast);
-        setIsMovingTrip(false);
-        return;
-      }
-      // 서버가 기록이 있는 플랜의 날짜 변경을 막으면(409) 날짜는 두고 기록만 이어간다.
-      toast.info(STAMP_COPY.moveModal.lockedToast);
-    }
-    setIsMovingTrip(false);
-    setVerifyingStopId(moveTargetStopId);
-    setMoveTargetStopId(null);
-  };
-
   // ── 순서 편집 (프리뷰 → 확정) ──
   const handleMoveStop = (index: number, direction: 'up' | 'down') => {
     const base = orderedPlaces ?? serverPlaces;
@@ -460,8 +421,11 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   // ── 여행 일정 수정 ──
   // 기존 일정이 있으면 그대로, 없으면 오늘 10:00 + 소요시간으로 채워 편집 출발점으로 삼는다.
   const openScheduleEditor = () => {
+    if (!canEditSchedule) return;
     const start = startTime || '10:00';
-    setScheduleDate(scheduledDate || todayLocalDate());
+    const today = todayLocalDate();
+    // 지난 날짜로는 옮길 수 없다. 기존 날짜가 오늘보다 앞이면(1박 일정의 둘째 날 등) 오늘에서 시작한다.
+    setScheduleDate(scheduledDate && scheduledDate >= today ? scheduledDate : today);
     setScheduleStartTime(start);
     setScheduleEndTime(endTime || addMinutesToTime(start, plan.requiredTime));
     setIsScheduleOpen(true);
@@ -470,12 +434,13 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   const isScheduleValid =
     !!scheduleDate &&
+    scheduleDate >= todayLocalDate() &&
     !!scheduleStartTime &&
     !!scheduleEndTime &&
     timeToMin(scheduleEndTime) > timeToMin(scheduleStartTime);
 
   const handleSaveSchedule = async () => {
-    if (!isScheduleValid || isSavingSchedule) return;
+    if (!canEditSchedule || !isScheduleValid || isSavingSchedule) return;
     setIsSavingSchedule(true);
     try {
       await planApi.updatePlan(plan.planId, {
@@ -682,13 +647,15 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                 </span>
               </>
             )}
-            <button
-              type="button"
-              onClick={openScheduleEditor}
-              className="ml-auto text-gray-400 underline underline-offset-2"
-            >
-              변경
-            </button>
+            {canEditSchedule && (
+              <button
+                type="button"
+                onClick={openScheduleEditor}
+                className="ml-auto text-gray-400 underline underline-offset-2"
+              >
+                변경
+              </button>
+            )}
           </div>
         ) : (
           // 담기·복제한 플랜은 서버가 일정을 비워 둔다. 이전에는 이 줄이 아예 사라져 시간을 볼 수도 고칠 수도 없었다.
@@ -898,9 +865,19 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
         <div className="flex items-start gap-2 mb-4 bg-accent-50 p-3 rounded-lg border border-accent-100">
           <Info size={14} className="text-accent-400 mt-0.5 shrink-0" />
-          <p className="text-[11px] text-accent-600 leading-relaxed">
-            {STAMP_COPY.guide[phase]}
-          </p>
+          <div className="min-w-0">
+            <p className="text-[11px] text-accent-600 leading-relaxed">{STAMP_COPY.guide[phase]}</p>
+            {/* 마감된 여행은 일정을 바꿀 수 없다 — 복제해서 새 일정으로 시작한다 */}
+            {phase === 'after' && (
+              <button
+                type="button"
+                onClick={() => setIsCloneOpen(true)}
+                className="mt-1 text-[11px] font-bold text-primary-600 underline underline-offset-2"
+              >
+                {STAMP_COPY.cloneCta}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 세로 라인과 점을 같은 기준(left-2, 중심 8px)에 놓는다 — CourseViewPage 와 같은 방식.
@@ -990,18 +967,17 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                     <Camera size={16} /> {STAMP_COPY.recordButton}
                   </button>
                 ) : !stop.isStamped ? (
-                  // 여행 날이 아니어도 막지 않는다 — 그곳에 있다면 오늘을 여행 날로 바꿔 기록한다
-                  <div className="space-y-2">
-                    {phase === 'after' && (
-                      <p className="text-center text-xs text-gray-400">{STAMP_COPY.restedLabel}</p>
+                  <div className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-gray-50 text-gray-400 text-sm">
+                    {phase === 'after' ? (
+                      STAMP_COPY.restedLabel
+                    ) : (
+                      <>
+                        <Camera size={16} />
+                        {phase === 'before'
+                          ? STAMP_COPY.lockedBefore(tripDayLabel)
+                          : STAMP_COPY.lockedUnscheduled}
+                      </>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => setMoveTargetStopId(stop.planPlaceId)}
-                      className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-gray-50 text-gray-500 text-sm font-medium active:bg-gray-100 transition-colors"
-                    >
-                      <MapPin size={16} /> {STAMP_COPY.recordLaterButton}
-                    </button>
                   </div>
                 ) : null}
               </div>
@@ -1056,16 +1032,6 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             </div>
           </div>
         </div>
-      )}
-
-      {/* ─── 모달: 오늘 여행으로 바꾸고 기록 ─── */}
-      {moveTargetStopId !== null && (
-        <MoveTripToTodayModal
-          description={moveDescription}
-          isSaving={isMovingTrip}
-          onConfirm={() => void handleConfirmMoveToToday()}
-          onCancel={() => setMoveTargetStopId(null)}
-        />
       )}
 
       {/* ─── 모달: 순서 변경 프리뷰 확인 ─── */}
@@ -1218,6 +1184,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   type="date"
                   value={scheduleDate}
                   onChange={(e) => setScheduleDate(e.target.value)}
+                  min={todayLocalDate()}
                   className="w-full p-3 border border-gray-200 rounded-xl text-base"
                 />
               </div>
@@ -1408,14 +1375,24 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsMenuOpen(false)} />
           <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-            {/* 일정 수정은 지난 여행에도 연다 — 날짜를 다시 잡아야 편집·인증이 다시 가능해진다 */}
-            <button
-              onClick={openScheduleEditor}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
-            >
-              <Calendar size={18} className="text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">여행 일정 수정</span>
-            </button>
+            {/* 일정 수정은 마감 전·기록이 없을 때만. 마감된 여행은 아래 '플랜 복제하기'로 새 일정을 만든다 */}
+            {canEditSchedule ? (
+              <button
+                onClick={openScheduleEditor}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
+              >
+                <Calendar size={18} className="text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">여행 일정 수정</span>
+              </button>
+            ) : canEdit ? (
+              <div className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl">
+                <Calendar size={18} className="text-gray-300 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-gray-300">여행 일정 수정</span>
+                  <span className="block text-xs text-gray-400">{STAMP_COPY.scheduleLockedStamped}</span>
+                </span>
+              </div>
+            ) : null}
             {canEdit && (
               <>
                 <button
