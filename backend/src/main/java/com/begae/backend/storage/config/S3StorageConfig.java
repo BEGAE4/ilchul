@@ -1,6 +1,8 @@
 package com.begae.backend.storage.config;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,12 +11,21 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
 @EnableConfigurationProperties(S3StorageProperties.class)
 public class S3StorageConfig {
 
     private final S3StorageProperties properties;
+
+    /** 공개 URL이 없으면 업로드가 모두 거절되므로 배포 직후 로그에서 바로 보이게 한다. */
+    @PostConstruct
+    void warnIfPublicBaseUrlMissing() {
+        if (!properties.hasPublicBaseUrl()) {
+            log.warn("이미지 공개 URL이 설정되지 않아 이미지 업로드가 거절됩니다. STORAGE_PUBLIC_URL 환경변수를 확인하세요.");
+        }
+    }
 
     @Bean
     public S3Client s3Client() {

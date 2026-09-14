@@ -18,8 +18,11 @@ import com.begae.backend.plan.repository.PlanImageRepository;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan.repository.ScrappedPlanRepository;
 import com.begae.backend.plan_place.domain.PlanPlace;
+import com.begae.backend.plan_place.domain.PlanPlaceImage;
+import com.begae.backend.plan_place.repository.PlanPlaceImageRepository;
 import com.begae.backend.plan_place.repository.PlanPlaceRepository;
 import com.begae.backend.storage.dto.StoredImage;
+import com.begae.backend.storage.service.ImageFileCleaner;
 import com.begae.backend.storage.service.ImageStorageService;
 import com.begae.backend.user.domain.User;
 import com.begae.backend.user.exception.UserErrorCode;
@@ -27,6 +30,7 @@ import com.begae.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -35,6 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +54,8 @@ public class PlanServiceImpl implements PlanService{
     private final ScrappedPlanRepository scrappedPlanRepository;
     private final PlanImageRepository planImageRepository;
     private final ImageStorageService imageStorageService;
+    private final PlanPlaceImageRepository planPlaceImageRepository;
+    private final ImageFileCleaner imageFileCleaner;
 
 //    @Value("${tmap.api.key}")
 //    private String tmapApiKey;
@@ -176,6 +183,7 @@ public class PlanServiceImpl implements PlanService{
 
         Plan plan = planRepository.findById(planId)
                 .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
+        plan.validateReadableBy(userId);
 
         boolean isLiked = false;
         boolean isBookmarked = false;
@@ -268,6 +276,7 @@ public class PlanServiceImpl implements PlanService{
         if (originPlan.getUser().getUserId().equals(userId)) {
             throw new CustomException(PlanErrorCode.NOT_COPY_MINE);
         }
+        originPlan.validateReadableBy(userId);
 
         Plan newPlan = Plan.copyOf(originPlan, user);
         planRepository.save(newPlan);
@@ -315,8 +324,18 @@ public class PlanServiceImpl implements PlanService{
 
         validatePlanOwner(plan, userId);
 
-        planRepository.delete(plan);
+        List<String> imageKeys = Stream.concat(
+                        plan.getPlanImages().stream().map(PlanImage::getImageKey),
+                        plan.getPlanPlaces().stream()
+                                .flatMap(planPlace -> planPlace.getPlanPlaceImages().stream())
+                                .map(PlanPlaceImage::getImageKey))
+                .filter(StringUtils::hasText)
+                .distinct()
+                .filter(imageKey -> !planPlaceImageRepository.existsByImageKeyAndPlanPlace_PlanNot(imageKey, plan))
+                .toList();
 
+        planRepository.delete(plan);
+        imageFileCleaner.deleteAfterCommit(imageKeys);
     }
 
     @Transactional
@@ -329,6 +348,7 @@ public class PlanServiceImpl implements PlanService{
 
         images.forEach(image -> {
             StoredImage storedImage = imageStorageService.upload(image, "plan/" + plan.getPlanId() + "/image");
+            imageFileCleaner.deleteIfRolledBack(storedImage.imageKey());
 
             PlanImage planImage = PlanImage.builder()
                     .imageKey(storedImage.imageKey())
@@ -353,14 +373,15 @@ public class PlanServiceImpl implements PlanService{
 
         validatePlanOwner(plan, userId);
 
-        imageIds.forEach(imageId -> {
-            PlanImage planImage = planImageRepository.findById(imageId)
-                    .orElseThrow(() -> new CustomException(PlanImageErrorCode.PLAN_IMAGE_NOT_FOUND));
+        // Validate every image before removing any file from external storage.
+        List<PlanImage> imagesToDelete = imageIds.stream()
+                .distinct()
+                .map(imageId -> planImageRepository.findByPlanImageIdAndPlan_PlanId(imageId, planId)
+                        .orElseThrow(() -> new CustomException(PlanImageErrorCode.PLAN_IMAGE_NOT_FOUND)))
+                .toList();
 
-            imageStorageService.delete(planImage.getImageKey());
-
-            planImageRepository.delete(planImage);
-        });
+        imagesToDelete.forEach(planImageRepository::delete);
+        imageFileCleaner.deleteAfterCommit(imagesToDelete.stream().map(PlanImage::getImageKey).toList());
 
         return getPlanDetail(planId, userId);
     }

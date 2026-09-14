@@ -1,6 +1,7 @@
 package com.begae.backend.plan_place.domain;
 
 import com.begae.backend.global.domain.BaseEntity;
+import com.begae.backend.storage.converter.ImageUrlConverter;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -23,6 +24,7 @@ public class PlanPlaceImage extends BaseEntity {
     private String imageKey;
 
     @Column(name = "image_url", length = 2000)
+    @Convert(converter = ImageUrlConverter.class)
     private String imageUrl;
 
     @Column(name = "original_filename")
@@ -37,15 +39,4 @@ public class PlanPlaceImage extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "plan_place_id")
     private PlanPlace planPlace;
-
-    public static PlanPlaceImage copyOf(PlanPlaceImage source, PlanPlace newPlanPlace) {
-        return PlanPlaceImage.builder()
-                .imageKey(source.getImageKey())
-                .imageUrl(source.getImageUrl())
-                .originalFilename(source.getOriginalFilename())
-                .contentType(source.getContentType())
-                .fileSize(source.getFileSize())
-                .planPlace(newPlanPlace)
-                .build();
-    }
 }

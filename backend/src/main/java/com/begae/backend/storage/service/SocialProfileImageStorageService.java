@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -24,16 +25,13 @@ public class SocialProfileImageStorageService {
             .build();
 
     public Optional<StoredImage> uploadFromUrl(String imageUrl, String directory) {
-        if (!StringUtils.hasText(imageUrl)) {
+        Optional<URI> downloadUri = resolveDownloadUri(imageUrl);
+        if (downloadUri.isEmpty()) {
             return Optional.empty();
         }
 
         try {
-            URI uri = URI.create(imageUrl);
-
-            if (!"https".equalsIgnoreCase(uri.getScheme())) {
-                return Optional.empty();
-            }
+            URI uri = downloadUri.get();
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(uri)
@@ -81,6 +79,31 @@ public class SocialProfileImageStorageService {
         } catch (Exception e) {
             return Optional.empty();
         }
+    }
+
+    /**
+     * 카카오는 프로필 주소를 http 로 주지만 같은 이미지를 https 로도 제공하므로 https 로 받는다.
+     */
+    static Optional<URI> resolveDownloadUri(String imageUrl) {
+        if (!StringUtils.hasText(imageUrl)) {
+            return Optional.empty();
+        }
+
+        try {
+            URI uri = new URI(imageUrl.trim());
+            if (uri.getHost() == null) {
+                return Optional.empty();
+            }
+            if ("https".equalsIgnoreCase(uri.getScheme())) {
+                return Optional.of(uri);
+            }
+            if ("http".equalsIgnoreCase(uri.getScheme())) {
+                return Optional.of(new URI("https", uri.getRawAuthority(), uri.getRawPath(), uri.getRawQuery(), null));
+            }
+        } catch (URISyntaxException e) {
+            return Optional.empty();
+        }
+        return Optional.empty();
     }
 
     private boolean isAllowedContentType(String contentType) {

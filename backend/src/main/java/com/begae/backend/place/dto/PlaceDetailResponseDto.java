@@ -2,7 +2,6 @@ package com.begae.backend.place.dto;
 
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
 @Builder
@@ -26,4 +25,12 @@ public class PlaceDetailResponseDto {
     private Double x;
 
     private Double y;
+
+    private int likeCount;
+
+    private Boolean isLiked;
+
+    private int bookmarkCount;
+
+    private Boolean isBookmarked;
 }

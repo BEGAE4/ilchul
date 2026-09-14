@@ -15,7 +15,8 @@ public enum GlobalErrorCode implements ErrorCode {
     ENTITY_NOT_FOUND(HttpStatus.NOT_FOUND, "G004", "엔티티를 찾을 수 없습니다."),
     HANDLE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "G005", "접근 권한이 없습니다."),
     ADMIN_ACCESS_DENIED(HttpStatus.FORBIDDEN, "G006", "관리자 권한이 필요합니다."),
-    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "G007", "로그인이 필요한 요청입니다.");
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "G007", "로그인이 필요한 요청입니다."),
+    RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "G008", "요청한 리소스를 찾을 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
