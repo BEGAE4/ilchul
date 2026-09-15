@@ -118,9 +118,8 @@ export async function uploadPlanImages(planId: number, images: File[]): Promise<
   return normalizePlanDetail(data);
 }
 
-// 플랜 이미지 삭제 — 명세 query int[]. 반복 파라미터(imageIds=1&imageIds=2)로 직렬화
-// 상세 응답이 planImages: {planImageId, imageUrl}[] 를 내려주면 MyCourseDetailPage 사진 관리 시트가
-// 삭제 버튼을 켠다. 아직 planImageUrls(string[]) 만 오면 버튼은 숨겨진다 (QA C-07, 백엔드 요청 중).
+// 플랜 이미지 삭제 — 명세 query int[]. 반복 파라미터(imageIds=1&imageIds=2)로 직렬화.
+// ID 는 상세 응답의 planImages 에서 온다 (2026-09-14 백엔드 추가, 2-4). 응답은 삭제 후 상세.
 export async function deletePlanImages(planId: number, imageIds: number[]): Promise<PlanDetail> {
   const { data } = await apiClient.delete<PlanDetail>(`/api/plan/${planId}/images`, {
     params: { imageIds },

@@ -41,6 +41,7 @@ import {
 import type { Place } from '@/shared/types';
 import { mapRecommendedPlaces } from '../utils/recommendedPlaces';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
+import { withRo } from '@/shared/lib/format/josa';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { fetchMyPageProfile } from '@/features/my-page/api/my-page.api';
 
@@ -400,7 +401,8 @@ export const CourseCreationFlow: React.FC = () => {
       : {}),
   });
 
-  const planDescription = `${surveyData.transport ?? ''}으로 떠나는 나만의 힐링 여행`;
+  // 이동수단 뒤 조사는 받침에 따라 달라진다 ("도보로", "대중교통으로"). B-23.
+  const planDescription = `${withRo(surveyData.transport ?? '')} 떠나는 나만의 힐링 여행`;
 
   // 프리뷰는 선택이 아니라 생성의 선행 조건이다.
   // requiredTime/totalDistance/travelTime/stayTime은 전부 서버 계산값이고 명세에 재계산 API가 없어,

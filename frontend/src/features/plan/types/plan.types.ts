@@ -18,15 +18,16 @@ export interface PlanPlaceDetail {
   roadAddress: string;
   orderIndex: number;
   visitTime: string;
-  stayDescription: string;
+  // 명세(swagger 260914) PlanPlaceDetailDto 에 없는 필드. 2026-09-05 에는 플랜 설명이 복사돼 왔고(2-3),
+  // 백엔드가 필드를 제거하는 쪽으로 정리한 것으로 보인다. 없으면 normalizePlanDetail 이 '' 로 채우고 화면은 주소로 폴백한다.
+  stayDescription?: string;
   isStamped: boolean;
   travelTime: number;
   stayTime: number;
 }
 
-// 플랜 이미지 항목 — 명세(260822)에는 없고 백엔드에 요청한 필드 (QA C-07).
-// DELETE /api/plan/{planId}/images?imageIds= 가 ID 를 요구하는데 planImageUrls 는 URL 뿐이라
-// 삭제 UI 를 연결할 수 없었다. 응답에 포함되면 사진 관리 시트의 삭제 버튼이 자동으로 켜진다.
+// 플랜 이미지 항목 (명세 PlanImageDto). DELETE /api/plan/{planId}/images?imageIds= 가 ID 를 요구한다.
+// 2026-09-14 백엔드가 상세 응답에 추가 (2-4). 사진 관리 시트의 삭제 버튼이 이 ID 로 동작한다.
 export interface PlanImageItem {
   planImageId: number;
   imageUrl: string;
@@ -54,8 +55,8 @@ export interface PlanDetail {
   userNickname: string;
   userAvatar: string;
   planImageUrls: string[];
-  // 백엔드 미제공 시 undefined/null → normalizePlanDetail 이 [] 로 채운다
-  planImages?: PlanImageItem[] | null;
+  // 명세 PlanDetailDto.planImages. null 로 올 가능성에 대비해 normalizePlanDetail 이 [] 로 채운다
+  planImages: PlanImageItem[];
   tags: string[];
   thumbnailUrl: string;
   planPlaceDetailDtos: PlanPlaceDetail[];

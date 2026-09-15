@@ -35,7 +35,7 @@ export function PopularPlaceCard({ place, onClick }: PopularPlaceCardProps) {
         <div className="flex items-center justify-between">
           <span className="text-xs text-gray-400 truncate">{place.location}</span>
           <div className="flex items-center gap-0.5 text-xs text-gray-400 shrink-0">
-            <Heart size={10} /> {(place.likes ?? 0).toLocaleString()}
+            <Heart size={10} /> {place.likes.toLocaleString()}
           </div>
         </div>
       </div>
