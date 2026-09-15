@@ -216,7 +216,7 @@ public class PlaceServiceImpl implements PlaceService {
                 .build();
     }
 
-    private static final double SEARCH_RADIUS_KM = 10.0;
+    private static final double SEARCH_RADIUS_KM = 20.0;
 
     @Override
     public PopularPlaceResponseDto getNationwidePopularPlaces(Integer limit, Integer page) {
