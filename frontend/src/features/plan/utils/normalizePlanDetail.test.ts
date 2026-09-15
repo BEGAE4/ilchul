@@ -40,6 +40,7 @@ function plan(overrides: Partial<PlanDetail> = {}): PlanDetail {
     userNickname: '홍정표',
     userAvatar: '',
     planImageUrls: [],
+    planImages: [],
     tags: [],
     thumbnailUrl: '',
     planPlaceDetailDtos: [],
@@ -100,6 +101,13 @@ describe('normalizePlanDetail', () => {
       planDescription: null as unknown as string,
       planPlaceDetailDtos: [place({ stayDescription: null as unknown as string })],
     });
+    expect(normalizePlanDetail(raw).planPlaceDetailDtos[0].stayDescription).toBe('');
+  });
+
+  it('stayDescription 이 아예 없어도(명세 260914) 빈 문자열로 채운다', () => {
+    const withoutStay = place();
+    delete withoutStay.stayDescription; // optional 이라 delete 가 타입상 허용된다
+    const raw = plan({ planPlaceDetailDtos: [withoutStay] });
     expect(normalizePlanDetail(raw).planPlaceDetailDtos[0].stayDescription).toBe('');
   });
 });

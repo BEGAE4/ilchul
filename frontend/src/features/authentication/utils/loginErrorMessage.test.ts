@@ -10,7 +10,7 @@ describe('resolveLoginErrorMessage', () => {
     expect(resolveLoginErrorMessage(true, 'naver_failed')).toContain('네이버 로그인 중 오류');
   });
 
-  it('값 없는 ?error 도 공통 문구를 보여준다 (백엔드 실패 리다이렉트 형식, QA A #4)', () => {
+  it('값 없는 ?error 도 공통 문구로 방어한다', () => {
     expect(resolveLoginErrorMessage(true, '')).toContain('로그인 중 오류');
     expect(resolveLoginErrorMessage(true, null)).toContain('로그인 중 오류');
   });
