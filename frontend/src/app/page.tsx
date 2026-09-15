@@ -244,7 +244,7 @@ export default function Home() {
                       <span>{place.location}</span>
                       <span className="mx-1 opacity-50">|</span>
                       <Heart size={12} className="fill-white" />
-                      <span>{(place.likes ?? 0).toLocaleString()}</span>
+                      <span>{place.likes.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -330,7 +330,7 @@ export default function Home() {
                         </span>
                         <div className="flex items-center gap-0.5 text-[10px] text-gray-400">
                           <Heart size={9} />{' '}
-                          {(place.likes ?? 0).toLocaleString()}
+                          {place.likes.toLocaleString()}
                         </div>
                       </div>
                     </div>
@@ -490,7 +490,7 @@ export default function Home() {
                       {place.location}
                     </span>
                     <div className="flex items-center gap-0.5 text-xs text-gray-400">
-                      <Heart size={10} /> {(place.likes ?? 0).toLocaleString()}
+                      <Heart size={10} /> {place.likes.toLocaleString()}
                     </div>
                   </div>
                 </div>
