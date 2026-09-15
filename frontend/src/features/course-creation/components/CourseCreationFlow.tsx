@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import CoverImage from '@/shared/ui/CoverImage';
 import {
@@ -40,6 +40,7 @@ import {
 } from '@/shared/lib/kakao';
 import type { Place } from '@/shared/types';
 import { mapRecommendedPlaces } from '../utils/recommendedPlaces';
+import { buildCreatePlanPlaces, parseStayMinutes } from '../utils/planPlaces';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
 import { withRo } from '@/shared/lib/format/josa';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
@@ -227,11 +228,6 @@ function getTodayStr(): string {
   return toDateString(new Date());
 }
 
-function parseStayMinutes(time: string): number {
-  const match = time.match(/(\d+)/);
-  return match ? parseInt(match[1], 10) : 60;
-}
-
 function formatMinutes(min: number): string {
   const h = Math.floor(Math.abs(min) / 60);
   const m = Math.abs(min) % 60;
@@ -296,6 +292,8 @@ export const CourseCreationFlow: React.FC = () => {
   const [serverPreview, setServerPreview] = useState<PlanPreviewResponse | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  // 프리뷰 요청 순번 — 순서 변경·다시 계산·재선택으로 요청이 겹칠 때 마지막 요청의 응답만 반영한다
+  const previewRequestSeq = useRef(0);
   // 추천 API 실패/빈 응답 시 안내 문구 — 목록 대신 재시도 UI를 보여준다
   const [recommendError, setRecommendError] = useState<string | null>(null);
   // 카카오맵 SDK 로드 상태 — 출발지 검색/역지오코딩에 services 라이브러리 사용
@@ -407,7 +405,10 @@ export const CourseCreationFlow: React.FC = () => {
   // 프리뷰는 선택이 아니라 생성의 선행 조건이다.
   // requiredTime/totalDistance/travelTime/stayTime은 전부 서버 계산값이고 명세에 재계산 API가 없어,
   // 실패한 채로 저장하면 0분·0km짜리 플랜이 복구 경로 없이 영구히 남는다.
+  // 늦게 도착한 이전 요청의 응답은 버린다. 그대로 두면 이전 장소 순서로 계산된 값이 화면과 저장 요청에 섞인다.
   const requestPreview = async (stops: Place[]) => {
+    const seq = ++previewRequestSeq.current;
+    const isLatest = () => seq === previewRequestSeq.current;
     setServerPreview(null);
     setPreviewFailed(false);
     setIsPreviewLoading(true);
@@ -426,12 +427,13 @@ export const CourseCreationFlow: React.FC = () => {
         ...buildPlanContext(),
         places: numericPlaces,
       });
-      setServerPreview(preview);
+      if (isLatest()) setServerPreview(preview);
     } catch (err) {
+      if (!isLatest()) return;
       console.error('플랜 생성 프리뷰 실패:', err);
       setPreviewFailed(true);
     } finally {
-      setIsPreviewLoading(false);
+      if (isLatest()) setIsPreviewLoading(false);
     }
   };
 
@@ -443,20 +445,8 @@ export const CourseCreationFlow: React.FC = () => {
     }
     setIsSaving(true);
     try {
-      // 프리뷰 응답(장소별 duration/stayTime)을 order 기준으로 조인해 명세 필수 필드를 채운다.
-      const previewByOrder = new Map(serverPreview.places.map((p) => [p.order, p]));
-      const numericPlaces = finalStops
-        .map((s, i) => {
-          const order = i + 1;
-          const pv = previewByOrder.get(order);
-          return {
-            placeId: Number(s.id),
-            order,
-            travelTime: pv?.duration ?? 0,
-            stayTime: pv?.stayTime ?? 0,
-          };
-        })
-        .filter((p) => Number.isInteger(p.placeId));
+      // 프리뷰 응답(장소별 duration)을 order 기준으로 조인하고, 체류시간이 없으면 추천값으로 채운다.
+      const numericPlaces = buildCreatePlanPlaces(finalStops, serverPreview.places);
       const created = await planApi.createPlan({
         planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState, user.name),
         planDescription,
