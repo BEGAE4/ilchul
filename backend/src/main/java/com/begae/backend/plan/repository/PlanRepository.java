@@ -27,6 +27,16 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
     List<Plan> findByUserUserId(Integer userId);
 
     @Query("""
+    select distinct p from Plan p
+    left join fetch p.planPlaces
+    where p.user.userId = :userId
+    and p.isPlanVisible = true
+    and p.isBlinded = false
+    """
+    )
+    List<Plan> findVisibleByUserUserId(Integer userId);
+
+    @Query("""
     select new com.begae.backend.plan.dto.PlanDetailFlatDto(
         pl.planId,
         pl.planTitle,
