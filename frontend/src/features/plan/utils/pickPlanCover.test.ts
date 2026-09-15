@@ -40,6 +40,7 @@ function plan(overrides: Partial<PlanDetail> = {}): PlanDetail {
     userNickname: '홍정표',
     userAvatar: '',
     planImageUrls: [],
+    planImages: [],
     tags: [],
     thumbnailUrl: '',
     planPlaceDetailDtos: [],

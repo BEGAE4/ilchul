@@ -499,13 +499,20 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     }
   };
 
-  // ── 플랜 사진 삭제 — 상세 응답에 planImages(ID 포함) 가 있을 때만 버튼이 보인다 ──
+  // ── 플랜 사진 삭제 — 상세 응답의 planImages(ID) 로 지운다 (2-4) ──
+  // 운영(2026-09-16 확인)에서 DELETE 가 200 을 주면서 사진을 지우지 않는 경우가 있어,
+  // 응답 상세에 같은 ID 가 남아 있으면 성공으로 알리지 않는다.
   const handleDeletePlanImage = async (planImageId: number) => {
     if (deletingImageId !== null) return;
     setDeletingImageId(planImageId);
     try {
-      await planApi.deletePlanImages(plan.planId, [planImageId]);
-      toast.success('사진을 삭제했어요.');
+      const after = await planApi.deletePlanImages(plan.planId, [planImageId]);
+      const stillThere = after.planImages.some((p) => p.planImageId === planImageId);
+      if (stillThere) {
+        toast.error('사진 삭제가 반영되지 않았어요. 잠시 후 다시 시도해주세요.');
+      } else {
+        toast.success('사진을 삭제했어요.');
+      }
       refetch();
     } catch (err) {
       console.error('플랜 사진 삭제 실패:', err);
@@ -515,12 +522,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     }
   };
 
-  // ID 가 오면 그것을, 아니면 URL 만으로 목록을 만든다. ID 없는 항목은 삭제 불가.
-  const photoItems: { planImageId: number | null; imageUrl: string }[] =
-    (plan.planImages ?? []).length > 0
-      ? (plan.planImages ?? []).map((p) => ({ planImageId: p.planImageId, imageUrl: p.imageUrl }))
-      : plan.planImageUrls.map((url) => ({ planImageId: null, imageUrl: url }));
-  const canDeletePhotos = photoItems.some((p) => p.planImageId !== null);
+  // 상세 응답의 planImages(ID 포함) 로 목록을 만든다. 삭제는 ID 로 한다. (2-4)
+  const photoItems = plan.planImages;
 
   const scrollToReview = () => {
     reviewRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1325,24 +1328,22 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   onClick={() => setPreviewPhoto(item.imageUrl)}
                 >
                   <ReviewPhoto src={item.imageUrl} alt={`플랜 사진 ${i + 1}`} />
-                  {item.planImageId !== null && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void handleDeletePlanImage(item.planImageId as number);
-                      }}
-                      disabled={deletingImageId !== null}
-                      aria-label="사진 삭제"
-                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md disabled:opacity-50"
-                    >
-                      {deletingImageId === item.planImageId ? (
-                        <Loader2 size={10} className="animate-spin" />
-                      ) : (
-                        <X size={10} />
-                      )}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleDeletePlanImage(item.planImageId);
+                    }}
+                    disabled={deletingImageId !== null}
+                    aria-label="사진 삭제"
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md disabled:opacity-50"
+                  >
+                    {deletingImageId === item.planImageId ? (
+                      <Loader2 size={10} className="animate-spin" />
+                    ) : (
+                      <X size={10} />
+                    )}
+                  </button>
                 </div>
               ))}
               <button
@@ -1354,11 +1355,6 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                 <span className="text-[9px] mt-0.5">{isUploadingImages ? '업로드 중...' : '추가'}</span>
               </button>
             </div>
-            {!canDeletePhotos && (
-              <p className="text-[11px] text-gray-400 mb-3">
-                * 사진 삭제는 서버가 이미지 ID를 내려주면 지원돼요. 지금은 추가만 할 수 있어요.
-              </p>
-            )}
             <button
               onClick={() => setIsPhotoSheetOpen(false)}
               className="w-full py-3 text-gray-400 font-bold text-sm"
