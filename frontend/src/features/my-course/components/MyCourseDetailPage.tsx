@@ -99,7 +99,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const router = useRouter();
 
   // 플랜 상세는 서버에서만 조회한다. 실패 시 에러 UI를 렌더링한다.
-  const { plan, isLoading, error: planError, refetch } = usePlanDetail(courseId);
+  const { plan, isLoading, error: planError, errorKind: planErrorKind, refetch } = usePlanDetail(courseId);
   // 내 플랜에서도 좋아요는 가능하다 (스크랩은 소유자에게 의미가 없어 제공하지 않는다)
   const { isLiked, likeCount, toggleLike } = usePlanActions(plan);
 
@@ -177,20 +177,24 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         <p className="text-gray-900 font-bold mb-1">
           {planError ?? '플랜 정보를 불러오지 못했어요.'}
         </p>
-        <p className="text-sm text-gray-500 mb-6">잠시 후 다시 시도해주세요.</p>
-        <div className="flex gap-2 w-full max-w-xs">
+        {planErrorKind !== 'not_found' && (
+          <p className="text-sm text-gray-500 mb-6">잠시 후 다시 시도해주세요.</p>
+        )}
+        <div className={`flex gap-2 w-full max-w-xs ${planErrorKind === 'not_found' ? 'mt-6' : ''}`}>
           <button
             onClick={() => router.back()}
             className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm"
           >
             돌아가기
           </button>
-          <button
-            onClick={refetch}
-            className="flex-1 py-3 bg-primary-500 text-white font-bold rounded-xl text-sm shadow-md shadow-primary-200"
-          >
-            다시 시도
-          </button>
+          {planErrorKind !== 'not_found' && (
+            <button
+              onClick={refetch}
+              className="flex-1 py-3 bg-primary-500 text-white font-bold rounded-xl text-sm shadow-md shadow-primary-200"
+            >
+              다시 시도
+            </button>
+          )}
         </div>
       </div>
     );
