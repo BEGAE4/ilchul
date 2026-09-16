@@ -25,6 +25,7 @@ function detail(overrides: Partial<PlanDetail> = {}): PlanDetail {
     userNickname: '',
     userAvatar: '',
     planImageUrls: [],
+    planImages: [],
     tags: [],
     thumbnailUrl: '',
     planPlaceDetailDtos: [],

@@ -55,8 +55,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
   const [reviewInput, setReviewInput] = useState('');
   // 위치 미니맵용 카카오맵 SDK 로드 상태
   const [isKakaoLoading, kakaoError] = useKakaoMapLoader();
-  // 좋아요/스크랩: POST·DELETE /api/place/{placeId}/likes|scraps 응답값으로 상태 확정.
-  // 상세 응답에 초기 상태가 있으면(BE 추가 시) 새로고침 후에도 유지된다. (B-05)
+  // 좋아요/스크랩: 상세 응답의 초기 상태로 시작하고, POST·DELETE /api/place/{placeId}/likes|scraps 응답값으로 확정한다.
   const placeActions = usePlaceActions(placeId, {
     initialIsLiked: serverPlace?.isLiked,
     initialLikeCount: serverPlace?.likeCount,

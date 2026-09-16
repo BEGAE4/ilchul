@@ -12,9 +12,8 @@ const DEFAULT_MESSAGE = '로그인 중 오류가 발생했습니다. 다시 시�
 /**
  * `/login?error=...` 의 값을 사용자 문구로 바꾼다.
  * - 쿼리가 없으면 null (문구 미표시)
- * - 값이 비어 있어도(`/login?error`) 공통 문구를 보여준다 — 운영 백엔드는
- *   소셜 로그인 취소·실패 시 값 없는 `?error` 로 리다이렉트한다 (QA A #4)
- * - 알 수 없는 값은 공통 문구
+ * - 운영 백엔드는 2026-09-14 부터 `{provider}_cancelled` / `{provider}_failed` 값을 실어 보낸다 (1-2).
+ * - 값이 비어 있거나(`/login?error`) 알 수 없는 값이면 공통 문구로 방어한다.
  */
 export function resolveLoginErrorMessage(
   hasErrorParam: boolean,
