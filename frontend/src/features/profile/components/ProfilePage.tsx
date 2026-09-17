@@ -18,6 +18,7 @@ import {
 } from '@/features/my-page/api';
 import { PlanVisibilityToggle } from './PlanVisibilityToggle';
 import { sortMyPlansNewest, sortScrappedPlansNewest } from '@/features/my-page/utils/sortPlans';
+import { formatIsoDate, formatRequiredTime, formatTripPeriod } from '@/features/my-page/utils/formatPlan';
 import type { MyPlan, ScrappedPlan } from '@/features/my-page/types/plan.types';
 import type { MyPageSummary } from '@/features/my-page/types/summary.types';
 
@@ -192,37 +193,6 @@ export const ProfilePage: React.FC = () => {
       color: 'text-primary-500',
     },
   ];
-
-  const formatIsoDate = (iso: string | null) => {
-    if (!iso) return '생성일 미정';
-    // 서버 날짜는 'yyyy-MM-dd HH:mm' 형식 — Safari/iOS 호환을 위해 ISO(T)로 정규화
-    const d = new Date(iso.replace(' ', 'T'));
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-  };
-
-  // 여행 기간 표시 (시작~종료). 시작만 있으면 시작일만, 없으면 '일정 미정'
-  const formatTripPeriod = (start: string | null, end: string | null) => {
-    if (!start) return '일정 미정';
-    const startText = formatIsoDate(start);
-    if (!end) return startText;
-    const endText = formatIsoDate(end);
-    return startText === endText ? startText : `${startText} ~ ${endText}`;
-  };
-
-  // 소요 시간(분) → 'N시간 M분'
-  const formatRequiredTime = (minutes: number) => {
-    if (!minutes || minutes <= 0) return '소요 시간 미정';
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    if (h > 0 && m > 0) return `${h}시간 ${m}분`;
-    if (h > 0) return `${h}시간`;
-    return `${m}분`;
-  };
 
   const handleTogglePlanVisibility = async (planId: number) => {
     const current = planVisibility[planId];

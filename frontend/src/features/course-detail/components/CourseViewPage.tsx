@@ -21,6 +21,7 @@ import {
   Plus,
   User,
   Pencil,
+  Copy,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -733,6 +734,19 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
               >
                 <Bookmark size={18} className="text-gray-500" />
                 <span className="text-sm font-medium text-gray-700">플랜 저장 / 해제</span>
+              </button>
+            )}
+            {/* 남의 플랜(저장한 플랜 포함)은 복제할 수 있다 — 하단 '일정 담기'와 같은 모달로 날짜·시간을 정해 복제한다 */}
+            {!isMyPlan && (
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  handleSaveCourse();
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
+              >
+                <Copy size={18} className="text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">플랜 복제하기</span>
               </button>
             )}
             <ReportMenuItem
