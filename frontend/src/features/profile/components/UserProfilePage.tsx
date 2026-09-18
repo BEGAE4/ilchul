@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import { ArrowLeft, MapPin, MoreVertical, User, UserX } from 'lucide-react';
-import Image from '@/shared/ui/SafeImage';
+import { ArrowLeft, MapPin, MoreVertical, UserX } from 'lucide-react';
+import Avatar from '@/shared/ui/Avatar';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { useRequireAuth } from '@/features/authentication/hooks';
@@ -242,13 +242,11 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
           {/* ─── 프로필 섹션 ─── */}
           <div className="bg-white p-5 pb-0 border-b border-gray-100">
             <div className="flex items-center gap-4 mb-5">
-              <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-gray-100 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md flex-shrink-0">
                 {profileState.status === 'loading' ? (
-                  <Skeleton variant="circle" width={64} height={64} />
-                ) : profile?.userImg ? (
-                  <Image src={profile.userImg} alt={nickname} fill sizes="64px" className="object-cover" />
+                  <Skeleton variant="circle" width={60} height={60} />
                 ) : (
-                  <User size={28} className="text-gray-400" />
+                  <Avatar src={profile?.userImg} alt={nickname} size={60} />
                 )}
               </div>
               <div className="flex-1 min-w-0">

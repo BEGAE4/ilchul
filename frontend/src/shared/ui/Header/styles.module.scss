@@ -91,23 +91,6 @@
   }
 }
 
-.profileImage {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.defaultProfileImage {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background-color: rgb(243, 244, 246);
-}
-
 // BackArrow variant styles
 .backButton {
   display: flex;

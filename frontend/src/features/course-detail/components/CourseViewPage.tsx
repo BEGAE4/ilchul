@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { fetchMyPageProfile } from '@/features/my-page/api/my-page.api';
 import { useRouter } from 'next/navigation';
-import Image from '@/shared/ui/SafeImage';
+import Avatar from '@/shared/ui/Avatar';
 import CoverImage from '@/shared/ui/CoverImage';
 import {
   ArrowLeft,
@@ -19,7 +19,6 @@ import {
   Trash2,
   X,
   Plus,
-  User,
   Pencil,
   Copy,
 } from 'lucide-react';
@@ -260,18 +259,8 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           className="flex items-center gap-3 cursor-pointer active:opacity-70"
           onClick={() => router.push(`/profile/${plan.userId}`)}
         >
-          <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-200 bg-gray-100 flex items-center justify-center">
-            {plan.userAvatar ? (
-              <Image
-                src={plan.userAvatar}
-                alt={plan.userNickname}
-                fill
-                sizes="40px"
-                className="object-cover"
-              />
-            ) : (
-              <User size={20} className="text-gray-400" />
-            )}
+          <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 flex-shrink-0">
+            <Avatar src={plan.userAvatar} alt={plan.userNickname} size={38} />
           </div>
           <div>
             <div className="text-sm font-bold text-gray-900">{plan.userNickname}</div>
@@ -399,9 +388,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
               <div key={comment.replyId}>
                 {/* 부모 댓글 */}
                 <div className="flex items-start gap-3">
-                  <div className="relative w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
-                    <Image src={comment.avatar} alt="Avatar" fill sizes="36px" className="object-cover" />
-                  </div>
+                  <Avatar src={comment.avatar} alt={comment.user} size={36} />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-bold text-gray-900">{comment.user}</div>
@@ -471,9 +458,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   <div className="ml-12 mt-3 space-y-3 border-l-2 border-gray-100 pl-3">
                     {comment.replies.replies.map((reply) => (
                       <div key={reply.replyId} className="flex items-start gap-3">
-                        <div className="relative w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-                          <Image src={reply.avatar} alt="Avatar" fill sizes="28px" className="object-cover" />
-                        </div>
+                        <Avatar src={reply.avatar} alt={reply.user} size={28} />
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <div className="text-xs font-bold text-gray-900">{reply.user}</div>

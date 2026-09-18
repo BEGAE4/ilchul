@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import Image from '@/shared/ui/SafeImage';
+import Avatar from '@/shared/ui/Avatar';
 import {
   ArrowLeft,
   ChevronRight,
@@ -13,7 +13,6 @@ import {
   HelpCircle,
   Camera,
   X,
-  User,
 } from 'lucide-react';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { SERVICE_ROUTES } from '@/shared/lib/constants/service';
@@ -174,18 +173,8 @@ export function SettingsPage() {
         <div className="flex-1 p-5">
           <div className="flex justify-center mb-8">
             <div className="relative">
-              <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
-                {user.avatar ? (
-                  <Image
-                    src={user.avatar}
-                    alt="Profile"
-                    fill
-                    sizes="96px"
-                    className="object-cover"
-                  />
-                ) : (
-                  <User size={40} className="text-gray-400" />
-                )}
+              <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200">
+                <Avatar src={user.avatar} alt="프로필" size={92} />
               </div>
               {/* 프로필 사진 변경은 서버에 이미지 업로드 엔드포인트가 없어 아직 지원하지 않는다.
                   (프로필 수정 API 는 이미지 URL 문자열만 받는다 — BE 요청 문서 참고)
@@ -306,18 +295,8 @@ export function SettingsPage() {
             }}
             className="w-full text-left flex items-center gap-4 cursor-pointer active:bg-gray-50 -mx-2 px-2 py-2 rounded-xl transition-colors"
           >
-            <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0 bg-gray-100 flex items-center justify-center">
-              {user.avatar ? (
-                <Image
-                  src={user.avatar}
-                  alt="Profile"
-                  fill
-                  sizes="56px"
-                  className="object-cover"
-                />
-              ) : (
-                <User size={24} className="text-gray-400" />
-              )}
+            <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-gray-200 flex-shrink-0">
+              <Avatar src={user.avatar} alt="프로필" size={52} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-bold text-gray-900">{user.name}</div>
