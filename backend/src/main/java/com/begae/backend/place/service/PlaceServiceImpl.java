@@ -1,6 +1,7 @@
 package com.begae.backend.place.service;
 
 import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.global.location.PopularRegion;
 import com.begae.backend.like.domain.Like;
 import com.begae.backend.like.enums.LikeType;
 import com.begae.backend.like.repository.LikeRepository;
@@ -254,6 +255,38 @@ public class PlaceServiceImpl implements PlaceService {
 
         List<Integer> placeIds = placeRepository.findPopularPlaceIds(lat, lng, SEARCH_RADIUS_KM, safeLimit, offset);
         int totalCount = placeRepository.countPopularPlaces(lat, lng, SEARCH_RADIUS_KM);
+
+        if (placeIds.isEmpty()) {
+            return PopularPlaceResponseDto.of(List.of(), page, safeLimit, totalCount);
+        }
+
+        Map<Integer, Place> placeMap = placeRepository.findByPlaceIdIn(placeIds)
+                .stream()
+                .collect(Collectors.toMap(Place::getPlaceId, p -> p));
+
+        List<PopularPlaceItemDto> data = IntStream.range(0, placeIds.size())
+                .mapToObj(i -> {
+                    Place place = placeMap.get(placeIds.get(i));
+                    if (place == null) return null;
+                    int ranking = offset + i + 1;
+                    return PopularPlaceItemDto.of(place, ranking);
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        return PopularPlaceResponseDto.of(data, page, safeLimit, totalCount);
+    }
+
+    @Override
+    public PopularPlaceResponseDto getPopularPlacesByRegion(PopularRegion region, Integer limit, Integer page) {
+        int safeLimit = Math.min(limit, 50);
+        int offset = (page - 1) * safeLimit;
+        String primaryPrefix = region.getAddressPrefixes().getFirst();
+        String legacyPrefix = region.getAddressPrefixes().getLast();
+
+        List<Integer> placeIds = placeRepository.findPopularPlaceIdsByRegion(
+                primaryPrefix, legacyPrefix, safeLimit, offset);
+        int totalCount = placeRepository.countPopularPlacesByRegion(primaryPrefix, legacyPrefix);
 
         if (placeIds.isEmpty()) {
             return PopularPlaceResponseDto.of(List.of(), page, safeLimit, totalCount);

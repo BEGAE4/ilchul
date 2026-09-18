@@ -3,6 +3,7 @@ package com.begae.backend.place.controller;
 import com.begae.backend.global.security.principal.OauthUserDetails;
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.global.exception.GlobalErrorCode;
+import com.begae.backend.global.location.PopularRegion;
 import com.begae.backend.like.service.LikeService;
 import com.begae.backend.place.dto.*;
 import com.begae.backend.place.dto.PopularPlaceResponseDto;
@@ -18,6 +19,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -85,15 +87,26 @@ public class PlaceController {
     }
 
     /**
-     * 내 주변 인기 장소 조회
+     * 지역 또는 내 주변 인기 장소 조회
      */
     @GetMapping("/popular")
     public ResponseEntity<PopularPlaceResponseDto> getPopularPlaces(
-            @RequestParam Double lat,
-            @RequestParam Double lng,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
             @RequestParam(defaultValue = "5") Integer limit,
             @RequestParam(defaultValue = "1") Integer page
     ) {
+        if (StringUtils.hasText(region)) {
+            return ResponseEntity.ok(placeService.getPopularPlacesByRegion(
+                    PopularRegion.from(region), limit, page));
+        }
+        if (lat == null && lng == null) {
+            return ResponseEntity.ok(placeService.getNationwidePopularPlaces(limit, page));
+        }
+        if (lat == null || lng == null) {
+            throw new CustomException(GlobalErrorCode.INVALID_INPUT_VALUE);
+        }
         if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
             throw new CustomException(GlobalErrorCode.INVALID_INPUT_VALUE);
         }
