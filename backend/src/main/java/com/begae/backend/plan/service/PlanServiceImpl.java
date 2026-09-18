@@ -273,9 +273,10 @@ public class PlanServiceImpl implements PlanService{
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
 
-        if (originPlan.getUser().getUserId().equals(userId)) {
-            throw new CustomException(PlanErrorCode.NOT_COPY_MINE);
-        }
+//        if (originPlan.getUser().getUserId().equals(userId)) {
+//            throw new CustomException(PlanErrorCode.NOT_COPY_MINE);
+//        }
+
         originPlan.validateReadableBy(userId);
 
         Plan newPlan = Plan.copyOf(originPlan, user);
