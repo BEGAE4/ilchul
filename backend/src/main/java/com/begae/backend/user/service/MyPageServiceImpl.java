@@ -7,6 +7,9 @@ import com.begae.backend.plan.enums.ScrappedStatus;
 import com.begae.backend.plan.exception.PlanErrorCode;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan.repository.ScrappedPlanRepository;
+import com.begae.backend.storage.dto.StoredImage;
+import com.begae.backend.storage.service.ImageFileCleaner;
+import com.begae.backend.storage.service.ImageStorageService;
 import com.begae.backend.user.domain.User;
 import com.begae.backend.user.dto.MyPlansResponse;
 import com.begae.backend.user.dto.UpdateUserProfileRequest;
@@ -18,6 +21,8 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -29,6 +34,9 @@ public class MyPageServiceImpl implements MyPageService {
     private final UserRepository userRepository;
     private final PlanRepository planRepository;
     private final ScrappedPlanRepository scrappedPlanRepository;
+    private final ImageStorageService imageStorageService;
+    private final ImageFileCleaner imageFileCleaner;
+    private final ProfileImageProcessor profileImageProcessor;
 
     @Transactional
     @Override
@@ -38,8 +46,7 @@ public class MyPageServiceImpl implements MyPageService {
         );
         user.updateUserProfile(
                 updateUserProfileRequest.getNewUserNickname(),
-                updateUserProfileRequest.getNewUserIntro(),
-                updateUserProfileRequest.getNewUserProfileImg());
+                updateUserProfileRequest.getNewUserIntro());
         return UserProfileResponseDto.from(user);
     }
 
@@ -93,5 +100,43 @@ public class MyPageServiceImpl implements MyPageService {
 
         return UserProfileSummaryResponseDto
                 .of(publicPlanCount, verifyPlanCount, scrappedByOthersCount, savedCourseCount);
+    }
+
+    @Transactional
+    @Override
+    public UserProfileResponseDto uploadProfileImage(MultipartFile image, Integer userId) {
+        User user = findUser(userId);
+        ProcessedProfileImage processed = profileImageProcessor.process(image);
+        StoredImage stored = imageStorageService.uploadByUrl(
+                processed.bytes(),
+                processed.originalFilename(),
+                processed.contentType(),
+                "users/profile"
+        );
+        imageFileCleaner.deleteIfRolledBack(stored.imageKey());
+
+        String previousImageKey = user.getUserImgKey();
+        user.replaceProfileImage(stored.imageUrl(), stored.imageKey());
+        if (StringUtils.hasText(previousImageKey)) {
+            imageFileCleaner.deleteAfterCommit(List.of(previousImageKey));
+        }
+        return UserProfileResponseDto.from(user);
+    }
+
+    @Transactional
+    @Override
+    public UserProfileResponseDto deleteProfileImage(Integer userId) {
+        User user = findUser(userId);
+        String previousImageKey = user.getUserImgKey();
+        user.removeProfileImage();
+        if (StringUtils.hasText(previousImageKey)) {
+            imageFileCleaner.deleteAfterCommit(List.of(previousImageKey));
+        }
+        return UserProfileResponseDto.from(user);
+    }
+
+    private User findUser(Integer userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
     }
 }

@@ -4,6 +4,7 @@ import com.begae.backend.user.dto.MyPlansResponse;
 import com.begae.backend.user.dto.UpdateUserProfileRequest;
 import com.begae.backend.user.dto.UserProfileResponseDto;
 import com.begae.backend.user.dto.UserProfileSummaryResponseDto;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface MyPageService {
 
@@ -16,4 +17,8 @@ public interface MyPageService {
     UserProfileResponseDto findMypageProfile(Integer userId);
 
     UserProfileSummaryResponseDto findMyPageSummary(Integer userId);
+
+    UserProfileResponseDto uploadProfileImage(MultipartFile image, Integer userId);
+
+    UserProfileResponseDto deleteProfileImage(Integer userId);
 }

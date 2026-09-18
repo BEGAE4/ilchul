@@ -14,13 +14,19 @@ public class PlaceReviewListResponseDto {
     private final String message;
     private final List<PlaceReviewResponseDto> data;
     private final boolean hasNext;
+    private final long totalCount;
 
     public static PlaceReviewListResponseDto of(List<PlaceReviewResponseDto> data, boolean hasNext) {
+        return of(data, hasNext, data.size());
+    }
+
+    public static PlaceReviewListResponseDto of(List<PlaceReviewResponseDto> data, boolean hasNext, long totalCount) {
         return PlaceReviewListResponseDto.builder()
                 .status(200)
                 .message("성공")
                 .data(data)
                 .hasNext(hasNext)
+                .totalCount(totalCount)
                 .build();
     }
 }

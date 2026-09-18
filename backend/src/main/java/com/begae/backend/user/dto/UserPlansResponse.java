@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -29,12 +30,15 @@ public class UserPlansResponse {
 
     @Getter
     @AllArgsConstructor
+    @Schema(name = "UserPlanSummary")
     public static class PlanSummary {
         private int planId;
         private String planTitle;
         private LocalDateTime createAt;
         private LocalDateTime tripStartDate;
         private LocalDateTime tripEndDate;
+        private Boolean planVerified;
+        private Integer bookmarkCount;
         private Integer requiredTime;
         private List<String> planImages = new ArrayList<>();
 
@@ -56,6 +60,8 @@ public class UserPlansResponse {
                     plan.getCreateAt(),
                     plan.getTripStartDate(),
                     plan.getTripEndDate(),
+                    plan.getIsVerified(),
+                    plan.getScrapCount(),
                     plan.getRequiredTime(),
                     planImages
             );

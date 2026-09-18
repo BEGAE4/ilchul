@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ public class MyPlansResponse {
 
     @Getter
     @AllArgsConstructor
+    @Schema(name = "MyPlanSummary")
     public static class PlanSummary {
         private int planId;
         private String planTitle;

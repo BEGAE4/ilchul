@@ -53,6 +53,7 @@ dependencies {
 	implementation platform("software.amazon.awssdk:bom:2.44.12")
 	implementation "software.amazon.awssdk:s3"
 	implementation "software.amazon.awssdk:auth"
+	implementation 'com.twelvemonkeys.imageio:imageio-webp:3.12.0'
 
 }
 

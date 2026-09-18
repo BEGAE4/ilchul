@@ -1,6 +1,7 @@
 package com.begae.backend.user.controller;
 
 import com.begae.backend.global.security.principal.OauthUserDetails;
+import com.begae.backend.global.dto.ErrorResponse;
 import com.begae.backend.plan.dto.ScrappedPlanResponseDto;
 import com.begae.backend.plan.service.ScrappedPlanService;
 import com.begae.backend.user.dto.MyPlansResponse;
@@ -11,15 +12,19 @@ import com.begae.backend.user.service.MyPageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "마이페이지", description = "마이페이지 관련 API")
 @Validated
@@ -78,6 +83,33 @@ public class MyPageController {
                 ) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(myPageService.findMypageProfile(userDetails.getUserId()));
+    }
+
+    @Operation(summary = "프로필 사진 업로드", description = "내 프로필 사진을 업로드하고 갱신된 프로필을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "프로필 사진이 성공적으로 갱신되었습니다.")
+    @ApiResponse(responseCode = "400", description = "파일이 없거나 지원하지 않는 이미지 형식입니다.",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "로그인이 필요합니다.",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "413", description = "파일 크기가 5MB를 초과했습니다.",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @PostMapping(value = "/profile/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<UserProfileResponseDto> uploadProfileImage(
+            @AuthenticationPrincipal OauthUserDetails userDetails,
+            @RequestPart("image") MultipartFile image
+    ) {
+        return ResponseEntity.ok(myPageService.uploadProfileImage(image, userDetails.getUserId()));
+    }
+
+    @Operation(summary = "프로필 사진 삭제", description = "내 프로필 사진을 삭제하고 소셜 사진 자동 동기화를 중지합니다.")
+    @ApiResponse(responseCode = "200", description = "프로필 사진이 성공적으로 삭제되었습니다.")
+    @ApiResponse(responseCode = "401", description = "로그인이 필요합니다.",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @DeleteMapping("/profile/image")
+    public ResponseEntity<UserProfileResponseDto> deleteProfileImage(
+            @AuthenticationPrincipal OauthUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(myPageService.deleteProfileImage(userDetails.getUserId()));
     }
 
     @Operation(summary = "마이페이지 요약 정보 조회", description = "마이페이지에 표시할 내 활동 요약 정보를 조회합니다.")

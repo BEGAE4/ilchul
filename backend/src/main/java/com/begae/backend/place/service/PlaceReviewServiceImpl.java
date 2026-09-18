@@ -1,6 +1,7 @@
 package com.begae.backend.place.service;
 
 import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.global.exception.GlobalErrorCode;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.domain.PlaceReview;
 import com.begae.backend.place.dto.PlaceReviewListResponseDto;
@@ -67,6 +68,38 @@ public class PlaceReviewServiceImpl implements PlaceReviewService {
                 .map(PlaceReviewResponseDto::from)
                 .toList();
 
-        return PlaceReviewListResponseDto.of(reviewDtos, hasNext);
+        return PlaceReviewListResponseDto.of(
+                reviewDtos,
+                hasNext,
+                placeReviewRepository.countByPlace_PlaceId(placeId)
+        );
+    }
+
+    @Override
+    @Transactional
+    public PlaceReviewResponseDto updateReview(
+            Integer placeId,
+            Integer reviewId,
+            Integer userId,
+            PlaceReviewRequestDto request
+    ) {
+        PlaceReview review = findOwnedReview(placeId, reviewId, userId);
+        review.updateContent(request.getContent());
+        return PlaceReviewResponseDto.from(review);
+    }
+
+    @Override
+    @Transactional
+    public void deleteReview(Integer placeId, Integer reviewId, Integer userId) {
+        placeReviewRepository.delete(findOwnedReview(placeId, reviewId, userId));
+    }
+
+    private PlaceReview findOwnedReview(Integer placeId, Integer reviewId, Integer userId) {
+        PlaceReview review = placeReviewRepository.findByReviewIdAndPlace_PlaceId(reviewId, placeId)
+                .orElseThrow(() -> new CustomException(PlaceErrorCode.REVIEW_NOT_FOUND));
+        if (!review.getUser().getUserId().equals(userId)) {
+            throw new CustomException(GlobalErrorCode.HANDLE_ACCESS_DENIED);
+        }
+        return review;
     }
 }
