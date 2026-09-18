@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, Check, Minus, Plus, X, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -13,11 +14,13 @@ import {
 } from '../utils/schedule';
 
 // ── 공통 바텀시트 껍데기 ──
-const SheetShell: React.FC<{
+interface SheetShellProps {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
-}> = ({ title, onClose, children }) => (
+}
+
+const SheetFrame: React.FC<SheetShellProps> = ({ title, onClose, children }) => (
   <AnimatePresence>
     <motion.div
       initial={{ opacity: 0 }}
@@ -32,7 +35,7 @@ const SheetShell: React.FC<{
         exit={{ y: '100%' }}
         transition={{ type: 'tween', duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
         onClick={(e) => e.stopPropagation()}
-        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[75vh] flex flex-col pb-[env(safe-area-inset-bottom)]"
+        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[calc(100dvh-24px)] flex flex-col pb-[env(safe-area-inset-bottom)]"
       >
         <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0">
           <span className="font-bold text-gray-900">{title}</span>
@@ -40,11 +43,20 @@ const SheetShell: React.FC<{
             <X size={20} />
           </button>
         </div>
-        <div className="overflow-y-auto px-2 pb-3">{children}</div>
+        {/* overscroll-contain: 시트 끝까지 스크롤해도 뒤 화면이 따라 움직이지 않게 한다 */}
+        <div className="overflow-y-auto overscroll-contain px-2 pb-3">{children}</div>
       </motion.div>
     </motion.div>
   </AnimatePresence>
 );
+
+// 시트는 반드시 body 에 그린다(포털). 시트를 여는 버튼은 설문 화면의 스크롤 영역 안에 있는데,
+//  - 설문 컨테이너는 app-frame 의 translate 때문에 안쪽 position:fixed 의 기준이 되고,
+//  - iOS Safari 는 스크롤 컨테이너(overflow auto) 안의 fixed 요소를 그 컨테이너 범위로 잘라낸다.
+// 그 자리에 그대로 그리면 Chrome 에서는 멀쩡해 보여도 아이폰에서는 시트가 가운데 스크롤 영역에 갇혀
+// 위아래가 잘리고 하단 버튼에 덮인다 (2026-09-18 운영 확인).
+const SheetShell: React.FC<SheetShellProps> = (props) =>
+  typeof document === 'undefined' ? null : createPortal(<SheetFrame {...props} />, document.body);
 
 // ── 커스텀 드롭다운(단일 선택 바텀시트) ──
 export interface SelectOption {

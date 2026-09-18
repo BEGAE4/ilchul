@@ -47,6 +47,7 @@ import { mapRecommendedPlaces } from '../utils/recommendedPlaces';
 import { buildCreatePlanPlaces, parseStayMinutes } from '../utils/planPlaces';
 import { characterSrc, findMindState, isCustomMindState } from '../utils/mindStates';
 import { MAX_TRIP_MINUTES, OVERNIGHT_END_LIMIT } from '../utils/schedule';
+import { useKeyboardInset } from '@/shared/lib/hooks/keyboardInset';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
 import { withRo } from '@/shared/lib/format/josa';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
@@ -171,6 +172,16 @@ export const CourseCreationFlow: React.FC = () => {
   const [showAddressList, setShowAddressList] = useState(false);
   const [geoStatus, setGeoStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [isDirectInput, setIsDirectInput] = useState(false);
+  // 직접 입력칸은 하단 고정 영역에 있다. iOS 는 키보드가 올라와도 화면 높이를 줄이지 않아 입력칸이 키보드 밑에 깔리므로
+  // 가려진 높이만큼 설문 화면을 줄인다.
+  const keyboardInset = useKeyboardInset(step === 'survey1');
+  const directCardAnchorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (keyboardInset === 0) return;
+    // Safari 가 입력칸을 보이게 하려고 밀어 올린 화면을 되돌리고, 줄어든 목록에서는 방금 누른 카드(맨 아래 줄)를 보여준다
+    window.scrollTo(0, 0);
+    directCardAnchorRef.current?.scrollIntoView({ block: 'end' });
+  }, [keyboardInset]);
   const [directInputValue, setDirectInputValue] = useState('');
   const [showExitModal, setShowExitModal] = useState(false);
   // Survey 3 — 프리셋으로 못 고르는 일정을 잡을 때만 펼치는 기존 4필드 UI
@@ -645,7 +656,10 @@ export const CourseCreationFlow: React.FC = () => {
     const isDirectMode = isDirectInput || isCustomMindState(surveyData.mindState);
     const directValue = directInputValue || (isDirectMode ? (surveyData.mindState ?? '') : '');
     return (
-      <div className="fixed inset-y-0 app-frame z-40 h-dvh flex flex-col bg-white">
+      <div
+        className="fixed top-0 app-frame z-40 h-dvh flex flex-col bg-white"
+        style={keyboardInset ? { height: `calc(100dvh - ${keyboardInset}px)` } : undefined}
+      >
         <div className="shrink-0">
           <Header onBack={handleBack} title="나의 상태 확인" showStep />
           <div className="px-5 pt-5 pb-2">
@@ -669,6 +683,7 @@ export const CourseCreationFlow: React.FC = () => {
               updateSurvey('mindState', '');
             }}
           />
+          <div ref={directCardAnchorRef} aria-hidden />
         </div>
         <div className={`${STICKY_FOOTER} space-y-2.5`}>
           {/* 짧은 낱말로 고르게 한 대신, 고른 뒤에는 추천에 실제로 쓰이는 원래 문장을 보여준다 */}
@@ -702,12 +717,6 @@ export const CourseCreationFlow: React.FC = () => {
                   onChange={(e) => {
                     setDirectInputValue(e.target.value);
                     updateSurvey('mindState', e.target.value);
-                  }}
-                  onFocus={(e) => {
-                    setTimeout(
-                      () => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }),
-                      150
-                    );
                   }}
                   placeholder="지금 느끼는 감정을 적어주세요"
                   aria-label="지금 느끼는 감정"
