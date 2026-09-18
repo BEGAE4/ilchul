@@ -10,6 +10,10 @@ export const STAMP_COPY = {
   modalTitle: '기억 스탬프 찍기',
   modalBodyLine1: '지금 이곳에 머물고 있나요?',
   modalBodyLine2: '사진 한 장으로 오늘을 남겨요.',
+  cameraButton: '카메라 켜기',
+  // 카메라를 못 쓰거나(권한 거부·저조도) 이미 찍어둔 사진으로 남기고 싶을 때의 보조 동선.
+  // 현장 확인은 서버의 좌표 검사(150m)가 하므로 사진 출처는 인증 강도와 무관하다.
+  galleryButton: '앨범에서 선택',
   recordingTitle: '기록하는 중...',
   successToast: '기억 스탬프를 찍었어요',
   guide: {
@@ -38,6 +42,11 @@ export const STAMP_COPY = {
     outOfRange: {
       title: '장소에서 조금 떨어져 있어요.',
       description: '장소 가까이(150m 안)에서 다시 남겨주세요.',
+    },
+    // 위치 오차가 판정 반경보다 커서 '떨어져 있다'고 단정할 수 없을 때. 실내·지하에서 잦다.
+    inaccurateLocation: {
+      title: '위치를 정확히 잡지 못했어요.',
+      description: '실내라면 창가나 바깥에서 잠시 후 다시 시도해주세요.',
     },
     alreadyStamped: {
       title: '이미 기록한 곳이에요.',
