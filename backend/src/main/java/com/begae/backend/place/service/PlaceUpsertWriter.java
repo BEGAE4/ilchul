@@ -5,6 +5,7 @@ import com.begae.backend.place.dto.PlaceUpsertCommand;
 import com.begae.backend.place.repository.PlaceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
