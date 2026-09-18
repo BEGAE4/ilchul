@@ -14,7 +14,7 @@ interface AppShellProps {
 const UNFRAMED_PREFIXES = ['/admin'];
 
 /**
- * 모든 화면을 --container-app(390px) 폭으로 통일하는 앱 프레임.
+ * 모든 화면을 --container-app 폭으로 통일하는 앱 프레임. 폰에서는 화면을 꽉 채운다.
  * position: fixed 요소는 이 프레임을 벗어나므로 globals.css의 `app-frame` 유틸리티를 함께 쓴다.
  */
 export function AppShell({ children }: AppShellProps) {

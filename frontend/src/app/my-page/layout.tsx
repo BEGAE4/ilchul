@@ -1,23 +1,17 @@
 'use client';
 
 import React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Header from '@/shared/ui/Header';
-import IconBox from '@/shared/ui/IconBox';
 import styles from './my-page.module.scss';
 
 // Header 컴포넌트 (헤더만 담당)
 interface MyPageHeaderProps {
   center?: React.ReactNode;
-  rightIcon?: React.ReactNode;
   onBack: () => void;
 }
 
-const MyPageHeader: React.FC<MyPageHeaderProps> = ({
-  center,
-  rightIcon,
-  onBack,
-}) => {
+const MyPageHeader: React.FC<MyPageHeaderProps> = ({ center, onBack }) => {
   return (
     <div className={styles.headerWrapper}>
       <Header
@@ -35,7 +29,6 @@ export default function MyPageLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
   const router = useRouter();
 
   const handleBackClick = () => {
@@ -46,28 +39,12 @@ export default function MyPageLayout({
     }
   };
 
-  // 경로에 따라 헤더 설정
-  const getHeaderConfig = () => {
-    if (pathname === '/my-page/course-plan') {
-      return {
-        center: null,
-        rightIcon: null,
-      };
-    }
-    // 기본 마이페이지
-    return {
-      center: <span className={styles.headerTitle}>마이페이지</span>,
-      rightIcon: null,
-    };
-  };
-
-  const headerConfig = getHeaderConfig();
-
+  // 현재 이 레이아웃은 신고 상세(/my-page/reports/[reportId])에서만 쓰인다.
+  // (구버전 /my-page, /my-page/course-plan, /my-page/sanctions 라우트는 제거됨 — QA P-03)
   return (
     <div className="my-page-layout">
       <MyPageHeader
-        center={headerConfig.center}
-        rightIcon={headerConfig.rightIcon}
+        center={<span className={styles.headerTitle}>마이페이지</span>}
         onBack={handleBackClick}
       />
       <main className="my-page-main">{children}</main>

@@ -2,7 +2,8 @@ import React from 'react';
 import IconBox from '../IconBox';
 import { HeaderProps } from './types';
 import styles from './styles.module.scss';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
+import Avatar from '@/shared/ui/Avatar';
 const Header: React.FC<HeaderProps> = ({
   variant = 'logo',
   logo,
@@ -31,18 +32,10 @@ const Header: React.FC<HeaderProps> = ({
           aria-label="프로필"
           type="button"
         >
-          {typeof profileImage === 'string' ? (
-            <Image
-              src={profileImage}
-              alt="프로필"
-              className={styles.profileImage}
-              width={32}
-              height={32}
-            />
+          {typeof profileImage === 'string' || profileImage == null ? (
+            <Avatar src={profileImage} alt="프로필" size={32} />
           ) : (
-            <div className={styles.defaultProfileImage}>
-              {/* <IconBox name="user-plus" size={32} /> */}
-            </div>
+            profileImage
           )}
         </button>
       </header>
@@ -85,18 +78,10 @@ const Header: React.FC<HeaderProps> = ({
             aria-label="프로필"
             type="button"
           >
-            {typeof profileImage === 'string' ? (
-              <Image
-                src={profileImage}
-                alt="프로필"
-                className={styles.profileImage}
-              />
+            {typeof profileImage === 'string' || profileImage == null ? (
+              <Avatar src={profileImage} alt="프로필" size={32} />
             ) : (
-              profileImage || (
-                <div className={styles.defaultProfileImage}>
-                  {/* <IconBox name="user-plus" size={32} /> */}
-                </div>
-              )
+              profileImage
             )}
           </button>
           {username && (

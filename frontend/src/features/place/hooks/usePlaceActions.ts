@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import * as placeApi from '../api/place.api';
 import { toNumericPlaceId } from '../utils/placeId';
@@ -7,7 +7,11 @@ interface UsePlaceActionsOptions {
   // 목데이터 id 등 서버 연동이 불가능할 때 대신 실행할 로컬 토글
   onLocalLike?: () => void;
   onLocalScrap?: () => void;
+  // 상세 응답이 제공하는 초기 상태 (BE가 필드를 주면 새로고침 후에도 유지됨)
+  initialIsLiked?: boolean;
   initialLikeCount?: number;
+  initialIsScrapped?: boolean;
+  initialScrapCount?: number;
 }
 
 // 장소 좋아요 / 스크랩 상태를 서버와 동기화하는 훅.
@@ -17,12 +21,27 @@ export function usePlaceActions(placeId: string, options: UsePlaceActionsOptions
   const numericId = toNumericPlaceId(placeId);
   const isServerPlace = numericId !== null;
 
-  const [isLiked, setIsLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(options.initialLikeCount ?? 0);
-  const [isScrapped, setIsScrapped] = useState(false);
-  const [scrapCount, setScrapCount] = useState(0);
+  const {
+    initialIsLiked,
+    initialLikeCount,
+    initialIsScrapped,
+    initialScrapCount,
+  } = options;
+
+  const [isLiked, setIsLiked] = useState(initialIsLiked ?? false);
+  const [likeCount, setLikeCount] = useState(initialLikeCount ?? 0);
+  const [isScrapped, setIsScrapped] = useState(initialIsScrapped ?? false);
+  const [scrapCount, setScrapCount] = useState(initialScrapCount ?? 0);
   const [isLikePending, setIsLikePending] = useState(false);
   const [isScrapPending, setIsScrapPending] = useState(false);
+
+  // 상세 응답(초기 상태)이 뒤늦게 도착하면 그 값으로 동기화한다.
+  useEffect(() => {
+    if (initialIsLiked !== undefined) setIsLiked(initialIsLiked);
+    if (initialLikeCount !== undefined) setLikeCount(initialLikeCount);
+    if (initialIsScrapped !== undefined) setIsScrapped(initialIsScrapped);
+    if (initialScrapCount !== undefined) setScrapCount(initialScrapCount);
+  }, [initialIsLiked, initialLikeCount, initialIsScrapped, initialScrapCount]);
 
   const toggleLike = useCallback(async () => {
     if (numericId === null) {

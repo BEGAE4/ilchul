@@ -75,12 +75,12 @@
 }
 
 .iconButtonActiveBookmark {
-  color: #f59e0b;
-  background: rgba(254, 243, 199, 0.65);
+  color: var(--color-accent-500);
+  background: var(--color-accent-50);
 
   &:hover {
-    color: #f59e0b;
-    background: rgba(254, 243, 199, 0.8);
+    color: var(--color-accent-600);
+    background: var(--color-accent-100);
   }
 }
 

@@ -4,17 +4,9 @@ interface UserProfile {
   id: string;
   name: string;
   avatar: string;
-  title: string; // 한줄 소개 (샘플 호환)
-  level: number;
+  title: string; // 한줄 소개
   isAdmin?: boolean; // 관리자 여부 (문의 답변 등 관리자 기능 게이트)
-  // 기존 User 타입 호환 필드
   bio?: string;
-  travelType?: string;
-  courseCount?: number;
-  certCount?: number;
-  savedCount?: number;
-  followerCount?: number;
-  followingCount?: number;
 }
 
 interface UserSettings {
@@ -37,39 +29,31 @@ interface UserState {
   isLoggedIn: boolean;
   authChecked: boolean; // 로그인 여부 확인 API 완료 여부 (가드/리다이렉트 판단용)
   email: string | null; // 로그인 계정 이메일 (userinfo 응답)
-  followingIds: Set<string>;
   settings: UserSettings;
 
   setUser: (user: Partial<UserProfile>) => void;
   setLoggedIn: (val: boolean) => void;
   setAuthResult: (result: AuthResult) => void;
-  toggleFollow: (userId: string) => void;
-  isFollowing: (userId: string) => boolean;
   updateSettings: (key: keyof UserSettings, value: boolean | string) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
   // 기존 호환
   logout: () => void;
 }
 
-export const useUserStore = create<UserState>((set, get) => ({
-  user: {
-    id: 'me',
-    name: '김여행',
-    avatar: 'https://i.pravatar.cc/150?u=me',
-    title: '힐링 여행을 좋아하는 여행자입니다 🌿',
-    level: 3,
-    travelType: '힐링 마스터',
-    bio: '힐링 여행을 좋아하는 여행자입니다 🌿',
-    courseCount: 12,
-    certCount: 8,
-    savedCount: 24,
-    followerCount: 156,
-    followingCount: 89,
-  },
+// 초기값은 비어 있으며 GET /api/mypage/profile 응답으로 채워진다 (ProfilePage/SettingsPage).
+const EMPTY_USER: UserProfile = {
+  id: '',
+  name: '',
+  avatar: '',
+  title: '',
+  bio: '',
+};
+
+export const useUserStore = create<UserState>((set) => ({
+  user: EMPTY_USER,
   isLoggedIn: false,
   authChecked: false,
   email: null,
-  followingIds: new Set<string>(),
   settings: {
     pushNotification: true,
     marketingNotification: false,
@@ -92,19 +76,6 @@ export const useUserStore = create<UserState>((set, get) => ({
         ? { user: { ...state.user, isAdmin } }
         : {}),
     })),
-
-  toggleFollow: (userId) =>
-    set((state) => {
-      const next = new Set(state.followingIds);
-      if (next.has(userId)) {
-        next.delete(userId);
-      } else {
-        next.add(userId);
-      }
-      return { followingIds: next };
-    }),
-
-  isFollowing: (userId) => get().followingIds.has(userId),
 
   updateSettings: (key, value) =>
     set((state) => ({

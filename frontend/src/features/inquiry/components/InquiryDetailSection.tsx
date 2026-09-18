@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Image from 'next/image';
+import Image from '@/shared/ui/SafeImage';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchInquiryDetail, deleteInquiry } from '../api/inquiry.api';
@@ -58,7 +58,7 @@ export const InquiryDetailSection = ({
   const canEdit = !isAdmin && isPending;
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-dvh bg-white">
       <div className="bg-white sticky top-0 z-10 border-b border-gray-100">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center">
@@ -108,7 +108,7 @@ export const InquiryDetailSection = ({
               </span>
               <span
                 className={`text-xs font-medium rounded-full px-2 py-0.5 ${
-                  isPending ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-600'
+                  isPending ? 'bg-accent-50 text-accent-500' : 'bg-primary-50 text-primary-600'
                 }`}
               >
                 {INQUIRY_STATUS_LABELS[inquiry.status]}
@@ -168,9 +168,9 @@ export const InquiryDetailSection = ({
             )}
 
             {!inquiry.answer && isPending && (
-              <div className="bg-orange-50 rounded-xl p-4 text-center">
-                <p className="text-sm text-orange-500 font-medium">답변 대기 중이에요</p>
-                <p className="text-xs text-orange-400 mt-1">영업일 기준 1~3일 내로 답변드릴게요.</p>
+              <div className="bg-accent-50 rounded-xl p-4 text-center">
+                <p className="text-sm text-accent-500 font-medium">답변 대기 중이에요</p>
+                <p className="text-xs text-accent-400 mt-1">영업일 기준 1~3일 내로 답변드릴게요.</p>
               </div>
             )}
           </div>
@@ -178,7 +178,7 @@ export const InquiryDetailSection = ({
       </div>
 
       {showDeleteModal && (
-        <div className="fixed inset-y-0 app-frame bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame bg-black/50 z-[120] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-[300px]">
             <h2 className="font-bold text-lg text-gray-900 mb-2">문의를 삭제하시겠어요?</h2>
             <p className="text-sm text-gray-500 mb-5">삭제한 문의는 복구할 수 없어요.</p>

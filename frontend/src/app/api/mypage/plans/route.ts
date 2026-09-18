@@ -9,10 +9,7 @@ const EMPTY_PLANS_RESPONSE = { plans: [] };
 export async function GET(request: NextRequest) {
   const baseUrl = getServerApiBaseUrl();
   if (!baseUrl) {
-    if (process.env.NODE_ENV === 'production') {
-      return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
-    }
-    return NextResponse.json(EMPTY_PLANS_RESPONSE);
+    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
   }
 
   const cookie = request.headers.get('cookie') ?? '';

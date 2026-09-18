@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **일출 (Ilchul)** — A Korean mobile web app (PWA) for healing travel course planning, discovery, and recording. The app is Korean-language and mobile-first.
 
+## Scope rule: frontend only
+
+**코드 수정은 `frontend/` 안에서만 한다.** 루트 `../backend/`는 읽기 전용 — 백엔드 변경이 필요하면 직접 고치지 말고 필요한 내용을 사용자에게 정리해 전달한다. 백엔드 응답 형식이 프론트 기대와 다르면 프론트 타입/파서를 응답에 맞춘다. (자세한 규칙은 루트 `CLAUDE.md` 참고)
+
 ## Commands
 
 ```bash

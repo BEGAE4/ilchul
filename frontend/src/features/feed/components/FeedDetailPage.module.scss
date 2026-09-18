@@ -4,7 +4,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 3.5rem - 80px); /* 헤더 + 하단 네비 */
+  min-height: calc(100dvh - 3.5rem - 80px); /* 헤더 + 하단 네비 */
   position: relative;
   background-color: #ffffff;
 }

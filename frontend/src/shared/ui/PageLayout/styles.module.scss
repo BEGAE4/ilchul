@@ -1,5 +1,7 @@
 .page {
-  min-height: 100vh;
+  // 모바일 브라우저의 100vh 는 주소창 영역을 포함해 실제 보이는 높이(dvh)보다 크다.
+  // AppShell(100dvh)과 단위를 맞춰 하단 잘림/이중 스크롤을 막는다.
+  min-height: 100dvh;
   background: #eef1f6;
   display: flex;
   flex-direction: column;
@@ -13,7 +15,9 @@
   display: flex;
   flex-direction: column;
   background-color: #fff;
-  max-height: 100vh;
+  // 내용이 짧아도 기기 높이를 꽉 채우고(min), 길면 이 컨테이너 안에서만 스크롤한다(max).
+  min-height: 100dvh;
+  max-height: 100dvh;
   overflow-y: auto;
   flex: 1;
   scrollbar-width: none; /* Firefox */

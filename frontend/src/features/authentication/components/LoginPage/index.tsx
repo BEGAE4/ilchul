@@ -1,24 +1,21 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { SERVICE_ROUTES } from '@/shared/lib/constants/service';
 import { redirectToSocialLogin } from '@/features/authentication/api';
+import { resolveLoginErrorMessage } from '@/features/authentication/utils/loginErrorMessage';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import styles from './login.module.scss';
-
-const ERROR_MESSAGES: Record<string, string> = {
-  kakao_cancelled: '카카오 로그인이 취소되었습니다. 다시 시도해 주세요.',
-  kakao_failed: '카카오 로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
-  google_cancelled: '구글 로그인이 취소되었습니다. 다시 시도해 주세요.',
-  google_failed: '구글 로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
-  naver_cancelled: '네이버 로그인이 취소되었습니다. 다시 시도해 주세요.',
-  naver_failed: '네이버 로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
-};
 
 export function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const error = searchParams.get('error');
+  const errorMessage = resolveLoginErrorMessage(
+    searchParams.has('error'),
+    searchParams.get('error')
+  );
   const authChecked = useUserStore((state) => state.authChecked);
   const isLoggedIn = useUserStore((state) => state.isLoggedIn);
 
@@ -30,15 +27,17 @@ export function LoginPage() {
   }, [authChecked, isLoggedIn, router]);
 
   const handleKakaoLogin = () => redirectToSocialLogin('kakao');
-  const handleGoogleLogin = () => redirectToSocialLogin('google');
-  const handleNaverLogin = () => redirectToSocialLogin('naver');
+
+  // 로그인 확인이 끝나기 전에는 버튼을 감춰, 로그인 사용자가 이 페이지를 지나칠 때
+  // 버튼이 잠깐 보였다 사라지는 플래시를 막는다 (QA A #10). 타이틀·로고는 그대로 둔다.
+  const showButtons = authChecked && !isLoggedIn;
 
   return (
     <div className={styles.loginPage}>
       <div className={styles.container}>
-        {error && (
-          <div className={styles.errorMessage}>
-            {ERROR_MESSAGES[error] ?? '로그인 중 오류가 발생했습니다.'}
+        {errorMessage && (
+          <div className={styles.errorMessage} role="alert">
+            {errorMessage}
           </div>
         )}
         <div className={styles.header}>
@@ -55,7 +54,13 @@ export function LoginPage() {
           </div>
         </div>
 
-        <div className={styles.loginButtons}>
+        <div
+          className={styles.loginButtons}
+          style={showButtons ? undefined : { visibility: 'hidden' }}
+          aria-hidden={!showButtons}
+        >
+          {/* 구글은 OAuth redirect_uri 불일치로 로그인이 불가하고(BE 요청 §1-1),
+              네이버도 완주 확인이 안 돼 카카오만 노출한다. 서버 설정이 정리되면 되살린다. */}
           <button
             type="button"
             className={`${styles.loginButton} ${styles.kakaoButton}`}
@@ -65,26 +70,19 @@ export function LoginPage() {
               <span className={styles.buttonTextBold}>카카오</span> 로그인
             </span>
           </button>
-
-          <button
-            type="button"
-            className={`${styles.loginButton} ${styles.googleButton}`}
-            onClick={handleGoogleLogin}
-          >
-            <span className={styles.buttonText}>
-              <span className={styles.buttonTextBold}>구글</span> 로그인
-            </span>
-          </button>
-
-          <button
-            type="button"
-            className={`${styles.loginButton} ${styles.naverButton}`}
-            onClick={handleNaverLogin}
-          >
-            <span className={styles.buttonText}>
-              <span className={styles.buttonTextBold}>네이버</span> 로그인
-            </span>
-          </button>
+          {/* 로그인이 곧 가입이라 별도 가입 화면이 없다. 동의 체크박스는 재로그인할 때마다 거치게 되어 고지로 둔다 */}
+          <p className={styles.consentNotice}>
+            로그인하면{' '}
+            <Link href={SERVICE_ROUTES.terms} className={styles.consentLink}>
+              이용약관
+            </Link>
+            과{' '}
+            <Link href={SERVICE_ROUTES.privacy} className={styles.consentLink}>
+              개인정보처리방침
+            </Link>
+            에 동의하게 됩니다.
+            <br />만 14세 미만은 가입할 수 없어요.
+          </p>
         </div>
       </div>
     </div>

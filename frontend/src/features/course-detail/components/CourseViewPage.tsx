@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { fetchMyPageProfile } from '@/features/my-page/api/my-page.api';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import Avatar from '@/shared/ui/Avatar';
+import CoverImage from '@/shared/ui/CoverImage';
 import {
   ArrowLeft,
   Heart,
@@ -17,6 +19,8 @@ import {
   Trash2,
   X,
   Plus,
+  Pencil,
+  Copy,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
@@ -27,7 +31,8 @@ import { CourseDetailSkeleton } from '@/shared/ui/Skeleton';
 import { useReport, ReportDialog, ReportMenuItem } from '@/features/report';
 import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStorage';
 import type { CurrentUser, ReportTarget } from '@/features/report';
-import { usePlanDetail, usePlanActions, planApi } from '@/features/plan';
+import { usePlanDetail, usePlanActions, planApi, pickPlanCover } from '@/features/plan';
+import { HALF_HOURS, addMinutesToTime, todayLocalDate } from '@/features/plan/utils/schedule';
 import { useComments } from '../hooks/useComments';
 
 interface CourseViewPageProps {
@@ -38,10 +43,25 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const router = useRouter();
 
   // 플랜 상세는 서버에서만 조회한다. 실패 시 에러 UI를 렌더링한다.
-  const { plan, isLoading: isPlanLoading, error: planError, refetch } = usePlanDetail(courseId);
+  const { plan, isLoading: isPlanLoading, error: planError, errorKind: planErrorKind, refetch } = usePlanDetail(courseId);
   const planActions = usePlanActions(plan);
 
-  const { user, isLoggedIn } = useUserStore();
+  const { user, isLoggedIn, updateProfile } = useUserStore();
+
+  // 소유자 판별은 닉네임으로 하므로, 상세에 바로 진입해 스토어가 비어 있으면 프로필을 채운다
+  useEffect(() => {
+    if (!isLoggedIn || user?.name) return;
+    let isMounted = true;
+    fetchMyPageProfile()
+      .then((data) => {
+        if (!isMounted) return;
+        updateProfile({ name: data.userNickname ?? '', avatar: data.userImg ?? '', title: data.userIntro ?? '', bio: data.userIntro ?? '' });
+      })
+      .catch(() => undefined);
+    return () => {
+      isMounted = false;
+    };
+  }, [isLoggedIn, user?.name, updateProfile]);
   const currentUser: CurrentUser = {
     id: user?.id ?? '',
     name: user?.name ?? '',
@@ -67,12 +87,21 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     toggleCommentLike,
     hideComment,
     fetchMore,
+    fetchMoreReplies,
+    fetchingRepliesFor,
   } = useComments(courseId);
 
   const [shareOpen, setShareOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savedCourseId, setSavedCourseId] = useState<string | null>(null);
+  // 담기 후 일정 저장까지 됐는지 — 완료 안내 문구를 가른다
+  const [savedScheduleOk, setSavedScheduleOk] = useState(true);
+  // 일정 담기 — 날짜·시간을 여기서 정한다. 운영 복제 API 는 scheduledDate 를 반영하지 않고
+  // 일정을 비워 두므로(2026-09-11 확인) 복제 후 수정 API 로 시작·종료 일시를 채운다.
+  const [saveDate, setSaveDate] = useState(todayLocalDate());
+  const [saveStartTime, setSaveStartTime] = useState('10:00');
+  const [isSaving, setIsSaving] = useState(false);
   // 어느 댓글의 메뉴인지 추적 — race condition 차단 (Architect C-3)
   const [commentMenuTarget, setCommentMenuTarget] = useState<ReportTarget | null>(null);
 
@@ -83,27 +112,31 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   // 에러 UI — 데이터 로드 실패 또는 존재하지 않는 플랜
   if (!plan) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
+      <div className="flex flex-col items-center justify-center min-h-dvh px-6 text-center">
         <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mb-4">
           <X size={28} className="text-gray-400" />
         </div>
         <p className="text-gray-900 font-bold mb-1">
           {planError ?? '플랜 정보를 불러오지 못했어요.'}
         </p>
-        <p className="text-sm text-gray-500 mb-6">잠시 후 다시 시도해주세요.</p>
-        <div className="flex gap-2 w-full max-w-xs">
+        {planErrorKind !== 'not_found' && (
+          <p className="text-sm text-gray-500 mb-6">잠시 후 다시 시도해주세요.</p>
+        )}
+        <div className={`flex gap-2 w-full max-w-xs ${planErrorKind === 'not_found' ? 'mt-6' : ''}`}>
           <button
             onClick={() => router.back()}
             className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm"
           >
             돌아가기
           </button>
-          <button
-            onClick={refetch}
-            className="flex-1 py-3 bg-primary-500 text-white font-bold rounded-xl text-sm shadow-md shadow-primary-200"
-          >
-            다시 시도
-          </button>
+          {planErrorKind !== 'not_found' && (
+            <button
+              onClick={refetch}
+              className="flex-1 py-3 bg-primary-500 text-white font-bold rounded-xl text-sm shadow-md shadow-primary-200"
+            >
+              다시 시도
+            </button>
+          )}
         </div>
       </div>
     );
@@ -115,15 +148,17 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const scrapCount = planActions.scrapCount;
 
   const places = [...plan.planPlaceDetailDtos].sort((a, b) => a.orderIndex - b.orderIndex);
-  const heroImage =
-    plan.thumbnailUrl ||
-    plan.planImageUrls[0] ||
-    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=1080&auto=format&fit=crop';
+  // 대표 이미지 — 목록 카드와 같은 규칙(pickPlanCover). 모두 없으면 CoverImage 가 기본 커버를 그린다.
+  const heroImage = pickPlanCover(plan);
   const locationLabel = places[0]?.address?.split(' ').slice(0, 2).join(' ') || '';
   const durationLabel =
     plan.requiredTime >= 60
       ? `${Math.floor(plan.requiredTime / 60)}시간${plan.requiredTime % 60 ? ` ${plan.requiredTime % 60}분` : ''}`
       : `${plan.requiredTime}분`;
+
+  // 현재 유저의 userId 를 주는 API 가 없어(userinfo=email/role, profile=닉네임) 닉네임으로 판별한다.
+  // 내 플랜이면 스크랩·'일정 담기' 하단 바는 의미가 없으므로 숨기고 좋아요만 남긴다.
+  const isMyPlan = isLoggedIn && !!user?.name && user.name === plan.userNickname;
 
   const courseTarget: ReportTarget = {
     type: 'course',
@@ -137,38 +172,50 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     setShowSaveModal(true);
   };
 
+  // 종료 시간은 플랜 소요시간으로 자동 계산한다(사용자가 두 번 고르지 않게).
+  const saveEndTime = addMinutesToTime(saveStartTime, plan.requiredTime);
+
   const confirmSave = async () => {
+    if (!saveDate || !saveStartTime || isSaving) return;
+    setIsSaving(true);
     try {
-      // 빠른 담기 플로우 — scheduledDate 미선택이므로 오늘 날짜(YYYY-MM-DD)를 기본값으로 전송
-      const scheduledDate = new Date().toISOString().slice(0, 10);
-      const res = await planApi.clonePlan(plan.planId, { scheduledDate });
+      // 복제 API 가 일정을 비워 두므로 복제 직후 일정까지 채운다 (clonePlanWithSchedule 참고)
+      const res = await planApi.clonePlanWithSchedule(plan.planId, {
+        date: saveDate,
+        startTime: saveStartTime,
+        endTime: saveEndTime,
+      });
       setSavedCourseId(String(res.planId));
-      toast.success('내 일정에 담았어요!');
+      setSavedScheduleOk(res.scheduleSaved);
+      if (res.scheduleSaved) {
+        toast.success('내 일정에 담았어요!');
+      } else {
+        toast.warning('플랜은 담았지만 일정을 저장하지 못했어요.', {
+          description: '내 플랜에서 여행 일정을 다시 설정해주세요.',
+        });
+      }
     } catch {
       toast.error('일정 담기에 실패했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
+  // 복제된 플랜은 내 소유이므로 편집 가능한 나의 플랜 화면으로 보낸다.
+  // (/course 공개 상세로 보내면 더보기 메뉴에 편집 항목이 없어 빈 시트만 떴다)
   const goToMyCourse = () => {
     if (savedCourseId) {
-      router.push(`/course/${savedCourseId}`);
+      router.push(`/my-course/${savedCourseId}`);
     }
     setShowSaveModal(false);
     setSavedCourseId(null);
   };
 
   return (
-    <div className="bg-white pb-24 min-h-screen relative">
+    <div className="bg-white pb-24 min-h-dvh relative">
       {/* 히어로 이미지 */}
       <div className="relative h-64 w-full">
-        <Image
-          src={heroImage}
-          alt={plan.planTitle}
-          fill
-          sizes="100vw"
-          className="object-cover"
-          priority
-        />
+        <CoverImage src={heroImage} alt={plan.planTitle} seed={plan.planId} size="lg" priority />
         <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start bg-gradient-to-b from-black/40 to-transparent">
           <button
             onClick={() => router.back()}
@@ -212,14 +259,8 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           className="flex items-center gap-3 cursor-pointer active:opacity-70"
           onClick={() => router.push(`/profile/${plan.userId}`)}
         >
-          <div className="relative w-10 h-10 rounded-full overflow-hidden border border-gray-200">
-            <Image
-              src={plan.userAvatar || `https://i.pravatar.cc/150?u=${plan.userId}`}
-              alt={plan.userNickname}
-              fill
-              sizes="40px"
-              className="object-cover"
-            />
+          <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 flex-shrink-0">
+            <Avatar src={plan.userAvatar} alt={plan.userNickname} size={38} />
           </div>
           <div>
             <div className="text-sm font-bold text-gray-900">{plan.userNickname}</div>
@@ -252,16 +293,15 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
             <Bookmark size={14} className="text-primary-500" /> {scrapCount}
           </div>
         </div>
-        <button
-          onClick={planActions.toggleLike}
-          className="bg-gray-50 p-3 rounded-lg active:bg-gray-100 transition-colors"
-        >
+        {/* 소요시간·스크랩과 나란한 통계 표시라 좋아요도 읽기 전용으로 둔다.
+            좋아요 토글은 상단 하트 버튼과 하단 액션 바에서만 한다. */}
+        <div className="bg-gray-50 p-3 rounded-lg">
           <div className="text-xs text-gray-500 mb-1">좋아요</div>
           <div className="font-bold text-gray-900 flex items-center justify-center gap-1">
             <Heart size={14} className={liked ? 'text-red-500 fill-red-500' : 'text-gray-400'} />
             {likeCount}
           </div>
-        </button>
+        </div>
       </div>
 
       {/* 설명 */}
@@ -274,15 +314,21 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
           <Clock size={20} className="text-primary-500" /> 여행 플랜 타임라인
         </h2>
-        <div className="relative pl-2 space-y-8 before:absolute before:inset-0 before:ml-2 before:h-full before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-primary-200 before:to-gray-100 before:content-['']">
+        {/* 세로 라인과 점은 같은 기준(left-2, 중심 8px)에 놓는다.
+            이전에는 컨테이너 pl-2 안쪽의 아이템 left-0 에 점을 두어 라인보다 7px 오른쪽에 찍혔다. */}
+        <div className="relative space-y-8 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:-translate-x-1/2 before:bg-gradient-to-b before:from-primary-200 before:to-gray-100 before:content-['']">
           {places.map((stop) => (
             <div key={stop.planPlaceId} className="relative pl-8">
-              <span className="absolute left-0 top-1.5 -ml-px h-4 w-4 rounded-full border-2 border-white bg-primary-500 shadow-sm z-10" />
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1">
-                <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded w-fit mb-1">
-                  {stop.visitTime}
-                </span>
-                <span className="text-xs text-gray-400 font-medium ml-auto sm:ml-2">
+              <span className="absolute left-2 top-1 -translate-x-1/2 h-4 w-4 rounded-full border-2 border-white bg-primary-500 shadow-sm z-10" />
+              <div className="flex flex-row items-center justify-between mb-1 min-h-6">
+                {stop.visitTime ? (
+                  <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded w-fit">
+                    {stop.visitTime}
+                  </span>
+                ) : (
+                  <span />
+                )}
+                <span className="text-xs text-gray-400 font-medium ml-auto">
                   {stop.categoryName}
                 </span>
               </div>
@@ -342,9 +388,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
               <div key={comment.replyId}>
                 {/* 부모 댓글 */}
                 <div className="flex items-start gap-3">
-                  <div className="relative w-9 h-9 rounded-full overflow-hidden flex-shrink-0">
-                    <Image src={comment.avatar} alt="Avatar" fill sizes="36px" className="object-cover" />
-                  </div>
+                  <Avatar src={comment.avatar} alt={comment.user} size={36} />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-bold text-gray-900">{comment.user}</div>
@@ -410,13 +454,11 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                 </div>
 
                 {/* 대댓글 */}
-                {comment.replies.replies.length > 0 && (
+                {(comment.replies.replies.length > 0 || comment.replies.hasNext) && (
                   <div className="ml-12 mt-3 space-y-3 border-l-2 border-gray-100 pl-3">
                     {comment.replies.replies.map((reply) => (
                       <div key={reply.replyId} className="flex items-start gap-3">
-                        <div className="relative w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
-                          <Image src={reply.avatar} alt="Avatar" fill sizes="28px" className="object-cover" />
-                        </div>
+                        <Avatar src={reply.avatar} alt={reply.user} size={28} />
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
                             <div className="text-xs font-bold text-gray-900">{reply.user}</div>
@@ -473,6 +515,16 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                         </div>
                       </div>
                     ))}
+                    {comment.replies.hasNext && (
+                      <button
+                        type="button"
+                        onClick={() => fetchMoreReplies(comment.replyId)}
+                        disabled={fetchingRepliesFor === comment.replyId}
+                        className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                      >
+                        {fetchingRepliesFor === comment.replyId ? '불러오는 중...' : '답글 더보기'}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -491,35 +543,37 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         )}
       </div>
 
-      <BottomActionBar
-        iconActions={[
-          {
-            id: 'like',
-            icon: Heart,
-            label: '좋아요',
-            active: liked,
-            activeTone: 'like',
-            filled: true,
-            onClick: planActions.toggleLike,
-          },
-          {
-            id: 'bookmark',
-            icon: Bookmark,
-            label: '스크랩',
-            active: bookmarked,
-            activeTone: 'bookmark',
-            filled: true,
-            onClick: planActions.toggleScrap,
-          },
-        ]}
-        primaryLabel="이 플랜으로 일정 담기"
-        primaryIcon={Plus}
-        onPrimaryClick={handleSaveCourse}
-      />
+      {!isMyPlan && (
+        <BottomActionBar
+          iconActions={[
+            {
+              id: 'like',
+              icon: Heart,
+              label: '좋아요',
+              active: liked,
+              activeTone: 'like',
+              filled: true,
+              onClick: planActions.toggleLike,
+            },
+            {
+              id: 'bookmark',
+              icon: Bookmark,
+              label: '스크랩',
+              active: bookmarked,
+              activeTone: 'bookmark',
+              filled: true,
+              onClick: planActions.toggleScrap,
+            },
+          ]}
+          primaryLabel="이 플랜으로 일정 담기"
+          primaryIcon={Plus}
+          onPrimaryClick={handleSaveCourse}
+        />
+      )}
 
       {/* ─── 모달: 일정 담기 ─── */}
       {showSaveModal && (
-        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-[120] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowSaveModal(false)} />
           <div className="relative w-full max-w-xs bg-white rounded-2xl p-6">
             {!savedCourseId ? (
@@ -528,11 +582,52 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                 <p className="text-sm text-gray-500 mb-1">
                   <span className="font-bold text-gray-700">&ldquo;{plan.planTitle}&rdquo;</span>
                 </p>
-                <p className="text-sm text-gray-500 mb-5">
-                  이 플랜을 내 일정에 추가하시겠어요?
-                  <br />
-                  담은 후 날짜와 순서를 수정할 수 있어요.
+                <p className="text-sm text-gray-500 mb-4">
+                  언제 떠날지 정해주세요. 담은 후에도 바꿀 수 있어요.
                 </p>
+                <div className="space-y-3 mb-5 text-left">
+                  <div>
+                    <label
+                      htmlFor="save-date"
+                      className="text-xs font-bold text-gray-500 mb-1 block"
+                    >
+                      여행 날짜
+                    </label>
+                    <input
+                      id="save-date"
+                      type="date"
+                      value={saveDate}
+                      onChange={(e) => setSaveDate(e.target.value)}
+                      min={todayLocalDate()}
+                      className="w-full p-3 border border-gray-200 rounded-xl text-base"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="save-start-time"
+                      className="text-xs font-bold text-gray-500 mb-1 block"
+                    >
+                      시작 시간
+                    </label>
+                    <select
+                      id="save-start-time"
+                      value={saveStartTime}
+                      onChange={(e) => setSaveStartTime(e.target.value)}
+                      className="w-full p-3 border border-gray-200 rounded-xl text-sm appearance-none"
+                    >
+                      {HALF_HOURS.map((h) => (
+                        <option key={h.value} value={h.value}>
+                          {h.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      소요시간 {durationLabel} 기준으로 종료 시간은{' '}
+                      {HALF_HOURS.find((h) => h.value === saveEndTime)?.label ?? saveEndTime} 로
+                      설정돼요.
+                    </p>
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setShowSaveModal(false)}
@@ -542,22 +637,34 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                   </button>
                   <button
                     onClick={confirmSave}
-                    className="flex-1 py-3 bg-primary-500 font-bold rounded-xl text-sm text-white shadow-md shadow-primary-200"
+                    disabled={!saveDate || !saveStartTime || isSaving}
+                    className="flex-1 py-3 bg-primary-500 font-bold rounded-xl text-sm text-white shadow-md shadow-primary-200 disabled:bg-gray-300 disabled:shadow-none"
                   >
-                    담기
+                    {isSaving ? '담는 중...' : '담기'}
                   </button>
                 </div>
               </>
             ) : (
               <div className="text-center">
-                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3 text-green-500">
+                <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3 text-primary-500">
                   <Check size={24} strokeWidth={3} />
                 </div>
                 <h3 className="font-bold text-lg mb-2 text-gray-900">일정에 담았어요!</h3>
+                {/* 날짜·시간은 담기 모달에서 이미 정했다. 일정 저장이 실패했을 때만 다시 설정하라고 안내한다. */}
                 <p className="text-sm text-gray-500 mb-6">
-                  내 플랜 상세에서 날짜를 설정하고
-                  <br />
-                  여행을 시작해보세요.
+                  {savedScheduleOk ? (
+                    <>
+                      {saveDate} {saveStartTime} 출발 일정으로 담았어요.
+                      <br />
+                      내 플랜에서 언제든 바꿀 수 있어요.
+                    </>
+                  ) : (
+                    <>
+                      일정은 저장하지 못했어요.
+                      <br />
+                      내 플랜에서 여행 일정을 다시 설정해주세요.
+                    </>
+                  )}
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -584,20 +691,49 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
 
       {/* ─── 더보기 메뉴 ─── */}
       {isMenuOpen && (
-        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
+        <div className="fixed inset-y-0 app-frame z-[120] flex items-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setIsMenuOpen(false)} />
           <div className="relative w-full bg-white rounded-t-3xl p-4 shadow-xl">
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-            <button
-              onClick={() => {
-                planActions.toggleScrap();
-                setIsMenuOpen(false);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
-            >
-              <Bookmark size={18} className="text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">플랜 저장 / 해제</span>
-            </button>
+            {/* 내 플랜(복제해 온 플랜 포함)은 저장·신고 항목이 모두 빠져 시트가 비어 보였다.
+                편집은 나의 플랜 화면에서 하므로 그쪽으로 보내는 항목을 둔다. */}
+            {isMyPlan && (
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  router.push(`/my-course/${plan.planId}`);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
+              >
+                <Pencil size={18} className="text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">나의 플랜에서 편집하기</span>
+              </button>
+            )}
+            {!isMyPlan && (
+              <button
+                onClick={() => {
+                  planActions.toggleScrap();
+                  setIsMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
+              >
+                <Bookmark size={18} className="text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">플랜 저장 / 해제</span>
+              </button>
+            )}
+            {/* 남의 플랜(저장한 플랜 포함)은 복제할 수 있다 — 하단 '일정 담기'와 같은 모달로 날짜·시간을 정해 복제한다 */}
+            {!isMyPlan && (
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  handleSaveCourse();
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
+              >
+                <Copy size={18} className="text-gray-500" />
+                <span className="text-sm font-medium text-gray-700">플랜 복제하기</span>
+              </button>
+            )}
             <ReportMenuItem
               target={courseTarget}
               currentUser={currentUser}
@@ -641,7 +777,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       {/* BottomMenu는 items: MenuItem[] 배열만 지원하고 children/slot 미지원이므로
           기존 isMenuOpen 패턴(인라인 bottom-sheet)을 재사용한다 (PR-4 범위 내 최소 침습) */}
       {commentMenuTarget !== null && (
-        <div className="fixed inset-y-0 app-frame z-50 flex items-end">
+        <div className="fixed inset-y-0 app-frame z-[120] flex items-end">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setCommentMenuTarget(null)}
@@ -669,7 +805,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
 
       {/* ─── 댓글 삭제 확인 모달 ─── */}
       {deleteTarget && (
-        <div className="fixed inset-y-0 app-frame z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-y-0 app-frame z-[120] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setDeleteTarget(null)} />
           <div className="relative w-full max-w-[320px] bg-white rounded-2xl p-6 shadow-lg">
             <h3 className="text-gray-900 text-lg font-bold mb-2">댓글을 삭제하시겠어요?</h3>

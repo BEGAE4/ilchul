@@ -1,4 +1,4 @@
-// PLAN API (v6) 타입 정의 — cc/api/v6/260723-v6-004-plan.md, 005-plan-place.md, 002-mypage.md 기준
+// PLAN API 타입 정의 — cc/input/api-명세-260822.json (swagger) 기준으로 대조 완료 (260823)
 
 export interface DeparturePoint {
   name: string;
@@ -18,10 +18,19 @@ export interface PlanPlaceDetail {
   roadAddress: string;
   orderIndex: number;
   visitTime: string;
-  stayDescription: string;
+  // 명세(swagger 260914) PlanPlaceDetailDto 에 없는 필드. 2026-09-05 에는 플랜 설명이 복사돼 왔고(2-3),
+  // 백엔드가 필드를 제거하는 쪽으로 정리한 것으로 보인다. 없으면 normalizePlanDetail 이 '' 로 채우고 화면은 주소로 폴백한다.
+  stayDescription?: string;
   isStamped: boolean;
   travelTime: number;
   stayTime: number;
+}
+
+// 플랜 이미지 항목 (명세 PlanImageDto). DELETE /api/plan/{planId}/images?imageIds= 가 ID 를 요구한다.
+// 2026-09-14 백엔드가 상세 응답에 추가 (2-4). 사진 관리 시트의 삭제 버튼이 이 ID 로 동작한다.
+export interface PlanImageItem {
+  planImageId: number;
+  imageUrl: string;
 }
 
 // 플랜 상세 조회 응답 (PlanDetailDto) — 래핑 없이 직접 반환
@@ -37,7 +46,7 @@ export interface PlanDetail {
   isLiked: boolean;
   requiredTime: number;
   totalDistance: number;
-  // 수정 시 이동시간 계산에 필요 — 백엔드가 상세 응답에 추가 예정(배포 전엔 undefined일 수 있음)
+  // 명세(260822)에 포함됨 — 출발지 미설정 시 null 가능
   departurePoint?: DeparturePoint | null;
   planDescription: string;
   likeCount: number;
@@ -46,6 +55,8 @@ export interface PlanDetail {
   userNickname: string;
   userAvatar: string;
   planImageUrls: string[];
+  // 명세 PlanDetailDto.planImages. null 로 올 가능성에 대비해 normalizePlanDetail 이 [] 로 채운다
+  planImages: PlanImageItem[];
   tags: string[];
   thumbnailUrl: string;
   planPlaceDetailDtos: PlanPlaceDetail[];
@@ -68,6 +79,7 @@ export interface CreatePlanBody {
   requiredTime: number;
   totalDistance: number;
   departurePoint?: DeparturePoint;
+  // 'yyyy-MM-dd HH:mm' (toServerDateTime 으로 생성; ISO 'T' 형식은 400)
   tripStartDate?: string;
   tripEndDate?: string;
   places?: CreatePlanPlaceRequest[];
@@ -85,6 +97,7 @@ export interface UpdatePlanBody {
   planTitle?: string;
   isPlanVisible?: boolean;
   planDescription?: string;
+  // 'yyyy-MM-dd HH:mm' (toServerDateTime 으로 생성; ISO 'T' 형식은 400)
   tripStartDate?: string;
   tripEndDate?: string;
 }
@@ -111,6 +124,7 @@ export interface UpdatePlanPlacesResponse {
 
 // 플랜 복제 (POST /api/plan/{planId}/clone)
 export interface ClonePlanBody {
+  // 명세 format: date — 'yyyy-MM-dd'
   scheduledDate?: string;
 }
 
@@ -142,13 +156,15 @@ export interface PlanPreviewPlace {
   categoryName: string;
   duration: number;
   order: number;
-  stayTime: number;
+  // 운영 생성 프리뷰 응답에는 없다 (2026-09-13 확인) — 없으면 추천 체류시간으로 채운다
+  stayTime?: number;
   isStamped: boolean;
   x: number;
   y: number;
 }
 
 export interface PlanPreviewResponse {
+  // UpdatePlanPreviewResponseDto 에만 존재(CreatePlanPreviewResponseDto 에는 없음)
   planId?: number;
   planTitle: string;
   planDescription: string;
@@ -169,22 +185,4 @@ export interface StampPlanPlaceResponse {
   stampedAt: string;
 }
 
-// 내 플랜 / 내 스크랩 목록 (GET /api/mypage/plans, /api/mypage/scrapped)
-export interface PlanSummary {
-  planId: number;
-  planTitle: string;
-  createAt: string;
-  tripStartDate: string;
-  tripEndDate: string;
-  isPlanVisible: boolean;
-  requiredTime: number;
-  planImages: string[];
-}
-
-export interface MyPlansResponse {
-  plans: PlanSummary[];
-}
-
-export interface ScrappedPlansResponse {
-  scrappedPlans: PlanSummary[];
-}
+// 내 플랜 / 내 스크랩 목록 타입(PlanSummary 등)은 my-page feature(types/plan.types.ts)에서 담당한다.

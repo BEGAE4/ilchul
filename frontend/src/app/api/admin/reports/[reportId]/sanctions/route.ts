@@ -1,46 +1,26 @@
 import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
-import { applyMockSanction } from '../../_mock';
-
-const VALID_TYPES = ['WARNING', 'CONTENT_BLINDED', 'TEMP_BAN', 'PERMANENT_BAN'] as const;
-const VALID_RESOLUTIONS = ['BLINDED', 'WARNED', 'BANNED', 'NO_ACTION'] as const;
-const useMock = true;
 
 interface RouteContext {
   params: Promise<{ reportId: string }>;
 }
 
+// 신고 제재 등록 — 백엔드 POST /api/admin/reports/{reportId}/sanctions 프록시
 export async function POST(req: NextRequest, ctx: RouteContext) {
   const { reportId } = await ctx.params;
+  const baseUrl = getServerApiBaseUrl();
+  if (!baseUrl) {
+    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
+  }
+
   const body = await req.json().catch(() => ({}));
-
-  if (!useMock) {
-    const baseUrl = getServerApiBaseUrl();
-    const cookie = req.headers.get('cookie') ?? '';
-    const res = await fetch(`${baseUrl}/api/admin/reports/${reportId}/sanctions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(cookie ? { cookie } : {}) },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
-    return NextResponse.json(data, { status: res.status });
-  }
-  if (!body?.type || !(VALID_TYPES as readonly string[]).includes(body.type)) {
-    return NextResponse.json({ error: 'invalid type' }, { status: 400 });
-  }
-  if (!body?.resolution || !(VALID_RESOLUTIONS as readonly string[]).includes(body.resolution)) {
-    return NextResponse.json({ error: 'invalid resolution' }, { status: 400 });
-  }
-  if (typeof body.message !== 'string' || body.message.trim().length === 0) {
-    return NextResponse.json({ error: 'message required' }, { status: 400 });
-  }
-
-  const result = applyMockSanction(reportId, {
-    type: body.type,
-    durationDays: typeof body.durationDays === 'number' ? body.durationDays : undefined,
-    message: body.message.trim(),
-    resolution: body.resolution,
+  const cookie = req.headers.get('cookie') ?? '';
+  const res = await fetch(`${baseUrl}/api/admin/reports/${reportId}/sanctions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(cookie ? { cookie } : {}) },
+    body: JSON.stringify(body),
+    cache: 'no-store',
   });
-  if (!result) return NextResponse.json({ error: 'not found' }, { status: 404 });
-  return NextResponse.json(result, { status: 201 });
+  const data = await res.json().catch(() => ({}));
+  return NextResponse.json(data, { status: res.status });
 }

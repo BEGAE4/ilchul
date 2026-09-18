@@ -31,7 +31,7 @@ export const InquiryCard = ({ inquiry, showUser = false, onClick, onAnswer }: In
               </span>
               <span
                 className={`text-xs font-medium rounded-full px-2 py-0.5 ${
-                  isPending ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-600'
+                  isPending ? 'bg-accent-50 text-accent-500' : 'bg-primary-50 text-primary-600'
                 }`}
               >
                 {INQUIRY_STATUS_LABELS[inquiry.status]}

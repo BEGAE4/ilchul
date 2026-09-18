@@ -1,27 +1,20 @@
 import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 
+// 신고 생성 — 백엔드 POST /api/report 프록시
 export async function POST(request: NextRequest) {
   const baseUrl = getServerApiBaseUrl();
-  const body = await request.json();
+  const body = await request.json().catch(() => ({}));
 
-  // dev only: baseUrl 미설정 시 mock 반환
   if (!baseUrl) {
-    if (process.env.NODE_ENV === 'production') {
-      // 프로덕션에서 baseUrl이 비어 있으면 설정 실수 — 502로 표면화 (Architect C-1)
-      return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
-    }
-    return NextResponse.json(
-      { reportId: `mock-${Date.now()}`, status: 'PENDING', alreadyReported: false },
-      { status: 201 }
-    );
+    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
   }
 
   const cookie = request.headers.get('cookie') ?? '';
   const idemKey = request.headers.get('idempotency-key') ?? '';
 
   // try/catch 폴백 제거 — fetch 예외는 그대로 throw → Next가 500으로 전파 (Architect C-1)
-  const res = await fetch(`${baseUrl}/api/reports`, {
+  const res = await fetch(`${baseUrl}/api/report`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -29,6 +22,7 @@ export async function POST(request: NextRequest) {
       ...(idemKey ? { 'idempotency-key': idemKey } : {}),
     },
     body: JSON.stringify(body),
+    cache: 'no-store',
   });
 
   const data = await res.json().catch(() => ({}));

@@ -1,18 +1,12 @@
 import type { Place } from '@/shared/types';
+import type { RecommendResponse } from '@/features/place/types/place.types';
 
-// 추천 응답은 "키워드별로 묶인 그룹"의 배열이다 (BE RecommendPlaceResponseDto).
-//   [{ keyword: '카페', radiusM: 2000, places: [{ placeId, placeName, ... }] }]
-// 이전 구현은 평면 장소 배열을 기대해 그룹 객체에서 placeId/placeName을 찾지 못했고,
-// 결과적으로 서버 추천을 전량 버리고 목데이터로 폴백하고 있었다.
-// 명세(260819)의 응답 타입이 여전히 비어 있어 서버가 평면 배열로 바뀔 여지가 있으므로 두 모양을 모두 받는다.
+// 추천 응답(확정, 260822)은 AI가 순서까지 정한 플랜 객체다.
+//   { recommendId, candidateCount, plan, items: [{ order, placeId, placeName, stayMinutes, reason, tags, ... }] }
+// 이전 구현은 키워드별 그룹 배열을 기대해 객체 응답을 통째로 버리고 목데이터로 폴백하고 있었다.
 
-// 키워드 하나가 목록을 독차지하지 않도록 그룹마다 상위 N개만 쓴다.
-// 카카오 키워드 검색이 키워드당 최대 15건을 주므로, 그대로 이으면 모바일에서 40건이 넘는 목록이 된다.
-const MAX_PLACES_PER_KEYWORD = 5;
-
-// 추천 응답(SearchPlaceResponseDto)에는 체류시간이 없다.
-// 선택 화면의 총 소요시간 계산이 이 값을 기준으로 하므로 빈 값을 두면 계산이 0이 된다.
-const DEFAULT_STAY_TIME = '60분';
+// 응답에 체류시간이 없거나 0 이하일 때 쓰는 값. 선택 화면의 총 소요시간 계산이 time을 기준으로 한다.
+const DEFAULT_STAY_MINUTES = 60;
 
 // 비어 있지 않은 첫 문자열을 고른다 — 서버가 필드명을 바꿔도 후보를 나열해 흡수한다.
 function pickString(...candidates: unknown[]): string {
@@ -22,84 +16,65 @@ function pickString(...candidates: unknown[]): string {
   return '';
 }
 
-function toPlace(raw: unknown, keyword?: string): Place | null {
+function toPlace(raw: unknown): Place | null {
   if (!raw || typeof raw !== 'object') return null;
   const item = raw as Record<string, unknown>;
   const id = item.placeId ?? item.id;
   const name = pickString(item.placeName, item.name);
   if (id === undefined || id === null || !name) return null;
 
-  // 좌표: 응답이 location { x, y } 또는 평면 x/y 어느 쪽이든 수용 (x=경도, y=위도)
-  const loc =
-    item.location && typeof item.location === 'object'
-      ? (item.location as Record<string, unknown>)
-      : undefined;
-  const x = typeof item.x === 'number' ? item.x : typeof loc?.x === 'number' ? loc.x : undefined;
-  const y = typeof item.y === 'number' ? item.y : typeof loc?.y === 'number' ? loc.y : undefined;
+  // 좌표: x=경도, y=위도
+  const x = typeof item.x === 'number' ? item.x : undefined;
+  const y = typeof item.y === 'number' ? item.y : undefined;
 
   // 카카오 카테고리는 '음식점 > 카페 > 커피전문점' 형태라 배지에 그대로 넣으면 줄이 터진다. 끝 항목만 쓴다.
   const rawCategory = pickString(item.categoryName, item.category);
   const category = rawCategory.split('>').pop()?.trim() || '추천 장소';
 
+  const stayMinutes =
+    typeof item.stayMinutes === 'number' && item.stayMinutes > 0
+      ? item.stayMinutes
+      : DEFAULT_STAY_MINUTES;
+
   return {
     id: String(id),
     name,
     category,
-    time: pickString(item.time) || DEFAULT_STAY_TIME,
-    // description/phone/tags는 추천 응답에 없는 필드다. 없으면 화면에서 해당 영역을 감춘다.
-    description: pickString(item.description),
+    // 선택 화면은 '90분' 같은 문자열에서 숫자를 뽑아 합산한다 (parseStayMinutes)
+    time: `${stayMinutes}분`,
+    // AI가 이 장소를 고른 이유를 설명으로 보여준다
+    description: pickString(item.reason, item.description),
     image: pickString(item.placeImageUrl, item.image),
-    address: pickString(item.addressName, item.roadAddressName, item.address),
+    address: pickString(item.roadAddressName, item.addressName, item.address),
     phone: pickString(item.phone),
-    // 태그 대신 "어떤 키워드로 걸린 장소인지"를 넣는다 — 추천 이유를 보여줄 유일한 단서다.
     tags: Array.isArray(item.tags)
-      ? item.tags.filter((t): t is string => typeof t === 'string')
-      : keyword
-        ? [`#${keyword}`]
-        : [],
+      ? item.tags.filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+      : [],
     ...(x !== undefined && y !== undefined ? { coord: { lat: y, lng: x } } : {}),
   };
 }
 
-export function mapRecommendedPlaces(data: unknown): Place[] {
-  if (!Array.isArray(data)) return [];
+// 응답 객체의 items를 order 순으로 정렬해 Place 목록으로 바꾼다.
+// 방어적으로 평면 배열이 오더라도 그대로 받아준다.
+export function mapRecommendedPlaces(data: RecommendResponse | unknown): Place[] {
+  const items: unknown[] = Array.isArray(data)
+    ? data
+    : data && typeof data === 'object' && Array.isArray((data as { items?: unknown }).items)
+      ? ((data as { items: unknown[] }).items)
+      : [];
 
-  // 1) 그룹 배열로 정규화 — 평면 배열이 오면 키워드 없는 한 덩어리로 취급한다.
-  const groups: { keyword?: string; places: unknown[] }[] = [];
-  for (const entry of data) {
-    const obj = entry && typeof entry === 'object' ? (entry as Record<string, unknown>) : null;
-    if (obj && Array.isArray(obj.places)) {
-      groups.push({
-        keyword: typeof obj.keyword === 'string' ? obj.keyword : undefined,
-        places: obj.places,
-      });
-    } else {
-      const last = groups[groups.length - 1];
-      if (last && last.keyword === undefined) last.places.push(entry);
-      else groups.push({ places: [entry] });
-    }
-  }
+  const orderOf = (raw: unknown): number => {
+    const o = raw && typeof raw === 'object' ? (raw as { order?: unknown }).order : undefined;
+    return typeof o === 'number' ? o : Number.MAX_SAFE_INTEGER;
+  };
 
-  // 2) 그룹마다 상위 N개만 남긴다.
-  const buckets = groups.map((g) =>
-    g.places
-      .map((p) => toPlace(p, g.keyword))
-      .filter((p): p is Place => p !== null)
-      .slice(0, MAX_PLACES_PER_KEYWORD)
-  );
-
-  // 3) 라운드로빈으로 섞어 모든 키워드가 목록 앞쪽에 고르게 보이게 한다.
-  //    키워드가 겹치면 같은 장소가 여러 그룹에 들어오므로 placeId로 중복을 제거한다.
   const seen = new Set<string>();
-  const merged: Place[] = [];
-  const depth = buckets.reduce((max, b) => Math.max(max, b.length), 0);
-  for (let i = 0; i < depth; i++) {
-    for (const bucket of buckets) {
-      const place = bucket[i];
-      if (!place || seen.has(place.id)) continue;
-      seen.add(place.id);
-      merged.push(place);
-    }
+  const result: Place[] = [];
+  for (const raw of [...items].sort((a, b) => orderOf(a) - orderOf(b))) {
+    const place = toPlace(raw);
+    if (!place || seen.has(place.id)) continue;
+    seen.add(place.id);
+    result.push(place);
   }
-  return merged;
+  return result;
 }

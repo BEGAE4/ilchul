@@ -75,7 +75,7 @@ export function HomePageSkeleton() {
 
 export function CourseDetailSkeleton() {
   return (
-    <div className="bg-white min-h-screen pb-24">
+    <div className="bg-white min-h-dvh pb-24">
       <div className="bg-gray-200 animate-pulse h-64 w-full" />
       <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
         <div className="w-10 h-10 bg-gray-200 animate-pulse rounded-full" />

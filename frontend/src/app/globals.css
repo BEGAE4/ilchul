@@ -80,8 +80,11 @@
   --spacing-safe-right: env(safe-area-inset-right);
 
   /* 앱 프레임 폭 (단일 소스) — 모든 화면·오버레이가 이 폭으로 정렬된다.
-     Tailwind: max-w-app / w-app, SCSS: var(--container-app) */
-  --container-app: 390px;
+     Tailwind: max-w-app / w-app, SCSS: var(--container-app)
+     휴대폰에서는 화면을 꽉 채우고, 태블릿·데스크톱에서만 가운데 정렬 기둥이 되도록
+     현행 폰 최대 폭(iPhone Pro Max 440px)보다 넉넉한 값으로 둔다.
+     390px 이던 시절에는 393~440px 폰에서 양옆에 2~25px 회색 여백이 드러났다. */
+  --container-app: 480px;
 }
 
 /* Pretendard Variable 폰트 정의  */
@@ -206,6 +209,19 @@ body {
   translate: -50% 0;
 }
 
+/* ========================================
+   z-index 층위 (고정/오버레이 요소는 반드시 이 값 중 하나를 쓴다)
+
+     40  헤더(sticky)
+    100  하단 고정 바 — BottomNavigation, BottomActionBar, 장소 상세 액션바
+    110  오버레이(딤) — 바텀시트 뒤에 깔리는 검은 배경
+    120  바텀시트·모달 본체
+    199+ 최상위 다이얼로그(ReportDialog)
+
+   하단 바가 100 이므로 시트를 100 이하로 두면 바에 가려 버튼이 눌리지 않는다.
+   Tailwind 클래스로 쓸 때는 z-[110] / z-[120] 처럼 이 값을 그대로 쓴다.
+   ======================================== */
+
 /* 모바일 최적화 컨테이너 */
 .mobile-container {
   max-width: 100vw;
@@ -257,15 +273,20 @@ select {
   appearance: none;
 }
 
-/* 모바일 이미지 최적화 */
-img {
-  max-width: 100%;
-  height: auto;
-  -webkit-user-drag: none;
-  -khtml-user-drag: none;
-  -moz-user-drag: none;
-  -o-user-drag: none;
-  user-drag: none;
+/* 모바일 이미지 최적화
+   레이어 밖 규칙은 Tailwind 유틸리티(@layer utilities)보다 항상 우선하므로
+   `img { height: auto }` 가 h-full/h-32 를 덮어써 카드 이미지가 박스를 넘어 푸터를 가렸다.
+   base 레이어에 넣어 유틸리티가 이기게 한다. */
+@layer base {
+  img {
+    max-width: 100%;
+    height: auto;
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+  }
 }
 
 /* ========================================

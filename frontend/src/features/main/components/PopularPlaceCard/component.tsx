@@ -1,8 +1,7 @@
 'use client';
 
-import Image from 'next/image';
+import CoverImage from '@/shared/ui/CoverImage';
 import { Heart } from 'lucide-react';
-import { getSafeImageSrc } from '../../utils/image';
 import type { PopularPlaceCardProps } from './types';
 import styles from './styles.module.scss';
 
@@ -14,12 +13,13 @@ export function PopularPlaceCard({ place, onClick }: PopularPlaceCardProps) {
       className={`${styles.card} group bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 active:scale-[0.98] transition-transform`}
     >
       <div className="relative h-32 overflow-hidden">
-        <Image
-          src={getSafeImageSrc(place.image)}
+        <CoverImage
+          src={place.image}
           alt={place.name}
-          fill
+          seed={place.id}
+          size="sm"
           sizes="(max-width: 480px) 50vw, 200px"
-          className="object-cover transition-transform group-hover:scale-110 duration-500"
+          imageClassName="transition-transform group-hover:scale-110 duration-500"
         />
         <div className="absolute top-2 left-2 min-w-5 h-5 px-1 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded text-[10px] text-white font-bold">
           {place.ranking}
@@ -35,7 +35,7 @@ export function PopularPlaceCard({ place, onClick }: PopularPlaceCardProps) {
         <div className="flex items-center justify-between">
           <span className="text-xs text-gray-400 truncate">{place.location}</span>
           <div className="flex items-center gap-0.5 text-xs text-gray-400 shrink-0">
-            <Heart size={10} /> {(place.likes ?? 0).toLocaleString()}
+            <Heart size={10} /> {place.likes.toLocaleString()}
           </div>
         </div>
       </div>

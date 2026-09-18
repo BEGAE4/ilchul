@@ -14,6 +14,9 @@ import type {
   LikeResponse,
   ScrapPlanResponse,
 } from '../types/plan.types';
+import { normalizePlanDetail } from '../utils/normalizePlanDetail';
+import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
+import { stripImageMetadata, stripImagesMetadata } from '@/shared/lib/image';
 
 // 플랜 생성 — 출발지/일정/장소까지 일괄 등록
 export async function createPlan(body: CreatePlanBody): Promise<CreatePlanResponse> {
@@ -24,7 +27,7 @@ export async function createPlan(body: CreatePlanBody): Promise<CreatePlanRespon
 // 플랜 상세 조회 — PlanDetailDto 직접 반환 (래핑 없음)
 export async function fetchPlanDetail(planId: number): Promise<PlanDetail> {
   const { data } = await apiClient.get<PlanDetail>(`/api/plan/${planId}`);
-  return data;
+  return normalizePlanDetail(data);
 }
 
 // 플랜 수정
@@ -71,6 +74,7 @@ export async function createPlanPreview(body: {
   planDescription?: string;
   isPlanVisible?: boolean;
   departurePoint?: CreatePlanBody['departurePoint'];
+  // 'yyyy-MM-dd HH:mm' (toServerDateTime 으로 생성; ISO 'T' 형식은 400)
   tripStartDate?: string;
   tripEndDate?: string;
   places: { placeId: number; order: number }[];
@@ -80,15 +84,21 @@ export async function createPlanPreview(body: {
 }
 
 // 장소 스탬프 인증 — multipart (사진 + 현재 좌표)
+// 좌표는 `location.x` / `location.y` 폼 필드로 보낸다 (서버가 @ModelAttribute 로 바인딩).
+// 이전에는 location 을 application/json Blob 파트로 보내 운영에서 항상 400 "잘못된 입력값입니다." 였다
+// (2026-09-08 운영 확인: JSON 파트·{lat,lng}·request 파트 전부 400/500, 폼 필드만 200/422).
+// 좌표가 없으면 서버가 500 을 내므로 호출부(MyCourseDetailPage)가 위치 없이 보내지 않게 막는다.
 export async function stampPlanPlace(
   planPlaceId: number,
   image: File,
   location: { x: number; y: number } | null
 ): Promise<StampPlanPlaceResponse> {
   const form = new FormData();
-  form.append('image', image);
+  // 인증 판정은 폼 필드 좌표로 하므로, 사진 속 촬영 위치(EXIF)는 지워서 보낸다
+  form.append('image', await stripImageMetadata(image));
   if (location) {
-    form.append('location', new Blob([JSON.stringify(location)], { type: 'application/json' }));
+    form.append('location.x', String(location.x));
+    form.append('location.y', String(location.y));
   }
   const { data } = await apiClient.post<StampPlanPlaceResponse>(
     `/api/plan-place/${planPlaceId}/stamp`,
@@ -101,20 +111,21 @@ export async function stampPlanPlace(
 // 플랜 이미지 업로드 (multipart)
 export async function uploadPlanImages(planId: number, images: File[]): Promise<PlanDetail> {
   const form = new FormData();
-  images.forEach((img) => form.append('images', img));
+  (await stripImagesMetadata(images)).forEach((img) => form.append('images', img));
   const { data } = await apiClient.post<PlanDetail>(`/api/plan/${planId}/images`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
-  return data;
+  return normalizePlanDetail(data);
 }
 
-// 플랜 이미지 삭제 — 명세 query int[]. 반복 파라미터(imageIds=1&imageIds=2)로 직렬화
+// 플랜 이미지 삭제 — 명세 query int[]. 반복 파라미터(imageIds=1&imageIds=2)로 직렬화.
+// ID 는 상세 응답의 planImages 에서 온다 (2026-09-14 백엔드 추가, 2-4). 응답은 삭제 후 상세.
 export async function deletePlanImages(planId: number, imageIds: number[]): Promise<PlanDetail> {
   const { data } = await apiClient.delete<PlanDetail>(`/api/plan/${planId}/images`, {
     params: { imageIds },
     paramsSerializer: { indexes: null },
   });
-  return data;
+  return normalizePlanDetail(data);
 }
 
 // 플랜 복제 (일정 담기)
@@ -126,9 +137,35 @@ export async function clonePlan(
   return data;
 }
 
-// 플랜 공개 여부 토글 — 본문 없는 토글형
-export async function togglePlanVisibility(planId: number): Promise<void> {
-  await apiClient.post(`/api/mypage/plan/visibility/${planId}`);
+export interface PlanSchedule {
+  /** 'yyyy-MM-dd' */
+  date: string;
+  /** 'HH:mm' */
+  startTime: string;
+  /** 'HH:mm' */
+  endTime: string;
+}
+
+// 플랜 복제 + 여행 일시 설정.
+// 운영 복제 API 는 scheduledDate 를 받아도 반영하지 않고 tripStartDate/tripEndDate 를 null 로 둔다
+// (2026-09-11 확인, 백엔드 요청 중). 그래서 복제 직후 수정 API 로 일시를 채운다.
+// 복제는 성공하고 일시 저장만 실패할 수 있으므로 결과를 나눠 돌려준다 — 호출부가 사용자에게 알린다.
+// 이전에는 수정 실패를 조용히 삼켜 '담았어요' 토스트 뒤에 일정이 빈 플랜이 남았다.
+export async function clonePlanWithSchedule(
+  planId: number,
+  schedule: PlanSchedule
+): Promise<{ planId: number; scheduleSaved: boolean }> {
+  const res = await clonePlan(planId, { scheduledDate: schedule.date });
+  try {
+    await updatePlan(res.planId, {
+      tripStartDate: toServerDateTime(schedule.date, schedule.startTime),
+      tripEndDate: toServerDateTime(schedule.date, schedule.endTime),
+    });
+    return { planId: res.planId, scheduleSaved: true };
+  } catch (err) {
+    console.error('복제한 플랜의 일정 저장 실패:', err);
+    return { planId: res.planId, scheduleSaved: false };
+  }
 }
 
 // 플랜 좋아요 / 취소
@@ -148,4 +185,4 @@ export async function togglePlanScrap(planId: number): Promise<ScrapPlanResponse
   return data;
 }
 
-// 내 플랜 / 스크랩 목록은 my-page feature(fetchMyPlans/fetchScrappedPlans)에서 담당한다.
+// 내 플랜 / 스크랩 목록·공개 여부 토글은 my-page feature(fetchMyPlans/fetchScrappedPlans/setMyPlanVisibility)에서 담당한다.

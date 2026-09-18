@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import CoverImage from '@/shared/ui/CoverImage';
 import {
   ArrowLeft,
   Check,
@@ -23,20 +23,15 @@ import {
   Car,
   ChevronDown,
 } from 'lucide-react';
-// TODO(transportTime): AnimatePresence는 이동 시간 직접입력 섹션에서만 쓰여 함께 주석 처리.
-// 원문 — import { motion, AnimatePresence } from 'motion/react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { LogoLoader } from '@/shared/ui/LogoLoader';
 import { StepIndicator } from '@/shared/ui/StepIndicator';
 import { RouteMap, getStopCoord } from './RouteMap';
-// TODO(transportTime): SelectField는 주석 처리된 이동 시간 섹션에서만 쓰여 import에서 제외.
-// 원문 — import { SelectField, DateField } from './SurveyPickers';
-import { TimeField, DateField } from './SurveyPickers';
+import { SelectField, TimeField, DateField } from './SurveyPickers';
 import { useSurveyStore, type SurveyStep } from '@/shared/lib/stores/useSurveyStore';
 import { planApi, type PlanPreviewResponse } from '@/features/plan';
 import { recommendPlaces } from '@/features/place/api/place.api';
-import { RECOMMENDED_PLACES, MOCK_ADDRESSES } from '@/shared/data/mockData';
 import {
   useKakaoMapLoader,
   coordToAddress,
@@ -45,30 +40,11 @@ import {
 } from '@/shared/lib/kakao';
 import type { Place } from '@/shared/types';
 import { mapRecommendedPlaces } from '../utils/recommendedPlaces';
-
-// 추천 장소 이미지는 출처(카카오 CDN 등)를 미리 알 수 없어 next.config의 remotePatterns로 감쌀 수 없다.
-// 미등록 호스트는 next/image가 렌더 중에 예외를 던지므로 최적화를 끄고, 빈 src·로드 실패는 자리 표시로 대체한다.
-const PlaceHeroImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) {
-    return (
-      <div className="w-full h-full bg-gradient-to-br from-primary-100 to-primary-50 flex items-center justify-center">
-        <MapPin size={40} className="text-primary-300" />
-      </div>
-    );
-  }
-  return (
-    <Image
-      src={src}
-      alt={alt}
-      fill
-      sizes="100vw"
-      unoptimized
-      className="object-cover"
-      onError={() => setFailed(true)}
-    />
-  );
-};
+import { buildCreatePlanPlaces, parseStayMinutes } from '../utils/planPlaces';
+import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
+import { withRo } from '@/shared/lib/format/josa';
+import { useUserStore } from '@/shared/lib/stores/useUserStore';
+import { fetchMyPageProfile } from '@/features/my-page/api/my-page.api';
 
 // 스텝마다 하단 CTA 클래스를 따로 적다 보니 그림자·비활성 색이 제각각이 됐다.
 // 화면이 바뀌어도 같은 버튼으로 읽히도록 한 곳에서 관리한다.
@@ -98,13 +74,6 @@ const TRANSPORTS: { label: string; icon: typeof Bus }[] = [
   { label: '도보', icon: Footprints },
   { label: '자가용', icon: Car },
 ];
-// TODO(transportTime): 이동 시간(transportTime) 질문 임시 비활성화.
-// 사유 — 서버 SurveyResultDto(cc/api/v3~v6, backend SurveyResultDto.java)에 해당 필드가 없어
-//        POST /api/place/recommend 로 전달되지 않고, 추천 LLM 프롬프트에도 반영되지 않는다.
-//        (v1/v2 명세에는 '선택' 필드로 존재했으나 v3에서 사라진 상태)
-// 조치 — BE에 의도적 제외인지 확인 후 완전 제거하거나 복구한다.
-//        복구 시 'TODO(transportTime)' 로 전체 검색하면 관련 블록을 모두 찾을 수 있다.
-/*
 // 이동수단마다 체감 이동 한도가 달라 도보 기준 짧은 구간부터 자가용 기준 장거리까지 단계별로 제공
 const TRANSPORT_TIMES = ['30분 이내', '1시간 이내', '2시간 이내', '상관없어요', '직접입력'];
 
@@ -117,7 +86,6 @@ const CUSTOM_TIME_OPTIONS = Array.from({ length: 24 }, (_, i) => {
   if (m === 0) return { value: `${h}시간`, label: `${h}시간` };
   return { value: `${h}시간 ${m}분`, label: `${h}시간 ${m}분` };
 });
-*/
 
 // ── Survey 3: 30분 단위 시간 선택 ──
 const HALF_HOURS: { value: string; label: string }[] = [];
@@ -203,9 +171,32 @@ function formatTimeLabel(value: string): string {
   return HALF_HOUR_LABELS.get(value) ?? value;
 }
 
-function buildDefaultPlanTitle(mindState: string | undefined): string {
-  const trimmed = (mindState ?? '').trim();
-  return trimmed ? `${trimmed.slice(0, 10)} 힐링 플랜` : '나만의 힐링 플랜';
+// 설문의 마음 상태 → 제목에 넣을 짧은 수식어. MIND_STATES 의 label 과 1:1 로 맞춘다.
+const MIND_STATE_ADJECTIVE: Record<string, string> = {
+  '그냥 기운이 없고 지쳤어요': '지친',
+  '마음이 좀 울적하고 속상해요': '울적한',
+  '답답하고 짜증이 많아졌어요': '답답한',
+  '무기력하고 재미가 없어요': '무기력한',
+  '기분이 좋아요, 뭔가 하고 싶어요': '설레는',
+  '생각이 많아졌어요, 정리가 필요해요': '생각 많은',
+  '아무 감정도 없이 멍한 느낌이에요': '멍한',
+};
+
+const PLAN_TITLE_MAX = 30;
+
+// 기본 제목: "{수식어} {닉네임}님을 위한 힐링 플랜" (예: "울적한 연주님을 위한 힐링 플랜")
+// 이전에는 감정 문장 앞 10글자를 그대로 잘라 붙여("생각이 많아졌어요, 힐링 플랜") 어색했다.
+// 입력 maxLength(30)를 넘으면 닉네임 → 수식어 순으로 줄인다.
+function buildDefaultPlanTitle(mindState: string | undefined, nickname?: string): string {
+  const adjective = MIND_STATE_ADJECTIVE[(mindState ?? '').trim()] ?? '';
+  const name = (nickname ?? '').trim();
+  const candidates = [
+    name && adjective ? `${adjective} ${name}님을 위한 힐링 플랜` : '',
+    name ? `${name}님을 위한 힐링 플랜` : '',
+    adjective ? `${adjective} 당신을 위한 힐링 플랜` : '',
+    '나를 위한 힐링 플랜',
+  ].filter(Boolean);
+  return candidates.find((t) => t.length <= PLAN_TITLE_MAX) ?? '나를 위한 힐링 플랜';
 }
 
 function formatDayLabel(dateStr: string, todayStr: string): string {
@@ -237,11 +228,6 @@ function getTodayStr(): string {
   return toDateString(new Date());
 }
 
-function parseStayMinutes(time: string): number {
-  const match = time.match(/(\d+)/);
-  return match ? parseInt(match[1], 10) : 60;
-}
-
 function formatMinutes(min: number): string {
   const h = Math.floor(Math.abs(min) / 60);
   const m = Math.abs(min) % 60;
@@ -256,6 +242,7 @@ export const CourseCreationFlow: React.FC = () => {
     step,
     previousStep,
     surveyData,
+    recommendedPlaces,
     selectedPlaceIds,
     finalStops,
     viewingPlaceId,
@@ -264,6 +251,7 @@ export const CourseCreationFlow: React.FC = () => {
     setStep,
     setPreviousStep,
     updateSurvey,
+    setRecommendedPlaces,
     togglePlaceSelection,
     clearPlaceSelection,
     setFinalStops,
@@ -284,25 +272,48 @@ export const CourseCreationFlow: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   // 저장 직전에 사용자가 직접 정하는 값 — 이전에는 감정 문구에서 자동 생성되고 비공개로 고정돼 있었다
   const [planTitle, setPlanTitle] = useState('');
+  // 기본 제목에 닉네임을 넣는다. 플랜 생성으로 바로 들어오면 스토어가 비어 있을 수 있어 프로필을 채운다.
+  const { user, isLoggedIn, updateProfile } = useUserStore();
+  useEffect(() => {
+    if (!isLoggedIn || user.name) return;
+    let isMounted = true;
+    fetchMyPageProfile()
+      .then((data) => {
+        if (!isMounted) return;
+        updateProfile({ name: data.userNickname ?? '', avatar: data.userImg ?? '', title: data.userIntro ?? '', bio: data.userIntro ?? '' });
+      })
+      .catch(() => undefined);
+    return () => {
+      isMounted = false;
+    };
+  }, [isLoggedIn, user.name, updateProfile]);
   const [isPlanVisible, setIsPlanVisible] = useState(false);
   // 최종 플랜 단계의 서버 계산 프리뷰 (소요시간/이동거리)
   const [serverPreview, setServerPreview] = useState<PlanPreviewResponse | null>(null);
   const [previewFailed, setPreviewFailed] = useState(false);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-  // 설문 기반 장소 추천 결과 (POST /api/place/recommend), 실패 시 기본 목록 유지
-  const [recommendedPlaces, setRecommendedPlaces] = useState<Place[]>(RECOMMENDED_PLACES);
-  // 추천 API 실패/빈 응답으로 기본 목록을 대신 보여주는 중인지 — 개인화 결과로 오인하지 않도록 고지한다
-  const [isRecommendFallback, setIsRecommendFallback] = useState(false);
+  // 프리뷰 요청 순번 — 순서 변경·다시 계산·재선택으로 요청이 겹칠 때 마지막 요청의 응답만 반영한다
+  const previewRequestSeq = useRef(0);
+  // 추천 API 실패/빈 응답 시 안내 문구 — 목록 대신 재시도 UI를 보여준다
+  const [recommendError, setRecommendError] = useState<string | null>(null);
   // 카카오맵 SDK 로드 상태 — 출발지 검색/역지오코딩에 services 라이브러리 사용
   const [isKakaoLoading, kakaoError] = useKakaoMapLoader();
   // 출발지 키워드 검색 결과 (카카오 로컬 Places.keywordSearch)
   const [addressResults, setAddressResults] = useState<KeywordPlaceResult[]>([]);
   const [isSearchingAddress, setIsSearchingAddress] = useState(false);
 
-  // 새로고침/재진입 시 sessionStorage에 저장해둔 설문 입력을 복원한다.
-  // 스토어가 skipHydration이라 마운트 후 여기서 한 번만 수동 복원한다.
+  // 새로고침/재진입 시 sessionStorage 에 저장해둔 설문 입력·추천 결과·선택 장소를 복원한다.
+  // 스토어가 skipHydration 이라 마운트 후 여기서 한 번만 수동 복원한다.
+  // 최종 플랜 단계로 복원되면 서버 프리뷰(소요시간/거리)는 저장하지 않았으므로 다시 요청한다.
   useEffect(() => {
-    void useSurveyStore.persist.rehydrate();
+    void Promise.resolve(useSurveyStore.persist.rehydrate()).then(() => {
+      const s = useSurveyStore.getState();
+      if (s.step === 'finalPlan' && s.finalStops.length > 0) {
+        void requestPreview(s.finalStops);
+      }
+    });
+    // requestPreview 는 렌더마다 새로 만들어지지만 복원은 마운트 시 한 번만 해야 한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 출발지 검색어 디바운스 → 카카오 키워드 장소 검색
@@ -334,28 +345,29 @@ export const CourseCreationFlow: React.FC = () => {
         const [result] = await Promise.all([
           recommendPlaces({
             emotion: surveyData.mindState ?? '',
-            startTime: surveyData.startTime ?? '',
-            endTime: surveyData.endTime ?? '',
+            // 서버는 'YYYY-MM-DD HH:mm' 형식을 기대한다 (예: 2026-08-22 10:00)
+            startTime: toServerDateTime(surveyData.startDate ?? '', surveyData.startTime ?? ''),
+            endTime: toServerDateTime(surveyData.endDate ?? '', surveyData.endTime ?? ''),
             transport: surveyData.transport ?? '',
+            transportTime: surveyData.transportTime ?? '',
             location: { x: startingPoint.coord.lng, y: startingPoint.coord.lat },
           }),
           minDelay,
         ]);
         const mapped = mapRecommendedPlaces(result);
-        // 응답이 비었거나 파싱되지 않으면 기본 목록으로 대체되므로, 개인화 결과가 아님을 알린다
         if (mapped.length > 0) {
           setRecommendedPlaces(mapped);
-          setIsRecommendFallback(false);
+          setRecommendError(null);
         } else {
-          // 폴백이 켜졌다는 것은 응답 모양이 또 달라졌다는 뜻이다. 원본을 남겨 다음 조정의 근거로 삼는다.
-          console.warn('추천 응답을 장소 목록으로 변환하지 못해 기본 목록으로 대체합니다:', result);
-          setRecommendedPlaces(RECOMMENDED_PLACES);
-          setIsRecommendFallback(true);
+          // 비어 있다는 것은 응답 모양이 또 달라졌다는 뜻이다. 원본을 남겨 다음 조정의 근거로 삼는다.
+          console.warn('추천 응답을 장소 목록으로 변환하지 못했습니다:', result);
+          setRecommendedPlaces([]);
+          setRecommendError('조건에 맞는 장소를 찾지 못했어요.');
         }
       } catch (err) {
-        console.error('장소 추천 실패, 기본 추천 목록으로 대체합니다:', err);
-        setRecommendedPlaces(RECOMMENDED_PLACES);
-        setIsRecommendFallback(true);
+        console.error('장소 추천 실패:', err);
+        setRecommendedPlaces([]);
+        setRecommendError('추천 장소를 불러오지 못했어요.');
         await minDelay;
       } finally {
         setStep('placeSelect');
@@ -377,18 +389,26 @@ export const CourseCreationFlow: React.FC = () => {
       : {}),
     ...(surveyData.startDate
       ? {
-          tripStartDate: `${surveyData.startDate}T${surveyData.startTime || '00:00'}:00`,
-          tripEndDate: `${surveyData.startDate}T${surveyData.endTime || '23:59'}:00`,
+          // 서버는 'yyyy-MM-dd HH:mm' 만 받는다 (ISO 'T' 구분자·초 포함 시 400)
+          tripStartDate: toServerDateTime(surveyData.startDate, surveyData.startTime || '00:00'),
+          tripEndDate: toServerDateTime(
+            surveyData.endDate || surveyData.startDate,
+            surveyData.endTime || '23:59'
+          ),
         }
       : {}),
   });
 
-  const planDescription = `${surveyData.transport ?? ''}으로 떠나는 나만의 힐링 여행`;
+  // 이동수단 뒤 조사는 받침에 따라 달라진다 ("도보로", "대중교통으로"). B-23.
+  const planDescription = `${withRo(surveyData.transport ?? '')} 떠나는 나만의 힐링 여행`;
 
   // 프리뷰는 선택이 아니라 생성의 선행 조건이다.
   // requiredTime/totalDistance/travelTime/stayTime은 전부 서버 계산값이고 명세에 재계산 API가 없어,
   // 실패한 채로 저장하면 0분·0km짜리 플랜이 복구 경로 없이 영구히 남는다.
+  // 늦게 도착한 이전 요청의 응답은 버린다. 그대로 두면 이전 장소 순서로 계산된 값이 화면과 저장 요청에 섞인다.
   const requestPreview = async (stops: Place[]) => {
+    const seq = ++previewRequestSeq.current;
+    const isLatest = () => seq === previewRequestSeq.current;
     setServerPreview(null);
     setPreviewFailed(false);
     setIsPreviewLoading(true);
@@ -401,18 +421,19 @@ export const CourseCreationFlow: React.FC = () => {
         return;
       }
       const preview = await planApi.createPlanPreview({
-        planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState),
+        planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState, user.name),
         planDescription,
         isPlanVisible,
         ...buildPlanContext(),
         places: numericPlaces,
       });
-      setServerPreview(preview);
+      if (isLatest()) setServerPreview(preview);
     } catch (err) {
+      if (!isLatest()) return;
       console.error('플랜 생성 프리뷰 실패:', err);
       setPreviewFailed(true);
     } finally {
-      setIsPreviewLoading(false);
+      if (isLatest()) setIsPreviewLoading(false);
     }
   };
 
@@ -424,22 +445,10 @@ export const CourseCreationFlow: React.FC = () => {
     }
     setIsSaving(true);
     try {
-      // 프리뷰 응답(장소별 duration/stayTime)을 order 기준으로 조인해 명세 필수 필드를 채운다.
-      const previewByOrder = new Map(serverPreview.places.map((p) => [p.order, p]));
-      const numericPlaces = finalStops
-        .map((s, i) => {
-          const order = i + 1;
-          const pv = previewByOrder.get(order);
-          return {
-            placeId: Number(s.id),
-            order,
-            travelTime: pv?.duration ?? 0,
-            stayTime: pv?.stayTime ?? 0,
-          };
-        })
-        .filter((p) => Number.isInteger(p.placeId));
+      // 프리뷰 응답(장소별 duration)을 order 기준으로 조인하고, 체류시간이 없으면 추천값으로 채운다.
+      const numericPlaces = buildCreatePlanPlaces(finalStops, serverPreview.places);
       const created = await planApi.createPlan({
-        planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState),
+        planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState, user.name),
         planDescription,
         isPlanVisible,
         requiredTime: serverPreview.requiredTime,
@@ -449,7 +458,8 @@ export const CourseCreationFlow: React.FC = () => {
       });
       reset();
       toast.success('힐링 플랜이 생성되었어요!', { description: '내 플랜에서 확인해보세요.' });
-      router.push(`/course/${created.planId}`);
+      // 내가 만든 플랜은 소유자 페이지(수정·인증 가능, 스크랩 없음)로 보낸다
+      router.push(`/my-course/${created.planId}`);
     } catch (err) {
       console.error('플랜 생성 실패:', err);
       toast.error('플랜 저장에 실패했어요.', {
@@ -471,7 +481,7 @@ export const CourseCreationFlow: React.FC = () => {
       const selected = recommendedPlaces.filter((p) => selectedPlaceIds.includes(p.id));
       setFinalStops(selected);
       // 사용자가 아직 제목을 손대지 않았다면 기본값을 채워 편집 출발점으로 삼는다
-      if (!planTitle.trim()) setPlanTitle(buildDefaultPlanTitle(surveyData.mindState));
+      if (!planTitle.trim()) setPlanTitle(buildDefaultPlanTitle(surveyData.mindState, user.name));
       setStep('finalPlan');
       void requestPreview(selected);
     } else if (step === 'finalPlan') {
@@ -481,8 +491,7 @@ export const CourseCreationFlow: React.FC = () => {
     }
   };
 
-  // TODO(transportTime): 원문 — surveyData.mindState || surveyData.transport || surveyData.transportTime
-  const hasUnsavedData = surveyData.mindState || surveyData.transport;
+  const hasUnsavedData = surveyData.mindState || surveyData.transport || surveyData.transportTime;
 
   const handleBack = () => {
     if (step === 'landing') {
@@ -514,7 +523,8 @@ export const CourseCreationFlow: React.FC = () => {
     // 설문을 처음부터 다시 하므로 이전 감정에서 만들어진 플랜 이름도 함께 비운다
     setPlanTitle('');
     setIsPlanVisible(false);
-    setIsRecommendFallback(false);
+    setRecommendError(null);
+    setRecommendedPlaces([]);
     setStep('survey1');
   };
 
@@ -634,7 +644,7 @@ export const CourseCreationFlow: React.FC = () => {
   // ════════════════════════════════════════════
   // ── 이탈 확인 모달 JSX ──
   const exitModal = showExitModal && (
-    <div className="fixed inset-y-0 app-frame bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-y-0 app-frame bg-black/50 z-[120] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-6 w-full max-w-[300px]">
         <h2 className="font-bold text-lg text-gray-900 mb-2">나가시겠어요?</h2>
         <p className="text-sm text-gray-500 mb-5 leading-relaxed">
@@ -667,7 +677,7 @@ export const CourseCreationFlow: React.FC = () => {
       <div className="flex flex-col min-h-dvh bg-white">
         <Header onBack={handleBack} />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-b from-violet-50 via-primary-50 to-white -z-10" />
+          <div className="absolute inset-0 bg-gradient-to-b from-primary-50 via-primary-50 to-white -z-10" />
 
           {/* 일출 모션: 수평선 위로 떠오르는 해 */}
           <div className="relative w-40 h-24 mb-8 overflow-hidden" aria-hidden>
@@ -818,29 +828,24 @@ export const CourseCreationFlow: React.FC = () => {
   }
 
   // ════════════════════════════════════════════
-  // (3) Survey 2 — 이동 수단 (이동 시간은 TODO(transportTime)로 임시 비활성화)
+  // (3) Survey 2 — 이동 수단 및 시간
   // ════════════════════════════════════════════
   if (step === 'survey2') {
-    // TODO(transportTime): 이동 시간 질문 임시 비활성화에 따라 함께 주석 처리
-    /*
     const isCustomTime =
       surveyData.transportTime === '직접입력' ||
       CUSTOM_TIME_OPTIONS.some((o) => o.value === surveyData.transportTime);
     const showCustomPicker =
       isCustomTime && !['1시간 이내', '상관없어요', ''].includes(surveyData.transportTime ?? '');
-    */
 
     return (
       <div className="fixed inset-y-0 app-frame z-40 h-dvh flex flex-col bg-white">
         <div className="shrink-0">
-          {/* TODO(transportTime): 원문 타이틀 — "이동 수단 및 시간" */}
-          <Header onBack={handleBack} title="이동 수단" showStep />
+          <Header onBack={handleBack} title="이동 수단 및 시간" showStep />
           <div className="px-6 pt-5 pb-2">
-            {/* TODO(transportTime): 원문 — "Q2. 희망하는 이동 수단과 / 이동 시간을 선택해주세요." */}
             <h2 className="text-xl font-bold">
-              Q2. 희망하는 이동 수단을
+              Q2. 희망하는 이동 수단과
               <br />
-              선택해주세요.
+              이동 시간을 선택해주세요.
             </h2>
           </div>
         </div>
@@ -865,8 +870,6 @@ export const CourseCreationFlow: React.FC = () => {
             </div>
           </div>
 
-          {/* TODO(transportTime): 이동 시간 선택 섹션 임시 비활성화 (서버 미전달 필드) */}
-          {/*
           <div>
             <h3 className="text-sm font-bold text-gray-500 mb-3">이동 시간</h3>
             <div className="flex flex-col gap-2">
@@ -912,14 +915,13 @@ export const CourseCreationFlow: React.FC = () => {
               )}
             </AnimatePresence>
           </div>
-          */}
         </div>
         <div className={STICKY_FOOTER}>
-          {/* TODO(transportTime): disabled 원문 —
-              !surveyData.transport || !surveyData.transportTime || surveyData.transportTime === '직접입력' */}
           <button
             onClick={handleNext}
-            disabled={!surveyData.transport}
+            disabled={
+              !surveyData.transport || !surveyData.transportTime || surveyData.transportTime === '직접입력'
+            }
             className={PRIMARY_CTA}
           >
             선택 완료
@@ -1047,7 +1049,7 @@ export const CourseCreationFlow: React.FC = () => {
             {/* 시간대 — 프리셋 한 번으로 시작/종료가 함께 정해진다 */}
             <div className="space-y-2">
               <div className="flex items-center gap-1.5 text-sm font-bold text-gray-700">
-                <Clock size={15} className="text-orange-500" />
+                <Clock size={15} className="text-accent-500" />
                 가장 많이 고르는 일정
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -1085,9 +1087,9 @@ export const CourseCreationFlow: React.FC = () => {
                 })}
               </div>
               {isTodaySoldOut && (
-                <div className="flex items-start gap-2 bg-amber-50 p-3 rounded-xl border border-amber-100">
-                  <AlertCircle size={16} className="text-amber-400 mt-0.5 shrink-0" />
-                  <span className="text-sm text-amber-700">
+                <div className="flex items-start gap-2 bg-accent-50 p-3 rounded-xl border border-accent-100">
+                  <AlertCircle size={16} className="text-accent-400 mt-0.5 shrink-0" />
+                  <span className="text-sm text-accent-700">
                     오늘은 남은 시간대가 없어요. 내일 이후로 선택하거나 직접 설정해주세요.
                   </span>
                 </div>
@@ -1239,8 +1241,11 @@ export const CourseCreationFlow: React.FC = () => {
           <LogoLoader />
         </div>
         <div>
+          {/* 닉네임은 기본 플랜 제목과 같은 출처(user.name)를 쓴다. 아직 못 받았으면 '당신' (QA C-04) */}
           <h2 className="text-xl font-bold text-gray-900 mb-2">
-            김여행님에게 맞는 곳을<br />찾는 중입니다.
+            {user.name ? `${user.name}님에게` : '당신에게'} 맞는 곳을
+            <br />
+            찾는 중입니다.
           </h2>
           <p className="text-gray-500 text-sm">잠시만 기다려주세요...</p>
         </div>
@@ -1252,11 +1257,6 @@ export const CourseCreationFlow: React.FC = () => {
   // (6) Starting Point Selection
   // ════════════════════════════════════════════
   if (step === 'startPoint') {
-    // SDK 로드 실패 시에만 쓰는 정적 폴백 목록
-    const fallbackAddresses = customAddress.trim()
-      ? MOCK_ADDRESSES.filter((a) => a.label.includes(customAddress.trim()))
-      : MOCK_ADDRESSES;
-
     const selectStartingPoint = (
       type: 'current' | 'custom',
       address: string,
@@ -1389,23 +1389,12 @@ export const CourseCreationFlow: React.FC = () => {
                   className="mt-2 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden"
                 >
                   {kakaoError ? (
-                    // SDK 로드 실패 시 정적 목록으로 폴백
-                    fallbackAddresses.length > 0 ? (
-                      fallbackAddresses.map((addr) => (
-                        <button
-                          key={addr.label}
-                          onClick={() => selectStartingPoint('custom', addr.label, addr.coord)}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-primary-50 border-b border-gray-50 last:border-b-0"
-                        >
-                          <MapPin size={14} className="text-primary-400 shrink-0" />
-                          <span className="text-sm text-gray-700">{addr.label}</span>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="px-4 py-6 text-center text-sm text-gray-400">
-                        검색 결과가 없습니다
-                      </div>
-                    )
+                    // SDK 로드 실패 시 검색을 쓸 수 없다 — 현재 위치 버튼만 남는다
+                    <div className="px-4 py-6 text-center text-sm text-gray-400">
+                      지도 서비스를 불러오지 못해 검색할 수 없어요.
+                      <br />
+                      현재 위치로 출발지를 설정해주세요.
+                    </div>
                   ) : addressResults.length > 0 ? (
                     addressResults.map((result) => (
                       <button
@@ -1436,26 +1425,6 @@ export const CourseCreationFlow: React.FC = () => {
                     </div>
                   )}
                 </motion.div>
-              )}
-
-              {!customAddress && !showAddressList && (
-                <div className="mt-3 space-y-2">
-                  <div className="text-xs font-bold text-gray-500 px-1">추천 출발지</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {MOCK_ADDRESSES.slice(0, 4).map((addr) => (
-                      <button
-                        key={addr.label}
-                        onClick={() => selectStartingPoint('custom', addr.label, addr.coord)}
-                        className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 border border-gray-100 text-left hover:bg-primary-50 hover:border-primary-200 transition-colors"
-                      >
-                        <MapPin size={12} className="text-gray-400 shrink-0" />
-                        <span className="text-xs text-gray-700 font-medium truncate">
-                          {addr.label}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
               )}
             </div>
           </div>
@@ -1493,9 +1462,7 @@ export const CourseCreationFlow: React.FC = () => {
         <div className="bg-white p-4 pb-2 border-b border-gray-100">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h2 className="text-lg font-bold text-gray-900">
-                {isRecommendFallback ? '인기 장소를 보여드릴게요' : '추천 결과입니다'}
-              </h2>
+              <h2 className="text-lg font-bold text-gray-900">추천 결과입니다</h2>
               <p className="text-sm text-gray-500">가고 싶은 장소를 선택해주세요.</p>
             </div>
             {/* 설문을 다시 하지 않고 같은 조건으로 추천만 새로 받는다 */}
@@ -1508,26 +1475,36 @@ export const CourseCreationFlow: React.FC = () => {
               다시 추천받기
             </button>
           </div>
-          {isRecommendFallback && (
-            <div className="flex items-start gap-2 mt-3 bg-amber-50 p-3 rounded-xl border border-amber-100">
-              <AlertCircle size={16} className="text-amber-400 mt-0.5 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-amber-700">
-                  맞춤 추천을 불러오지 못해 인기 장소를 대신 보여드리고 있어요.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="mt-1 text-xs font-bold text-amber-700 underline underline-offset-2"
-                >
-                  출발지로 돌아가 다시 시도하기
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="flex-1 p-4 overflow-y-auto space-y-3">
+          {/* 추천 실패/빈 결과 — 목록 대신 안내와 재시도 버튼만 보여준다 */}
+          {recommendError && (
+            <div className="flex flex-col items-center text-center gap-3 bg-white p-6 rounded-xl border border-accent-100">
+              <AlertCircle size={24} className="text-accent-400" />
+              <div>
+                <p className="text-sm font-bold text-gray-900">{recommendError}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  잠시 후 다시 시도하거나 출발지를 바꿔보세요.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={runRecommendation}
+                className="flex items-center gap-1.5 text-sm font-bold text-white bg-primary-500 px-4 py-2.5 rounded-xl active:bg-primary-600"
+              >
+                <RotateCcw size={14} />
+                다시 추천받기
+              </button>
+              <button
+                type="button"
+                onClick={handleBack}
+                className="text-xs font-bold text-gray-500 underline underline-offset-2"
+              >
+                출발지 바꾸기
+              </button>
+            </div>
+          )}
           {recommendedPlaces.map((place) => {
             const isSelected = selectedPlaceIds.includes(place.id);
             return (
@@ -1546,7 +1523,7 @@ export const CourseCreationFlow: React.FC = () => {
                       <span className="text-xs font-bold text-primary-600 bg-primary-50 px-2 py-0.5 rounded">
                         {place.category}
                       </span>
-                      {/* 추천 응답에는 태그가 없다. 대신 이 장소를 찾아낸 키워드를 보여줘 추천 이유를 남긴다. */}
+                      {/* AI 추천 태그 중 첫 번째만 배지로 보여준다 */}
                       {place.tags[0] && (
                         <span className="text-xs text-gray-400">{place.tags[0]}</span>
                       )}
@@ -1593,7 +1570,7 @@ export const CourseCreationFlow: React.FC = () => {
             <div className="px-4 pt-3 pb-1">
               <div
                 className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm ${
-                  timeDiffMin >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                  timeDiffMin >= 0 ? 'bg-primary-50 text-primary-700' : 'bg-accent-50 text-accent-700'
                 }`}
               >
                 <div className="flex items-center gap-1.5">
@@ -1604,8 +1581,8 @@ export const CourseCreationFlow: React.FC = () => {
                 <span
                   className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                     timeDiffMin >= 0
-                      ? 'bg-emerald-100 text-emerald-600'
-                      : 'bg-amber-100 text-amber-600'
+                      ? 'bg-primary-100 text-primary-600'
+                      : 'bg-accent-100 text-accent-600'
                   }`}
                 >
                   {timeDiffMin >= 0
@@ -1643,7 +1620,7 @@ export const CourseCreationFlow: React.FC = () => {
     return (
       <div className="flex flex-col min-h-dvh bg-white">
         <div className="relative h-64 w-full shrink-0">
-          <PlaceHeroImage src={place.image} alt={place.name} />
+          <CoverImage src={place.image} alt={place.name} seed={place.id} size="lg" sizes="100vw" />
           <div className="absolute top-0 left-0 right-0 p-4 flex justify-between bg-gradient-to-b from-black/40 to-transparent">
             <button
               onClick={handleBack}
@@ -1756,7 +1733,7 @@ export const CourseCreationFlow: React.FC = () => {
             type="text"
             value={planTitle}
             onChange={(e) => setPlanTitle(e.target.value)}
-            placeholder={buildDefaultPlanTitle(surveyData.mindState)}
+            placeholder={buildDefaultPlanTitle(surveyData.mindState, user.name)}
             maxLength={30}
             className="w-full mb-3 p-3 border border-gray-200 rounded-xl bg-gray-50 font-bold text-gray-900 outline-none focus:border-primary-400 focus:bg-white transition-colors"
           />
@@ -1798,16 +1775,16 @@ export const CourseCreationFlow: React.FC = () => {
           {/* 프리뷰 값이 곧 저장 값이라, 실패하면 저장을 막고 재시도를 유도한다.
               이전에는 "저장에는 영향이 없어요"라고 안내한 뒤 0분·0km로 저장하고 있었다. */}
           {previewFailed && (
-            <div className="mt-2 flex items-start gap-2 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100">
-              <AlertCircle size={14} className="text-amber-400 mt-0.5 shrink-0" />
+            <div className="mt-2 flex items-start gap-2 bg-accent-50 px-3 py-2 rounded-lg border border-accent-100">
+              <AlertCircle size={14} className="text-accent-400 mt-0.5 shrink-0" />
               <div className="min-w-0">
-                <p className="text-xs text-amber-700">
+                <p className="text-xs text-accent-700">
                   경로를 계산하지 못해 지금은 저장할 수 없어요.
                 </p>
                 <button
                   type="button"
                   onClick={() => void requestPreview(finalStops)}
-                  className="mt-1 text-xs font-bold text-amber-700 underline underline-offset-2"
+                  className="mt-1 text-xs font-bold text-accent-700 underline underline-offset-2"
                 >
                   다시 계산하기
                 </button>
@@ -1853,11 +1830,14 @@ export const CourseCreationFlow: React.FC = () => {
             startingPoint={startingPoint}
             stops={finalStops}
             showRoute
-            className="h-48"
+            className="h-40"
           />
         </div>
 
-        <div className="flex-1 p-4 overflow-y-auto relative">
+        {/* 일정표는 페이지 스크롤(PageLayout .container)에 맡긴다.
+            이전에는 flex-1 + overflow-y-auto 로 중첩 스크롤을 만들어, 상단 입력 패널과 지도를 뺀
+            한두 항목 높이만 남아 모바일에서 일정을 거의 볼 수 없었다. */}
+        <div className="flex-1 p-4 pb-6 relative">
           {isRecalculating && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
               <Loader2 className="animate-spin text-primary-500 mb-2" size={32} />

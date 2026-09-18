@@ -7,7 +7,7 @@ export interface PopularPlace {
   category: string;
   location: string;
   image: string;
-  // 백엔드 PopularPlaceItemDto에 없는 필드 (v6 기준)
-  likes?: number;
+  // 좋아요 수. 2026-09-14 백엔드가 PopularPlaceItemDto 에 추가 (1-3 / B-17).
+  likes: number;
   ranking: number;
 }

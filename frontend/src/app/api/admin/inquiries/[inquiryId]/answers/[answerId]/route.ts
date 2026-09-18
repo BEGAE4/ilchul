@@ -1,53 +1,43 @@
 import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  deleteMockInquiryAnswer,
-  updateMockInquiryAnswer,
-} from '../../../_mock';
-
-const useMock = true;
 
 interface RouteContext {
   params: Promise<{ inquiryId: string; answerId: string }>;
 }
 
+// 답변 수정/삭제 — 백엔드 프록시 (명세에 없는 엔드포인트, upstream status 그대로 전파)
 export async function PATCH(req: NextRequest, ctx: RouteContext) {
   const { inquiryId, answerId } = await ctx.params;
-  const body = await req.json().catch(() => ({}));
+  const baseUrl = getServerApiBaseUrl();
+  if (!baseUrl) {
+    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
+  }
 
-  if (!useMock) {
-    const baseUrl = getServerApiBaseUrl();
-    const cookie = req.headers.get('cookie') ?? '';
-    const res = await fetch(`${baseUrl}/api/admin/inquiries/${inquiryId}/answers/${answerId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', ...(cookie ? { cookie } : {}) },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
-    return NextResponse.json(data, { status: res.status });
-  }
-  if (typeof body?.body !== 'string' || body.body.trim().length === 0) {
-    return NextResponse.json({ error: 'body required' }, { status: 400 });
-  }
-  const updated = updateMockInquiryAnswer(inquiryId, answerId, body.body.trim());
-  if (!updated) return NextResponse.json({ error: 'not found' }, { status: 404 });
-  return NextResponse.json(updated);
+  const body = await req.json().catch(() => ({}));
+  const cookie = req.headers.get('cookie') ?? '';
+  const res = await fetch(`${baseUrl}/api/admin/inquiries/${inquiryId}/answers/${answerId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...(cookie ? { cookie } : {}) },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => ({}));
+  return NextResponse.json(data, { status: res.status });
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext) {
   const { inquiryId, answerId } = await ctx.params;
-
-  if (!useMock) {
-    const baseUrl = getServerApiBaseUrl();
-    const cookie = req.headers.get('cookie') ?? '';
-    const res = await fetch(`${baseUrl}/api/admin/inquiries/${inquiryId}/answers/${answerId}`, {
-      method: 'DELETE',
-      headers: { ...(cookie ? { cookie } : {}) },
-    });
-    const data = await res.json().catch(() => ({}));
-    return NextResponse.json(data, { status: res.status });
+  const baseUrl = getServerApiBaseUrl();
+  if (!baseUrl) {
+    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
   }
-  const updated = deleteMockInquiryAnswer(inquiryId, answerId);
-  if (!updated) return NextResponse.json({ error: 'not found' }, { status: 404 });
-  return NextResponse.json(updated);
+
+  const cookie = req.headers.get('cookie') ?? '';
+  const res = await fetch(`${baseUrl}/api/admin/inquiries/${inquiryId}/answers/${answerId}`, {
+    method: 'DELETE',
+    headers: cookie ? { cookie } : undefined,
+    cache: 'no-store',
+  });
+  const data = await res.json().catch(() => ({}));
+  return NextResponse.json(data, { status: res.status });
 }

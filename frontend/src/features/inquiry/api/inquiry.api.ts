@@ -11,6 +11,7 @@ import type {
   FetchAllInquiriesParams,
   InquiryAnswer,
 } from '../types/inquiry.types';
+import { stripImagesMetadata } from '@/shared/lib/image';
 
 const BASE = '/api/cs-inquiry';
 const DEFAULT_PAGE_SIZE = 10;
@@ -50,7 +51,7 @@ export const createInquiry = async (
   fd.append('content', input.content);
   fd.append('categoryId', String(input.categoryId));
   fd.append('inquiryType', input.inquiryType);
-  input.images.forEach((file) => fd.append('images', file));
+  (await stripImagesMetadata(input.images)).forEach((file) => fd.append('images', file));
 
   const res = await axios.post<InquiryDetail>(BASE, fd);
   return res.data;
@@ -66,7 +67,9 @@ export const updateInquiry = async (
   if (input.content !== undefined) fd.append('content', input.content);
   if (input.categoryId !== undefined) fd.append('categoryId', String(input.categoryId));
   if (input.inquiryType !== undefined) fd.append('inquiryType', input.inquiryType);
-  input.images?.forEach((file) => fd.append('images', file));
+  if (input.images) {
+    (await stripImagesMetadata(input.images)).forEach((file) => fd.append('images', file));
+  }
   input.deleteImageIds?.forEach((imageId) => fd.append('deleteImageIds', String(imageId)));
 
   const res = await axios.patch<InquiryDetail>(`${BASE}/${id}`, fd);

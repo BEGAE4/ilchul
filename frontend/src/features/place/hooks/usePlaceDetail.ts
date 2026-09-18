@@ -1,8 +1,27 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
+import { isAxiosError } from 'axios';
 import * as placeApi from '../api/place.api';
 import type { PlaceDetail, PlaceReview, PlaceContainingPlan } from '../types/place.types';
 import { toNumericPlaceId } from '../utils/placeId';
+
+// axios 에러의 HTTP 상태를 사용자에게 보여줄 한국어 문구로 변환한다.
+// 영문 axios 메시지("Request failed with status code 400")가 그대로 노출되지 않도록 한다.
+function toPlaceErrorMessage(err: unknown): { message: string; requiresAuth: boolean } {
+  if (isAxiosError(err)) {
+    const status = err.response?.status;
+    if (status === 401 || status === 403) {
+      return { message: '로그인이 필요한 장소예요.', requiresAuth: true };
+    }
+    if (status === 404 || status === 400) {
+      return { message: '존재하지 않거나 삭제된 장소예요.', requiresAuth: false };
+    }
+    if (status && status >= 500) {
+      return { message: '일시적인 오류로 장소를 불러오지 못했어요.', requiresAuth: false };
+    }
+  }
+  return { message: '장소 정보를 불러오지 못했어요.', requiresAuth: false };
+}
 
 // 숫자 placeId면 서버에서 상세/후기/포함 코스를 함께 조회하고,
 // 목데이터 id면 null을 반환해 화면이 기존 목데이터로 폴백할 수 있게 한다.
@@ -15,8 +34,10 @@ export function usePlaceDetail(placeId: string) {
   const [isFetchingMoreReviews, setIsFetchingMoreReviews] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [relatedPlans, setRelatedPlans] = useState<PlaceContainingPlan[]>([]);
+  const [reviewsError, setReviewsError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [requiresAuth, setRequiresAuth] = useState(false);
 
   useEffect(() => {
     if (numericId === null) {
@@ -30,21 +51,30 @@ export function usePlaceDetail(placeId: string) {
       try {
         setIsLoading(true);
         setError(null);
-        // 후기/포함 코스는 부가 정보이므로 실패해도 상세 표시는 유지한다
+        setRequiresAuth(false);
+        // 후기/포함 코스는 부가 정보이므로 실패해도 상세 표시는 유지한다.
+        // 단, 후기는 "실패"와 "0건"을 구분하기 위해 실패 시 플래그를 세운다.
+        let reviewFailed = false;
         const [detail, reviewRes, plans] = await Promise.all([
           placeApi.fetchPlaceDetail(numericId),
-          placeApi.fetchPlaceReviews(numericId).catch(() => null),
+          placeApi.fetchPlaceReviews(numericId).catch(() => {
+            reviewFailed = true;
+            return null;
+          }),
           placeApi.fetchPlansContainingPlace(numericId).catch(() => []),
         ]);
         if (cancelled) return;
         setPlace(detail);
         setReviews(reviewRes?.data ?? []);
         setHasMoreReviews(reviewRes?.hasNext ?? false);
+        setReviewsError(reviewFailed);
         setRelatedPlans(plans);
       } catch (err) {
         if (!cancelled) {
           setPlace(null);
-          setError(err instanceof Error ? err.message : '장소 정보를 불러오지 못했어요.');
+          const { message, requiresAuth: needsAuth } = toPlaceErrorMessage(err);
+          setError(message);
+          setRequiresAuth(needsAuth);
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -97,6 +127,7 @@ export function usePlaceDetail(placeId: string) {
   return {
     place,
     reviews,
+    reviewsError,
     hasMoreReviews,
     isFetchingMoreReviews,
     fetchMoreReviews,
@@ -105,5 +136,6 @@ export function usePlaceDetail(placeId: string) {
     relatedPlans,
     isLoading,
     error,
+    requiresAuth,
   };
 }
