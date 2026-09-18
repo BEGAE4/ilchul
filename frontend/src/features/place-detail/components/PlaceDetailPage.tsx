@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from '@/shared/ui/SafeImage';
+import Avatar from '@/shared/ui/Avatar';
 import CoverImage from '@/shared/ui/CoverImage';
 import {
   ArrowLeft,
@@ -15,7 +15,6 @@ import {
   Bookmark,
   BookmarkCheck,
   ExternalLink,
-  User,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
@@ -307,13 +306,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
               className="bg-gray-50 rounded-xl p-4"
             >
               <div className="flex items-center gap-2.5 mb-2">
-                <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-gray-100 flex items-center justify-center">
-                  {review.avatar ? (
-                    <Image src={review.avatar} alt={review.user} fill sizes="32px" className="object-cover" />
-                  ) : (
-                    <User size={16} className="text-gray-400" />
-                  )}
-                </div>
+                <Avatar src={review.avatar} alt={review.user} size={32} />
                 <div className="flex-1">
                   <div className="text-sm font-bold text-gray-900">{review.user}</div>
                   <div className="text-[10px] text-gray-400">{review.date}</div>

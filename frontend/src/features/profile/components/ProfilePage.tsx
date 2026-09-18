@@ -2,9 +2,9 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from '@/shared/ui/SafeImage';
+import Avatar from '@/shared/ui/Avatar';
 import { PlanCardCover } from './PlanCardCover';
-import { Settings, Plus, Bookmark, MapPin, User } from 'lucide-react';
+import { Settings, Plus, Bookmark, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
@@ -249,18 +249,8 @@ export const ProfilePage: React.FC = () => {
 
         {/* 아바타 + 이름 */}
         <div className="flex items-center gap-4 mb-5">
-          <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-gray-100 flex items-center justify-center">
-            {user.avatar ? (
-              <Image
-                src={user.avatar}
-                alt="프로필"
-                fill
-                sizes="64px"
-                className="object-cover"
-              />
-            ) : (
-              <User size={28} className="text-gray-400" />
-            )}
+          <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-md flex-shrink-0">
+            <Avatar src={user.avatar} alt="프로필" size={60} />
           </div>
           <div>
             <div className="font-bold text-lg text-gray-900">
