@@ -22,6 +22,8 @@ import {
   Footprints,
   Car,
   ChevronDown,
+  Lock,
+  Globe,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -1792,37 +1794,51 @@ export const CourseCreationFlow: React.FC = () => {
             </div>
           )}
 
-          {/* 공개 여부 — 이전에는 비공개로 고정돼 있었다.
-              이름을 정하고 일정을 확인한 뒤 마지막에 결정하는 값이라 입력 영역 맨 아래에 둔다. */}
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isPlanVisible}
-            onClick={() => setIsPlanVisible((prev) => !prev)}
-            className="w-full flex items-center justify-between gap-3 mt-4 p-3 rounded-xl border border-gray-200 text-left"
-          >
-            <span className="min-w-0">
-              <span className="block text-sm font-bold text-gray-900">
-                {isPlanVisible ? '공개 플랜' : '비공개 플랜'}
-              </span>
-              <span className="block text-xs text-gray-400 mt-0.5">
-                {isPlanVisible
-                  ? '다른 사람도 이 플랜을 볼 수 있어요.'
-                  : '나만 볼 수 있어요. 나중에 바꿀 수 있어요.'}
-              </span>
-            </span>
-            <span
-              className={`shrink-0 w-11 h-6 rounded-full p-0.5 transition-colors ${
-                isPlanVisible ? 'bg-primary-500' : 'bg-gray-200'
-              }`}
+          {/* 공개 여부 — 이름을 정하고 일정을 확인한 뒤 마지막에 결정하는 값이라 입력 영역 맨 아래에 둔다.
+              이전에는 제목이 상태에 따라 '공개 플랜'/'비공개 플랜'으로 바뀌는 스위치였다. 처음 화면이
+              '비공개 플랜 [꺼짐]'이라 "비공개가 꺼졌다(=공개)"로 읽혀, 공개로 만든 줄 알고 비공개로 저장하는
+              일이 생겼다. 스위치의 켜짐/꺼짐을 해석할 필요가 없도록 두 선택지를 나란히 보여준다. */}
+          <div className="mt-4">
+            <p id="plan-visibility-label" className="text-xs font-bold text-gray-500 mb-1.5">
+              공개 설정
+            </p>
+            <div
+              role="radiogroup"
+              aria-labelledby="plan-visibility-label"
+              className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-gray-100"
             >
-              <span
-                className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                  isPlanVisible ? 'translate-x-5' : ''
-                }`}
-              />
-            </span>
-          </button>
+              {(
+                [
+                  { value: false, label: '비공개', Icon: Lock },
+                  { value: true, label: '공개', Icon: Globe },
+                ] as const
+              ).map(({ value, label, Icon }) => {
+                const selected = isPlanVisible === value;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => setIsPlanVisible(value)}
+                    className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+                      selected
+                        ? 'bg-white text-primary-600 shadow-sm ring-1 ring-primary-200'
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    <Icon size={15} />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5" aria-live="polite">
+              {isPlanVisible
+                ? '다른 사람도 이 플랜을 보고 내 일정에 담을 수 있어요.'
+                : '나만 볼 수 있어요. 나중에 마이페이지에서 바꿀 수 있어요.'}
+            </p>
+          </div>
         </div>
 
         <div className="px-4 pt-3 pb-1">
