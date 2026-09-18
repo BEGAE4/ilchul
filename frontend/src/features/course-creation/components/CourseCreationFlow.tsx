@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import CoverImage from '@/shared/ui/CoverImage';
@@ -21,7 +22,6 @@ import {
   Bus,
   Footprints,
   Car,
-  ChevronDown,
   Lock,
   Globe,
 } from 'lucide-react';
@@ -30,7 +30,9 @@ import { toast } from 'sonner';
 import { LogoLoader } from '@/shared/ui/LogoLoader';
 import { StepIndicator } from '@/shared/ui/StepIndicator';
 import { RouteMap, getStopCoord } from './RouteMap';
-import { SelectField, TimeField, DateField } from './SurveyPickers';
+import { SelectField } from './SurveyPickers';
+import { ScheduleSentence } from './ScheduleSentence';
+import { EmotionCardGrid } from './EmotionCardGrid';
 import { useSurveyStore, type SurveyStep } from '@/shared/lib/stores/useSurveyStore';
 import { planApi, type PlanPreviewResponse } from '@/features/plan';
 import { recommendPlaces } from '@/features/place/api/place.api';
@@ -43,6 +45,8 @@ import {
 import type { Place } from '@/shared/types';
 import { mapRecommendedPlaces } from '../utils/recommendedPlaces';
 import { buildCreatePlanPlaces, parseStayMinutes } from '../utils/planPlaces';
+import { characterSrc, findMindState, isCustomMindState } from '../utils/mindStates';
+import { MAX_TRIP_MINUTES, OVERNIGHT_END_LIMIT } from '../utils/schedule';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
 import { withRo } from '@/shared/lib/format/josa';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
@@ -58,17 +62,6 @@ const PRIMARY_CTA =
 const STICKY_FOOTER_SHELL =
   'sticky bottom-0 z-30 bg-white border-t border-gray-100 shadow-[0_-4px_12px_-4px_rgba(0,0,0,0.08)]';
 const STICKY_FOOTER = `${STICKY_FOOTER_SHELL} p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]`;
-
-// ── Survey 1: 마음 상태 ──
-const MIND_STATES = [
-  { label: '그냥 기운이 없고 지쳤어요', emoji: '😔' },
-  { label: '마음이 좀 울적하고 속상해요', emoji: '🥺' },
-  { label: '답답하고 짜증이 많아졌어요', emoji: '😤' },
-  { label: '무기력하고 재미가 없어요', emoji: '😐' },
-  { label: '기분이 좋아요, 뭔가 하고 싶어요', emoji: '😊' },
-  { label: '생각이 많아졌어요, 정리가 필요해요', emoji: '🤔' },
-  { label: '아무 감정도 없이 멍한 느낌이에요', emoji: '🫥' },
-];
 
 // ── Survey 2: 이동수단 ──
 const TRANSPORTS: { label: string; icon: typeof Bus }[] = [
@@ -89,50 +82,8 @@ const CUSTOM_TIME_OPTIONS = Array.from({ length: 24 }, (_, i) => {
   return { value: `${h}시간 ${m}분`, label: `${h}시간 ${m}분` };
 });
 
-// ── Survey 3: 30분 단위 시간 선택 ──
-const HALF_HOURS: { value: string; label: string }[] = [];
-for (let i = 0; i < 24; i++) {
-  for (const m of [0, 30]) {
-    const h = i.toString().padStart(2, '0');
-    const mm = m.toString().padStart(2, '0');
-    const period = i < 12 ? '오전' : '오후';
-    const dispH = i === 0 ? 12 : i <= 12 ? i : i - 12;
-    HALF_HOURS.push({
-      value: `${h}:${mm}`,
-      label: `${period} ${dispH}시${m === 30 ? ' 30분' : ''}`,
-    });
-  }
-}
-
-const HALF_HOUR_LABELS = new Map(HALF_HOURS.map((o) => [o.value, o.label]));
-
-// ── Survey 3: 당일치기 기준 ──
-// '자고 오지 않는 일정'이 당일치기의 통념이므로, 다음 날 새벽 귀가까지만 허용한다.
-// (야경·일출 코스를 살리면서 1박 2일과는 구분되는 선)
-const OVERNIGHT_END_LIMIT = '06:00';
-const MAX_TRIP_MINUTES = 20 * 60;
-
-// ── Survey 3: 자주 고르는 시간대 프리셋 ──
-// 야간의 종료를 24:00이 아닌 23:30으로 두는 이유 — HALF_HOURS의 마지막 값이 23:30이라
-// '직접 설정'으로 펼쳤을 때 프리셋 값이 그대로 매핑되어야 빈칸으로 보이지 않는다.
-const TIME_PRESETS: { key: string; label: string; range: string; start: string; end: string }[] = [
-  { key: 'morning', label: '오전 반나절', range: '09:00 - 13:00', start: '09:00', end: '13:00' },
-  { key: 'afternoon', label: '오후', range: '13:00 - 18:00', start: '13:00', end: '18:00' },
-  { key: 'allday', label: '하루 종일', range: '09:00 - 21:00', start: '09:00', end: '21:00' },
-  { key: 'night', label: '야간', range: '18:00 - 23:30', start: '18:00', end: '23:30' },
-];
-
-function toTimeString(d: Date): string {
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
 function toDateString(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function addDays(dateStr: string, days: number): string {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return toDateString(new Date(y, m - 1, d + days));
 }
 
 function diffDays(fromDateStr: string, toDateStr: string): number {
@@ -143,46 +94,6 @@ function diffDays(fromDateStr: string, toDateStr: string): number {
   return Math.round((to - from) / 86_400_000);
 }
 
-const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
-
-function getWeekday(dateStr: string): number {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d).getDay();
-}
-
-function formatShortDate(dateStr: string): string {
-  const [, m, d] = dateStr.split('-').map(Number);
-  return `${m}/${d}`;
-}
-
-// 오늘/내일/토요일/일요일을 렌더 시점 기준으로 계산한다.
-// 당일치기는 하루만 고르므로 '주말' 같은 이틀짜리 표현 대신 요일을 명시하고 날짜를 함께 보여준다.
-// 요일 칩이 오늘·내일과 겹치면 중복 활성되므로 제외한다.
-function getDatePresets(todayStr: string): { key: string; label: string; date: string }[] {
-  const dow = getWeekday(todayStr);
-  const presets = [
-    { key: 'today', label: '오늘', date: todayStr },
-    { key: 'tomorrow', label: '내일', date: addDays(todayStr, 1) },
-    { key: 'saturday', label: '토요일', date: addDays(todayStr, (6 - dow + 7) % 7) },
-    { key: 'sunday', label: '일요일', date: addDays(todayStr, (7 - dow) % 7) },
-  ];
-  return presets.filter((p, i) => presets.findIndex((o) => o.date === p.date) === i);
-}
-
-function formatTimeLabel(value: string): string {
-  return HALF_HOUR_LABELS.get(value) ?? value;
-}
-
-// 설문의 마음 상태 → 제목에 넣을 짧은 수식어. MIND_STATES 의 label 과 1:1 로 맞춘다.
-const MIND_STATE_ADJECTIVE: Record<string, string> = {
-  '그냥 기운이 없고 지쳤어요': '지친',
-  '마음이 좀 울적하고 속상해요': '울적한',
-  '답답하고 짜증이 많아졌어요': '답답한',
-  '무기력하고 재미가 없어요': '무기력한',
-  '기분이 좋아요, 뭔가 하고 싶어요': '설레는',
-  '생각이 많아졌어요, 정리가 필요해요': '생각 많은',
-  '아무 감정도 없이 멍한 느낌이에요': '멍한',
-};
 
 const PLAN_TITLE_MAX = 30;
 
@@ -190,7 +101,7 @@ const PLAN_TITLE_MAX = 30;
 // 이전에는 감정 문장 앞 10글자를 그대로 잘라 붙여("생각이 많아졌어요, 힐링 플랜") 어색했다.
 // 입력 maxLength(30)를 넘으면 닉네임 → 수식어 순으로 줄인다.
 function buildDefaultPlanTitle(mindState: string | undefined, nickname?: string): string {
-  const adjective = MIND_STATE_ADJECTIVE[(mindState ?? '').trim()] ?? '';
+  const adjective = findMindState(mindState)?.short ?? '';
   const name = (nickname ?? '').trim();
   const candidates = [
     name && adjective ? `${adjective} ${name}님을 위한 힐링 플랜` : '',
@@ -199,13 +110,6 @@ function buildDefaultPlanTitle(mindState: string | undefined, nickname?: string)
     '나를 위한 힐링 플랜',
   ].filter(Boolean);
   return candidates.find((t) => t.length <= PLAN_TITLE_MAX) ?? '나를 위한 힐링 플랜';
-}
-
-function formatDayLabel(dateStr: string, todayStr: string): string {
-  if (dateStr === todayStr) return '오늘';
-  if (dateStr === addDays(todayStr, 1)) return '내일';
-  const [, m, d] = dateStr.split('-').map(Number);
-  return `${m}월 ${d}일 (${WEEKDAY_LABELS[getWeekday(dateStr)]})`;
 }
 
 // 스텝 번호 매핑 (StepIndicator 용)
@@ -270,7 +174,6 @@ export const CourseCreationFlow: React.FC = () => {
   const [directInputValue, setDirectInputValue] = useState('');
   const [showExitModal, setShowExitModal] = useState(false);
   // Survey 3 — 프리셋으로 못 고르는 일정을 잡을 때만 펼치는 기존 4필드 UI
-  const [showCustomSchedule, setShowCustomSchedule] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   // 저장 직전에 사용자가 직접 정하는 값 — 이전에는 감정 문구에서 자동 생성되고 비공개로 고정돼 있었다
   const [planTitle, setPlanTitle] = useState('');
@@ -737,59 +640,65 @@ export const CourseCreationFlow: React.FC = () => {
   // (2) Survey 1 — 마음 상태
   // ════════════════════════════════════════════
   if (step === 'survey1') {
+    const selectedMindState = findMindState(surveyData.mindState);
+    // 새로고침으로 돌아오면 isDirectInput 은 초기화되지만 적어 둔 문장은 남아 있다
+    const isDirectMode = isDirectInput || isCustomMindState(surveyData.mindState);
+    const directValue = directInputValue || (isDirectMode ? (surveyData.mindState ?? '') : '');
     return (
       <div className="fixed inset-y-0 app-frame z-40 h-dvh flex flex-col bg-white">
         <div className="shrink-0">
           <Header onBack={handleBack} title="나의 상태 확인" showStep />
           <div className="px-5 pt-5 pb-2">
             <h2 className="text-xl font-bold mb-1 text-gray-900">요즘 마음 상태는 어떤가요?</h2>
-            <p className="text-sm text-gray-400">
-              현재 상태가 없다면 직접 입력할 수 있어요.
-            </p>
+            <p className="text-sm text-gray-400">지금 기분에 가장 가까운 하나를 골라주세요.</p>
           </div>
         </div>
         <div className="flex-1 px-5 pt-3 pb-4 overflow-y-auto">
-          <div className="flex flex-col gap-2.5">
-            {MIND_STATES.map((state) => {
-              const isActive = surveyData.mindState === state.label;
-              return (
-                <button
-                  key={state.label}
-                  onClick={() => {
-                    updateSurvey('mindState', state.label);
-                    setIsDirectInput(false);
-                    setDirectInputValue('');
-                  }}
-                  className={`w-full py-3.5 px-5 rounded-full border-2 text-center transition-all ${
-                    isActive
-                      ? 'border-primary-500 bg-primary-50 text-primary-700'
-                      : 'border-gray-100 bg-white text-gray-600'
-                  }`}
-                >
-                  {state.label} {state.emoji}
-                </button>
-              );
-            })}
-
-            {!isDirectInput ? (
-              <button
-                onClick={() => {
-                  setIsDirectInput(true);
-                  updateSurvey('mindState', '');
-                }}
-                className="w-full py-3.5 px-5 rounded-full border-2 border-gray-100 bg-white text-gray-600 text-center"
-              >
-                직접 입력하기
-              </button>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="space-y-2"
-              >
+          <EmotionCardGrid
+            value={surveyData.mindState ?? ''}
+            isDirectInput={isDirectMode}
+            onSelect={(label) => {
+              updateSurvey('mindState', label);
+              setIsDirectInput(false);
+              setDirectInputValue('');
+            }}
+            onDirectInput={() => {
+              if (isDirectMode) return;
+              setIsDirectInput(true);
+              setDirectInputValue('');
+              updateSurvey('mindState', '');
+            }}
+          />
+        </div>
+        <div className={`${STICKY_FOOTER} space-y-2.5`}>
+          {/* 짧은 낱말로 고르게 한 대신, 고른 뒤에는 추천에 실제로 쓰이는 원래 문장을 보여준다 */}
+          {selectedMindState && !isDirectMode && (
+            <div className="flex items-center gap-2 bg-primary-50 rounded-xl px-3.5 py-3">
+              <Image
+                src={characterSrc(selectedMindState.character)}
+                alt=""
+                aria-hidden
+                width={28}
+                height={28}
+                unoptimized
+                className="shrink-0"
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-primary-700">{selectedMindState.label}</p>
+                <p className="text-xs text-primary-600 mt-0.5">
+                  이 마음에 맞는 힐링 장소를 찾아볼게요.
+                </p>
+              </div>
+            </div>
+          )}
+          {isDirectMode && (
+            <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+              {/* 입력칸 자체가 알약이다. globals.css 의 input { border-radius: 8px } 와 포커스 테두리(2px 띄움)는
+                  레이어 밖 규칙이라 Tailwind 클래스로는 못 이긴다 — 인라인으로 모양을 잡고 테두리를 알약에 붙인다 */}
+              <div className="relative">
                 <input
                   type="text"
-                  value={directInputValue}
+                  value={directValue}
                   onChange={(e) => {
                     setDirectInputValue(e.target.value);
                     updateSurvey('mindState', e.target.value);
@@ -801,24 +710,24 @@ export const CourseCreationFlow: React.FC = () => {
                     );
                   }}
                   placeholder="지금 느끼는 감정을 적어주세요"
+                  aria-label="지금 느끼는 감정"
                   maxLength={30}
                   autoFocus
-                  className="w-full py-3.5 px-5 rounded-full border-2 border-primary-500 bg-primary-50 text-primary-700 text-center outline-none placeholder:text-primary-300"
+                  style={{ borderRadius: 9999, outlineOffset: 0 }}
+                  className="w-full py-3.5 pl-5 pr-[72px] border-2 border-primary-500 bg-primary-50 text-primary-700 outline-none placeholder:text-primary-300"
                 />
-                <div className="flex items-start gap-1.5 px-2">
-                  <AlertCircle size={12} className="text-gray-300 mt-0.5 shrink-0" />
-                  <p className="text-[11px] text-gray-400 leading-snug">
-                    예시: &ldquo;잠이 안 와서 피곤해요&rdquo;, &ldquo;새로운 자극이 필요해요&rdquo;
-                  </p>
-                </div>
-              </motion.div>
-            )}
-          </div>
-        </div>
-        <div className={STICKY_FOOTER}>
+                <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[11px] font-medium text-primary-300 pointer-events-none">
+                  {directValue.length} / 30
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-400 leading-snug mt-2 px-2">
+                예시: &ldquo;새로운 자극이 필요해요&rdquo;, &ldquo;혼자 조용히 있고 싶어요&rdquo;
+              </p>
+            </motion.div>
+          )}
           <button
             onClick={handleNext}
-            disabled={!surveyData.mindState}
+            disabled={!(surveyData.mindState ?? '').trim()}
             className={PRIMARY_CTA}
           >
             선택 완료
@@ -937,61 +846,6 @@ export const CourseCreationFlow: React.FC = () => {
   // (4) Survey 3 — 당일치기 일정
   // ════════════════════════════════════════════
   if (step === 'survey3') {
-    const datePresets = getDatePresets(today);
-    const activeTimePreset = TIME_PRESETS.find(
-      (p) =>
-        surveyData.startTime === p.start &&
-        surveyData.endTime === p.end &&
-        surveyData.startDate === surveyData.endDate
-    );
-    // 프리셋으로 표현되지 않는 값이 이미 들어있다면(뒤로 갔다 온 경우 등) 직접 설정을 펼쳐둔다
-    const hasScheduleValue = !!(surveyData.startTime && surveyData.endTime);
-    const isCustomOpen = showCustomSchedule || (hasScheduleValue && !activeTimePreset);
-
-    // 오늘을 고른 경우, 이미 지나간 시간대 프리셋은 고를 수 없게 한다.
-    // 'HH:MM' 형식은 제로패딩되어 있어 문자열 비교로 시각 비교가 성립한다.
-    const nowHM = toTimeString(new Date());
-    const isPastOnDate = (date: string | undefined, time: string) =>
-      (date ?? today) === today && time < nowHM;
-    const availableTimePresets = TIME_PRESETS.filter(
-      (p) => !isPastOnDate(surveyData.startDate, p.start)
-    );
-    const isTodaySoldOut =
-      (surveyData.startDate ?? today) === today && availableTimePresets.length === 0;
-
-    // 날짜만 바꿀 때, 이미 익일 종료로 잡혀 있던 일정은 날짜 간격을 유지한다
-    const applyDatePreset = (date: string) => {
-      const { startDate: prevStart, endDate: prevEnd, startTime } = surveyData;
-      const gap = prevStart && prevEnd ? Math.max(0, diffDays(prevStart, prevEnd)) : 0;
-      updateSurvey('startDate', date);
-      updateSurvey('endDate', gap > 0 ? addDays(date, gap) : date);
-      // 오늘로 옮기면서 기존 시간대가 이미 지나버렸다면 시간 선택만 비운다
-      if (startTime && isPastOnDate(date, startTime)) {
-        updateSurvey('startTime', '');
-        updateSurvey('endTime', '');
-      }
-    };
-
-    // 종료가 다음 날(새벽)인지 — 당일치기 허용 범위는 startDate 또는 startDate+1까지다
-    const isOvernight =
-      !!surveyData.startDate &&
-      !!surveyData.endDate &&
-      diffDays(surveyData.startDate, surveyData.endDate) === 1;
-
-    const setOvernight = (overnight: boolean) => {
-      const base = surveyData.startDate || today;
-      updateSurvey('startDate', base);
-      updateSurvey('endDate', overnight ? addDays(base, 1) : base);
-    };
-
-    const applyTimePreset = (preset: (typeof TIME_PRESETS)[number]) => {
-      const date = surveyData.startDate || today;
-      updateSurvey('startDate', date);
-      updateSurvey('startTime', preset.start);
-      updateSurvey('endDate', date);
-      updateSurvey('endTime', preset.end);
-    };
-
     return (
       <div className="fixed inset-y-0 app-frame z-40 h-dvh flex flex-col bg-white">
         <div className="shrink-0">
@@ -1001,211 +855,21 @@ export const CourseCreationFlow: React.FC = () => {
             <p className="text-sm text-gray-400">하루 안에 다녀오는 코스를 만들어드려요.</p>
           </div>
         </div>
-        <div className="flex-1 px-6 pt-3 pb-4 overflow-y-auto">
-          <div className="space-y-6">
-            {/* 날짜 — 오늘/내일/이번 주말 칩 + 그 외 날짜는 캘린더 */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-sm font-bold text-gray-700">
-                <Calendar size={15} className="text-primary-500" />
-                날짜
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {datePresets.map((preset) => {
-                  const isActive = surveyData.startDate === preset.date;
-                  return (
-                    <button
-                      key={preset.key}
-                      type="button"
-                      onClick={() => applyDatePreset(preset.date)}
-                      className={`px-4 py-2.5 rounded-lg border font-medium text-sm transition-all ${
-                        isActive
-                          ? 'border-primary-500 bg-primary-50 text-primary-700'
-                          : 'border-gray-200 text-gray-600'
-                      }`}
-                    >
-                      {preset.label}
-                      <span
-                        className={`ml-1.5 text-xs ${
-                          isActive ? 'text-primary-500' : 'text-gray-400'
-                        }`}
-                      >
-                        {formatShortDate(preset.date)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <DateField
-                title="여행 날짜 선택"
-                placeholder="다른 날짜 선택"
-                value={
-                  surveyData.startDate && !datePresets.some((p) => p.date === surveyData.startDate)
-                    ? surveyData.startDate
-                    : ''
-                }
-                min={today}
-                onChange={applyDatePreset}
-              />
-            </div>
-
-            {/* 시간대 — 프리셋 한 번으로 시작/종료가 함께 정해진다 */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-sm font-bold text-gray-700">
-                <Clock size={15} className="text-accent-500" />
-                가장 많이 고르는 일정
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {TIME_PRESETS.map((preset) => {
-                  const isActive = activeTimePreset?.key === preset.key;
-                  const isPast = isPastOnDate(surveyData.startDate, preset.start);
-                  return (
-                    <button
-                      key={preset.key}
-                      type="button"
-                      disabled={isPast}
-                      onClick={() => applyTimePreset(preset)}
-                      className={`px-4 py-3 rounded-xl border text-left transition-all ${
-                        isPast
-                          ? 'border-gray-100 bg-gray-50 text-gray-300'
-                          : isActive
-                            ? 'border-primary-500 bg-primary-50 text-primary-700'
-                            : 'border-gray-200 text-gray-600'
-                      }`}
-                    >
-                      <span className="block font-bold text-sm">{preset.label}</span>
-                      <span
-                        className={`block text-xs mt-0.5 ${
-                          isPast
-                            ? 'text-gray-300'
-                            : isActive
-                              ? 'text-primary-500'
-                              : 'text-gray-400'
-                        }`}
-                      >
-                        {isPast ? '시간이 지났어요' : preset.range}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {isTodaySoldOut && (
-                <div className="flex items-start gap-2 bg-accent-50 p-3 rounded-xl border border-accent-100">
-                  <AlertCircle size={16} className="text-accent-400 mt-0.5 shrink-0" />
-                  <span className="text-sm text-accent-700">
-                    오늘은 남은 시간대가 없어요. 내일 이후로 선택하거나 직접 설정해주세요.
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* 직접 설정 — 기존 4필드 UI를 그대로 접어둔 영역 */}
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowCustomSchedule((prev) => !prev)}
-                aria-expanded={isCustomOpen}
-                className="w-full flex items-center justify-center gap-1 py-2 text-sm font-medium text-gray-500 active:text-gray-700"
-              >
-                직접 설정하기
-                <ChevronDown
-                  size={16}
-                  className={`transition-transform ${isCustomOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-
-              {isCustomOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-4 border border-gray-100 rounded-xl p-4"
-                >
-                  <div className="space-y-2">
-                    <div className="text-sm font-bold text-gray-700">여행 시작</div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <DateField
-                        title="여행 시작일 선택"
-                        value={surveyData.startDate ?? ''}
-                        min={today}
-                        onChange={(newStart) => {
-                          updateSurvey('startDate', newStart);
-                          if (!surveyData.endDate || surveyData.endDate < newStart) {
-                            updateSurvey('endDate', newStart);
-                          }
-                        }}
-                      />
-                      <TimeField
-                        title="여행 시작 시간 선택"
-                        placeholder="시간 선택"
-                        value={surveyData.startTime ?? ''}
-                        onChange={(v) => updateSurvey('startTime', v)}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="text-sm font-bold text-gray-700">여행 종료</div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {/* 당일치기라 종료일 후보는 당일 또는 다음 날 새벽 둘뿐 — 캘린더 대신 토글 */}
-                      <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-xl">
-                        {[
-                          { label: '당일', overnight: false },
-                          { label: '다음날 새벽', overnight: true },
-                        ].map((opt) => (
-                          <button
-                            key={opt.label}
-                            type="button"
-                            onClick={() => setOvernight(opt.overnight)}
-                            className={`py-2 px-1 rounded-lg text-xs font-bold transition-colors ${
-                              isOvernight === opt.overnight
-                                ? 'bg-white text-primary-600 shadow-sm'
-                                : 'text-gray-500'
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                      <TimeField
-                        title="여행 종료 시간 선택"
-                        placeholder="시간 선택"
-                        value={surveyData.endTime ?? ''}
-                        onChange={(v) => updateSurvey('endTime', v)}
-                      />
-                    </div>
-                    {isOvernight && (
-                      <p className="text-xs text-gray-400">
-                        자고 오지 않는 일정이라 다음 날 새벽{' '}
-                        {Number(OVERNIGHT_END_LIMIT.slice(0, 2))}시까지 선택할 수 있어요.
-                      </p>
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </div>
-
-            {/* 선택 결과 요약 */}
-            {survey3Validation.valid && surveyData.startDate && surveyData.endDate && (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-primary-50 p-4 rounded-xl border border-primary-100"
-              >
-                <div className="text-primary-700 font-bold">
-                  {formatDayLabel(surveyData.startDate, today)}{' '}
-                  {formatTimeLabel(surveyData.startTime ?? '')} →{' '}
-                  {surveyData.endDate !== surveyData.startDate && '다음날 '}
-                  {formatTimeLabel(surveyData.endTime ?? '')}
-                </div>
-                <div className="flex items-center gap-1.5 text-primary-600 text-sm mt-1">
-                  <Timer size={14} />총{' '}
-                  {formatMinutes(
-                    (new Date(`${surveyData.endDate}T${surveyData.endTime}`).getTime() -
-                      new Date(`${surveyData.startDate}T${surveyData.startTime}`).getTime()) /
-                      60_000
-                  )}
-                </div>
-              </motion.div>
-            )}
+        <div className="flex-1 px-6 pt-4 pb-4 overflow-y-auto">
+          <div className="space-y-4">
+            <ScheduleSentence
+              today={today}
+              startDate={surveyData.startDate}
+              startTime={surveyData.startTime}
+              endDate={surveyData.endDate}
+              endTime={surveyData.endTime}
+              onChange={(next) => {
+                updateSurvey('startDate', next.startDate);
+                updateSurvey('startTime', next.startTime);
+                updateSurvey('endDate', next.endDate);
+                updateSurvey('endTime', next.endTime);
+              }}
+            />
 
             {survey3Validation.error && (
               <motion.div
