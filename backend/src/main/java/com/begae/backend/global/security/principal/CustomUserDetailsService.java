@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 
 
 @Service
@@ -55,26 +56,27 @@ public class CustomUserDetailsService extends DefaultOAuth2UserService {
         // UserInfo 클래스를 통해 변환하여 email을 꺼내옴
         SocialType type = socialType;
         Map<String, String> userInfo = oauthUserInfo.getUserInfo();
-        User user = userRepository.findByUserEmailAndSocialType(userInfo.get("email"), type)
-                .orElseGet(() -> {
-                    String socialProfileImageUrl = userInfo.get("profile_image");
-
-                    String storedProfileImageUrl = socialProfileImageStorageService
-                            .uploadFromUrl(socialProfileImageUrl, "users/profile")
-                            .map(StoredImage::imageUrl)
-                            .orElse(socialProfileImageUrl);
-
-                    return userRepository.save(
-                            User.builder()
-                                    .userEmail(userInfo.get("email"))
-                                    .socialType(type)
-                                    .userNickname(userInfo.get("nickname"))
-                                    .userRole(UserRole.ROLE_USER)
-                                    .userStatus(UserStatus.STATUS_AVAILABLE)
-                                    .userImg(storedProfileImageUrl)
-                                    .build()
-                    );
-                });
+        String socialProfileImageUrl = userInfo.get("profile_image");
+        Optional<User> existingUser = userRepository.findByUserEmailAndSocialType(userInfo.get("email"), type);
+        User user;
+        if (existingUser.isPresent()) {
+            user = existingUser.get();
+            synchronizeSocialProfileImage(user, socialProfileImageUrl);
+        } else {
+            Optional<StoredImage> storedImage = socialProfileImageStorageService
+                    .uploadFromUrl(socialProfileImageUrl, "users/profile");
+            user = userRepository.save(
+                    User.builder()
+                            .userEmail(userInfo.get("email"))
+                            .socialType(type)
+                            .userNickname(userInfo.get("nickname"))
+                            .userRole(UserRole.ROLE_USER)
+                            .userStatus(UserStatus.STATUS_AVAILABLE)
+                            .userImg(storedImage.map(StoredImage::imageUrl).orElse(socialProfileImageUrl))
+                            .userImgKey(storedImage.map(StoredImage::imageKey).orElse(null))
+                            .build()
+            );
+        }
 
 
         // UserDetails에 담기 위한 권한 정보
@@ -85,5 +87,13 @@ public class CustomUserDetailsService extends DefaultOAuth2UserService {
                 String.valueOf(user.getUserEmail()),
                 Collections.singletonList(authority),
                 oAuth2User.getAttributes());
+    }
+
+    void synchronizeSocialProfileImage(User user, String socialProfileImageUrl) {
+        if (!user.canSyncSocialProfileImage()) {
+            return;
+        }
+        socialProfileImageStorageService.uploadFromUrl(socialProfileImageUrl, "users/profile")
+                .ifPresent(stored -> user.applySocialProfileImage(stored.imageUrl(), stored.imageKey()));
     }
 }

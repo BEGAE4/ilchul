@@ -61,10 +61,9 @@ public class ScrappedPlanServiceImpl implements ScrappedPlanService {
     @Override
     @Transactional(readOnly = true)
     public ScrappedPlanResponseDto findUserScrappedPlan(Integer userId) {
-        List<Integer> planIds = scrappedPlanRepository.findPlanIdsByUserId(userId);
-        List<Plan> plans = planRepository.findByPlanIdIn(planIds);
-
-        return ScrappedPlanResponseDto.from(plans);
+        return ScrappedPlanResponseDto.fromScraps(
+                scrappedPlanRepository.findVisibleScrapsByUserId(userId)
+        );
     }
 
 }

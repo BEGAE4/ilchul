@@ -2,6 +2,7 @@ package com.begae.backend.plan.controller;
 
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.global.exception.GlobalErrorCode;
+import com.begae.backend.global.location.PopularRegion;
 import com.begae.backend.global.security.principal.OauthUserDetails;
 import com.begae.backend.plan.dto.*;
 import com.begae.backend.plan.service.PlanService;
@@ -14,6 +15,7 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -58,15 +60,26 @@ public class PlanController {
                 .body(planService.copyPlan(planId, planCopyRequestDto, userDetails.getUserId()));
     }
 
-    @Operation(summary = "내 주변 인기 플랜 조회", description = "위도/경도를 기준으로 내 주변의 인기 플랜 목록을 페이지 단위로 조회합니다.")
-    @ApiResponse(responseCode = "200", description = "내 주변 인기 플랜 목록을 성공적으로 조회했습니다.")
+    @Operation(summary = "지역 또는 내 주변 인기 플랜 조회", description = "지역 또는 위도/경도를 기준으로 인기 플랜 목록을 페이지 단위로 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "인기 플랜 목록을 성공적으로 조회했습니다.")
     @GetMapping("/popular")
     public ResponseEntity<PopularPlanResponseDto> getPopularPlans(
-            @Parameter(description = "위도", example = "37.5665") @RequestParam Double lat,
-            @Parameter(description = "경도", example = "126.9780") @RequestParam Double lng,
+            @Parameter(description = "지역", example = "서울") @RequestParam(required = false) String region,
+            @Parameter(description = "위도", example = "37.5665") @RequestParam(required = false) Double lat,
+            @Parameter(description = "경도", example = "126.9780") @RequestParam(required = false) Double lng,
             @Parameter(description = "페이지당 조회 개수", example = "5") @RequestParam(defaultValue = "5") Integer limit,
             @Parameter(description = "페이지 번호", example = "1") @RequestParam(defaultValue = "1") Integer page
     ) {
+        if (StringUtils.hasText(region)) {
+            return ResponseEntity.ok(planService.getPopularPlansByRegion(
+                    PopularRegion.from(region), limit, page));
+        }
+        if (lat == null && lng == null) {
+            return ResponseEntity.ok(planService.getNationwidePopularPlans(limit, page));
+        }
+        if (lat == null || lng == null) {
+            throw new CustomException(GlobalErrorCode.INVALID_INPUT_VALUE);
+        }
         if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
             throw new CustomException(GlobalErrorCode.INVALID_INPUT_VALUE);
         }

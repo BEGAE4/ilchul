@@ -62,6 +62,15 @@ class ScrappedPlanRepositoryTest {
         assertThat(scrappedPlanRepository.countVisibleScrappedPlans(viewer.getUserId())).isEqualTo(2);
     }
 
+    @Test
+    void 저장한_플랜_관계와_저장_시각을_함께_조회한다() {
+        assertThat(scrappedPlanRepository.findVisibleScrapsByUserId(viewer.getUserId()))
+                .extracting(scrap -> scrap.getPlan().getPlanId())
+                .containsExactlyInAnyOrder(publicPlan.getPlanId(), ownPrivatePlan.getPlanId());
+        assertThat(scrappedPlanRepository.findVisibleScrapsByUserId(viewer.getUserId()))
+                .allSatisfy(scrap -> assertThat(scrap.getScrappedAt()).isNotNull());
+    }
+
     private Plan persistPlan(User user, boolean visible, boolean blinded) {
         return entityManager.persist(Plan.builder()
                 .user(user).planTitle("플랜").isVerified(false)

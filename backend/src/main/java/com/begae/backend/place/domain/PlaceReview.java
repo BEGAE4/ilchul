@@ -44,4 +44,8 @@ public class PlaceReview extends BaseEntity {
                 .content(content)
                 .build();
     }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
 }

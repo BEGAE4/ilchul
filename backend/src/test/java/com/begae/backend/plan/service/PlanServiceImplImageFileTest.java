@@ -4,6 +4,7 @@ import com.begae.backend.like.repository.LikeRepository;
 import com.begae.backend.place.repository.PlaceRepository;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.domain.PlanImage;
+import com.begae.backend.plan.dto.PlanDetailDto;
 import com.begae.backend.plan.repository.PlanImageRepository;
 import com.begae.backend.plan.repository.PlanRepository;
 import com.begae.backend.plan.repository.ScrappedPlanRepository;
@@ -35,6 +36,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -113,6 +116,25 @@ class PlanServiceImplImageFileTest {
 
         verify(planImageRepository).delete(image);
         verify(imageStorageService, never()).delete(anyString());
+    }
+
+    @Test
+    void 플랜_사진_삭제가_커밋되면_DB와_저장소에서_모두_삭제한다() {
+        PlanImage image = PlanImage.builder()
+                .planImageId(3)
+                .imageKey("plan/10/image/a.png")
+                .plan(plan)
+                .build();
+        when(planImageRepository.findByPlanImageIdAndPlan_PlanId(3, 10)).thenReturn(Optional.of(image));
+        service = spy(service);
+        doReturn(PlanDetailDto.builder().planId(10).build()).when(service).getPlanDetail(10, 1);
+
+        service.deleteImages(1, 10, List.of(3));
+
+        verify(planImageRepository).delete(image);
+        verify(imageStorageService, never()).delete(anyString());
+        TransactionSynchronizationUtils.triggerAfterCommit();
+        verify(imageStorageService).delete("plan/10/image/a.png");
     }
 
     @Test

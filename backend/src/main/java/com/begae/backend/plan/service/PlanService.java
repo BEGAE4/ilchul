@@ -2,6 +2,7 @@ package com.begae.backend.plan.service;
 
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.dto.*;
+import com.begae.backend.global.location.PopularRegion;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -19,6 +20,8 @@ public interface PlanService {
     PlanCopyResponseDto copyPlan(Integer planId, PlanCopyRequestDto planCopyRequestDto, Integer userId);
 
     PopularPlanResponseDto getPopularPlans(Double lat, Double lng, Integer limit, Integer page);
+
+    PopularPlanResponseDto getPopularPlansByRegion(PopularRegion region, Integer limit, Integer page);
 
     PopularPlanResponseDto getNationwidePopularPlans(Integer limit, Integer page);
 

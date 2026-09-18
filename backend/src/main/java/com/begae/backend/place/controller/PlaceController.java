@@ -3,6 +3,8 @@ package com.begae.backend.place.controller;
 import com.begae.backend.global.security.principal.OauthUserDetails;
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.global.exception.GlobalErrorCode;
+import com.begae.backend.global.dto.ErrorResponse;
+import com.begae.backend.global.location.PopularRegion;
 import com.begae.backend.like.service.LikeService;
 import com.begae.backend.place.dto.*;
 import com.begae.backend.place.dto.PopularPlaceResponseDto;
@@ -13,11 +15,14 @@ import com.begae.backend.place.service.ScrappedPlaceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -85,15 +90,26 @@ public class PlaceController {
     }
 
     /**
-     * 내 주변 인기 장소 조회
+     * 지역 또는 내 주변 인기 장소 조회
      */
     @GetMapping("/popular")
     public ResponseEntity<PopularPlaceResponseDto> getPopularPlaces(
-            @RequestParam Double lat,
-            @RequestParam Double lng,
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
             @RequestParam(defaultValue = "5") Integer limit,
             @RequestParam(defaultValue = "1") Integer page
     ) {
+        if (StringUtils.hasText(region)) {
+            return ResponseEntity.ok(placeService.getPopularPlacesByRegion(
+                    PopularRegion.from(region), limit, page));
+        }
+        if (lat == null && lng == null) {
+            return ResponseEntity.ok(placeService.getNationwidePopularPlaces(limit, page));
+        }
+        if (lat == null || lng == null) {
+            throw new CustomException(GlobalErrorCode.INVALID_INPUT_VALUE);
+        }
         if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
             throw new CustomException(GlobalErrorCode.INVALID_INPUT_VALUE);
         }
@@ -179,6 +195,43 @@ public class PlaceController {
     ) {
         return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
                 .body(placeReviewService.writeReview(placeId, user.getUserId(), request));
+    }
+
+    @PatchMapping("/{placeId}/review/{reviewId}")
+    @Operation(summary = "장소 후기 수정", description = "작성자 본인의 장소 후기 내용을 수정합니다.")
+    @ApiResponse(responseCode = "200", description = "후기가 성공적으로 수정되었습니다.")
+    @ApiResponse(responseCode = "401", description = "로그인이 필요합니다.",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "다른 사용자의 후기입니다.",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "후기를 찾을 수 없습니다.",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<PlaceReviewResponseDto> updatePlaceReview(
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
+            @PathVariable Integer placeId,
+            @PathVariable Integer reviewId,
+            @RequestBody @Valid PlaceReviewRequestDto request
+    ) {
+        return ResponseEntity.ok(placeReviewService.updateReview(
+                placeId, reviewId, user.getUserId(), request));
+    }
+
+    @DeleteMapping("/{placeId}/review/{reviewId}")
+    @Operation(summary = "장소 후기 삭제", description = "작성자 본인의 장소 후기를 삭제합니다.")
+    @ApiResponse(responseCode = "204", description = "후기가 성공적으로 삭제되었습니다.")
+    @ApiResponse(responseCode = "401", description = "로그인이 필요합니다.",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "다른 사용자의 후기입니다.",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "후기를 찾을 수 없습니다.",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<Void> deletePlaceReview(
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
+            @PathVariable Integer placeId,
+            @PathVariable Integer reviewId
+    ) {
+        placeReviewService.deleteReview(placeId, reviewId, user.getUserId());
+        return ResponseEntity.noContent().build();
     }
 
     /**

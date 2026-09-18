@@ -8,10 +8,15 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PlaceReviewRepository extends JpaRepository<PlaceReview, Integer> {
 
     @Query("SELECT pr FROM PlaceReview pr JOIN FETCH pr.user WHERE pr.place.placeId = :placeId AND (:lastReviewId IS NULL OR pr.reviewId < :lastReviewId) ORDER BY pr.reviewId DESC")
     List<PlaceReview> findReviewsNoOffset(@Param("placeId") Integer placeId, @Param("lastReviewId") Integer lastReviewId, Pageable pageable);
+
+    Optional<PlaceReview> findByReviewIdAndPlace_PlaceId(Integer reviewId, Integer placeId);
+
+    long countByPlace_PlaceId(Integer placeId);
 }

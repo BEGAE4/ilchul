@@ -65,6 +65,43 @@ public interface PlaceRepository extends JpaRepository<Place, Integer> {
             @Param("radiusKm") double radiusKm
     );
 
+    @Query(value = """
+            SELECT pl.place_id
+            FROM place pl
+            JOIN plan_place pp ON pp.place_id = pl.place_id
+            JOIN plan p ON p.plan_id = pp.plan_id
+            WHERE p.is_plan_visible = true
+              AND (
+                COALESCE(NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:primaryPrefix, '%')
+                OR COALESCE(NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:legacyPrefix, '%')
+              )
+            GROUP BY pl.place_id
+            ORDER BY pl.like_count DESC, pl.place_id ASC
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<Integer> findPopularPlaceIdsByRegion(
+            @Param("primaryPrefix") String primaryPrefix,
+            @Param("legacyPrefix") String legacyPrefix,
+            @Param("limit") int limit,
+            @Param("offset") int offset
+    );
+
+    @Query(value = """
+            SELECT COUNT(DISTINCT pl.place_id)
+            FROM place pl
+            JOIN plan_place pp ON pp.place_id = pl.place_id
+            JOIN plan p ON p.plan_id = pp.plan_id
+            WHERE p.is_plan_visible = true
+              AND (
+                COALESCE(NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:primaryPrefix, '%')
+                OR COALESCE(NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:legacyPrefix, '%')
+              )
+            """, nativeQuery = true)
+    int countPopularPlacesByRegion(
+            @Param("primaryPrefix") String primaryPrefix,
+            @Param("legacyPrefix") String legacyPrefix
+    );
+
     List<Place> findByPlaceIdIn(List<Integer> placeIds);
 
     // 좋아요 수 기준 전국 인기 장소 조회 (동률 시 place_id ASC 로 안정 정렬)

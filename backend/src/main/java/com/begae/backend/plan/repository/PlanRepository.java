@@ -137,6 +137,49 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
     );
 
     @Query(value = """
+            SELECT p.plan_id
+            FROM plan p
+            JOIN plan_place pp ON pp.plan_id = p.plan_id
+            JOIN place pl ON pl.place_id = pp.place_id
+            WHERE p.is_plan_visible = true
+              AND p.is_blinded = false
+              AND (
+                COALESCE(NULLIF(pp.snapshot_address_name, ''), NULLIF(pp.snapshot_road_address_name, ''),
+                         NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:primaryPrefix, '%')
+                OR COALESCE(NULLIF(pp.snapshot_address_name, ''), NULLIF(pp.snapshot_road_address_name, ''),
+                            NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:legacyPrefix, '%')
+              )
+            GROUP BY p.plan_id
+            ORDER BY (MAX(p.like_count) + MAX(p.scrap_count)) DESC
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<Integer> findPopularPlanIdsByRegion(
+            @Param("primaryPrefix") String primaryPrefix,
+            @Param("legacyPrefix") String legacyPrefix,
+            @Param("limit") int limit,
+            @Param("offset") int offset
+    );
+
+    @Query(value = """
+            SELECT COUNT(DISTINCT p.plan_id)
+            FROM plan p
+            JOIN plan_place pp ON pp.plan_id = p.plan_id
+            JOIN place pl ON pl.place_id = pp.place_id
+            WHERE p.is_plan_visible = true
+              AND p.is_blinded = false
+              AND (
+                COALESCE(NULLIF(pp.snapshot_address_name, ''), NULLIF(pp.snapshot_road_address_name, ''),
+                         NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:primaryPrefix, '%')
+                OR COALESCE(NULLIF(pp.snapshot_address_name, ''), NULLIF(pp.snapshot_road_address_name, ''),
+                            NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:legacyPrefix, '%')
+              )
+            """, nativeQuery = true)
+    int countPopularPlansByRegion(
+            @Param("primaryPrefix") String primaryPrefix,
+            @Param("legacyPrefix") String legacyPrefix
+    );
+
+    @Query(value = """
             SELECT plan_id
             FROM plan
             WHERE is_plan_visible = true
