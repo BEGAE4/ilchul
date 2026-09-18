@@ -111,3 +111,17 @@ describe('normalizePlanDetail', () => {
     expect(normalizePlanDetail(raw).planPlaceDetailDtos[0].stayDescription).toBe('');
   });
 });
+
+describe('normalizePlanDetail — 플랜 설명 조사 (B-23)', () => {
+  it('예전에 저장된 "도보으로" 설명을 "도보로"로 고친다', () => {
+    const out = normalizePlanDetail(plan({ planDescription: '도보으로 떠나는 나만의 힐링 여행' }));
+    expect(out.planDescription).toBe('도보로 떠나는 나만의 힐링 여행');
+  });
+
+  it('맞게 쓰인 설명은 그대로 두고, null 이면 빈 문자열', () => {
+    expect(normalizePlanDetail(plan({ planDescription: '대중교통으로 떠나는 나만의 힐링 여행' })).planDescription).toBe(
+      '대중교통으로 떠나는 나만의 힐링 여행'
+    );
+    expect(normalizePlanDetail(plan({ planDescription: null as unknown as string })).planDescription).toBe('');
+  });
+});
