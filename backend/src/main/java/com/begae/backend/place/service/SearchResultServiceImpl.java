@@ -29,6 +29,7 @@ public class SearchResultServiceImpl implements SearchResultService {
     private static final int MAX_LIMIT = 30;
 
     private final SearchResultRepository searchResultRepository;
+    private final PlaceService placeService;
     private final SearchKeywordPolicy searchKeywordPolicy;
     private final SearchLogService searchLogService;
 
@@ -48,6 +49,7 @@ public class SearchResultServiceImpl implements SearchResultService {
             );
         }
 
+        syncKakaoPlaces(keyword);
         saveSearchLog(userId, keyword);
 
         int actualPage = resolvePage(page);
@@ -84,6 +86,21 @@ public class SearchResultServiceImpl implements SearchResultService {
                 placeTotalCount,
                 planTotalCount
         );
+    }
+
+    /**
+     * 통합검색 결과에 Kakao에만 존재하는 장소도 포함될 수 있도록 검색 전에 장소를 적재한다.
+     *
+     * 장소 적재는 외부 API와 Google 이미지 조회를 포함하므로 실패하더라도
+     * 기존 DB 기반 검색 결과까지 막지 않는다. 실제 적재 트랜잭션은
+     * PlaceServiceImpl의 PlaceUpsertWriter가 별도로 처리한다.
+     */
+    private void syncKakaoPlaces(String keyword) {
+        try {
+            placeService.searchPlaceByKeyword(keyword);
+        } catch (Exception e) {
+            log.warn("통합검색용 Kakao 장소 동기화 중 오류가 발생했습니다. keyword={}", keyword, e);
+        }
     }
 
     private void saveSearchLog(Integer userId, String keyword) {
