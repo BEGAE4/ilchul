@@ -77,16 +77,27 @@ const PHASE_LABEL: Record<TripPhase, string> = {
 };
 
 // 현재 위치 조회 (실패/거부/미지원 시 null — 서버가 좌표 없는 인증을 500 으로 거절하므로 호출부가 전송을 막는다)
-function getCurrentLocation(): Promise<{ x: number; y: number } | null> {
+// 스탬프는 서버가 150m 반경으로 판정한다. enableHighAccuracy 를 켜지 않으면 브라우저가 GNSS 대신
+// Wi-Fi·기지국 기반의 성긴 좌표를 돌려줄 수 있고, 그러면 장소에 서 있어도 422 가 난다.
+// GNSS 는 콜드스타트에 몇 초가 걸리므로 타임아웃도 함께 늘린다 (기존 5초로는 자주 시간 초과).
+const STAMP_GEO_TIMEOUT_MS = 12000;
+
+function getCurrentLocation(): Promise<{ x: number; y: number; accuracy: number } | null> {
   return new Promise((resolve) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       resolve(null);
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ x: pos.coords.longitude, y: pos.coords.latitude }),
+      (pos) =>
+        resolve({
+          x: pos.coords.longitude,
+          y: pos.coords.latitude,
+          accuracy: pos.coords.accuracy,
+        }),
       () => resolve(null),
-      { timeout: 5000 }
+      // maximumAge 0 — 지금 어디에 있는지가 중요하므로 캐시된 좌표를 쓰지 않는다
+      { enableHighAccuracy: true, timeout: STAMP_GEO_TIMEOUT_MS, maximumAge: 0 }
     );
   });
 }
@@ -105,6 +116,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   const reviewRef = useRef<HTMLDivElement>(null);
   const stampInputRef = useRef<HTMLInputElement>(null);
+  // capture 없는 입력 — 앨범 선택용. capture 는 브라우저 힌트라 한 입력으로 두 동선을 낼 수 없다.
+  const stampGalleryInputRef = useRef<HTMLInputElement>(null);
   const reviewPhotoInputRef = useRef<HTMLInputElement>(null);
   const planImageInputRef = useRef<HTMLInputElement>(null);
 
@@ -301,8 +314,11 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     const file = files?.[0];
     if (!file || verifyingStopId === null) return;
     setIsVerifying(true);
+    // 실패 문구를 고를 때 위치 오차를 참고하므로 catch 에서도 읽을 수 있게 밖에 둔다
+    let locationAccuracy: number | undefined;
     try {
       const location = await getCurrentLocation();
+      locationAccuracy = location?.accuracy;
       if (!location) {
         // 서버는 좌표로 인증 범위를 판정하고, 좌표가 없으면 500 을 낸다 (2026-09-08 운영 확인).
         // 이전에는 위치 없이도 전송해 항상 실패 토스트로 끝났다. 보내지 않고 위치 허용을 안내한다.
@@ -324,7 +340,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
       }
     } catch (err) {
       console.error('기억 스탬프 실패:', err);
-      const kind = stampErrorKind(err);
+      const kind = stampErrorKind(err, locationAccuracy);
       toast.error(STAMP_COPY.error[kind].title, {
         description: STAMP_COPY.error[kind].description,
       });
@@ -333,6 +349,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     } finally {
       setIsVerifying(false);
       if (stampInputRef.current) stampInputRef.current.value = '';
+      if (stampGalleryInputRef.current) stampGalleryInputRef.current.value = '';
     }
   };
 
@@ -542,6 +559,13 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         type="file"
         accept="image/*"
         capture="environment"
+        className="hidden"
+        onChange={(e) => handleStampFileSelected(e.target.files)}
+      />
+      <input
+        ref={stampGalleryInputRef}
+        type="file"
+        accept="image/*"
         className="hidden"
         onChange={(e) => handleStampFileSelected(e.target.files)}
       />
@@ -1024,9 +1048,15 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   </p>
                   <button
                     onClick={() => stampInputRef.current?.click()}
-                    className="w-full bg-primary-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary-200 active:scale-95 transition-transform mb-3"
+                    className="w-full bg-primary-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary-200 active:scale-95 transition-transform mb-2"
                   >
-                    카메라 켜기
+                    {STAMP_COPY.cameraButton}
+                  </button>
+                  <button
+                    onClick={() => stampGalleryInputRef.current?.click()}
+                    className="w-full flex items-center justify-center gap-1.5 text-gray-600 font-bold text-sm py-3 rounded-xl border border-gray-200 active:scale-95 transition-transform mb-3"
+                  >
+                    <Images size={16} /> {STAMP_COPY.galleryButton}
                   </button>
                   <button
                     onClick={() => setVerifyingStopId(null)}
