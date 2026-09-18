@@ -2,6 +2,7 @@ package com.begae.backend.place.service;
 
 import com.begae.backend.place.dto.*;
 import com.begae.backend.plan.dto.PopularPlanItemDto;
+import com.begae.backend.global.location.PopularRegion;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -19,6 +20,8 @@ public interface PlaceService {
     List<SearchPlaceResponseDto> getSearchResult(KakaoPlaceResponseDto kakaoResponse);
     PlaceDetailResponseDto getPlaceDetail(Integer placeId, Integer userId);
     PopularPlaceResponseDto getPopularPlaces(Double lat, Double lng, Integer limit, Integer page);
+
+    PopularPlaceResponseDto getPopularPlacesByRegion(PopularRegion region, Integer limit, Integer page);
 
     PopularPlaceResponseDto getNationwidePopularPlaces(Integer limit, Integer page);
 

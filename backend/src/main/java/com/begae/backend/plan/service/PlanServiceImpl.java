@@ -1,6 +1,7 @@
 package com.begae.backend.plan.service;
 
 import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.global.location.PopularRegion;
 import com.begae.backend.like.domain.Like;
 import com.begae.backend.like.enums.LikeType;
 import com.begae.backend.like.repository.LikeRepository;
@@ -209,6 +210,39 @@ public class PlanServiceImpl implements PlanService{
 
         List<Integer> planIds = planRepository.findPopularPlanIds(lat, lng, SEARCH_RADIUS_KM, safeLimit, offset);
         int totalCount = planRepository.countPopularPlans(lat, lng, SEARCH_RADIUS_KM);
+
+        if (planIds.isEmpty()) {
+            return PopularPlanResponseDto.of(List.of(), page, safeLimit, totalCount);
+        }
+
+        Map<Integer, Plan> planMap = planRepository.findByPlanIdIn(planIds)
+                .stream()
+                .collect(Collectors.toMap(Plan::getPlanId, p -> p));
+
+        List<PopularPlanItemDto> data = IntStream.range(0, planIds.size())
+                .mapToObj(i -> {
+                    Plan plan = planMap.get(planIds.get(i));
+                    if (plan == null) return null;
+                    int ranking = offset + i + 1;
+                    return PopularPlanItemDto.of(plan, ranking);
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        return PopularPlanResponseDto.of(data, page, safeLimit, totalCount);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public PopularPlanResponseDto getPopularPlansByRegion(PopularRegion region, Integer limit, Integer page) {
+        int safeLimit = Math.min(limit, 50);
+        int offset = (page - 1) * safeLimit;
+        String primaryPrefix = region.getAddressPrefixes().getFirst();
+        String legacyPrefix = region.getAddressPrefixes().getLast();
+
+        List<Integer> planIds = planRepository.findPopularPlanIdsByRegion(
+                primaryPrefix, legacyPrefix, safeLimit, offset);
+        int totalCount = planRepository.countPopularPlansByRegion(primaryPrefix, legacyPrefix);
 
         if (planIds.isEmpty()) {
             return PopularPlanResponseDto.of(List.of(), page, safeLimit, totalCount);

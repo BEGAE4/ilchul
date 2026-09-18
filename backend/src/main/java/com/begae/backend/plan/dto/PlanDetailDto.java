@@ -118,6 +118,7 @@ public class PlanDetailDto {
         private String roadAddress;
         private Integer orderIndex;
         private String visitTime;
+        private String stayDescription;
         private Boolean isStamped;
         private Integer travelTime;
         private Integer stayTime;

@@ -25,6 +25,17 @@ public interface ScrappedPlanRepository extends JpaRepository<ScrappedPlan, Inte
             """)
     List<Integer> findPlanIdsByUserId(Integer userId);
 
+    @Query("""
+            select distinct sp from ScrappedPlan sp
+            join fetch sp.plan p
+            left join fetch p.planPlaces pp
+            left join fetch pp.place
+            where sp.user.userId = :userId and sp.scrappedStatus = Y
+              and (p.user.userId = :userId or (p.isPlanVisible = true and p.isBlinded = false))
+            order by sp.scrappedAt desc
+            """)
+    List<ScrappedPlan> findVisibleScrapsByUserId(Integer userId);
+
     Integer countByPlan_User_UserIdAndScrappedStatus(Integer userId, ScrappedStatus status);
 
     @Query("""

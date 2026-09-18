@@ -2,6 +2,7 @@ package com.begae.backend.user.controller;
 
 import com.begae.backend.global.security.principal.OauthUserDetails;
 import com.begae.backend.global.security.jwt.JwtManager;
+import com.begae.backend.user.dto.SignUserInfoResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -18,7 +19,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
 
 @Tag(name = "인증", description = "사용자 인증, 로그아웃, 토큰 재발급 및 회원 탈퇴 관련 API")
 @Slf4j
@@ -32,15 +32,16 @@ public class SignController {
     @GetMapping("/userinfo")
     @Operation(summary = "사용자 정보 조회", description = "현재 로그인한 사용자의 이메일과 권한 정보를 조회합니다.")
     @ApiResponse(responseCode = "200", description = "사용자 정보가 성공적으로 조회되었습니다.")
-    public ResponseEntity<?> userInfo(
+    public ResponseEntity<SignUserInfoResponseDto> userInfo(
             @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails oauthUserDetails
     ) {
         if(oauthUserDetails == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return ResponseEntity.ok(Map.of(
-                "email", oauthUserDetails.getName(),
-                "role", oauthUserDetails.getAuthorities()
+        return ResponseEntity.ok(new SignUserInfoResponseDto(
+                oauthUserDetails.getUserId(),
+                oauthUserDetails.getName(),
+                oauthUserDetails.getAuthorities()
         ));
     }
 

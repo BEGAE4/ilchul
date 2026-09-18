@@ -19,6 +19,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.util.StringUtils;
 
 @Entity
 @Getter
@@ -58,6 +59,12 @@ public class User extends BaseEntity {
     @Convert(converter = ImageUrlConverter.class)
     private String userImg;
 
+    @Column(name = "user_img_key", length = 1000)
+    private String userImgKey;
+
+    @Column(name = "social_image_sync_disabled", nullable = false)
+    private boolean socialImageSyncDisabled = false;
+
     @Column(name = "warning_count")
     private Integer warningCount = 0;
 
@@ -92,7 +99,8 @@ public class User extends BaseEntity {
     private List<Sanction> sanctions = new ArrayList<>();
 
     @Builder
-    public User(String userEmail, SocialType socialType, String userNickname, UserRole userRole, UserStatus userStatus, String userIntro, String userImg) {
+    public User(String userEmail, SocialType socialType, String userNickname, UserRole userRole, UserStatus userStatus,
+                String userIntro, String userImg, String userImgKey, boolean socialImageSyncDisabled) {
         this.userEmail = userEmail;
         this.socialType = socialType;
         this.userNickname = userNickname;
@@ -100,13 +108,37 @@ public class User extends BaseEntity {
         this.userStatus = userStatus;
         this.userIntro = userIntro;
         this.userImg = userImg;
+        this.userImgKey = userImgKey;
+        this.socialImageSyncDisabled = socialImageSyncDisabled;
         this.warningCount = 0;
     }
 
-    public void updateUserProfile(String userNickname, String userIntro, String userImg) {
+    public void updateUserProfile(String userNickname, String userIntro) {
         this.userNickname = userNickname;
         this.userIntro = userIntro;
-        this.userImg = userImg;
+    }
+
+    public boolean canSyncSocialProfileImage() {
+        return !socialImageSyncDisabled && !StringUtils.hasText(userImg);
+    }
+
+    public void applySocialProfileImage(String imageUrl, String imageKey) {
+        if (canSyncSocialProfileImage() && StringUtils.hasText(imageUrl)) {
+            this.userImg = imageUrl;
+            this.userImgKey = imageKey;
+        }
+    }
+
+    public void replaceProfileImage(String imageUrl, String imageKey) {
+        this.userImg = imageUrl;
+        this.userImgKey = imageKey;
+        this.socialImageSyncDisabled = true;
+    }
+
+    public void removeProfileImage() {
+        this.userImg = null;
+        this.userImgKey = null;
+        this.socialImageSyncDisabled = true;
     }
 
     public void increaseWarningCount() {
@@ -123,4 +155,3 @@ public class User extends BaseEntity {
         this.suspensionEndAt = null;
     }
 }
-
