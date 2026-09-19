@@ -5,24 +5,25 @@ import Image from '@/shared/ui/SafeImage';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchInquiryDetail, deleteInquiry } from '../api/inquiry.api';
-import type { InquiryDetail } from '../types/inquiry.types';
+import type { InquiryDetail, InquiryListItem } from '../types/inquiry.types';
 import { INQUIRY_STATUS_LABELS } from '../types/inquiry.types';
+import { formatInquiryDate } from '../utils/inquiryMapper';
 
 interface InquiryDetailSectionProps {
   inquiryId: number;
+  /** 목록에서 넘어온 요약 — 상세 조회가 실패하면 이것으로 대신 그린다 */
+  fallbackItem?: InquiryListItem | null;
   isAdmin?: boolean;
   onBack: () => void;
   onEdit: (inquiry: InquiryDetail) => void;
   onDeleted: () => void;
 }
 
-const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-};
+const formatDate = (iso: string) => formatInquiryDate(iso, true);
 
 export const InquiryDetailSection = ({
   inquiryId,
+  fallbackItem = null,
   isAdmin = false,
   onBack,
   onEdit,
@@ -30,20 +31,36 @@ export const InquiryDetailSection = ({
 }: InquiryDetailSectionProps) => {
   const [inquiry, setInquiry] = useState<InquiryDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // 백엔드에 상세 API(GET /api/cs-inquiry/{inquiryId})가 아직 없어 지금은 항상 실패한다.
+  // 실패하면 목록 요약으로 대신 그리고, API 가 추가되면 이 코드 그대로 상세가 나온다.
   useEffect(() => {
+    let alive = true;
+    setIsLoading(true);
+    setLoadFailed(false);
     fetchInquiryDetail(inquiryId)
-      .then(setInquiry)
-      .finally(() => setIsLoading(false));
+      .then((detail) => {
+        if (alive) setInquiry(detail);
+      })
+      .catch(() => {
+        if (alive) setLoadFailed(true);
+      })
+      .finally(() => {
+        if (alive) setIsLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
   }, [inquiryId]);
 
   const handleDelete = async () => {
-    if (!inquiry) return;
     setIsDeleting(true);
     try {
-      await deleteInquiry(inquiry.inquiryId);
+      // 삭제는 ID 만 있으면 되므로 상세를 못 받아도 할 수 있다
+      await deleteInquiry(inquiryId);
       toast.success('문의가 삭제되었어요.');
       onDeleted();
     } catch {
@@ -54,8 +71,11 @@ export const InquiryDetailSection = ({
     }
   };
 
-  const isPending = inquiry?.status === 'PENDING';
-  const canEdit = !isAdmin && isPending;
+  const summary = inquiry ?? (loadFailed ? fallbackItem : null);
+  const isPending = summary?.status === 'PENDING';
+  const canDelete = !isAdmin && isPending;
+  // 수정 폼은 본문·첨부 이미지가 있어야 채울 수 있다 — 상세를 받았을 때만 연다
+  const canEdit = canDelete && inquiry !== null;
 
   return (
     <div className="flex flex-col min-h-dvh bg-white">
@@ -67,14 +87,16 @@ export const InquiryDetailSection = ({
             </button>
             <span className="font-bold text-lg ml-2">문의 상세</span>
           </div>
-          {canEdit && inquiry && (
+          {canDelete && (
             <div className="flex gap-1">
-              <button
-                onClick={() => onEdit(inquiry)}
-                className="p-2 text-gray-500 rounded-full active:bg-gray-100"
-              >
-                <Pencil size={18} />
-              </button>
+              {canEdit && inquiry && (
+                <button
+                  onClick={() => onEdit(inquiry)}
+                  className="p-2 text-gray-500 rounded-full active:bg-gray-100"
+                >
+                  <Pencil size={18} />
+                </button>
+              )}
               <button
                 onClick={() => setShowDeleteModal(true)}
                 className="p-2 text-red-400 rounded-full active:bg-red-50"
@@ -87,7 +109,7 @@ export const InquiryDetailSection = ({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {isLoading || !inquiry ? (
+        {isLoading ? (
           <div className="p-5 space-y-4">
             <div className="flex gap-2">
               <div className="h-5 w-14 bg-gray-100 rounded-full animate-pulse" />
@@ -98,6 +120,44 @@ export const InquiryDetailSection = ({
               <div className="h-4 bg-gray-100 rounded animate-pulse" />
               <div className="h-4 bg-gray-100 rounded animate-pulse" />
               <div className="h-4 w-3/4 bg-gray-100 rounded animate-pulse" />
+            </div>
+          </div>
+        ) : !inquiry ? (
+          <div className="p-5">
+            {summary && (
+              <>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs font-medium bg-primary-50 text-primary-600 rounded-full px-2 py-0.5">
+                    {summary.categoryName}
+                  </span>
+                  <span
+                    className={`text-xs font-medium rounded-full px-2 py-0.5 ${
+                      isPending ? 'bg-accent-50 text-accent-500' : 'bg-primary-50 text-primary-600'
+                    }`}
+                  >
+                    {INQUIRY_STATUS_LABELS[summary.status]}
+                  </span>
+                </div>
+                <h2 className="font-bold text-base text-gray-900 mb-1">{summary.title}</h2>
+                {isAdmin && summary.authorNickname && (
+                  <p className="text-xs text-gray-400 mb-1">작성자: {summary.authorNickname}</p>
+                )}
+                <p className="text-xs text-gray-400 mb-4">{formatDate(summary.createdAt)}</p>
+              </>
+            )}
+            <div className="bg-gray-50 rounded-xl p-4 text-center">
+              <p className="text-sm text-gray-600 font-medium">
+                문의 내용과 답변은 곧 여기에서 볼 수 있어요
+              </p>
+              {isPending ? (
+                <p className="text-xs text-gray-400 mt-1">
+                  문의는 정상적으로 접수되었어요. 영업일 기준 1~3일 내로 답변드릴게요.
+                </p>
+              ) : (
+                fallbackItem?.hasAnswer && (
+                  <p className="text-xs text-gray-400 mt-1">운영팀 답변이 등록된 문의예요.</p>
+                )
+              )}
             </div>
           </div>
         ) : (

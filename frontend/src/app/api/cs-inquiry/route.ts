@@ -2,10 +2,9 @@ import { getServerApiBaseUrl } from '@/shared/lib/api/serverApiBaseUrl';
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * GET 문의 목록 조회 — 백엔드 GET /api/cs-inquiry 프록시
- * - 내 문의:   ?size=&lastInquiryId=&status=
- * - 전체(관리자): ?category=&search=&status=&lastInquiryId=
- * 범위는 백엔드 인증 역할로 결정된다.
+ * GET 전체 문의 목록 조회(관리자 전용) — 백엔드 GET /api/cs-inquiry 프록시
+ * ?category=&search=&size=&lastInquiryId= (상태 필터 없음)
+ * 내 문의 목록은 ./my/route.ts
  */
 export async function GET(request: NextRequest) {
   const baseUrl = getServerApiBaseUrl();

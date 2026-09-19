@@ -47,7 +47,14 @@ import { HALF_HOURS, timeToMin, addMinutesToTime, todayLocalDate } from '@/featu
 import { getTripPhase, type TripPhase } from '@/features/plan/utils/tripPhase';
 import { ReviewPhoto } from './ReviewPhoto';
 import { STAMP_COPY } from '../constants/stampCopy';
-import { stampErrorKind } from '../utils/stampFeedback';
+import {
+  distanceMeters,
+  isStampCanceled,
+  outOfRangeTitle,
+  stampErrorKind,
+  STAMP_RADIUS_M,
+} from '../utils/stampFeedback';
+import { placeApi } from '@/features/place';
 
 function formatMinutes(min: number): string {
   const h = Math.floor(Math.abs(min) / 60);
@@ -83,12 +90,25 @@ const PHASE_LABEL: Record<TripPhase, string> = {
 // GNSS 는 콜드스타트에 몇 초가 걸리므로 타임아웃도 함께 늘린다 (기존 5초로는 자주 시간 초과).
 const STAMP_GEO_TIMEOUT_MS = 12000;
 
+// 브라우저의 timeout 옵션은 **권한을 허용한 뒤부터** 센다. 권한 창이 떠 있는 채로 남거나, 카메라에서 돌아온 직후
+// 요청이 콜백 없이 끝나는 경우(iOS)에는 성공·실패 어느 쪽도 오지 않아 '기록하는 중'이 영원히 이어졌다.
+// 그래서 자체 감시 타이머를 둔다 — 브라우저 제한 시간보다 조금 길게.
+const STAMP_GEO_WATCHDOG_MS = STAMP_GEO_TIMEOUT_MS + 3000;
+
 function getCurrentLocation(): Promise<{ x: number; y: number; accuracy: number } | null> {
-  return new Promise((resolve) => {
+  return new Promise((resolvePromise) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      resolve(null);
+      resolvePromise(null);
       return;
     }
+    let settled = false;
+    const resolve = (value: { x: number; y: number; accuracy: number } | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(watchdog);
+      resolvePromise(value);
+    };
+    const watchdog = setTimeout(() => resolve(null), STAMP_GEO_WATCHDOG_MS);
     navigator.geolocation.getCurrentPosition(
       (pos) =>
         resolve({
@@ -133,6 +153,10 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   const [verifyingStopId, setVerifyingStopId] = useState<number | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  // 기록 중 어느 단계에서 기다리는지 — 위치 확인(최대 15초) → 사진 업로드(최대 45초)
+  const [verifyStep, setVerifyStep] = useState<'locating' | 'uploading'>('locating');
+  // '취소'를 누르면 진행 중인 기록을 끊는다. 위치 조회는 끊을 수 없어 결과를 버린다
+  const stampAbortRef = useRef<AbortController | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -327,12 +351,16 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const handleStampFileSelected = async (files: FileList | null) => {
     const file = files?.[0];
     if (!file || verifyingStopId === null) return;
+    const stopId = verifyingStopId;
+    const abort = new AbortController();
+    stampAbortRef.current = abort;
+    setVerifyStep('locating');
     setIsVerifying(true);
-    // 실패 문구를 고를 때 위치 오차를 참고하므로 catch 에서도 읽을 수 있게 밖에 둔다
-    let locationAccuracy: number | undefined;
+    // 실패 문구를 고를 때 위치를 참고하므로 catch 에서도 읽을 수 있게 밖에 둔다
+    let location: { x: number; y: number; accuracy: number } | null = null;
     try {
-      const location = await getCurrentLocation();
-      locationAccuracy = location?.accuracy;
+      location = await getCurrentLocation();
+      if (abort.signal.aborted) return;
       if (!location) {
         // 서버는 좌표로 인증 범위를 판정하고, 좌표가 없으면 500 을 낸다 (2026-09-08 운영 확인).
         // 이전에는 위치 없이도 전송해 항상 실패 토스트로 끝났다. 보내지 않고 위치 허용을 안내한다.
@@ -341,11 +369,12 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         });
         return;
       }
-      await planApi.stampPlanPlace(verifyingStopId, file, location);
+      setVerifyStep('uploading');
+      await planApi.stampPlanPlace(stopId, file, location, { signal: abort.signal });
       toast.success(STAMP_COPY.successToast);
       setVerifyingStopId(null);
       refetch();
-      const nowAllVerified = stops.every((s) => s.planPlaceId === verifyingStopId || s.isStamped);
+      const nowAllVerified = stops.every((s) => s.planPlaceId === stopId || s.isStamped);
       if (nowAllVerified && !celebrationShown) {
         setTimeout(() => {
           setShowCelebration(true);
@@ -353,18 +382,59 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
         }, 600);
       }
     } catch (err) {
+      // 사용자가 취소한 기록은 실패가 아니다
+      if (isStampCanceled(err) || abort.signal.aborted) return;
       console.error('기억 스탬프 실패:', err);
-      const kind = stampErrorKind(err, locationAccuracy);
-      toast.error(STAMP_COPY.error[kind].title, {
-        description: STAMP_COPY.error[kind].description,
-      });
+      let kind = stampErrorKind(err, location?.accuracy);
+      let title: string = STAMP_COPY.error[kind].title;
+      if (kind === 'outOfRange' && location) {
+        // 예전에는 몇 km 밖에서도 "조금 떨어져 있어요"라고 안내했다. 장소 좌표를 받아 실제 거리를 말한다.
+        const distance = await measureDistanceToStop(stopId, location);
+        if (distance !== null && distance <= STAMP_RADIUS_M) {
+          // 내 좌표로는 반경 안인데 서버는 밖이라고 본다 — 좌표가 흔들린 것이므로 위치 정밀도 문제로 안내
+          kind = 'inaccurateLocation';
+          title = STAMP_COPY.error[kind].title;
+        } else {
+          title = outOfRangeTitle(distance);
+        }
+      }
+      toast.error(title, { description: STAMP_COPY.error[kind].description });
       // 다른 기기 등에서 이미 기록된 곳이면 화면을 서버 상태로 맞춘다
       if (kind === 'alreadyStamped') refetch();
     } finally {
-      setIsVerifying(false);
+      // 취소 뒤 새로 시작한 기록이 있으면 그 상태를 건드리지 않는다
+      if (stampAbortRef.current === abort) {
+        stampAbortRef.current = null;
+        setIsVerifying(false);
+      }
       if (stampInputRef.current) stampInputRef.current.value = '';
       if (stampGalleryInputRef.current) stampGalleryInputRef.current.value = '';
     }
+  };
+
+  // 범위 밖 안내에 쓸 실제 거리(미터). 플랜 상세에는 장소 좌표가 없어 장소 상세에서 받아온다. 실패하면 null
+  const measureDistanceToStop = async (
+    planPlaceId: number,
+    from: { x: number; y: number }
+  ): Promise<number | null> => {
+    const stop = stops.find((s) => s.planPlaceId === planPlaceId);
+    if (!stop) return null;
+    try {
+      const place = await placeApi.fetchPlaceDetail(stop.placeId);
+      if (!Number.isFinite(place.x) || !Number.isFinite(place.y)) return null;
+      return distanceMeters(from, { x: place.x, y: place.y });
+    } catch {
+      return null;
+    }
+  };
+
+  // 기록 중 '취소' — 업로드는 끊고, 위치 조회는 결과를 버린다
+  const cancelStamp = () => {
+    stampAbortRef.current?.abort();
+    stampAbortRef.current = null;
+    setIsVerifying(false);
+    if (stampInputRef.current) stampInputRef.current.value = '';
+    if (stampGalleryInputRef.current) stampGalleryInputRef.current.value = '';
   };
 
   // ── 순서 편집 (프리뷰 → 확정) ──
@@ -1047,7 +1117,12 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                     <MapPin size={32} className="text-primary-500 animate-bounce" />
                   </div>
                   <h3 className="font-bold text-lg text-gray-900 mb-1">{STAMP_COPY.recordingTitle}</h3>
-                  <p className="text-sm text-gray-500">사진과 현재 위치를 확인하고 있어요.</p>
+                  <p className="text-sm text-gray-500" aria-live="polite">
+                    {STAMP_COPY.recordingStep[verifyStep]}
+                  </p>
+                  <button onClick={cancelStamp} className="mt-5 w-full text-gray-400 font-bold text-sm py-2">
+                    {STAMP_COPY.recordingCancel}
+                  </button>
                 </>
               ) : (
                 <>
@@ -1062,7 +1137,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
                   </p>
                   <button
                     onClick={() => stampInputRef.current?.click()}
-                    className="w-full bg-primary-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-primary-200 active:scale-95 transition-transform mb-2"
+                    className="w-full bg-primary-500 text-white font-bold py-3.5 rounded-xl active:scale-95 transition-transform mb-2"
                   >
                     {STAMP_COPY.cameraButton}
                   </button>

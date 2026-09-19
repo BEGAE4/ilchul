@@ -15,6 +15,12 @@ export const STAMP_COPY = {
   // 현장 확인은 서버의 좌표 검사(150m)가 하므로 사진 출처는 인증 강도와 무관하다.
   galleryButton: '앨범에서 선택',
   recordingTitle: '기록하는 중...',
+  // 진행 단계 — 어디서 기다리는지 보여준다. 예전에는 한 문구로만 떠서 멈춘 것처럼 보였다
+  recordingStep: {
+    locating: '현재 위치를 확인하고 있어요.',
+    uploading: '사진을 올리고 있어요.',
+  },
+  recordingCancel: '취소',
   successToast: '기억 스탬프를 찍었어요',
   guide: {
     during: '마음에 드는 곳에서 사진 한 장 남겨보세요. 순서도 시간도 자유예요.',
@@ -39,8 +45,9 @@ export const STAMP_COPY = {
     description: '위치 권한을 허용한 뒤 다시 시도해주세요.',
   },
   error: {
+    // 제목은 실제 거리에 따라 outOfRangeTitle() 이 만든다 — 여기 값은 거리를 모를 때의 기본 문구
     outOfRange: {
-      title: '장소에서 조금 떨어져 있어요.',
+      title: '장소 근처가 아니에요.',
       description: '장소 가까이(150m 안)에서 다시 남겨주세요.',
     },
     // 위치 오차가 판정 반경보다 커서 '떨어져 있다'고 단정할 수 없을 때. 실내·지하에서 잦다.
@@ -51,6 +58,10 @@ export const STAMP_COPY = {
     alreadyStamped: {
       title: '이미 기록한 곳이에요.',
       description: '화면을 새로 불러올게요.',
+    },
+    timeout: {
+      title: '기록이 너무 오래 걸려요.',
+      description: '네트워크 상태를 확인한 뒤 다시 시도해주세요.',
     },
     tooLarge: {
       title: '사진 용량이 너무 커요.',

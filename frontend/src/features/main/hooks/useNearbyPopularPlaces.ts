@@ -1,23 +1,23 @@
 'use client';
 
 import { fetchNearbyPopularPlaces } from '../api/main.api';
-import type { PopularPlace } from '../types';
+import type { NearbyQuery, PopularPlace } from '../types';
 import { usePaginatedList } from './usePaginatedList';
 
 interface Options {
-  lat: number | null;
-  lng: number | null;
+  /** null 이면 조회하지 않는다 */
+  query: NearbyQuery | null;
   limit?: number;
   enabled?: boolean;
   cacheKey?: string;
 }
 
-export function useNearbyPopularPlaces({ lat, lng, limit, enabled = true, cacheKey }: Options) {
-  return usePaginatedList<PopularPlace, { lat: number; lng: number }>({
+export function useNearbyPopularPlaces({ query, limit, enabled = true, cacheKey }: Options) {
+  return usePaginatedList<PopularPlace, NearbyQuery>({
     fetchFn: fetchNearbyPopularPlaces,
-    baseParams: { lat: lat ?? 0, lng: lng ?? 0 },
+    baseParams: query ?? { lat: 0, lng: 0 },
     limit,
-    enabled: enabled && lat !== null && lng !== null,
+    enabled: enabled && query !== null,
     cacheKey,
   });
 }

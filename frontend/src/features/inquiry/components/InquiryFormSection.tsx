@@ -17,7 +17,8 @@ import { INQUIRY_TYPE_CATEGORY_ID, INQUIRY_TYPE_LABELS } from '../types/inquiry.
 interface InquiryFormSectionProps {
   mode: 'create' | 'edit';
   existingInquiry?: InquiryDetail;
-  onSuccess: (inquiry: InquiryDetail) => void;
+  // 작성·수정 응답은 상세 전체가 아니라서 넘기지 않는다 — 목록이 다시 받아온다
+  onSuccess: () => void;
   onCancel: () => void;
 }
 
@@ -112,9 +113,8 @@ export const InquiryFormSection = ({
     setIsSubmitting(true);
     try {
       const categoryId = INQUIRY_TYPE_CATEGORY_ID[inquiryType];
-      let result: InquiryDetail;
       if (mode === 'create') {
-        result = await createInquiry({
+        await createInquiry({
           title: title.trim(),
           content: content.trim(),
           categoryId,
@@ -123,17 +123,17 @@ export const InquiryFormSection = ({
         });
         toast.success('문의가 등록되었어요.');
       } else {
-        result = await updateInquiry(existingInquiry!.inquiryId, {
+        await updateInquiry(existingInquiry!.inquiryId, {
           title: title.trim(),
           content: content.trim(),
           categoryId,
           inquiryType,
-          images: newImages.map((i) => i.file),
+          newImages: newImages.map((i) => i.file),
           deleteImageIds: deleteImageIds.length > 0 ? deleteImageIds : undefined,
         });
         toast.success('문의가 수정되었어요.');
       }
-      onSuccess(result);
+      onSuccess();
     } catch (err) {
       toast.error(photoUploadErrorMessage(err, '요청에 실패했어요. 다시 시도해 주세요.'));
     } finally {
