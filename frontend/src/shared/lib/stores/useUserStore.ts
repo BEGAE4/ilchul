@@ -20,6 +20,7 @@ interface UserSettings {
 // 로그인 여부 확인(GET /api/sign/userinfo) 결과
 interface AuthResult {
   isLoggedIn: boolean;
+  userId?: number | null;
   email?: string | null;
   isAdmin?: boolean;
 }
@@ -29,6 +30,8 @@ interface UserState {
   isLoggedIn: boolean;
   authChecked: boolean; // 로그인 여부 확인 API 완료 여부 (가드/리다이렉트 판단용)
   email: string | null; // 로그인 계정 이메일 (userinfo 응답)
+  // 내 숫자 id (userinfo 응답). 댓글·후기·플랜이 내 것인지 판별하는 기준 — shared/lib/auth/isMine
+  userId: number | null;
   settings: UserSettings;
 
   setUser: (user: Partial<UserProfile>) => void;
@@ -54,6 +57,7 @@ export const useUserStore = create<UserState>((set) => ({
   isLoggedIn: false,
   authChecked: false,
   email: null,
+  userId: null,
   settings: {
     pushNotification: true,
     marketingNotification: false,
@@ -67,10 +71,11 @@ export const useUserStore = create<UserState>((set) => ({
 
   setLoggedIn: (isLoggedIn) => set({ isLoggedIn }),
 
-  setAuthResult: ({ isLoggedIn, email, isAdmin }) =>
+  setAuthResult: ({ isLoggedIn, email, isAdmin, userId }) =>
     set((state) => ({
       isLoggedIn,
       authChecked: true,
+      ...(userId !== undefined ? { userId } : {}),
       ...(email !== undefined ? { email } : {}),
       ...(isAdmin !== undefined
         ? { user: { ...state.user, isAdmin } }
@@ -87,5 +92,5 @@ export const useUserStore = create<UserState>((set) => ({
       user: { ...state.user, ...updates },
     })),
 
-  logout: () => set({ isLoggedIn: false, email: null }),
+  logout: () => set({ isLoggedIn: false, email: null, userId: null }),
 }));

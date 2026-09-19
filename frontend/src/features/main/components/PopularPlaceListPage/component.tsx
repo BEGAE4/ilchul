@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRegion } from '../../hooks/useRegion';
+import { buildNearbyQuery } from '../../utils/nearbyQuery';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { useNearbyPopularPlaces } from '../../hooks/useNearbyPopularPlaces';
 import { useScrollRestoration } from '@/shared/hooks/useScrollRestoration';
@@ -33,8 +34,7 @@ export function PopularPlaceListPage() {
     loadMore,
     retry,
   } = useNearbyPopularPlaces({
-    lat: region.lat,
-    lng: region.lng,
+    query: buildNearbyQuery(region),
     cacheKey: CACHE_KEY,
   });
 

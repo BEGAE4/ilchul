@@ -1,13 +1,15 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { PenLine } from 'lucide-react';
-import { fetchMyInquiries } from '../api/inquiry.api';
+import { fetchAllMyInquiries } from '../api/inquiry.api';
 import type { InquiryListItem, InquiryStatus } from '../types/inquiry.types';
+import { filterInquiriesByStatus } from '../utils/inquiryMapper';
 import { InquiryCard } from './InquiryCard';
 
 interface InquiryListSectionProps {
-  onSelectInquiry: (id: number) => void;
+  // 상세 API 가 없어 상세 화면이 목록 정보로 대신 그릴 수 있게 아이템째 넘긴다
+  onSelectInquiry: (inquiry: InquiryListItem) => void;
   onCreateNew: () => void;
 }
 
@@ -20,13 +22,21 @@ export const InquiryListSection = ({ onSelectInquiry, onCreateNew }: InquiryList
   const [inquiries, setInquiries] = useState<InquiryListItem[]>([]);
   const [activeTab, setActiveTab] = useState<InquiryStatus>('PENDING');
   const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
+  // 서버에 상태 필터가 없다 — 한 번만 받아 두고 탭은 화면에서 거른다(탭 전환 시 재요청 없음).
+  // 작성·수정·삭제 뒤에는 이 섹션이 다시 마운트되면서 새로 받아온다.
   useEffect(() => {
     let alive = true;
     setIsLoading(true);
-    fetchMyInquiries(activeTab)
-      .then((res) => {
-        if (alive) setInquiries(res.items);
+    setIsError(false);
+    fetchAllMyInquiries()
+      .then((items) => {
+        if (alive) setInquiries(items);
+      })
+      .catch(() => {
+        if (alive) setIsError(true);
       })
       .finally(() => {
         if (alive) setIsLoading(false);
@@ -34,7 +44,12 @@ export const InquiryListSection = ({ onSelectInquiry, onCreateNew }: InquiryList
     return () => {
       alive = false;
     };
-  }, [activeTab]);
+  }, [reloadKey]);
+
+  const visibleInquiries = useMemo(
+    () => filterInquiriesByStatus(inquiries, activeTab),
+    [inquiries, activeTab]
+  );
 
   return (
     <div className="flex flex-col flex-1">
@@ -69,7 +84,18 @@ export const InquiryListSection = ({ onSelectInquiry, onCreateNew }: InquiryList
               </div>
             ))}
           </div>
-        ) : inquiries.length === 0 ? (
+        ) : isError ? (
+          // 빈 목록과 구분한다 — 실패를 '문의 없음'으로 보여 주면 보낸 문의가 사라진 것처럼 보인다
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+            <p className="text-sm text-gray-600">문의 목록을 불러오지 못했어요</p>
+            <button
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="mt-4 px-4 py-2 border border-primary-400 text-primary-500 text-sm font-semibold rounded-xl active:bg-primary-50 transition-colors"
+            >
+              다시 시도
+            </button>
+          </div>
+        ) : visibleInquiries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-gray-400">
             <span className="text-4xl mb-3">📭</span>
             <p className="text-sm">
@@ -78,11 +104,11 @@ export const InquiryListSection = ({ onSelectInquiry, onCreateNew }: InquiryList
           </div>
         ) : (
           <div>
-            {inquiries.map((inquiry) => (
+            {visibleInquiries.map((inquiry) => (
               <InquiryCard
                 key={inquiry.inquiryId}
                 inquiry={inquiry}
-                onClick={() => onSelectInquiry(inquiry.inquiryId)}
+                onClick={() => onSelectInquiry(inquiry)}
               />
             ))}
           </div>

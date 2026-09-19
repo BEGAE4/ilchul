@@ -4,10 +4,12 @@ import React, { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchInquiryDetail, createAnswer } from '../api/inquiry.api';
-import type { InquiryDetail } from '../types/inquiry.types';
+import type { InquiryDetail, InquiryListItem } from '../types/inquiry.types';
 
 interface AdminAnswerFormSectionProps {
   inquiryId: number;
+  /** 목록에서 넘어온 요약 — 상세 조회가 실패하면 이것으로 대신 그린다 */
+  fallbackItem?: InquiryListItem | null;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -16,6 +18,7 @@ const MAX_ANSWER = 1000;
 
 export const AdminAnswerFormSection = ({
   inquiryId,
+  fallbackItem = null,
   onSuccess,
   onCancel,
 }: AdminAnswerFormSectionProps) => {
@@ -24,11 +27,25 @@ export const AdminAnswerFormSection = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 상세 API 가 아직 없어 지금은 실패한다 — 실패해도 목록 요약을 보고 답변은 쓸 수 있게 둔다
   useEffect(() => {
+    let alive = true;
     fetchInquiryDetail(inquiryId)
-      .then(setInquiry)
-      .finally(() => setIsLoading(false));
+      .then((detail) => {
+        if (alive) setInquiry(detail);
+      })
+      .catch(() => {
+        // 아래에서 fallbackItem 으로 대신 그린다
+      })
+      .finally(() => {
+        if (alive) setIsLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
   }, [inquiryId]);
+
+  const summary = inquiry ?? fallbackItem;
 
   const handleSubmit = async () => {
     if (!answerContent.trim() || isSubmitting) return;
@@ -56,26 +73,36 @@ export const AdminAnswerFormSection = ({
       </div>
 
       <div className="flex-1 p-5 space-y-5 overflow-y-auto">
-        {isLoading || !inquiry ? (
+        {isLoading ? (
           <div className="space-y-3">
             <div className="h-5 w-1/3 bg-gray-100 rounded animate-pulse" />
             <div className="h-24 bg-gray-100 rounded-xl animate-pulse" />
           </div>
         ) : (
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-medium bg-primary-50 text-primary-600 rounded-full px-2 py-0.5">
-                {inquiry.categoryName}
-              </span>
-              {inquiry.authorNickname && (
-                <span className="text-xs text-gray-400">{inquiry.authorNickname}</span>
-              )}
-            </div>
-            <h3 className="text-sm font-bold text-gray-800 mb-2">{inquiry.title}</h3>
+            {summary && (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium bg-primary-50 text-primary-600 rounded-full px-2 py-0.5">
+                    {summary.categoryName}
+                  </span>
+                  {summary.authorNickname && (
+                    <span className="text-xs text-gray-400">{summary.authorNickname}</span>
+                  )}
+                </div>
+                <h3 className="text-sm font-bold text-gray-800 mb-2">{summary.title}</h3>
+              </>
+            )}
             <div className="bg-gray-50 rounded-xl p-4">
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {inquiry.content}
-              </p>
+              {inquiry ? (
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                  {inquiry.content}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-400 text-center">
+                  문의 내용은 곧 여기에서 볼 수 있어요
+                </p>
+              )}
             </div>
           </div>
         )}
