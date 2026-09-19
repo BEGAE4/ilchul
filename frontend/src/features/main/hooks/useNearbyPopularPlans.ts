@@ -15,7 +15,7 @@ interface Options {
 export function useNearbyPopularPlans({ query, limit, enabled = true, cacheKey }: Options) {
   return usePaginatedList<PopularPlan, NearbyQuery>({
     fetchFn: fetchNearbyPopularPlans,
-    baseParams: query ?? { lat: 0, lng: 0 },
+    baseParams: query ?? { region: '' },
     limit,
     enabled: enabled && query !== null,
     cacheKey,
