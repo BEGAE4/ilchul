@@ -11,22 +11,35 @@ export interface CachedListState<T> {
   hasNext: boolean;
   totalCount: number;
   savedAt: number;
+  /** 이 목록을 받아온 조회 조건(지역 등). 조건이 다른 화면에서 복원되지 않게 한다. */
+  paramsKey?: string;
 }
 
 export function saveListState<T>(
   key: string,
-  state: { items: T[]; page: number; hasNext: boolean; totalCount: number }
+  state: { items: T[]; page: number; hasNext: boolean; totalCount: number },
+  paramsKey?: string
 ): void {
   if (typeof window === 'undefined') return;
   try {
-    const payload: CachedListState<T> = { ...state, savedAt: Date.now() };
+    const payload: CachedListState<T> = { ...state, savedAt: Date.now(), paramsKey };
     sessionStorage.setItem(PREFIX + key, JSON.stringify(payload));
   } catch {
     /* 용량 초과 등은 무시 */
   }
 }
 
-export function readListState<T>(key: string, ttl: number = DEFAULT_TTL): CachedListState<T> | null {
+interface ReadOptions {
+  ttl?: number;
+  /**
+   * 지금 화면의 조회 조건. 지정하면 같은 조건으로 저장된 목록만 복원한다.
+   * 같은 key 를 지역만 바꿔 쓰는 목록(주변 인기 장소·플랜)에서 이전 지역 목록이 뜨던 문제를 막는다.
+   */
+  paramsKey?: string;
+}
+
+export function readListState<T>(key: string, options: ReadOptions = {}): CachedListState<T> | null {
+  const { ttl = DEFAULT_TTL, paramsKey } = options;
   if (typeof window === 'undefined') return null;
   try {
     const raw = sessionStorage.getItem(PREFIX + key);
@@ -37,6 +50,7 @@ export function readListState<T>(key: string, ttl: number = DEFAULT_TTL): Cached
       sessionStorage.removeItem(PREFIX + key);
       return null;
     }
+    if (paramsKey !== undefined && parsed.paramsKey !== paramsKey) return null;
     return parsed;
   } catch {
     return null;

@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 // MAIN-57. 내 주변 실시간 베스트 플랜 — 백엔드 프록시
 export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
+  // 주변 목록은 지역명으로 조회한다. 좌표는 예전 호출과의 호환을 위해 오면 그대로 넘긴다.
+  const region = sp.get('region');
   const lat = sp.get('lat');
   const lng = sp.get('lng');
   const limit = Number(sp.get('limit') ?? 5);
@@ -17,6 +19,7 @@ export async function GET(request: NextRequest) {
   try {
     const cookie = request.headers.get('cookie') ?? '';
     const url = new URL(`${baseUrl}/api/plan/popular`);
+    if (region) url.searchParams.set('region', region);
     if (lat) url.searchParams.set('lat', lat);
     if (lng) url.searchParams.set('lng', lng);
     url.searchParams.set('limit', String(limit));
