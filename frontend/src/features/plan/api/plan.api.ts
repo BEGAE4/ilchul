@@ -16,7 +16,7 @@ import type {
 } from '../types/plan.types';
 import { normalizePlanDetail } from '../utils/normalizePlanDetail';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
-import { stripImageMetadata, stripImagesMetadata } from '@/shared/lib/image';
+import { prepareImageForUpload } from '@/shared/lib/image';
 
 // 플랜 생성 — 출발지/일정/장소까지 일괄 등록
 export async function createPlan(body: CreatePlanBody): Promise<CreatePlanResponse> {
@@ -94,8 +94,9 @@ export async function stampPlanPlace(
   location: { x: number; y: number } | null
 ): Promise<StampPlanPlaceResponse> {
   const form = new FormData();
-  // 인증 판정은 폼 필드 좌표로 하므로, 사진 속 촬영 위치(EXIF)는 지워서 보낸다
-  form.append('image', await stripImageMetadata(image));
+  // 인증 판정은 폼 필드 좌표로 하므로, 사진 속 촬영 위치(EXIF)는 지워서 보낸다.
+  // 앞단 업로드 제한(1MB) 때문에 휴대폰 원본은 413 으로 거절되므로 함께 줄인다 — prepareImageForUpload 참고
+  form.append('image', await prepareImageForUpload(image));
   if (location) {
     form.append('location.x', String(location.x));
     form.append('location.y', String(location.y));
@@ -109,13 +110,36 @@ export async function stampPlanPlace(
 }
 
 // 플랜 이미지 업로드 (multipart)
+// 앞단 업로드 제한(1MB)은 파일이 아니라 **요청 전체**에 걸린다 (0.6MB 두 장도 413, 2026-09-18 운영 확인).
+// 그래서 한 장씩 줄여서 따로 보낸다. 중간에 실패하면 그때까지 올라간 장수를 실어 던진다 —
+// 호출부가 "3장 중 2장만 올렸어요"처럼 알리고 화면을 새로 불러올 수 있다.
+export class PlanImageUploadError extends Error {
+  constructor(
+    readonly uploaded: number,
+    readonly total: number,
+    readonly cause: unknown
+  ) {
+    super('plan_image_upload_failed');
+    this.name = 'PlanImageUploadError';
+  }
+}
+
 export async function uploadPlanImages(planId: number, images: File[]): Promise<PlanDetail> {
-  const form = new FormData();
-  (await stripImagesMetadata(images)).forEach((img) => form.append('images', img));
-  const { data } = await apiClient.post<PlanDetail>(`/api/plan/${planId}/images`, form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return normalizePlanDetail(data);
+  let last: PlanDetail | null = null;
+  for (let i = 0; i < images.length; i++) {
+    try {
+      const form = new FormData();
+      form.append('images', await prepareImageForUpload(images[i]));
+      const { data } = await apiClient.post<PlanDetail>(`/api/plan/${planId}/images`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      last = data;
+    } catch (err) {
+      throw new PlanImageUploadError(i, images.length, err);
+    }
+  }
+  if (!last) throw new PlanImageUploadError(0, 0, new Error('no_images'));
+  return normalizePlanDetail(last);
 }
 
 // 플랜 이미지 삭제 — 명세 query int[]. 반복 파라미터(imageIds=1&imageIds=2)로 직렬화.
