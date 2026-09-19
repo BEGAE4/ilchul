@@ -34,7 +34,8 @@ export function PopularPlanListPage() {
     loadMore,
     retry,
   } = useNearbyPopularPlans({
-    query: buildNearbyQuery(region),
+    // 지역이 정해지기 전(저장된 지역을 읽는 중·위치 확인 중)에는 기본 지역(서울)로 조회하지 않는다.
+    query: isLocating ? null : buildNearbyQuery(region),
     cacheKey: CACHE_KEY,
   });
 
@@ -47,7 +48,11 @@ export function PopularPlanListPage() {
   });
 
   // 목록 → 상세 → 뒤로가기 시 스크롤 위치 복원
-  useScrollRestoration(CACHE_KEY, !isLoading && items.length > 0);
+  // 지역마다 목록이 달라 스크롤 위치도 지역별로 기억한다.
+  useScrollRestoration(
+    isLocating ? null : `${CACHE_KEY}:${region.id}`,
+    !isLoading && items.length > 0
+  );
 
   const showShellLoading =
     isLoading || isLocating;

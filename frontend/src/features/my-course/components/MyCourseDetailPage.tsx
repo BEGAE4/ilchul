@@ -55,6 +55,7 @@ import {
   STAMP_RADIUS_M,
 } from '../utils/stampFeedback';
 import { placeApi } from '@/features/place';
+import { useBackToPlanListAfterCreate } from '../hooks/useBackToPlanListAfterCreate';
 
 function formatMinutes(min: number): string {
   const h = Math.floor(Math.abs(min) / 60);
@@ -129,6 +130,8 @@ interface MyCourseDetailPageProps {
 
 export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const router = useRouter();
+  // 플랜을 방금 만들고 들어왔으면 뒤로가기를 마이페이지 플랜 목록으로 보낸다
+  useBackToPlanListAfterCreate(String(courseId));
 
   // 플랜 상세는 서버에서만 조회한다. 실패 시 에러 UI를 렌더링한다.
   const { plan, isLoading, error: planError, errorKind: planErrorKind, refetch } = usePlanDetail(courseId);

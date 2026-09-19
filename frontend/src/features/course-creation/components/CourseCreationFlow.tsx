@@ -52,6 +52,7 @@ import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
 import { withRo } from '@/shared/lib/format/josa';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { fetchMyPageProfile } from '@/features/my-page/api/my-page.api';
+import { markPlanJustCreated } from '@/shared/lib/navigation/createdPlanBack';
 
 // 스텝마다 하단 CTA 클래스를 따로 적다 보니 그림자·비활성 색이 제각각이 됐다.
 // 화면이 바뀌어도 같은 버튼으로 읽히도록 한 곳에서 관리한다.
@@ -374,8 +375,11 @@ export const CourseCreationFlow: React.FC = () => {
       });
       reset();
       toast.success('힐링 플랜이 생성되었어요!', { description: '내 플랜에서 확인해보세요.' });
-      // 내가 만든 플랜은 소유자 페이지(수정·인증 가능, 스크랩 없음)로 보낸다
-      router.push(`/my-course/${created.planId}`);
+      // 내가 만든 플랜은 소유자 페이지(수정·인증 가능, 스크랩 없음)로 보낸다.
+      // 생성 화면은 방금 초기화됐으므로 기록에 남기지 않는다(replace). 상세에서 뒤로가면
+      // 마이페이지 플랜 목록으로 간다 — useBackToPlanListAfterCreate 참고.
+      markPlanJustCreated(created.planId);
+      router.replace(`/my-course/${created.planId}`);
     } catch (err) {
       console.error('플랜 생성 실패:', err);
       toast.error('플랜 저장에 실패했어요.', {
