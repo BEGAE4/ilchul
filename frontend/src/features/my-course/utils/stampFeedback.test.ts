@@ -14,6 +14,11 @@ describe('stampErrorKind', () => {
     expect(stampErrorKind(axiosError(409))).toBe('alreadyStamped');
   });
 
+  it('413(사진 용량 초과)은 tooLarge — 위치 문제로 오해하지 않게 따로 안내한다', () => {
+    expect(stampErrorKind(axiosError(413))).toBe('tooLarge');
+    expect(stampErrorKind(new Error('image_too_large'))).toBe('tooLarge');
+  });
+
   it('그 외 상태·네트워크 오류는 generic', () => {
     expect(stampErrorKind(axiosError(500))).toBe('generic');
     expect(stampErrorKind(new Error('Network Error'))).toBe('generic');
