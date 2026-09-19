@@ -63,7 +63,7 @@ export default function Home() {
   const [introChecked, setIntroChecked] = useState(false);
 
   // 지역 — 직접 고른 지역 > 위치로 인식한 지역 > 기본값(서울).
-  // 주변 섹션은 이 지역의 대표 좌표로 조회한다.
+  // 주변 섹션은 이 지역의 이름으로 조회한다.
   const regionState = useRegion(introChecked);
   const { region, source: regionSource, isLocating } = regionState;
 
