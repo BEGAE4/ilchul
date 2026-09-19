@@ -1,4 +1,10 @@
-import { stampErrorKind } from './stampFeedback';
+import {
+  distanceMeters,
+  formatDistance,
+  isStampCanceled,
+  outOfRangeTitle,
+  stampErrorKind,
+} from './stampFeedback';
 
 // axios 의 isAxiosError 는 isAxiosError: true 인 객체를 AxiosError 로 본다
 function axiosError(status: number) {
@@ -41,5 +47,56 @@ describe('stampErrorKind', () => {
   it('오차가 커도 422 가 아니면 분류가 바뀌지 않는다', () => {
     expect(stampErrorKind(axiosError(409), 5000)).toBe('alreadyStamped');
     expect(stampErrorKind(axiosError(500), 5000)).toBe('generic');
+  });
+});
+
+describe('stampErrorKind — 시간 초과·취소', () => {
+  it('axios 제한 시간 초과는 timeout', () => {
+    expect(stampErrorKind({ isAxiosError: true, code: 'ECONNABORTED' })).toBe('timeout');
+    expect(stampErrorKind({ isAxiosError: true, code: 'ETIMEDOUT' })).toBe('timeout');
+  });
+
+  it('사용자가 취소한 요청은 isStampCanceled', () => {
+    expect(isStampCanceled({ isAxiosError: true, code: 'ERR_CANCELED' })).toBe(true);
+    expect(isStampCanceled({ isAxiosError: true, code: 'ECONNABORTED' })).toBe(false);
+    expect(isStampCanceled(new Error('x'))).toBe(false);
+  });
+});
+
+describe('distanceMeters', () => {
+  it('같은 좌표는 0', () => {
+    expect(distanceMeters({ x: 126.97, y: 37.55 }, { x: 126.97, y: 37.55 })).toBe(0);
+  });
+
+  it('위도 0.001도는 약 111m', () => {
+    const d = distanceMeters({ x: 126.97, y: 37.55 }, { x: 126.97, y: 37.551 });
+    expect(d).toBeGreaterThan(108);
+    expect(d).toBeLessThan(114);
+  });
+
+  it('서울시청 ↔ 부산시청은 약 320km', () => {
+    const d = distanceMeters({ x: 126.978, y: 37.5665 }, { x: 129.0756, y: 35.1796 });
+    expect(d / 1000).toBeGreaterThan(315);
+    expect(d / 1000).toBeLessThan(335);
+  });
+});
+
+describe('formatDistance · outOfRangeTitle', () => {
+  it('1km 미만은 10m 단위, 그 이상은 km', () => {
+    expect(formatDistance(163)).toBe('약 160m');
+    expect(formatDistance(4)).toBe('약 10m');
+    expect(formatDistance(1234)).toBe('약 1.2km');
+    expect(formatDistance(15400)).toBe('약 15km');
+  });
+
+  it('거리를 알면 실제 거리를 말한다 — 몇 km 밖을 "조금"이라고 하지 않는다', () => {
+    expect(outOfRangeTitle(2300)).toBe('장소에서 약 2.3km 떨어져 있어요.');
+    expect(outOfRangeTitle(180)).toBe('장소에서 약 180m 떨어져 있어요.');
+  });
+
+  it('거리를 모르면 단정하지 않는 문구', () => {
+    expect(outOfRangeTitle(undefined)).toBe('장소 근처가 아니에요.');
+    expect(outOfRangeTitle(null)).toBe('장소 근처가 아니에요.');
+    expect(outOfRangeTitle(NaN)).toBe('장소 근처가 아니에요.');
   });
 });

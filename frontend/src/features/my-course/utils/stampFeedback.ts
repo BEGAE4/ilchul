@@ -6,7 +6,8 @@ export type StampErrorKind =
   | 'alreadyStamped'
   | 'generic'
   | 'inaccurateLocation'
-  | 'tooLarge';
+  | 'tooLarge'
+  | 'timeout';
 
 /** 서버가 스탬프를 받아주는 반경 (PlanPlaceServiceImpl.stampPlanPlace 의 `distance > 150`) */
 export const STAMP_RADIUS_M = 150;
@@ -29,5 +30,48 @@ export function stampErrorKind(err: unknown, accuracyM?: number): StampErrorKind
   if (status === 409) return 'alreadyStamped';
   // 사진 용량 초과 — 앞단(nginx)이 HTML 413 으로 거절한다. 위치 문제로 안내하면 계속 같은 사진으로 실패한다
   if (isImageTooLarge(err)) return 'tooLarge';
+  // 업로드 제한 시간 초과 (axios timeout → ECONNABORTED / ETIMEDOUT). 회선이 약한 여행지에서 잦다
+  if (isAxiosError(err) && (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT')) return 'timeout';
   return 'generic';
+}
+
+/** 사용자가 '취소'를 눌러 요청을 끊은 경우 — 실패가 아니므로 안내를 띄우지 않는다 */
+export function isStampCanceled(err: unknown): boolean {
+  return isAxiosError(err) && err.code === 'ERR_CANCELED';
+}
+
+interface LngLat {
+  /** 경도 */
+  x: number;
+  /** 위도 */
+  y: number;
+}
+
+/** 두 좌표 사이 거리(미터). 하버사인 — 150m~수 km 범위에서 오차는 무시할 수준이다 */
+export function distanceMeters(a: LngLat, b: LngLat): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.y - a.y);
+  const dLng = toRad(b.x - a.x);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.y)) * Math.cos(toRad(b.y)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** '약 320m' / '약 1.2km' / '약 15km'. 1km 미만은 10m 단위, 10km 미만은 소수 한 자리 */
+export function formatDistance(meters: number): string {
+  if (meters < 1000) return `약 ${Math.max(10, Math.round(meters / 10) * 10)}m`;
+  const km = meters / 1000;
+  return km < 10 ? `약 ${km.toFixed(1)}km` : `약 ${Math.round(km)}km`;
+}
+
+/**
+ * 범위 밖(422) 안내 제목. 예전에는 몇 km 밖에서도 "조금 떨어져 있어요"라고 말했다.
+ * 장소 좌표를 알면 실제 거리를 말하고, 모르면 거리를 단정하지 않는 문구를 쓴다.
+ */
+export function outOfRangeTitle(distanceM?: number | null): string {
+  if (distanceM === undefined || distanceM === null || !Number.isFinite(distanceM)) {
+    return '장소 근처가 아니에요.';
+  }
+  return `장소에서 ${formatDistance(distanceM)} 떨어져 있어요.`;
 }

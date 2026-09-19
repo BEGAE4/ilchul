@@ -88,10 +88,15 @@ export async function createPlanPreview(body: {
 // 이전에는 location 을 application/json Blob 파트로 보내 운영에서 항상 400 "잘못된 입력값입니다." 였다
 // (2026-09-08 운영 확인: JSON 파트·{lat,lng}·request 파트 전부 400/500, 폼 필드만 200/422).
 // 좌표가 없으면 서버가 500 을 내므로 호출부(MyCourseDetailPage)가 위치 없이 보내지 않게 막는다.
+// 업로드 제한 시간. 기본값(무제한)이면 회선이 끊겼을 때 '기록하는 중' 화면이 끝나지 않는다.
+// 사진은 1MB 아래로 줄여 보내므로 약한 LTE(0.3Mbps)에서도 30초 안에 끝난다 — 여유를 두어 45초.
+export const STAMP_UPLOAD_TIMEOUT_MS = 45000;
+
 export async function stampPlanPlace(
   planPlaceId: number,
   image: File,
-  location: { x: number; y: number } | null
+  location: { x: number; y: number } | null,
+  options: { signal?: AbortSignal } = {}
 ): Promise<StampPlanPlaceResponse> {
   const form = new FormData();
   // 인증 판정은 폼 필드 좌표로 하므로, 사진 속 촬영 위치(EXIF)는 지워서 보낸다.
@@ -104,7 +109,11 @@ export async function stampPlanPlace(
   const { data } = await apiClient.post<StampPlanPlaceResponse>(
     `/api/plan-place/${planPlaceId}/stamp`,
     form,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: STAMP_UPLOAD_TIMEOUT_MS,
+      signal: options.signal,
+    }
   );
   return data;
 }
