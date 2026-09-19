@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 type Params = { params: Promise<{ id: string }> };
 
-/** GET 문의 상세 조회 — 백엔드 프록시 */
+/** GET 문의 상세 조회 — 백엔드 프록시. 백엔드에 아직 없는 엔드포인트라 지금은 upstream 오류(404/405)가 그대로 전달된다 */
 export async function GET(request: NextRequest, { params }: Params) {
   const { id } = await params;
   const baseUrl = getServerApiBaseUrl();
@@ -61,26 +61,4 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   return NextResponse.json(data, { status: res.status });
 }
 
-/** POST 문의 답변 작성 (관리자) — 백엔드 POST /api/cs-inquiry/{inquiryId}/reply 프록시, { content } */
-export async function POST(request: NextRequest, { params }: Params) {
-  const { id } = await params;
-  const baseUrl = getServerApiBaseUrl();
-  if (!baseUrl) {
-    return NextResponse.json({ error: 'backend not configured' }, { status: 502 });
-  }
-
-  const body = await request.json().catch(() => ({}));
-  const cookie = request.headers.get('cookie') ?? '';
-  const res = await fetch(`${baseUrl}/api/cs-inquiry/${id}/reply`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(cookie ? { cookie } : {}),
-    },
-    body: JSON.stringify(body),
-    cache: 'no-store',
-  });
-
-  const data = await res.json().catch(() => ({}));
-  return NextResponse.json(data, { status: res.status });
-}
+// 답변 작성(POST)은 명세 경로와 같은 ./reply/route.ts 에 있다 — 운영은 BFF 를 거치지 않아 경로가 백엔드와 같아야 한다

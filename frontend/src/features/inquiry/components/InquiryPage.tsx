@@ -4,7 +4,7 @@ import React, { useRef, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
-import type { InquiryDetail, InquirySection } from '../types/inquiry.types';
+import type { InquiryDetail, InquiryListItem, InquirySection } from '../types/inquiry.types';
 import { InquiryListSection } from './InquiryListSection';
 import { InquiryDetailSection } from './InquiryDetailSection';
 import { InquiryFormSection } from './InquiryFormSection';
@@ -18,7 +18,9 @@ export const InquiryPage = () => {
 
   const defaultSection: InquirySection = isAdmin ? 'adminList' : 'list';
   const [section, setSection] = useState<InquirySection>(defaultSection);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  // 상세 API 가 없는 동안 상세·답변 화면이 목록 정보로 대신 그릴 수 있게 아이템째 들고 있는다
+  const [selectedItem, setSelectedItem] = useState<InquiryListItem | null>(null);
+  const selectedId = selectedItem?.inquiryId ?? null;
   const [editTarget, setEditTarget] = useState<InquiryDetail | null>(null);
   const prevSection = useRef<InquirySection>(defaultSection);
 
@@ -72,8 +74,8 @@ export const InquiryPage = () => {
 
       {section === 'list' && (
         <InquiryListSection
-          onSelectInquiry={(id) => {
-            setSelectedId(id);
+          onSelectInquiry={(item) => {
+            setSelectedItem(item);
             navigate('detail');
           }}
           onCreateNew={() => navigate('create')}
@@ -82,12 +84,12 @@ export const InquiryPage = () => {
 
       {section === 'adminList' && (
         <AdminInquiryListSection
-          onSelectInquiry={(id) => {
-            setSelectedId(id);
+          onSelectInquiry={(item) => {
+            setSelectedItem(item);
             navigate('detail');
           }}
-          onAnswerInquiry={(id) => {
-            setSelectedId(id);
+          onAnswerInquiry={(item) => {
+            setSelectedItem(item);
             navigate('adminAnswer');
           }}
         />
@@ -96,6 +98,7 @@ export const InquiryPage = () => {
       {section === 'detail' && selectedId !== null && (
         <InquiryDetailSection
           inquiryId={selectedId}
+          fallbackItem={selectedItem}
           isAdmin={isAdmin}
           onBack={goBack}
           onEdit={(inquiry) => {
@@ -132,6 +135,7 @@ export const InquiryPage = () => {
       {section === 'adminAnswer' && selectedId !== null && (
         <AdminAnswerFormSection
           inquiryId={selectedId}
+          fallbackItem={selectedItem}
           onSuccess={() => {
             setSection('adminList');
           }}
