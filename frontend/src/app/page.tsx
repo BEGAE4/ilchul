@@ -22,6 +22,7 @@ import { useRegion } from '@/features/main/hooks/useRegion';
 import { RegionSelector } from '@/features/main/components/RegionSelector';
 import { HeroEmpty } from '@/features/main/components/HeroEmpty';
 import { DEFAULT_REGION } from '@/features/main/constants/regions';
+import { buildNearbyQuery } from '@/features/main/utils/nearbyQuery';
 import { useNearbyPopularPlaces } from '@/features/main/hooks/useNearbyPopularPlaces';
 import { useNearbyPopularPlans } from '@/features/main/hooks/useNearbyPopularPlans';
 import { useNationwidePopularPlaces } from '@/features/main/hooks/useNationwidePopularPlaces';
@@ -69,20 +70,17 @@ export default function Home() {
   // 지역 주변에 등록된 장소가 없으면 기본 지역(서울)으로 되돌린다.
   const [fallbackToDefault, setFallbackToDefault] = useState(false);
   const canFallback = regionSource === 'gps' && !fallbackToDefault;
-  const effectiveLat = canFallback ? region.lat : fallbackToDefault ? DEFAULT_REGION.lat : region.lat;
-  const effectiveLng = canFallback ? region.lng : fallbackToDefault ? DEFAULT_REGION.lng : region.lng;
+  const nearbyQuery = buildNearbyQuery(fallbackToDefault ? DEFAULT_REGION : region);
   const shownRegionName = fallbackToDefault ? DEFAULT_REGION.name : region.name;
 
   // API 훅
   const nearbyPlaces = useNearbyPopularPlaces({
-    lat: effectiveLat,
-    lng: effectiveLng,
+    query: nearbyQuery,
     limit: 5,
     enabled: introChecked,
   });
   const nearbyPlans = useNearbyPopularPlans({
-    lat: effectiveLat,
-    lng: effectiveLng,
+    query: nearbyQuery,
     limit: 5,
     enabled: introChecked,
   });
