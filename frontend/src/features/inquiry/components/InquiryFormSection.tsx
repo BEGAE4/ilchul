@@ -1,5 +1,6 @@
 'use client';
 
+import { photoUploadErrorMessage } from '@/shared/lib/image';
 import React, { useEffect, useRef, useState } from 'react';
 import Image from '@/shared/ui/SafeImage';
 import { ArrowLeft, ImagePlus, X } from 'lucide-react';
@@ -133,8 +134,8 @@ export const InquiryFormSection = ({
         toast.success('문의가 수정되었어요.');
       }
       onSuccess(result);
-    } catch {
-      toast.error('요청에 실패했어요. 다시 시도해 주세요.');
+    } catch (err) {
+      toast.error(photoUploadErrorMessage(err, '요청에 실패했어요. 다시 시도해 주세요.'));
     } finally {
       setIsSubmitting(false);
     }
