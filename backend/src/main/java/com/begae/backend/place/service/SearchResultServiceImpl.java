@@ -1,10 +1,6 @@
 package com.begae.backend.place.service;
 
-import com.begae.backend.place.dto.SearchLogSaveRequest;
-import com.begae.backend.place.dto.SearchPlaceResultDto;
-import com.begae.backend.place.dto.SearchPlanPlaceResultDto;
-import com.begae.backend.place.dto.SearchPlanResultDto;
-import com.begae.backend.place.dto.SearchResultResponseDto;
+import com.begae.backend.place.dto.*;
 import com.begae.backend.place.repository.SearchResultRepository;
 import com.begae.backend.place.util.SearchKeywordPolicy;
 import lombok.RequiredArgsConstructor;
@@ -97,7 +93,11 @@ public class SearchResultServiceImpl implements SearchResultService {
      */
     private void syncKakaoPlaces(String keyword) {
         try {
-            placeService.searchPlaceByKeyword(keyword);
+            log.info("Kakao Place Searching...");
+            List<SearchPlaceResponseDto> result = placeService.searchPlaceByKeyword(keyword);
+            if(result == null || result.isEmpty()) {
+                log.warn("통합검색에서 {} 키워드의 카카오 검색 결과를 불러오지 못했습니다.", keyword);
+            }
         } catch (Exception e) {
             log.warn("통합검색용 Kakao 장소 동기화 중 오류가 발생했습니다. keyword={}", keyword, e);
         }
