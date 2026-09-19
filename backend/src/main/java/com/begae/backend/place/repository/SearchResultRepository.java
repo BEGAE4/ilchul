@@ -42,6 +42,7 @@ public interface SearchResultRepository extends JpaRepository<Place, Integer> {
                OR pl.category_name LIKE CONCAT('%', :keyword, '%')
                OR pl.address_name LIKE CONCAT('%', :keyword, '%')
                OR pl.road_address_name LIKE CONCAT('%', :keyword, '%')
+               OR pl.place_id IN (:kakaoPlaceIds)
             GROUP BY
                 pl.place_id,
                 pl.place_name,
@@ -54,6 +55,10 @@ public interface SearchResultRepository extends JpaRepository<Place, Integer> {
                 pl.like_count,
                 pl.scrap_count
             ORDER BY
+                CASE
+                    WHEN pl.place_id IN (:kakaoPlaceIds) THEN 1
+                    ELSE 0
+                END DESC,
                 exactMatched DESC,
                 prefixMatched DESC,
                 includedPlanCount DESC,
@@ -64,6 +69,7 @@ public interface SearchResultRepository extends JpaRepository<Place, Integer> {
             """, nativeQuery = true)
     List<SearchPlaceProjection> searchPlaces(
             @Param("keyword") String keyword,
+            @Param("kakaoPlaceIds") List<Integer> kakaoPlaceIds,
             @Param("limit") int limit,
             @Param("offset") int offset
     );
@@ -75,8 +81,12 @@ public interface SearchResultRepository extends JpaRepository<Place, Integer> {
                OR pl.category_name LIKE CONCAT('%', :keyword, '%')
                OR pl.address_name LIKE CONCAT('%', :keyword, '%')
                OR pl.road_address_name LIKE CONCAT('%', :keyword, '%')
+               OR pl.place_id IN (:kakaoPlaceIds)
             """, nativeQuery = true)
-    Number countPlaces(@Param("keyword") String keyword);
+    Number countPlaces(
+            @Param("keyword") String keyword,
+            @Param("kakaoPlaceIds") List<Integer> kakaoPlaceIds
+    );
 
     @Query(value = """
             SELECT
@@ -107,6 +117,7 @@ public interface SearchResultRepository extends JpaRepository<Place, Integer> {
                 MAX(CASE
                     WHEN pl.place_name LIKE CONCAT('%', :keyword, '%')
                       OR pp.snapshot_place_name LIKE CONCAT('%', :keyword, '%')
+                      OR pp.place_id IN (:kakaoPlaceIds)
                     THEN 1
                     ELSE 0
                 END) AS matchedByPlace
@@ -126,6 +137,7 @@ public interface SearchResultRepository extends JpaRepository<Place, Integer> {
                  OR pp.snapshot_address_name LIKE CONCAT('%', :keyword, '%')
                  OR pl.road_address_name LIKE CONCAT('%', :keyword, '%')
                  OR pp.snapshot_road_address_name LIKE CONCAT('%', :keyword, '%')
+                 OR pp.place_id IN (:kakaoPlaceIds)
               )
             GROUP BY
                 p.plan_id,
@@ -137,6 +149,10 @@ public interface SearchResultRepository extends JpaRepository<Place, Integer> {
                 p.scrap_count,
                 p.create_at
             ORDER BY
+                MAX(CASE
+                    WHEN pp.place_id IN (:kakaoPlaceIds) THEN 1
+                    ELSE 0
+                END) DESC,
                 matchedByExactPlace DESC,
                 matchedByPlace DESC,
                 CASE
@@ -154,6 +170,7 @@ public interface SearchResultRepository extends JpaRepository<Place, Integer> {
             """, nativeQuery = true)
     List<SearchPlanProjection> searchPlans(
             @Param("keyword") String keyword,
+            @Param("kakaoPlaceIds") List<Integer> kakaoPlaceIds,
             @Param("limit") int limit,
             @Param("offset") int offset
     );
@@ -176,9 +193,13 @@ public interface SearchResultRepository extends JpaRepository<Place, Integer> {
                  OR pp.snapshot_address_name LIKE CONCAT('%', :keyword, '%')
                  OR pl.road_address_name LIKE CONCAT('%', :keyword, '%')
                  OR pp.snapshot_road_address_name LIKE CONCAT('%', :keyword, '%')
+                 OR pp.place_id IN (:kakaoPlaceIds)
               )
             """, nativeQuery = true)
-    Number countPlans(@Param("keyword") String keyword);
+    Number countPlans(
+            @Param("keyword") String keyword,
+            @Param("kakaoPlaceIds") List<Integer> kakaoPlaceIds
+    );
 
     @Query(value = """
             SELECT
@@ -196,6 +217,7 @@ public interface SearchResultRepository extends JpaRepository<Place, Integer> {
                       OR COALESCE(pp.snapshot_category_name, pl.category_name) LIKE CONCAT('%', :keyword, '%')
                       OR COALESCE(pp.snapshot_address_name, pl.address_name) LIKE CONCAT('%', :keyword, '%')
                       OR COALESCE(pp.snapshot_road_address_name, pl.road_address_name) LIKE CONCAT('%', :keyword, '%')
+                      OR pp.place_id IN (:kakaoPlaceIds)
                     THEN 1
                     ELSE 0
                 END AS matched
@@ -206,7 +228,8 @@ public interface SearchResultRepository extends JpaRepository<Place, Integer> {
             """, nativeQuery = true)
     List<SearchPlanPlaceProjection> findPlanPlacesByPlanIds(
             @Param("planIds") List<Integer> planIds,
-            @Param("keyword") String keyword
+            @Param("keyword") String keyword,
+            @Param("kakaoPlaceIds") List<Integer> kakaoPlaceIds
     );
 
     interface SearchPlaceProjection {
