@@ -1,6 +1,12 @@
 import { isAxiosError } from 'axios';
+import { isImageTooLarge } from '@/shared/lib/image';
 
-export type StampErrorKind = 'outOfRange' | 'alreadyStamped' | 'generic' | 'inaccurateLocation';
+export type StampErrorKind =
+  | 'outOfRange'
+  | 'alreadyStamped'
+  | 'generic'
+  | 'inaccurateLocation'
+  | 'tooLarge';
 
 /** 서버가 스탬프를 받아주는 반경 (PlanPlaceServiceImpl.stampPlanPlace 의 `distance > 150`) */
 export const STAMP_RADIUS_M = 150;
@@ -21,5 +27,7 @@ export function stampErrorKind(err: unknown, accuracyM?: number): StampErrorKind
     return accuracyM !== undefined && accuracyM > STAMP_RADIUS_M ? 'inaccurateLocation' : 'outOfRange';
   }
   if (status === 409) return 'alreadyStamped';
+  // 사진 용량 초과 — 앞단(nginx)이 HTML 413 으로 거절한다. 위치 문제로 안내하면 계속 같은 사진으로 실패한다
+  if (isImageTooLarge(err)) return 'tooLarge';
   return 'generic';
 }

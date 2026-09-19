@@ -1,5 +1,6 @@
 'use client';
 
+import { photoUploadErrorMessage } from '@/shared/lib/image';
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -260,6 +261,19 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     setIsEditingReview(false);
   };
 
+  // 사진은 한 장씩 올라간다(앞단 1MB 제한이 요청 전체에 걸려서). 중간에 실패하면 올라간 만큼은 화면에 반영하고,
+  // 용량 문제인지 네트워크 문제인지 구분해 알린다 — 이전에는 전부 "다시 시도해주세요"라 같은 사진으로 계속 실패했다.
+  const reportPhotoUploadFailure = (err: unknown, fallback: string) => {
+    const partial = err instanceof planApi.PlanImageUploadError ? err : null;
+    const reason = photoUploadErrorMessage(partial ? partial.cause : err, fallback);
+    if (partial && partial.uploaded > 0) {
+      toast.warning(`${partial.total}장 중 ${partial.uploaded}장만 올렸어요.`, { description: reason });
+      refetch();
+      return;
+    }
+    toast.error(reason);
+  };
+
   const handleSaveReview = async () => {
     if (!plan || isSavingReview) return;
     const text = reviewText.trim();
@@ -285,7 +299,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
       refetch();
     } catch (err) {
       console.error('여행 기록 저장 실패:', err);
-      toast.error('여행 기록 저장에 실패했어요. 다시 시도해주세요.');
+      reportPhotoUploadFailure(err, '여행 기록 저장에 실패했어요. 다시 시도해주세요.');
     } finally {
       setIsSavingReview(false);
     }
@@ -513,7 +527,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
       refetch();
     } catch (err) {
       console.error('플랜 사진 업로드 실패:', err);
-      toast.error('사진 업로드에 실패했어요. 다시 시도해주세요.');
+      reportPhotoUploadFailure(err, '사진 업로드에 실패했어요. 다시 시도해주세요.');
     } finally {
       setIsUploadingImages(false);
       if (planImageInputRef.current) planImageInputRef.current.value = '';

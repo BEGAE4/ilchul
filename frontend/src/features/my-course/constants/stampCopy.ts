@@ -52,6 +52,10 @@ export const STAMP_COPY = {
       title: '이미 기록한 곳이에요.',
       description: '화면을 새로 불러올게요.',
     },
+    tooLarge: {
+      title: '사진 용량이 너무 커요.',
+      description: '다른 사진으로 다시 남겨주세요.',
+    },
     generic: {
       title: '기록하지 못했어요.',
       description: '위치와 네트워크 상태를 확인한 뒤 다시 시도해주세요.',
