@@ -25,6 +25,7 @@ import {
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
+import { isMine } from '@/shared/lib/auth/isMine';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
 import { BottomActionBar } from '@/shared/ui/BottomActionBar';
 import { CourseDetailSkeleton } from '@/shared/ui/Skeleton';
@@ -46,7 +47,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const { plan, isLoading: isPlanLoading, error: planError, errorKind: planErrorKind, refetch } = usePlanDetail(courseId);
   const planActions = usePlanActions(plan);
 
-  const { user, isLoggedIn, updateProfile } = useUserStore();
+  const { user, userId: myUserId, isLoggedIn, updateProfile } = useUserStore();
 
   // 소유자 판별은 닉네임으로 하므로, 상세에 바로 진입해 스토어가 비어 있으면 프로필을 채운다
   useEffect(() => {
@@ -64,6 +65,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   }, [isLoggedIn, user?.name, updateProfile]);
   const currentUser: CurrentUser = {
     id: user?.id ?? '',
+    userId: myUserId,
     name: user?.name ?? '',
     isLoggedIn,
   };
@@ -158,12 +160,15 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
 
   // 현재 유저의 userId 를 주는 API 가 없어(userinfo=email/role, profile=닉네임) 닉네임으로 판별한다.
   // 내 플랜이면 스크랩·'일정 담기' 하단 바는 의미가 없으므로 숨기고 좋아요만 남긴다.
-  const isMyPlan = isLoggedIn && !!user?.name && user.name === plan.userNickname;
+  // 내 것 판별은 숫자 id 로 한다 (닉네임은 겹치거나 바뀔 수 있다). id 를 모를 때만 닉네임으로 폴백 — isMine 참고
+  const me = { isLoggedIn, userId: myUserId, name: user?.name };
+  const isMyPlan = isMine(me, { userId: plan.userId, nickname: plan.userNickname });
 
   const courseTarget: ReportTarget = {
     type: 'course',
     id: courseId,
-    ownerId: plan.userNickname, // A7: 닉네임 best-effort 매칭
+    ownerId: plan.userNickname,
+    ownerUserId: plan.userId,
     title: plan.planTitle,
     contextUrl: `/course/${courseId}`,
   };
@@ -420,7 +425,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                       >
                         답글
                       </button>
-                      {comment.user === currentUser.name ? (
+                      {isMine(me, { userId: comment.userId, nickname: comment.user }) ? (
                         <button
                           onClick={() =>
                             setDeleteTarget({ replyId: comment.replyId, content: comment.content, parentId: null })
@@ -437,6 +442,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                               type: 'comment',
                               id: String(comment.replyId),
                               ownerId: comment.user,
+                              ownerUserId: comment.userId,
                               courseId,
                               snippet: comment.content.slice(0, 60),
                               contextUrl: `/course/${courseId}#comment-${comment.replyId}`,
@@ -478,7 +484,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                               <ThumbsUp size={12} />
                               <span>{reply.likeCount}</span>
                             </button>
-                            {reply.user === currentUser.name ? (
+                            {isMine(me, { userId: reply.userId, nickname: reply.user }) ? (
                               <button
                                 onClick={() =>
                                   setDeleteTarget({
@@ -499,6 +505,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                                     type: 'comment',
                                     id: String(reply.replyId),
                                     ownerId: reply.user,
+                                    ownerUserId: reply.userId,
                                     courseId,
                                     snippet: reply.content.slice(0, 60),
                                     contextUrl: `/course/${courseId}#comment-${reply.replyId}`,

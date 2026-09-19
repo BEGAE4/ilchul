@@ -40,4 +40,10 @@ describe('isOwnProfile', () => {
     expect(isOwnProfile({ isLoggedIn: true, name: '' }, '')).toBe(false);
     expect(isOwnProfile({ isLoggedIn: true, name: '새벽여행자' }, null)).toBe(false);
   });
+
+  it('내 id 와 프로필 id 를 알면 id 로만 판별한다 — 닉네임이 같은 다른 사람은 본인이 아니다', () => {
+    expect(isOwnProfile({ isLoggedIn: true, userId: 10, name: '새벽여행자' }, '새벽여행자', 10)).toBe(true);
+    expect(isOwnProfile({ isLoggedIn: true, userId: 10, name: '새벽여행자' }, '새벽여행자', 3)).toBe(false);
+    expect(isOwnProfile({ isLoggedIn: true, userId: 10, name: '바뀐이름' }, '옛이름', 10)).toBe(true);
+  });
 });

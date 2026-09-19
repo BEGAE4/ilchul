@@ -4,6 +4,7 @@ import { isAxiosError } from 'axios';
 import * as placeApi from '../api/place.api';
 import type { PlaceDetail, PlaceReview, PlaceContainingPlan } from '../types/place.types';
 import { toNumericPlaceId } from '../utils/placeId';
+import { reviewErrorMessage } from '../utils/reviewErrorMessage';
 
 // axios 에러의 HTTP 상태를 사용자에게 보여줄 한국어 문구로 변환한다.
 // 영문 axios 메시지("Request failed with status code 400")가 그대로 노출되지 않도록 한다.
@@ -31,6 +32,8 @@ export function usePlaceDetail(placeId: string) {
   const [place, setPlace] = useState<PlaceDetail | null>(null);
   const [reviews, setReviews] = useState<PlaceReview[]>([]);
   const [hasMoreReviews, setHasMoreReviews] = useState(false);
+  // 전체 후기 수 — 목록은 커서 페이징이라 불러온 개수와 다르다
+  const [totalReviewCount, setTotalReviewCount] = useState(0);
   const [isFetchingMoreReviews, setIsFetchingMoreReviews] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [relatedPlans, setRelatedPlans] = useState<PlaceContainingPlan[]>([]);
@@ -67,6 +70,7 @@ export function usePlaceDetail(placeId: string) {
         setPlace(detail);
         setReviews(reviewRes?.data ?? []);
         setHasMoreReviews(reviewRes?.hasNext ?? false);
+        setTotalReviewCount(reviewRes?.totalCount ?? reviewRes?.data?.length ?? 0);
         setReviewsError(reviewFailed);
         setRelatedPlans(plans);
       } catch (err) {
@@ -112,6 +116,7 @@ export function usePlaceDetail(placeId: string) {
       try {
         const created = await placeApi.writePlaceReview(numericId, { content: trimmed });
         setReviews((prev) => [created, ...prev]);
+        setTotalReviewCount((n) => n + 1);
         toast.success('후기가 등록되었어요!');
         return true;
       } catch {
@@ -124,9 +129,52 @@ export function usePlaceDetail(placeId: string) {
     [numericId, isSubmittingReview]
   );
 
+  // 후기 수정 — 성공 시 그 자리의 후기를 서버가 돌려준 값으로 바꾼다
+  const editReview = useCallback(
+    async (reviewId: number, content: string): Promise<boolean> => {
+      const trimmed = content.trim();
+      if (numericId === null || !trimmed) return false;
+      try {
+        const updated = await placeApi.updatePlaceReview(numericId, reviewId, { content: trimmed });
+        setReviews((prev) => prev.map((r) => (r.reviewId === reviewId ? updated : r)));
+        toast.success('후기를 수정했어요.');
+        return true;
+      } catch (err) {
+        toast.error(reviewErrorMessage(err, '수정'));
+        return false;
+      }
+    },
+    [numericId]
+  );
+
+  // 후기 삭제 — 이미 지워진 후기(404)도 목록에서는 빼 준다
+  const removeReview = useCallback(
+    async (reviewId: number): Promise<boolean> => {
+      if (numericId === null) return false;
+      const dropLocal = () => {
+        setReviews((prev) => prev.filter((r) => r.reviewId !== reviewId));
+        setTotalReviewCount((n) => Math.max(0, n - 1));
+      };
+      try {
+        await placeApi.deletePlaceReview(numericId, reviewId);
+        dropLocal();
+        toast.success('후기를 삭제했어요.');
+        return true;
+      } catch (err) {
+        if (isAxiosError(err) && err.response?.status === 404) dropLocal();
+        toast.error(reviewErrorMessage(err, '삭제'));
+        return false;
+      }
+    },
+    [numericId]
+  );
+
   return {
     place,
     reviews,
+    totalReviewCount,
+    editReview,
+    removeReview,
     reviewsError,
     hasMoreReviews,
     isFetchingMoreReviews,

@@ -5,3 +5,5 @@ export {
   prepareImageForUpload,
   prepareImagesForOneRequest,
 } from './prepareImageForUpload';
+export { resizeImageForUpload, fitWithin } from './resizeImage';
+export { canLoadImage } from './canLoadImage';

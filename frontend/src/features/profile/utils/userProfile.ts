@@ -1,3 +1,4 @@
+import { isMine } from '@/shared/lib/auth/isMine';
 import type { UserProfileErrorKind } from '../types/user-profile.types';
 
 /**
@@ -22,12 +23,16 @@ export function classifyUserProfileError(status: number | null | undefined): Use
 }
 
 /**
- * 보고 있는 프로필이 나 자신인지. 로그인 정보(userinfo)에 숫자 userId 가 없어 닉네임으로 판별한다
- * (CourseViewPage.isMyPlan, report.isSelfReport 와 같은 방식). 본인이면 신고(⋮)를 숨긴다.
+ * 보고 있는 프로필이 나 자신인지. 경로의 숫자 userId 와 내 userId(userinfo)로 판별하고,
+ * 내 id 를 아직 모르면 닉네임으로 폴백한다 (shared/lib/auth/isMine). 본인이면 신고(⋮)를 숨긴다.
  */
 export function isOwnProfile(
-  me: { isLoggedIn: boolean; name: string | null | undefined },
-  profileNickname: string | null | undefined
+  me: { isLoggedIn: boolean; userId?: number | null; name: string | null | undefined },
+  profileNickname: string | null | undefined,
+  profileUserId?: number | null
 ): boolean {
-  return me.isLoggedIn && !!me.name && me.name === profileNickname;
+  return isMine(
+    { isLoggedIn: me.isLoggedIn, userId: me.userId, name: me.name },
+    { userId: profileUserId, nickname: profileNickname }
+  );
 }
