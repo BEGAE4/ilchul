@@ -79,6 +79,24 @@ export async function writePlaceReview(
   return data;
 }
 
+// 장소 후기 수정 — 본인 후기만. 200 + 갱신된 후기 (남의 것 403, 없는 것 404). 2026-09-18 백엔드 추가 (8-3)
+export async function updatePlaceReview(
+  placeId: number,
+  reviewId: number,
+  body: WritePlaceReviewBody
+): Promise<PlaceReview> {
+  const { data } = await apiClient.patch<PlaceReview>(
+    `/api/place/${placeId}/review/${reviewId}`,
+    body
+  );
+  return data;
+}
+
+// 장소 후기 삭제 — 본인 후기만. 204 (남의 것 403, 없는 것 404). 2026-09-18 백엔드 추가 (8-1)
+export async function deletePlaceReview(placeId: number, reviewId: number): Promise<void> {
+  await apiClient.delete(`/api/place/${placeId}/review/${reviewId}`);
+}
+
 // 장소가 포함된 공개 코스 목록
 export async function fetchPlansContainingPlace(placeId: number): Promise<PlaceContainingPlan[]> {
   const { data } = await apiClient.get<PlaceContainingPlan[]>(`/api/place/${placeId}/plan`);

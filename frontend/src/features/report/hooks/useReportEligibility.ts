@@ -1,5 +1,6 @@
 import { has } from '../utils/hiddenReportsStorage';
 import type { CurrentUser, ReportTarget } from '../types';
+import { isMine } from '@/shared/lib/auth/isMine';
 
 interface UseReportEligibilityArgs {
   currentUser: CurrentUser;
@@ -12,11 +13,13 @@ interface EligibilityResult {
   reason?: 'NOT_LOGGED_IN' | 'SELF_REPORT' | 'ALREADY_REPORTED';
 }
 
-// Q1 결정: 닉네임 best-effort 매칭. 백엔드 안정 식별자 도입 시 이 함수 1개만 교체.
-// A7: 동명이인 우회 가능성 인지 — 서버 측 403 self-report-forbidden이 이중 안전망.
+// 내 숫자 id(userinfo.userId, 2026-09-18 추가)와 대상의 ownerUserId 로 판별한다. 둘 중 하나라도 없으면
+// 예전처럼 닉네임으로 비교한다. 서버 측 403 self-report-forbidden 이 이중 안전망.
 export function isSelfReport(user: CurrentUser, target: ReportTarget): boolean {
-  // TODO(auth): user.id가 안정 식별자가 되면 user.id === target.ownerId로 교체 (백엔드 안정 ID 도입 후)
-  return user.isLoggedIn && user.name === target.ownerId;
+  return isMine(
+    { isLoggedIn: user.isLoggedIn, userId: user.userId, name: user.name },
+    { userId: target.ownerUserId, nickname: target.ownerId }
+  );
 }
 
 export function useReportEligibility({ currentUser, target }: UseReportEligibilityArgs): EligibilityResult {

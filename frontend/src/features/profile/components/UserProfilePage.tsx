@@ -52,7 +52,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
   const { ready } = useRequireAuth();
   const numericUserId = parseUserId(userId);
 
-  const { user, isLoggedIn, updateProfile } = useUserStore();
+  const { user, userId: myUserId, isLoggedIn, updateProfile } = useUserStore();
 
   // 본인 여부는 닉네임으로 판별하는데, 스토어의 닉네임은 마이페이지/플랜 상세를 거쳐야 채워진다.
   // 이 화면에 바로 들어오면 비어 있으므로 한 번 채운다 (CourseViewPage 와 같은 방식).
@@ -77,6 +77,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
 
   const currentUser: CurrentUser = {
     id: user?.id ?? '',
+    userId: myUserId,
     name: user?.name ?? '',
     isLoggedIn,
   };
@@ -142,13 +143,14 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
 
   const profile = profileState.status === 'ready' ? profileState.profile : null;
   const nickname = profile?.userNickname || '여행자';
-  const isSelf = isOwnProfile(currentUser, profile?.userNickname);
+  const isSelf = isOwnProfile(currentUser, profile?.userNickname, numericUserId);
 
-  // §9-3: 사용자 신고 대상. ownerId 는 닉네임(A7: 신고 기능이 닉네임으로 본인 여부를 판별)
+  // §9-3: 사용자 신고 대상. 본인 여부는 ownerUserId(숫자 id)로 판별하고 ownerId(닉네임)는 폴백·표시용
   const userTarget: ReportTarget = {
     type: 'user',
     id: userId,
     ownerId: profile?.userNickname ?? '',
+    ownerUserId: numericUserId,
     nickname: profile?.userNickname ?? '',
     contextUrl: `/profile/${userId}`,
   };

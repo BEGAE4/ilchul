@@ -6,10 +6,11 @@ export interface MyPageProfile {
   userIntro: string | null;
 }
 
+// 사진은 이 요청으로 바꾸지 않는다. 2026-09-18 부터 서버가 newUserProfileImg 를 무시하고 기존 사진을 유지한다 —
+// 사진 변경·삭제는 POST/DELETE /api/mypage/profile/image (uploadProfileImage / deleteProfileImage)
 export interface UpdateProfileRequest {
   newUserNickname: string;
   newUserIntro: string;
-  newUserProfileImg: string;
 }
 
 export interface UpdateProfileResponse {

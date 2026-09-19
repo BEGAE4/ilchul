@@ -15,6 +15,9 @@ import {
   Bookmark,
   BookmarkCheck,
   ExternalLink,
+  Pencil,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ShareBottomSheet } from '@/shared/ui/ShareBottomSheet';
@@ -25,6 +28,8 @@ import type { BestPlace } from '@/shared/types';
 import { usePlaceDetail, usePlaceActions } from '@/features/place';
 import { Map as KakaoMap, MapMarker } from 'react-kakao-maps-sdk';
 import { useKakaoMapLoader } from '@/shared/lib/kakao';
+import { useUserStore } from '@/shared/lib/stores/useUserStore';
+import { isMine } from '@/shared/lib/auth/isMine';
 
 interface PlaceDetailPageProps {
   placeId: string;
@@ -40,6 +45,9 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
   const {
     place: serverPlace,
     reviews: serverReviews,
+    totalReviewCount,
+    editReview,
+    removeReview,
     reviewsError,
     hasMoreReviews,
     isFetchingMoreReviews,
@@ -52,6 +60,13 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
     requiresAuth,
   } = usePlaceDetail(placeId);
   const [reviewInput, setReviewInput] = useState('');
+  // 내 후기 수정·삭제 (2026-09-18 백엔드 추가). 내 것인지는 숫자 id 로 판별한다 — isMine 참고
+  const { user, userId: myUserId, isLoggedIn } = useUserStore();
+  const me = { isLoggedIn, userId: myUserId, name: user?.name };
+  const [editingReview, setEditingReview] = useState<{ id: number; text: string } | null>(null);
+  const [isSavingReview, setIsSavingReview] = useState(false);
+  const [deleteReviewTarget, setDeleteReviewTarget] = useState<{ id: number; content: string } | null>(null);
+  const [isDeletingReview, setIsDeletingReview] = useState(false);
   // 위치 미니맵용 카카오맵 SDK 로드 상태
   const [isKakaoLoading, kakaoError] = useKakaoMapLoader();
   // 좋아요/스크랩: 상세 응답의 초기 상태로 시작하고, POST·DELETE /api/place/{placeId}/likes|scraps 응답값으로 확정한다.
@@ -99,6 +114,8 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
   // 후기: v5 후기 API 데이터 (별점 없음)
   const displayReviews = serverReviews.map((r) => ({
     id: String(r.reviewId),
+    reviewId: r.reviewId,
+    isMine: isMine(me, { userId: r.userId, nickname: r.userNickname }),
     user: r.userNickname,
     avatar: r.userImg || '',
     comment: r.content,
@@ -258,7 +275,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
       <div className="px-5 py-4 border-t border-gray-100">
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-bold text-gray-900">방문자 후기</h2>
-          <span className="text-xs text-gray-400">{displayReviews.length}개의 후기</span>
+          <span className="text-xs text-gray-400">{totalReviewCount}개의 후기</span>
         </div>
 
         {/* 후기 작성 폼 — POST /api/place/{placeId}/review */}
@@ -311,8 +328,70 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
                   <div className="text-sm font-bold text-gray-900">{review.user}</div>
                   <div className="text-[10px] text-gray-400">{review.date}</div>
                 </div>
+                {review.isMine && editingReview?.id !== review.reviewId && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditingReview({ id: review.reviewId, text: review.comment })}
+                      aria-label="후기 수정"
+                      className="p-1.5 text-gray-400 hover:text-primary-500"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteReviewTarget({ id: review.reviewId, content: review.comment })}
+                      aria-label="후기 삭제"
+                      className="p-1.5 text-gray-400 hover:text-red-500"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
-              <p className="text-sm text-gray-700 leading-relaxed">{review.comment}</p>
+              {editingReview?.id === review.reviewId ? (
+                <div>
+                  <textarea
+                    value={editingReview.text}
+                    onChange={(e) => setEditingReview({ id: review.reviewId, text: e.target.value })}
+                    maxLength={1000}
+                    rows={3}
+                    aria-label="후기 수정 내용"
+                    className="w-full p-3 border border-primary-300 rounded-xl bg-white text-sm resize-none focus:outline-none focus:border-primary-500"
+                  />
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-[11px] text-gray-400">{editingReview.text.length}/1000</span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingReview(null)}
+                        className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold"
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="button"
+                        disabled={
+                          isSavingReview ||
+                          !editingReview.text.trim() ||
+                          editingReview.text.trim() === review.comment
+                        }
+                        onClick={async () => {
+                          setIsSavingReview(true);
+                          const ok = await editReview(review.reviewId, editingReview.text);
+                          setIsSavingReview(false);
+                          if (ok) setEditingReview(null);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-primary-500 text-white text-xs font-bold disabled:bg-gray-300"
+                      >
+                        {isSavingReview ? '저장 중...' : '저장'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{review.comment}</p>
+              )}
             </motion.div>
           ))}
 
@@ -417,6 +496,52 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
         onClose={() => setIsAddSheetOpen(false)}
         place={place}
       />
+
+      {/* ─── 후기 삭제 확인 모달 — 플랜 댓글 삭제와 같은 모양 ─── */}
+      {deleteReviewTarget && (
+        <div className="fixed inset-y-0 app-frame z-[120] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setDeleteReviewTarget(null)} />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="후기 삭제 확인"
+            className="relative w-full max-w-[320px] bg-white rounded-2xl p-6 shadow-lg"
+          >
+            <h3 className="text-gray-900 text-lg font-bold mb-2">후기를 삭제하시겠어요?</h3>
+            <p className="text-gray-500 text-sm mb-4 leading-relaxed">삭제된 후기는 복구할 수 없습니다.</p>
+            <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100 mb-5 line-clamp-3">
+              {deleteReviewTarget.content}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteReviewTarget(null)}
+                className="flex-1 bg-gray-100 text-gray-700 font-bold py-2.5 px-4 rounded-xl text-sm hover:bg-gray-200"
+              >
+                취소
+              </button>
+              <button
+                disabled={isDeletingReview}
+                onClick={async () => {
+                  setIsDeletingReview(true);
+                  await removeReview(deleteReviewTarget.id);
+                  setIsDeletingReview(false);
+                  setDeleteReviewTarget(null);
+                }}
+                className="flex-1 bg-red-500 text-white font-bold py-2.5 px-4 rounded-xl text-sm shadow-md shadow-red-200 hover:bg-red-600 disabled:opacity-60"
+              >
+                {isDeletingReview ? '삭제 중...' : '삭제하기'}
+              </button>
+            </div>
+            <button
+              onClick={() => setDeleteReviewTarget(null)}
+              aria-label="닫기"
+              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <ShareBottomSheet
         isOpen={isShareOpen}
