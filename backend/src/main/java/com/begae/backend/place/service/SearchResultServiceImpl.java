@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -45,33 +46,35 @@ public class SearchResultServiceImpl implements SearchResultService {
             );
         }
 
-        syncKakaoPlaces(keyword);
+        List<Integer> kakaoPlaceIds = syncKakaoPlaces(keyword);
         saveSearchLog(userId, keyword);
 
         int actualPage = resolvePage(page);
         int actualLimit = resolveLimit(limit);
         int offset = (actualPage - 1) * actualLimit;
 
-        List<SearchPlaceResultDto> places = searchResultRepository.searchPlaces(keyword, actualLimit, offset)
+        List<SearchPlaceResultDto> places = searchResultRepository
+                .searchPlaces(keyword, kakaoPlaceIds, actualLimit, offset)
                 .stream()
                 .map(this::toPlaceDto)
                 .toList();
 
         List<SearchResultRepository.SearchPlanProjection> planRows =
-                searchResultRepository.searchPlans(keyword, actualLimit, offset);
+                searchResultRepository.searchPlans(keyword, kakaoPlaceIds, actualLimit, offset);
 
         List<Integer> planIds = planRows.stream()
                 .map(SearchResultRepository.SearchPlanProjection::getPlanId)
                 .toList();
 
-        Map<Integer, List<SearchPlanPlaceResultDto>> planPlaceMap = findPlanPlaceMap(planIds, keyword);
+        Map<Integer, List<SearchPlanPlaceResultDto>> planPlaceMap =
+                findPlanPlaceMap(planIds, keyword, kakaoPlaceIds);
 
         List<SearchPlanResultDto> plans = planRows.stream()
                 .map(row -> toPlanDto(row, planPlaceMap.getOrDefault(row.getPlanId(), List.of())))
                 .toList();
 
-        int placeTotalCount = toInt(searchResultRepository.countPlaces(keyword));
-        int planTotalCount = toInt(searchResultRepository.countPlans(keyword));
+        int placeTotalCount = toInt(searchResultRepository.countPlaces(keyword, kakaoPlaceIds));
+        int planTotalCount = toInt(searchResultRepository.countPlans(keyword, kakaoPlaceIds));
 
         return SearchResultResponseDto.of(
                 keyword,
@@ -91,16 +94,34 @@ public class SearchResultServiceImpl implements SearchResultService {
      * 기존 DB 기반 검색 결과까지 막지 않는다. 실제 적재 트랜잭션은
      * PlaceServiceImpl의 PlaceUpsertWriter가 별도로 처리한다.
      */
-    private void syncKakaoPlaces(String keyword) {
+    private List<Integer> syncKakaoPlaces(String keyword) {
         try {
             log.info("Kakao Place Searching...");
             List<SearchPlaceResponseDto> result = placeService.searchPlaceByKeyword(keyword);
-            if(result == null || result.isEmpty()) {
+            if (result == null || result.isEmpty()) {
                 log.warn("통합검색에서 {} 키워드의 카카오 검색 결과를 불러오지 못했습니다.", keyword);
+                return emptyPlaceIds();
             }
+
+            List<Integer> placeIds = result.stream()
+                    .map(SearchPlaceResponseDto::getPlaceId)
+                    .filter(placeId -> placeId > 0)
+                    .distinct()
+                    .toList();
+
+            return placeIds.isEmpty() ? emptyPlaceIds() : placeIds;
         } catch (Exception e) {
             log.warn("통합검색용 Kakao 장소 동기화 중 오류가 발생했습니다. keyword={}", keyword, e);
+            return emptyPlaceIds();
         }
+    }
+
+    /**
+     * Native query의 IN 절은 빈 컬렉션을 바인딩할 수 없으므로, 실제 place_id로
+     * 사용될 수 없는 값으로 대체한다. place_id는 양의 auto-increment 값이다.
+     */
+    private List<Integer> emptyPlaceIds() {
+        return Collections.singletonList(-1);
     }
 
     private void saveSearchLog(Integer userId, String keyword) {
@@ -117,13 +138,14 @@ public class SearchResultServiceImpl implements SearchResultService {
 
     private Map<Integer, List<SearchPlanPlaceResultDto>> findPlanPlaceMap(
             List<Integer> planIds,
-            String keyword
+            String keyword,
+            List<Integer> kakaoPlaceIds
     ) {
         if (planIds == null || planIds.isEmpty()) {
             return Map.of();
         }
 
-        return searchResultRepository.findPlanPlacesByPlanIds(planIds, keyword)
+        return searchResultRepository.findPlanPlacesByPlanIds(planIds, keyword, kakaoPlaceIds)
                 .stream()
                 .collect(Collectors.groupingBy(
                         SearchResultRepository.SearchPlanPlaceProjection::getPlanId,
