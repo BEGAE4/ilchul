@@ -57,9 +57,10 @@ export const fetchAllInquiries = async (
 };
 
 /**
- * 문의 상세 조회 — GET /api/cs-inquiry/{inquiryId}
- * 백엔드에 아직 없는 엔드포인트라 지금은 실패한다(화면은 목록 정보로 대신 그린다).
- * 백엔드에 추가되면 이 경로 그대로 동작한다.
+ * 문의 상세 조회 — GET /api/cs-inquiry/{inquiryId} (2026-09-20 백엔드 추가, 3차 요청 040 §1)
+ * 작성자 본인 또는 관리자만 볼 수 있다 (남의 문의 403 · 없는 문의 404).
+ * 첨부 이미지 주소는 공개 저장소가 아니라 `/api/cs-inquiry/{id}/images/{imageId}` 상대 경로로 온다 —
+ * 로그인 쿠키가 있어야 열리므로 같은 출처의 <img> 로 그대로 쓰고, next/image 최적화기는 거치지 않는다.
  */
 export const fetchInquiryDetail = async (id: number): Promise<InquiryDetail> => {
   const res = await axios.get<unknown>(`${BASE}/${id}`);
@@ -77,7 +78,7 @@ export const createInquiry = async (
   fd.append('content', input.content);
   fd.append('categoryId', String(input.categoryId));
   fd.append('inquiryType', input.inquiryType);
-  // 첨부는 글과 한 요청에 담아야 한다. 앞단 업로드 제한(1MB)이 요청 전체에 걸리므로 장수만큼 용량을 나눠 줄인다
+  // 첨부는 글과 한 요청에 담는다 (서버 한도: 최대 5장 · 파일 15MB · 요청 80MB). 올리기 전에 줄이고 EXIF 를 지운다
   (await prepareImagesForOneRequest(input.images)).forEach((file) => fd.append('images', file));
 
   const res = await axios.post<CreateInquiryResult>(BASE, fd);

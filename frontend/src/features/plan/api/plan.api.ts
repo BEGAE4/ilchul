@@ -16,7 +16,7 @@ import type {
 } from '../types/plan.types';
 import { normalizePlanDetail } from '../utils/normalizePlanDetail';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
-import { prepareImageForUpload } from '@/shared/lib/image';
+import { chunkForUpload, prepareImageForUpload } from '@/shared/lib/image';
 
 // 플랜 생성 — 출발지/일정/장소까지 일괄 등록
 export async function createPlan(body: CreatePlanBody): Promise<CreatePlanResponse> {
@@ -89,8 +89,9 @@ export async function createPlanPreview(body: {
 // (2026-09-08 운영 확인: JSON 파트·{lat,lng}·request 파트 전부 400/500, 폼 필드만 200/422).
 // 좌표가 없으면 서버가 500 을 내므로 호출부(MyCourseDetailPage)가 위치 없이 보내지 않게 막는다.
 // 업로드 제한 시간. 기본값(무제한)이면 회선이 끊겼을 때 '기록하는 중' 화면이 끝나지 않는다.
-// 사진은 1MB 아래로 줄여 보내므로 약한 LTE(0.3Mbps)에서도 30초 안에 끝난다 — 여유를 두어 45초.
-export const STAMP_UPLOAD_TIMEOUT_MS = 45000;
+// 사진은 긴 변 2048px JPEG(보통 1~1.5MB, 최대 3MB)로 줄여 보낸다 — prepareImageForUpload 참고.
+// 약한 LTE(0.3Mbps)에서 1.5MB 가 40초쯤 걸리므로 여유를 두어 60초.
+export const STAMP_UPLOAD_TIMEOUT_MS = 60000;
 
 export async function stampPlanPlace(
   planPlaceId: number,
@@ -100,7 +101,7 @@ export async function stampPlanPlace(
 ): Promise<StampPlanPlaceResponse> {
   const form = new FormData();
   // 인증 판정은 폼 필드 좌표로 하므로, 사진 속 촬영 위치(EXIF)는 지워서 보낸다.
-  // 앞단 업로드 제한(1MB) 때문에 휴대폰 원본은 413 으로 거절되므로 함께 줄인다 — prepareImageForUpload 참고
+  // 야외의 약한 통신망에서도 끝나도록 함께 줄인다 — prepareImageForUpload 참고
   form.append('image', await prepareImageForUpload(image));
   if (location) {
     form.append('location.x', String(location.x));
@@ -119,9 +120,10 @@ export async function stampPlanPlace(
 }
 
 // 플랜 이미지 업로드 (multipart)
-// 앞단 업로드 제한(1MB)은 파일이 아니라 **요청 전체**에 걸린다 (0.6MB 두 장도 413, 2026-09-18 운영 확인).
-// 그래서 한 장씩 줄여서 따로 보낸다. 중간에 실패하면 그때까지 올라간 장수를 실어 던진다 —
-// 호출부가 "3장 중 2장만 올렸어요"처럼 알리고 화면을 새로 불러올 수 있다.
+// 서버는 한 요청에 5장까지 받는다 (파일 15MB · 요청 80MB, 2026-09-20 반영). 5장씩 묶어 보낸다.
+// 이전에는 앞단이 요청 전체를 1MB 로 막아 한 장씩 따로 보냈다.
+// 중간 묶음이 실패하면 그때까지 올라간 장수를 실어 던진다 —
+// 호출부가 "7장 중 5장만 올렸어요"처럼 알리고 화면을 새로 불러올 수 있다.
 export class PlanImageUploadError extends Error {
   constructor(
     readonly uploaded: number,
@@ -135,16 +137,19 @@ export class PlanImageUploadError extends Error {
 
 export async function uploadPlanImages(planId: number, images: File[]): Promise<PlanDetail> {
   let last: PlanDetail | null = null;
-  for (let i = 0; i < images.length; i++) {
+  let uploaded = 0;
+  for (const batch of chunkForUpload(images)) {
     try {
       const form = new FormData();
-      form.append('images', await prepareImageForUpload(images[i]));
+      // 메모리 때문에 한 장씩 차례로 줄인다
+      for (const image of batch) form.append('images', await prepareImageForUpload(image));
       const { data } = await apiClient.post<PlanDetail>(`/api/plan/${planId}/images`, form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       last = data;
+      uploaded += batch.length;
     } catch (err) {
-      throw new PlanImageUploadError(i, images.length, err);
+      throw new PlanImageUploadError(uploaded, images.length, err);
     }
   }
   if (!last) throw new PlanImageUploadError(0, 0, new Error('no_images'));

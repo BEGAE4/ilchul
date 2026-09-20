@@ -1,7 +1,8 @@
 import { fitWithinEdge, loadImage, toJpegFileName } from './stripImageMetadata';
 
-// 운영 앞단(nginx)의 업로드 제한이 1MB 다 (2026-09-18 확인: 0.9MB 200 / 1.5MB 413). 휴대폰 사진은 보통 2~5MB 라
-// 그대로 보내면 서버에 닿기도 전에 거절된다. 프로필 사진은 크게 볼 일이 없으므로 올리기 전에 줄인다.
+// 프로필 사진은 작은 원 안에만 보이므로 올리기 전에 긴 변 1024px 로 줄인다 (보통 300KB 안팎).
+// 서버 한도는 파일 15MB 다 (2026-09-20 반영. 이전에는 앞단이 1MB 로 막아 900KB 를 넘기면 안 됐다).
+// 이 크기에서는 한도에 걸릴 일이 없지만, 아주 복잡한 사진이 커지는 것을 막으려고 상한은 그대로 둔다.
 const DEFAULT_MAX_EDGE = 1024;
 const DEFAULT_MAX_BYTES = 900 * 1024;
 const QUALITIES = [0.9, 0.8, 0.7, 0.6];

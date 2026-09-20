@@ -1,5 +1,9 @@
 import {
+  MAX_IMAGE_BYTES,
+  MAX_IMAGES_PER_REQUEST,
   SAFE_REQUEST_BYTES,
+  chunkForUpload,
+  isUploadableType,
   edgeSteps,
   fitWithin,
   needsShrink,
@@ -28,13 +32,28 @@ describe('edgeSteps', () => {
 });
 
 describe('perImageBudget', () => {
-  it('한 요청에 담는 장수만큼 용량을 나눈다 — 제한은 파일이 아니라 요청 전체에 걸린다', () => {
-    expect(perImageBudget(1)).toBe(SAFE_REQUEST_BYTES);
-    expect(perImageBudget(5)).toBe(Math.floor(SAFE_REQUEST_BYTES / 5));
+  it('한 장의 한도는 서버의 파일 한도(15MB)보다 충분히 작다', () => {
+    expect(MAX_IMAGE_BYTES).toBeLessThan(15 * 1024 * 1024);
+    expect(perImageBudget(1)).toBe(MAX_IMAGE_BYTES);
   });
 
-  it('0 장 이하는 한 장으로 본다', () => {
-    expect(perImageBudget(0)).toBe(SAFE_REQUEST_BYTES);
+  it('한 요청에 담는 최대 장수까지는 장당 한도를 그대로 쓴다 — 요청 한도(80MB)에 여유가 있다', () => {
+    expect(perImageBudget(MAX_IMAGES_PER_REQUEST)).toBe(MAX_IMAGE_BYTES);
+    expect(MAX_IMAGES_PER_REQUEST * MAX_IMAGE_BYTES).toBeLessThanOrEqual(SAFE_REQUEST_BYTES);
+  });
+
+  it('장수가 아주 많으면 요청 한도를 나눠 쓴다. 0 장 이하는 한 장으로 본다', () => {
+    expect(perImageBudget(100)).toBe(Math.floor(SAFE_REQUEST_BYTES / 100));
+    expect(perImageBudget(0)).toBe(MAX_IMAGE_BYTES);
+  });
+});
+
+describe('chunkForUpload', () => {
+  it('서버가 한 요청에 받는 5장씩 끊는다', () => {
+    expect(MAX_IMAGES_PER_REQUEST).toBe(5);
+    expect(chunkForUpload([1, 2, 3, 4, 5, 6, 7])).toEqual([[1, 2, 3, 4, 5], [6, 7]]);
+    expect(chunkForUpload([1, 2])).toEqual([[1, 2]]);
+    expect(chunkForUpload([])).toEqual([]);
   });
 });
 
@@ -45,17 +64,39 @@ describe('needsShrink', () => {
     expect(needsShrink('image/heic', 10_000, MB)).toBe(true);
   });
 
-  it('PNG·GIF 는 한도를 넘을 때만 줄인다 (투명도·애니메이션 보존)', () => {
+  it('PNG 는 한도를 넘을 때만 줄인다 (투명도 보존)', () => {
     expect(needsShrink('image/png', 10_000, MB)).toBe(false);
     expect(needsShrink('image/png', 2 * MB, MB)).toBe(true);
-    expect(needsShrink('image/gif', 2 * MB, MB)).toBe(true);
+  });
+
+  it('서버가 받지 않는 형식(GIF·BMP·AVIF·형식 없음)은 작아도 JPEG 로 바꾼다 — 서버는 JPEG·PNG·WEBP 만 받는다', () => {
+    expect(needsShrink('image/gif', 10_000, MB)).toBe(true);
+    expect(needsShrink('image/bmp', 10_000, MB)).toBe(true);
+    expect(needsShrink('image/avif', 10_000, MB)).toBe(true);
+    expect(needsShrink('', 10_000, MB)).toBe(true);
+  });
+});
+
+describe('isUploadableType', () => {
+  it('서버 ImageFileValidator 가 받는 형식만 참', () => {
+    expect(isUploadableType('image/jpeg')).toBe(true);
+    expect(isUploadableType('IMAGE/PNG')).toBe(true);
+    expect(isUploadableType('image/webp')).toBe(true);
+    expect(isUploadableType('image/gif')).toBe(false);
+    expect(isUploadableType('image/heic')).toBe(false);
   });
 });
 
 describe('photoUploadErrorMessage', () => {
   const axiosError = (status?: number) => ({ isAxiosError: true, response: status ? { status } : undefined });
 
-  it('413 과 줄일 수 없는 큰 사진은 용량 문제로 안내한다 — 413 은 nginx 가 HTML 로 답해 상태코드로만 알 수 있다', () => {
+  it('열 수 없고 서버도 받지 않는 형식은 형식 문제로 안내한다', () => {
+    expect(photoUploadErrorMessage(new Error('image_unsupported'), '기본')).toBe(
+      '지원하지 않는 사진 형식이에요. JPG·PNG 사진으로 올려주세요.'
+    );
+  });
+
+  it('413 과 줄일 수 없는 큰 사진은 용량 문제로 안내한다', () => {
     expect(photoUploadErrorMessage(axiosError(413), '기본')).toBe('사진 용량이 너무 커요. 다른 사진으로 시도해주세요.');
     expect(photoUploadErrorMessage(new Error('image_too_large'), '기본')).toBe('사진 용량이 너무 커요. 다른 사진으로 시도해주세요.');
   });

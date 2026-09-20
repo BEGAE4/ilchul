@@ -1,6 +1,7 @@
 import {
   filterInquiriesByStatus,
   formatInquiryDate,
+  inquiryDetailErrorKind,
   toInquiryDetail,
   toInquiryListItem,
   toInquiryListResponse,
@@ -190,6 +191,62 @@ describe('toInquiryDetail', () => {
     expect(toInquiryDetail({})).toBeNull();
     expect(toInquiryDetail(null)).toBeNull();
     expect(toInquiryDetail('not found')).toBeNull();
+  });
+});
+
+describe('toInquiryDetail — 백엔드 CsInquiryDetailResponseDto (2026-09-20 추가)', () => {
+  const raw = {
+    inquiryId: 12,
+    title: '사진 업로드가 안 돼요',
+    content: '스탬프 사진을 올리면 실패해요',
+    inquiryType: 'BUG',
+    inquiryStatus: 'RESOLVED',
+    images: [{ imageId: 3, imageUrl: '/api/cs-inquiry/12/images/3' }],
+    authorNickname: '냐르',
+    createdAt: '2026-09-19T10:12:00',
+    updatedAt: '2026-09-19T11:00:00',
+    answer: {
+      answerId: 12,
+      inquiryId: 12,
+      content: '확인해 보니 …',
+      answeredBy: '관리자',
+      answeredAt: '2026-09-19T14:00:00',
+    },
+  };
+
+  it('첨부 주소는 로그인 쿠키로 여는 상대 경로 그대로 둔다', () => {
+    expect(toInquiryDetail(raw)?.images).toEqual([{ imageId: 3, url: '/api/cs-inquiry/12/images/3' }]);
+  });
+
+  it('본문·답변·상태를 읽는다', () => {
+    const detail = toInquiryDetail(raw)!;
+    expect(detail.content).toBe('스탬프 사진을 올리면 실패해요');
+    expect(detail.status).toBe('ANSWERED');
+    expect(detail.categoryName).toBe('버그');
+    expect(detail.answer).toEqual(raw.answer);
+    expect(detail.updatedAt).toBe('2026-09-19T11:00:00');
+  });
+
+  it('답변이 null 이고 접수 상태면 답변 대기', () => {
+    const detail = toInquiryDetail({ ...raw, inquiryStatus: 'OPEN', answer: null, images: [] })!;
+    expect(detail.status).toBe('PENDING');
+    expect(detail.answer).toBeNull();
+    expect(detail.images).toEqual([]);
+  });
+});
+
+describe('inquiryDetailErrorKind', () => {
+  const axiosError = (status?: number) => ({ isAxiosError: true, response: status ? { status } : undefined });
+
+  it('없는 문의(404)와 볼 수 없는 문의(403)는 다시 시도해도 소용없다', () => {
+    expect(inquiryDetailErrorKind(axiosError(404))).toBe('notFound');
+    expect(inquiryDetailErrorKind(axiosError(403))).toBe('forbidden');
+  });
+
+  it('그 외(서버 오류·네트워크·형식 오류)는 다시 시도할 수 있다', () => {
+    expect(inquiryDetailErrorKind(axiosError(500))).toBe('retryable');
+    expect(inquiryDetailErrorKind(axiosError())).toBe('retryable');
+    expect(inquiryDetailErrorKind(new Error('형식 오류'))).toBe('retryable');
   });
 });
 

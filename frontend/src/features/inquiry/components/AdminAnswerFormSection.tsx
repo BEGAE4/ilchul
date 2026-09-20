@@ -1,5 +1,6 @@
 'use client';
 
+import Image from '@/shared/ui/SafeImage';
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,16 +27,21 @@ export const AdminAnswerFormSection = ({
   const [answerContent, setAnswerContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  // 상세 API 가 아직 없어 지금은 실패한다 — 실패해도 목록 요약을 보고 답변은 쓸 수 있게 둔다
+  // 상세를 못 받아도 목록 요약을 보고 답변은 쓸 수 있게 둔다 — 본문 자리에 실패를 알리고 다시 시도를 준다
   useEffect(() => {
     let alive = true;
+    setIsLoading(true);
+    setLoadFailed(false);
     fetchInquiryDetail(inquiryId)
       .then((detail) => {
         if (alive) setInquiry(detail);
       })
       .catch(() => {
         // 아래에서 fallbackItem 으로 대신 그린다
+        if (alive) setLoadFailed(true);
       })
       .finally(() => {
         if (alive) setIsLoading(false);
@@ -43,7 +49,7 @@ export const AdminAnswerFormSection = ({
     return () => {
       alive = false;
     };
-  }, [inquiryId]);
+  }, [inquiryId, reloadKey]);
 
   const summary = inquiry ?? fallbackItem;
 
@@ -99,11 +105,36 @@ export const AdminAnswerFormSection = ({
                   {inquiry.content}
                 </p>
               ) : (
-                <p className="text-sm text-gray-400 text-center">
-                  문의 내용은 곧 여기에서 볼 수 있어요
-                </p>
+                <div className="text-center">
+                  <p className="text-sm text-gray-400">문의 내용을 불러오지 못했어요</p>
+                  {loadFailed && (
+                    <button
+                      type="button"
+                      onClick={() => setReloadKey((k) => k + 1)}
+                      className="mt-2 px-3 py-1.5 text-xs font-bold text-primary-600 bg-primary-50 rounded-full active:scale-95 transition-transform"
+                    >
+                      다시 시도
+                    </button>
+                  )}
+                </div>
               )}
             </div>
+            {/* 첨부 — 작성자·관리자만 받을 수 있는 API 경로라 같은 출처의 이미지로 그대로 연다 */}
+            {inquiry && inquiry.images.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                {inquiry.images.map((img) => (
+                  <a
+                    key={img.imageId}
+                    href={img.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="relative aspect-square rounded-xl overflow-hidden bg-gray-100"
+                  >
+                    <Image src={img.url} alt="첨부 이미지" fill sizes="33vw" className="object-cover" unoptimized />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
