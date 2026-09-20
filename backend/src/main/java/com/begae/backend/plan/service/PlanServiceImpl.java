@@ -23,6 +23,7 @@ import com.begae.backend.plan_place.domain.PlanPlaceImage;
 import com.begae.backend.plan_place.repository.PlanPlaceImageRepository;
 import com.begae.backend.plan_place.repository.PlanPlaceRepository;
 import com.begae.backend.storage.dto.StoredImage;
+import com.begae.backend.storage.exception.StorageErrorCode;
 import com.begae.backend.storage.service.ImageFileCleaner;
 import com.begae.backend.storage.service.ImageStorageService;
 import com.begae.backend.user.domain.User;
@@ -45,6 +46,8 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 public class PlanServiceImpl implements PlanService{
+
+    private static final int MAX_IMAGES_PER_REQUEST = 5;
 
     private final PlanRepository planRepository;
     private final RestTemplate restTemplate = new RestTemplate();
@@ -376,6 +379,9 @@ public class PlanServiceImpl implements PlanService{
     @Transactional
     @Override
     public PlanDetailDto uploadImages(Integer userId, Integer planId, List<MultipartFile> images) {
+        if (images != null && images.size() > MAX_IMAGES_PER_REQUEST) {
+            throw new CustomException(StorageErrorCode.TOO_MANY_FILES);
+        }
         Plan plan = planRepository.findById(planId)
                 .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
 

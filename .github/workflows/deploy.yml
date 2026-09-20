@@ -139,7 +139,7 @@ jobs:
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_KEY }}
           port: ${{ secrets.ORACLE_PORT }}
-          source: docker-compose.blue.yml,docker-compose.green.yml,docker-compose.nginx.yml,nginx,rollback.sh,.env.deploy
+          source: docker-compose.blue.yml,docker-compose.green.yml,docker-compose.nginx.yml,nginx,infrastructure,rollback.sh,.env.deploy
           target: /home/begae/ilchul
 
       - name: Deploy inactive environment
@@ -184,6 +184,61 @@ jobs:
             printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
 
             docker network inspect shared-infra >/dev/null
+
+            MINIO_POLICY="$PROJECT_PATH/infrastructure/minio/anonymous-read-policy.json"
+            docker inspect minio >/dev/null
+            docker exec -i minio sh -lc '
+              set -eu
+              policy_file=$(mktemp /tmp/ilchul-policy.XXXXXX.json)
+              mc_config=$(mktemp -d /tmp/ilchul-mc.XXXXXX)
+              cleanup() {
+                rm -f "$policy_file"
+                rm -rf "$mc_config"
+              }
+              trap cleanup EXIT
+              cat > "$policy_file"
+              access_key=${MINIO_ROOT_USER:-${MINIO_ACCESS_KEY:-}}
+              secret_key=${MINIO_ROOT_PASSWORD:-${MINIO_SECRET_KEY:-}}
+              test -n "$access_key"
+              test -n "$secret_key"
+              MC_CONFIG_DIR="$mc_config" mc alias set deploy http://127.0.0.1:9000 "$access_key" "$secret_key" >/dev/null
+              MC_CONFIG_DIR="$mc_config" mc anonymous set-json "$policy_file" deploy/ilchul >/dev/null
+            ' < "$MINIO_POLICY"
+
+            HOST_NGINX_SOURCE="$PROJECT_PATH/nginx/host/ilchul.conf"
+            HOST_NGINX_TARGET="/etc/nginx/conf.d/ilchul.conf"
+            HOST_NGINX_BACKUP=$(mktemp /tmp/ilchul-host-nginx.XXXXXX)
+            HOST_NGINX_EXISTED=false
+
+            if sudo -n test -f "$HOST_NGINX_TARGET"; then
+              sudo -n cp "$HOST_NGINX_TARGET" "$HOST_NGINX_BACKUP"
+              HOST_NGINX_EXISTED=true
+            fi
+
+            restore_host_nginx() {
+              if [ "$HOST_NGINX_EXISTED" = true ]; then
+                sudo -n install -m 0644 "$HOST_NGINX_BACKUP" "$HOST_NGINX_TARGET"
+              else
+                sudo -n rm -f "$HOST_NGINX_TARGET"
+              fi
+              sudo -n nginx -t
+              sudo -n nginx -s reload
+            }
+
+            sudo -n install -m 0644 "$HOST_NGINX_SOURCE" "$HOST_NGINX_TARGET"
+            if ! sudo -n nginx -t; then
+              echo "Host Nginx validation failed; restoring previous configuration"
+              restore_host_nginx
+              rm -f "$HOST_NGINX_BACKUP"
+              exit 1
+            fi
+            if ! sudo -n nginx -s reload; then
+              echo "Host Nginx reload failed; restoring previous configuration"
+              restore_host_nginx
+              rm -f "$HOST_NGINX_BACKUP"
+              exit 1
+            fi
+            rm -f "$HOST_NGINX_BACKUP"
 
             install -d -m 0755 nginx/runtime
             install -m 0644 "nginx/upstreams/${CURRENT_ENV}.conf" nginx/runtime/active.conf.new

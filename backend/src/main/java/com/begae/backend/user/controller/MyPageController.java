@@ -91,7 +91,7 @@ public class MyPageController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "로그인이 필요합니다.",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @ApiResponse(responseCode = "413", description = "파일 크기가 5MB를 초과했습니다.",
+    @ApiResponse(responseCode = "413", description = "파일 크기가 15MB를 초과했습니다.",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping(value = "/profile/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<UserProfileResponseDto> uploadProfileImage(

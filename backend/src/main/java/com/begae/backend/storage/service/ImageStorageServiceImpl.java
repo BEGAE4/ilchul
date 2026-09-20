@@ -13,24 +13,11 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
-
-import java.time.Duration;
-import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class ImageStorageServiceImpl implements ImageStorageService {
-
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/jpeg",
-            "image/png",
-            "image/webp"
-    );
-
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
 
     private final S3Client s3Client;
 //    private final S3Presigner s3Presigner;
@@ -38,9 +25,20 @@ public class ImageStorageServiceImpl implements ImageStorageService {
 
     @Override
     public StoredImage upload(MultipartFile file, String directory) {
+        return upload(file, directory, true);
+    }
+
+    @Override
+    public StoredImage uploadPrivate(MultipartFile file, String directory) {
+        return upload(file, directory, false);
+    }
+
+    private StoredImage upload(MultipartFile file, String directory, boolean includePublicUrl) {
         validateImageFile(file);
-        // 공개 URL을 만들 수 없는 상태에서 S3에 먼저 올리면 깨진 URL이 저장되므로 업로드 전에 확인한다.
-        properties.normalizedPublicBaseUrl();
+        if (includePublicUrl) {
+            // 공개 URL을 만들 수 없는 상태에서 S3에 먼저 올리면 깨진 URL이 저장되므로 업로드 전에 확인한다.
+            properties.normalizedPublicBaseUrl();
+        }
 
         String originalFilename = file.getOriginalFilename();
         String contentType = file.getContentType();
@@ -63,7 +61,7 @@ public class ImageStorageServiceImpl implements ImageStorageService {
             throw new CustomException(StorageErrorCode.FAILED_FILE_READ);
         }
 
-        String imageUrl = getAccessibleUrl(imageKey);
+        String imageUrl = includePublicUrl ? getAccessibleUrl(imageKey) : null;
 
         return new StoredImage(
                 imageKey,
@@ -138,34 +136,29 @@ public class ImageStorageServiceImpl implements ImageStorageService {
 
     }
 
-    private void validateImageFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new CustomException(StorageErrorCode.EMPTY_FILE);
+    @Override
+    public byte[] download(String imageKey) {
+        if (!StringUtils.hasText(imageKey)) {
+            throw new CustomException(StorageErrorCode.EMPTY_KEY);
         }
 
-        if (file.getSize() > MAX_FILE_SIZE) {
-            throw new CustomException(StorageErrorCode.TOO_LARGE_FILE_SIZE);
-        }
-
-        String contentType = file.getContentType();
-
-        if (!StringUtils.hasText(contentType) || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
-            throw new CustomException(StorageErrorCode.NOT_ALLOWED_CONTENT_TYPE);
+        GetObjectRequest request = GetObjectRequest.builder()
+                .bucket(properties.bucket())
+                .key(imageKey)
+                .build();
+        try {
+            return s3Client.getObjectAsBytes(request).asByteArray();
+        } catch (RuntimeException e) {
+            throw new CustomException(StorageErrorCode.FAILED_FILE_READ);
         }
     }
 
+    private void validateImageFile(MultipartFile file) {
+        ImageFileValidator.validate(file);
+    }
+
     private void validateImageBytes(byte[] bytes, String contentType) {
-        if (bytes == null || bytes.length == 0) {
-            throw new IllegalArgumentException("이미지 파일이 비어있습니다.");
-        }
-
-        if (bytes.length > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("이미지 파일 크기는 5MB를 초과할 수 없습니다.");
-        }
-
-        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
-            throw new IllegalArgumentException("지원하지 않는 이미지 형식입니다.");
-        }
+        ImageFileValidator.validate(bytes, contentType);
     }
 
 

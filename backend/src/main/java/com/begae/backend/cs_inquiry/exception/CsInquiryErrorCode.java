@@ -13,7 +13,9 @@ public enum CsInquiryErrorCode implements ErrorCode {
     UNAUTHORIZED_ACCESS(HttpStatus.FORBIDDEN, "CS0002", "해당 문의에 대한 접근 권한이 없습니다."),
     ALREADY_ANSWERED(HttpStatus.BAD_REQUEST, "CS0003", "이미 답변이 완료된 문의는 수정할 수 없습니다."),
     CANNOT_UPDATE_INQUIRY(HttpStatus.BAD_REQUEST, "CS0004", "문의를 수정할 수 있는 상태가 아닙니다."),
-    INQUIRY_DELETED(HttpStatus.BAD_REQUEST, "CS0005", "삭제된 문의사항입니다.")
+    INQUIRY_DELETED(HttpStatus.BAD_REQUEST, "CS0005", "삭제된 문의사항입니다."),
+    TOO_MANY_IMAGES(HttpStatus.BAD_REQUEST, "CS0006", "문의 이미지는 최대 5장까지 첨부할 수 있습니다."),
+    IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "CS0007", "문의 이미지를 찾을 수 없습니다.")
     ;
 
     private final HttpStatus httpStatus;
