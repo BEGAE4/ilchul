@@ -1,6 +1,9 @@
 export { stripImageMetadata, stripImagesMetadata } from './stripImageMetadata';
 export {
+  MAX_IMAGES_PER_REQUEST,
+  chunkForUpload,
   isImageTooLarge,
+  isImageUnsupported,
   photoUploadErrorMessage,
   prepareImageForUpload,
   prepareImagesForOneRequest,

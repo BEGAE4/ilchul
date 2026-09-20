@@ -1,14 +1,27 @@
 import { fitWithinEdge, loadImage, shouldReencodeImage, toJpegFileName } from './stripImageMetadata';
 
-// 운영 앞단(nginx)이 요청 본문을 1MB 로 제한한다 (2026-09-18 확인: 0.9MB 통과 · 1.5MB 부터 413, 0.6MB 두 장도 413).
-// 백엔드는 5MB 를 허용하지만 요청이 닿기도 전에 거절되고, 413 은 HTML 이라 사용자에게 이유를 보여줄 수도 없었다.
-// 휴대폰 사진은 보통 2~5MB 라 스탬프·플랜 사진·문의 첨부가 실제 사진으로는 전부 실패하고 있었다.
-// 그래서 올리기 전에 항상 줄인다. 제한은 파일이 아니라 **요청 전체**에 걸리므로 장수도 함께 고려한다.
-/** multipart 경계·다른 필드 몫을 남긴 한 요청의 안전 용량 */
-export const SAFE_REQUEST_BYTES = 900 * 1024;
-const DEFAULT_MAX_EDGE = 1600;
-const SMALLER_EDGES = [1280, 1024, 800, 640];
+// 서버 업로드 한도 (2026-09-20 백엔드 반영, 3차 요청 038 §2):
+//   파일 하나 15MB · 한 요청 5장 · 한 요청 80MB (앞단 nginx 90MB). 형식은 JPEG·PNG·WEBP 만 받는다.
+//   413 도 이제 JSON({status, message})으로 온다.
+// 이전에는 앞단이 요청 전체를 1MB 로 막아, 모든 사진을 900KB 아래로 줄이고 한 장씩 보냈다.
+// 한도가 풀린 지금도 올리기 전에 줄인다 — 휴대폰 원본(2~5MB, 12MP)은 화면에 필요한 크기를 한참 넘고,
+// 다시 그리는 과정에서 EXIF(촬영 위치)가 지워지며, 야외의 약한 통신망에서 업로드가 끝나야 하기 때문이다.
+// 다만 화질을 깎을 만큼 조일 필요는 없어졌다: 긴 변 2048px, 장당 3MB 면 대부분 품질 0.9 로 한 번에 맞는다.
+/** 한 장의 한도 — 서버 파일 한도(15MB)보다 한참 작게 잡는다 */
+export const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+/** 서버가 한 요청에 받는 최대 장수 (StorageErrorCode.TOO_MANY_FILES) */
+export const MAX_IMAGES_PER_REQUEST = 5;
+/** multipart 경계·다른 필드 몫을 남긴 한 요청의 안전 용량 (서버 80MB) */
+export const SAFE_REQUEST_BYTES = 60 * 1024 * 1024;
+/** 서버 ImageFileValidator 가 받는 형식 */
+const UPLOADABLE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const DEFAULT_MAX_EDGE = 2048;
+const SMALLER_EDGES = [1600, 1280, 1024, 800, 640];
 const QUALITIES = [0.9, 0.8, 0.7, 0.6];
+
+export function isUploadableType(type: string): boolean {
+  return UPLOADABLE_TYPES.has(type.toLowerCase());
+}
 
 /** 긴 변을 한도에 맞춘 크기. 비율을 지키고, 아주 길쭉한 사진도 한 변이 0 이 되지 않게 한다 */
 export function fitWithin(
@@ -25,14 +38,24 @@ export function edgeSteps(maxEdge: number): number[] {
   return [maxEdge, ...SMALLER_EDGES.filter((e) => e < maxEdge)];
 }
 
-/** 한 요청에 여러 장을 담을 때 한 장에 쓸 수 있는 용량 */
+/** 한 요청에 여러 장을 담을 때 한 장에 쓸 수 있는 용량. 보통은 장당 한도 그대로다 */
 export function perImageBudget(count: number, total: number = SAFE_REQUEST_BYTES): number {
-  return Math.floor(total / Math.max(1, count));
+  return Math.min(MAX_IMAGE_BYTES, Math.floor(total / Math.max(1, count)));
 }
 
-/** JPEG·HEIC·WEBP 는 EXIF(촬영 위치)를 지우려고 항상 다시 그린다. PNG·GIF 는 한도를 넘을 때만 */
+/** 서버가 한 요청에 받는 장수만큼 끊는다 */
+export function chunkForUpload<T>(items: T[], size: number = MAX_IMAGES_PER_REQUEST): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+}
+
+/**
+ * JPEG·HEIC·WEBP 는 EXIF(촬영 위치)를 지우려고 항상 다시 그린다. PNG 는 한도를 넘을 때만(투명도 보존).
+ * 서버가 받지 않는 형식(GIF·BMP·AVIF 등)은 작아도 JPEG 로 바꿔야 올라간다.
+ */
 export function needsShrink(type: string, size: number, maxBytes: number): boolean {
-  return shouldReencodeImage(type) || size > maxBytes;
+  return shouldReencodeImage(type) || !isUploadableType(type) || size > maxBytes;
 }
 
 function draw(img: HTMLImageElement, maxEdge: number): HTMLCanvasElement | null {
@@ -54,11 +77,12 @@ const toJpeg = (canvas: HTMLCanvasElement, quality: number) =>
 
 /**
  * 업로드할 사진을 한도 아래의 JPEG 로 줄인다. 다시 그리는 과정에서 EXIF 도 사라진다.
- * 열 수 없는 형식(예: 크롬의 HEIC)은 원본이 한도 안이면 그대로 보내고, 넘으면 `image_too_large` 를 던진다.
+ * 브라우저가 열 수 없는 사진은 서버가 받는 형식이고 한도 안일 때만 원본을 그대로 보낸다.
+ * 서버가 받지 않는 형식(예: 크롬의 HEIC)이면 `image_unsupported`, 너무 크면 `image_too_large` 를 던진다.
  */
 export async function prepareImageForUpload(
   file: File,
-  { maxEdge = DEFAULT_MAX_EDGE, maxBytes = SAFE_REQUEST_BYTES } = {}
+  { maxEdge = DEFAULT_MAX_EDGE, maxBytes = MAX_IMAGE_BYTES } = {}
 ): Promise<File> {
   if (typeof document === 'undefined') return file;
   if (!needsShrink(file.type, file.size, maxBytes)) return file;
@@ -67,6 +91,7 @@ export async function prepareImageForUpload(
   try {
     img = await loadImage(file);
   } catch {
+    if (!isUploadableType(file.type)) throw new Error('image_unsupported');
     if (file.size <= maxBytes) return file;
     throw new Error('image_too_large');
   }
@@ -84,7 +109,7 @@ export async function prepareImageForUpload(
       }
     }
   }
-  if (file.size <= maxBytes) return file;
+  if (isUploadableType(file.type) && file.size <= maxBytes) return file;
   throw new Error('image_too_large');
 }
 
@@ -102,8 +127,13 @@ export function isImageTooLarge(err: unknown): boolean {
   return !!e?.isAxiosError && e.response?.status === 413;
 }
 
-/** 사진 업로드 실패 안내. 용량·네트워크만 따로 말하고 나머지는 화면이 준 기본 문구를 쓴다 */
+export function isImageUnsupported(err: unknown): boolean {
+  return err instanceof Error && err.message === 'image_unsupported';
+}
+
+/** 사진 업로드 실패 안내. 형식·용량·네트워크만 따로 말하고 나머지는 화면이 준 기본 문구를 쓴다 */
 export function photoUploadErrorMessage(err: unknown, fallback: string): string {
+  if (isImageUnsupported(err)) return '지원하지 않는 사진 형식이에요. JPG·PNG 사진으로 올려주세요.';
   if (isImageTooLarge(err)) return '사진 용량이 너무 커요. 다른 사진으로 시도해주세요.';
   const e = err as { isAxiosError?: boolean; response?: unknown } | null;
   if (e?.isAxiosError && e.response === undefined) return '네트워크 연결을 확인한 뒤 다시 시도해주세요.';
