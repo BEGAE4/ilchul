@@ -21,6 +21,19 @@ services:
   ilchul-frontend-green:
     image: ${FRONTEND_IMAGE}
     container_name: ilchul-frontend-green
+    user: nextjs
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777
+      - /app/.next/cache:rw,noexec,nosuid,nodev,size=128m,uid=1001,gid=65533,mode=0700
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       - PORT=${FRONTEND_SERVER_PORT}
       - HOSTNAME=0.0.0.0
