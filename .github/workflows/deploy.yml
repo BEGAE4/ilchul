@@ -8,6 +8,10 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: ilchul-production
+  cancel-in-progress: false
+
 jobs:
   metadata:
     runs-on: ubuntu-latest
@@ -122,6 +126,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - name: Test scoped image cleanup
+        run: bash scripts/prune-deployment-images.test.sh
+
       - name: Prepare backend runtime environment
         env:
           RUNTIME_ENV_FILE: ${{ secrets.ENV_FILE }}
@@ -139,7 +146,7 @@ jobs:
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_KEY }}
           port: ${{ secrets.ORACLE_PORT }}
-          source: docker-compose.blue.yml,docker-compose.green.yml,docker-compose.nginx.yml,nginx,infrastructure,rollback.sh,.env.deploy
+          source: docker-compose.blue.yml,docker-compose.green.yml,docker-compose.nginx.yml,nginx,infrastructure,rollback.sh,scripts/prune-deployment-images.sh,.env.deploy
           target: /home/begae/ilchul
 
       - name: Deploy inactive environment
@@ -237,6 +244,18 @@ jobs:
               -H "X-Forwarded-Proto: https" \
               http://127.0.0.1:18090/intro >/dev/null
 
+            CURRENT_BACKEND_CONTAINER="ilchul-backend-${CURRENT_ENV}"
+            CURRENT_FRONTEND_CONTAINER="ilchul-frontend-${CURRENT_ENV}"
+            if docker inspect "$CURRENT_BACKEND_CONTAINER" "$CURRENT_FRONTEND_CONTAINER" >/dev/null 2>&1; then
+              bash scripts/prune-deployment-images.sh snapshot \
+                .deploy-image-state.tsv \
+                "ghcr.io/${REPO_OWNER}/ilchul-backend=$CURRENT_BACKEND_CONTAINER" \
+                "ghcr.io/${REPO_OWNER}/ilchul-frontend=$CURRENT_FRONTEND_CONTAINER"
+            else
+              rm -f .deploy-image-state.tsv
+              echo 'One or more previous color containers are absent; image cleanup state was not created.'
+            fi
+
             docker compose -f "docker-compose.${TARGET_ENV}.yml" config --quiet
             docker compose -f "docker-compose.${TARGET_ENV}.yml" pull
             docker compose -f "docker-compose.${TARGET_ENV}.yml" up -d
@@ -261,16 +280,19 @@ jobs:
             exit 1
 
   switch-traffic:
-    needs: deploy-target
+    needs: [metadata, deploy-target]
     runs-on: ubuntu-latest
     steps:
       - name: Switch traffic and smoke test
         uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
+        env:
+          REPO_OWNER: ${{ needs.metadata.outputs.repo_owner }}
         with:
           host: ${{ secrets.ORACLE_HOST }}
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_KEY }}
           port: ${{ secrets.ORACLE_PORT }}
+          envs: REPO_OWNER
           script: |
             set -eu
             PROJECT_PATH="/home/begae/ilchul"
@@ -306,3 +328,12 @@ jobs:
 
             echo "$TARGET_ENV" > current_environment.txt
             docker compose -f "docker-compose.${CURRENT_ENV}.yml" stop
+
+            if [ -f .deploy-image-state.tsv ]; then
+              bash scripts/prune-deployment-images.sh cleanup \
+                .deploy-image-state.tsv \
+                "ghcr.io/${REPO_OWNER}/ilchul-backend=ilchul-backend-${TARGET_ENV}" \
+                "ghcr.io/${REPO_OWNER}/ilchul-frontend=ilchul-frontend-${TARGET_ENV}"
+            else
+              echo 'Image cleanup skipped: no previous deployment state.'
+            fi
