@@ -7,7 +7,11 @@ import { toast } from 'sonner';
 import { fetchInquiryDetail, deleteInquiry } from '../api/inquiry.api';
 import type { InquiryDetail, InquiryListItem } from '../types/inquiry.types';
 import { INQUIRY_STATUS_LABELS } from '../types/inquiry.types';
-import { formatInquiryDate } from '../utils/inquiryMapper';
+import {
+  formatInquiryDate,
+  inquiryDetailErrorKind,
+  type InquiryDetailErrorKind,
+} from '../utils/inquiryMapper';
 
 interface InquiryDetailSectionProps {
   inquiryId: number;
@@ -31,22 +35,23 @@ export const InquiryDetailSection = ({
 }: InquiryDetailSectionProps) => {
   const [inquiry, setInquiry] = useState<InquiryDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadFailed, setLoadFailed] = useState(false);
+  // 상세를 못 받은 이유. null 이면 실패하지 않은 것
+  const [loadError, setLoadError] = useState<InquiryDetailErrorKind | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // 백엔드에 상세 API(GET /api/cs-inquiry/{inquiryId})가 아직 없어 지금은 항상 실패한다.
-  // 실패하면 목록 요약으로 대신 그리고, API 가 추가되면 이 코드 그대로 상세가 나온다.
+  // 상세를 못 받으면 목록에서 아는 정보(제목·분류·상태·작성일)로 대신 그리고 이유를 알린다.
   useEffect(() => {
     let alive = true;
     setIsLoading(true);
-    setLoadFailed(false);
+    setLoadError(null);
     fetchInquiryDetail(inquiryId)
       .then((detail) => {
         if (alive) setInquiry(detail);
       })
-      .catch(() => {
-        if (alive) setLoadFailed(true);
+      .catch((err) => {
+        if (alive) setLoadError(inquiryDetailErrorKind(err));
       })
       .finally(() => {
         if (alive) setIsLoading(false);
@@ -54,7 +59,7 @@ export const InquiryDetailSection = ({
     return () => {
       alive = false;
     };
-  }, [inquiryId]);
+  }, [inquiryId, reloadKey]);
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -71,7 +76,7 @@ export const InquiryDetailSection = ({
     }
   };
 
-  const summary = inquiry ?? (loadFailed ? fallbackItem : null);
+  const summary = inquiry ?? (loadError ? fallbackItem : null);
   const isPending = summary?.status === 'PENDING';
   const canDelete = !isAdmin && isPending;
   // 수정 폼은 본문·첨부 이미지가 있어야 채울 수 있다 — 상세를 받았을 때만 연다
@@ -147,16 +152,20 @@ export const InquiryDetailSection = ({
             )}
             <div className="bg-gray-50 rounded-xl p-4 text-center">
               <p className="text-sm text-gray-600 font-medium">
-                문의 내용과 답변은 곧 여기에서 볼 수 있어요
+                {loadError === 'notFound'
+                  ? '삭제되었거나 없는 문의예요'
+                  : loadError === 'forbidden'
+                    ? '이 문의는 볼 수 없어요'
+                    : '문의 내용을 불러오지 못했어요'}
               </p>
-              {isPending ? (
-                <p className="text-xs text-gray-400 mt-1">
-                  문의는 정상적으로 접수되었어요. 영업일 기준 1~3일 내로 답변드릴게요.
-                </p>
-              ) : (
-                fallbackItem?.hasAnswer && (
-                  <p className="text-xs text-gray-400 mt-1">운영팀 답변이 등록된 문의예요.</p>
-                )
+              {loadError === 'retryable' && (
+                <button
+                  type="button"
+                  onClick={() => setReloadKey((k) => k + 1)}
+                  className="mt-3 px-3 py-1.5 text-xs font-bold text-primary-600 bg-primary-50 rounded-full active:scale-95 transition-transform"
+                >
+                  다시 시도
+                </button>
               )}
             </div>
           </div>
