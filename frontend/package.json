@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
-    "axios": "^1.10.0",
+    "axios": "^1.20.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.525.0",
@@ -30,15 +30,14 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
-    "@chromatic-com/storybook": "4.0.1",
+    "@chromatic-com/storybook": "5.3.1",
     "@eslint/eslintrc": "^3",
-    "@storybook/addon-controls": "^9.1.0-alpha.5",
-    "@storybook/addon-docs": "^9.0.15",
-    "@storybook/addon-essentials": "9.0.0-alpha.12",
-    "@storybook/nextjs": "9.0.15",
+    "@storybook/addon-docs": "10.6.0",
+    "@storybook/nextjs-vite": "10.6.0",
     "@svgr/webpack": "^8.1.0",
     "@tailwindcss/postcss": "^4",
-    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "^16.3.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20",
@@ -46,14 +45,28 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.25",
-    "eslint-plugin-storybook": "9.0.15",
+    "eslint-plugin-storybook": "10.6.0",
     "jest": "^30.0.4",
     "jest-environment-jsdom": "^30.0.4",
     "kakao.maps.d.ts": "^0.1.40",
     "msw": "^2.10.4",
     "prettier": "^3.6.2",
-    "storybook": "9.0.15",
+    "storybook": "10.6.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^7.3.6"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.28"
+    },
+    "@testing-library/jest-dom": "6.9.1"
+  },
+  "resolutions": {
+    "next/postcss": "8.5.28",
+    "@testing-library/jest-dom": "6.9.1"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
   }
 }
