@@ -10,7 +10,8 @@ import type { NearbyQuery } from '../types';
  *
  * 서버는 화면에 보이는 짧은 이름("충남", "강원")을 그대로 받는다 — 주소 표기가
  * "강원특별자치도"·"전북특별자치도" 여도 서버가 맞춰 준다(2026-09-19 운영 17개 지역 확인).
+ * 화면 이름과 서버 지역명이 다른 항목("광주·전남" → "전남")은 queryName 을 보낸다.
  */
 export function buildNearbyQuery(region: Region): NearbyQuery {
-  return { region: region.name };
+  return { region: region.queryName ?? region.name };
 }

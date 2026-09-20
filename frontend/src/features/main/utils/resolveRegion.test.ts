@@ -26,6 +26,14 @@ describe('resolveRegionByCoord', () => {
     expect(resolveRegionByCoord({ lat: 33.2541, lng: 126.56 })?.id).toBe('jeju');
   });
 
+  it('광주 시내는 광주·전남으로 판정된다 (광주 단독 항목 없음)', () => {
+    // 상무지구
+    expect(resolveRegionByCoord({ lat: 35.1521, lng: 126.8514 })?.id).toBe('jeonnam');
+    // 광주송정역
+    expect(resolveRegionByCoord({ lat: 35.1377, lng: 126.7911 })?.id).toBe('jeonnam');
+    expect(REGIONS.some((r) => r.id === 'gwangju')).toBe(false);
+  });
+
   it('대표 좌표에서 먼 같은 도 안의 지점도 가장 가까운 지역으로 떨어진다', () => {
     // 속초 → 강원(강릉)
     expect(resolveRegionByCoord({ lat: 38.207, lng: 128.5918 })?.id).toBe('gangwon');
