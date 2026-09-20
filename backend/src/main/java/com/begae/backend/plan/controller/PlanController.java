@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -131,9 +132,11 @@ public class PlanController {
     }
 
 
-    @PostMapping("/{planId}/images")
+    @PostMapping(value = "/{planId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "플랜 이미지 업로드", description = "특정 플랜에 이미지를 업로드합니다.")
     @ApiResponse(responseCode = "200", description = "플랜 이미지가 성공적으로 업로드되었습니다.")
+    @ApiResponse(responseCode = "400", description = "한 요청에 이미지가 5장을 초과했거나 지원하지 않는 형식입니다.")
+    @ApiResponse(responseCode = "413", description = "이미지 파일 또는 요청 크기가 허용 한도를 초과했습니다.")
     public ResponseEntity<PlanDetailDto> planImagesUpload(
             @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
             @Parameter(description = "플랜 ID", example = "1") @PathVariable Integer planId,

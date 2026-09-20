@@ -7,6 +7,7 @@ import com.begae.backend.cs_inquiry.dto.response.*;
 import com.begae.backend.cs_inquiry.enums.InquiryType;
 import com.begae.backend.cs_inquiry.service.CsInquiryService;
 import com.begae.backend.global.security.principal.OauthUserDetails;
+import com.begae.backend.user.common.UserRole;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -16,12 +17,17 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.begae.backend.global.aop.require_admin.RequireAdmin;
 
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
 
 @Tag(name = "고객 문의", description = "고객 문의 작성, 수정, 삭제, 조회 및 답변 관련 API")
 @RestController
@@ -37,9 +43,10 @@ public class CsInquiryController {
      * @param request
      * @return
      */
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "문의 작성", description = "로그인한 사용자가 새로운 고객 문의를 작성합니다.")
     @ApiResponse(responseCode = "201", description = "문의가 성공적으로 작성되었습니다.")
+    @ApiResponse(responseCode = "413", description = "첨부 파일 또는 요청 크기가 허용 한도를 초과했습니다.")
     public ResponseEntity<CreateCsInquiryResponseDto> writeCsInquiry(
         @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
         @ModelAttribute @Valid CreateCsInquiryRequestDto request
@@ -55,9 +62,10 @@ public class CsInquiryController {
      * @param request
      * @return
      */
-    @PatchMapping("/{inquiryId}")
+    @PatchMapping(value = "/{inquiryId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "문의 수정", description = "작성자가 본인의 고객 문의를 수정합니다.")
     @ApiResponse(responseCode = "200", description = "문의가 성공적으로 수정되었습니다.")
+    @ApiResponse(responseCode = "413", description = "첨부 파일 또는 요청 크기가 허용 한도를 초과했습니다.")
     public ResponseEntity<UpdateCsInquiryResponseDto> patchCsInquiry(
         @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
         @Parameter(description = "수정할 문의 ID", example = "1") @PathVariable(name = "inquiryId") Integer inquiryId,
@@ -82,6 +90,40 @@ public class CsInquiryController {
     ) {
         csInquiryService.deleteCsInquiry(user.getUserId(), inquiryId);
         return ResponseEntity.ok(Map.of());
+    }
+
+    @GetMapping("/{inquiryId}")
+    @Operation(summary = "문의 상세 조회", description = "작성자 또는 관리자가 문의 본문과 첨부 목록을 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "문의 상세가 성공적으로 조회되었습니다.")
+    public ResponseEntity<CsInquiryDetailResponseDto> getCsInquiryDetail(
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
+            @Parameter(description = "조회할 문의 ID", example = "1") @PathVariable(name = "inquiryId") Integer inquiryId
+    ) {
+        return ResponseEntity.ok(csInquiryService.getCsInquiryDetail(
+                user.getUserId(), isAdmin(user), inquiryId
+        ));
+    }
+
+    @GetMapping("/{inquiryId}/images/{imageId}")
+    @Operation(summary = "문의 첨부 이미지 조회", description = "작성자 또는 관리자에게만 비공개 첨부 이미지를 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "첨부 이미지가 성공적으로 조회되었습니다.")
+    public ResponseEntity<byte[]> getCsInquiryImage(
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
+            @PathVariable(name = "inquiryId") Integer inquiryId,
+            @PathVariable(name = "imageId") Integer imageId
+    ) {
+        CsInquiryImageContent image = csInquiryService.getCsInquiryImage(
+                user.getUserId(), isAdmin(user), inquiryId, imageId
+        );
+        String filename = image.originalFilename() == null ? "image" : image.originalFilename();
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(image.contentType()))
+                .cacheControl(CacheControl.noStore())
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.inline().filename(filename, StandardCharsets.UTF_8).build().toString()
+                )
+                .body(image.bytes());
     }
 
     /**
@@ -169,5 +211,10 @@ public class CsInquiryController {
     @ApiResponse(responseCode = "200", description = "카테고리 목록이 성공적으로 조회되었습니다.")
     public ResponseEntity<InquiryTypeListResponseDto> getCsInquiryCategory() {
         return ResponseEntity.ok(csInquiryService.getInquiryTypes());
+    }
+
+    private boolean isAdmin(OauthUserDetails user) {
+        return user.getAuthorities().stream()
+                .anyMatch(authority -> UserRole.ROLE_ADMIN.name().equals(authority.getAuthority()));
     }
 }

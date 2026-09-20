@@ -31,7 +31,7 @@ public class ScrappedPlan extends BaseEntity {
     @JoinColumn(name = "plan_id")
     private Plan plan;
 
-    @Column(name = "scrapped_at", updatable = false)
+    @Column(name = "scrapped_at")
     private LocalDateTime scrappedAt;
 
     @Enumerated(EnumType.STRING)
@@ -53,6 +53,7 @@ public class ScrappedPlan extends BaseEntity {
             this.plan.decreaseScrappedCount();
         } else {
             this.scrappedStatus = ScrappedStatus.Y;
+            this.scrappedAt = LocalDateTime.now();
             this.plan.increaseScrappedCount();
         }
     }

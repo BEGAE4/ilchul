@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -46,6 +47,13 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.status").value(400));
     }
 
+    @Test
+    void multipart_요청이_Spring_한도를_넘으면_JSON_413을_반환한다() throws Exception {
+        mockMvc.perform(get("/test/upload-too-large"))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(jsonPath("$.status").value(413));
+    }
+
     @RestController
     static class TestController {
 
@@ -57,6 +65,11 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/test/required-param")
         String requiredParam(@RequestParam String keyword) {
             return keyword;
+        }
+
+        @GetMapping("/test/upload-too-large")
+        void uploadTooLarge() {
+            throw new MaxUploadSizeExceededException(80L * 1024 * 1024);
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.begae.backend.cs_inquiry.service;
 
 import com.begae.backend.cs_inquiry.domain.CsInquiry;
+import com.begae.backend.cs_inquiry.domain.CsInquiryImage;
 import com.begae.backend.cs_inquiry.dto.request.CreateCsInquiryRequestDto;
 import com.begae.backend.cs_inquiry.dto.request.ReplyCsInquiryRequestDto;
 import com.begae.backend.cs_inquiry.dto.request.UpdateCsInquiryRequestDto;
@@ -10,6 +11,9 @@ import com.begae.backend.cs_inquiry.enums.InquiryType;
 import com.begae.backend.cs_inquiry.exception.CsInquiryErrorCode;
 import com.begae.backend.cs_inquiry.repository.CsInquiryRepository;
 import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.storage.dto.StoredImage;
+import com.begae.backend.storage.service.ImageFileCleaner;
+import com.begae.backend.storage.service.ImageStorageService;
 import com.begae.backend.user.domain.User;
 import com.begae.backend.user.exception.UserErrorCode;
 import com.begae.backend.user.repository.UserRepository;
@@ -20,32 +24,34 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class CsInquiryServiceImpl implements CsInquiryService {
 
+    private static final int MAX_IMAGES = 5;
+
     private final CsInquiryRepository csInquiryRepository;
     private final UserRepository userRepository;
+    private final ImageStorageService imageStorageService;
+    private final ImageFileCleaner imageFileCleaner;
 
     @Override
     public CreateCsInquiryResponseDto createCsInquiry(Integer userId, CreateCsInquiryRequestDto requestDto) {
         User user = readUser(userId);
+        List<MultipartFile> images = files(requestDto.images());
+        validateImageCount(images.size());
 
         InquiryType type = requestDto.inquiryType();
         CsInquiry inquiry = CsInquiry.of(user, requestDto.title(), requestDto.content(), type);
-        
-        // TODO: 동료가 구현 완료 시 MinIO/S3 업로드 모듈과 연동 예정 (파일 저장 및 URL 매핑)
-        // if (requestDto.images() != null && !requestDto.images().isEmpty()) {
-        //     List<String> uploadedUrls = s3Service.upload(requestDto.images());
-        //     for (String url : uploadedUrls) {
-        //         inquiry.addImage(CsInquiryImage.of(inquiry, url));
-        //     }
-        // }
-
         CsInquiry savedInquiry = csInquiryRepository.save(inquiry);
+        uploadImages(savedInquiry, images);
 
         return CreateCsInquiryResponseDto.from(savedInquiry);
     }
@@ -65,19 +71,21 @@ public class CsInquiryServiceImpl implements CsInquiryService {
             throw new CustomException(CsInquiryErrorCode.UNAUTHORIZED_ACCESS);
         }
 
-        // 1. 이미지 삭제 처리 (deleteImageIds 존재 시)
-        if (requestDto.deleteImageIds() != null && !requestDto.deleteImageIds().isEmpty()) {
-            inquiry.getImages().removeIf(img -> requestDto.deleteImageIds().contains(img.getImageId()));
-        }
+        List<MultipartFile> newImages = files(requestDto.newImages());
+        Set<Integer> deleteImageIds = requestDto.deleteImageIds() == null
+                ? Set.of()
+                : new HashSet<>(requestDto.deleteImageIds());
+        List<CsInquiryImage> imagesToDelete = inquiry.getImages().stream()
+                .filter(image -> deleteImageIds.contains(image.getImageId()))
+                .toList();
+        validateImageCount(inquiry.getImages().size() - imagesToDelete.size() + newImages.size());
 
-        // 2. 새로운 이미지 추가 처리 플레이스홀더
-        // TODO: 동료가 구현 완료 시 MinIO/S3 업로드 모듈과 연동 예정 (신규 이미지 추가)
-        // if (requestDto.newImages() != null && !requestDto.newImages().isEmpty()) {
-        //     List<String> uploadedUrls = s3Service.upload(requestDto.newImages());
-        //     for (String url : uploadedUrls) {
-        //         inquiry.addImage(CsInquiryImage.of(inquiry, url));
-        //     }
-        // }
+        List<String> deletedKeys = imagesToDelete.stream()
+                .map(CsInquiryImage::getStorageKey)
+                .toList();
+        imagesToDelete.forEach(inquiry::removeImage);
+        uploadImages(inquiry, newImages);
+        imageFileCleaner.deleteAfterCommit(deletedKeys);
 
         InquiryType type = requestDto.inquiryType();
         inquiry.updateContent(requestDto.title(), requestDto.content(), type);
@@ -95,7 +103,12 @@ public class CsInquiryServiceImpl implements CsInquiryService {
             throw new CustomException(CsInquiryErrorCode.UNAUTHORIZED_ACCESS);
         }
 
+        List<String> imageKeys = inquiry.getImages().stream()
+                .map(CsInquiryImage::getStorageKey)
+                .toList();
+        inquiry.clearImages();
         inquiry.deleteInquiry();
+        imageFileCleaner.deleteAfterCommit(imageKeys);
     }
 
     @Override
@@ -176,6 +189,32 @@ public class CsInquiryServiceImpl implements CsInquiryService {
         inquiry.close();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public CsInquiryDetailResponseDto getCsInquiryDetail(Integer userId, boolean admin, Integer inquiryId) {
+        CsInquiry inquiry = readCsInquiry(inquiryId);
+        checkDeleted(inquiry);
+        checkCanRead(userId, admin, inquiry);
+        return CsInquiryDetailResponseDto.from(inquiry);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CsInquiryImageContent getCsInquiryImage(Integer userId, boolean admin, Integer inquiryId, Integer imageId) {
+        CsInquiry inquiry = readCsInquiry(inquiryId);
+        checkDeleted(inquiry);
+        checkCanRead(userId, admin, inquiry);
+        CsInquiryImage image = inquiry.getImages().stream()
+                .filter(candidate -> Objects.equals(candidate.getImageId(), imageId))
+                .findFirst()
+                .orElseThrow(() -> new CustomException(CsInquiryErrorCode.IMAGE_NOT_FOUND));
+        return new CsInquiryImageContent(
+                imageStorageService.download(image.getStorageKey()),
+                image.getContentType(),
+                image.getOriginalFilename()
+        );
+    }
+
     // --------------------- 내부 메서드 ----------------------
 
     private User readUser(Integer userId) {
@@ -191,6 +230,39 @@ public class CsInquiryServiceImpl implements CsInquiryService {
     private void checkDeleted(CsInquiry inquiry) {
         if (inquiry.getIsDeleted()) {
             throw new CustomException(CsInquiryErrorCode.INQUIRY_DELETED);
+        }
+    }
+
+    private void checkCanRead(Integer userId, boolean admin, CsInquiry inquiry) {
+        if (!admin && !inquiry.getUser().getUserId().equals(userId)) {
+            throw new CustomException(CsInquiryErrorCode.UNAUTHORIZED_ACCESS);
+        }
+    }
+
+    private List<MultipartFile> files(List<MultipartFile> files) {
+        if (files == null) {
+            return List.of();
+        }
+        return files.stream()
+                .filter(file -> file != null && !file.isEmpty())
+                .toList();
+    }
+
+    private void validateImageCount(int count) {
+        if (count > MAX_IMAGES) {
+            throw new CustomException(CsInquiryErrorCode.TOO_MANY_IMAGES);
+        }
+    }
+
+    private void uploadImages(CsInquiry inquiry, List<MultipartFile> images) {
+        if (images.isEmpty()) {
+            return;
+        }
+        String directory = "cs-inquiry/" + inquiry.getInquiryId() + "/images";
+        for (MultipartFile image : images) {
+            StoredImage storedImage = imageStorageService.uploadPrivate(image, directory);
+            imageFileCleaner.deleteIfRolledBack(storedImage.imageKey());
+            inquiry.addImage(CsInquiryImage.of(inquiry, storedImage));
         }
     }
 

@@ -13,8 +13,12 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ProfileImageProcessorContractTest {
 
@@ -42,18 +46,36 @@ class ProfileImageProcessorContractTest {
     }
 
     @Test
-    void 용량이_5MB를_초과한_프로필_사진은_413_오류로_거절한다() {
+    void 용량이_15MB를_초과한_프로필_사진은_413_오류로_거절한다() {
         ProfileImageProcessor processor = new ProfileImageProcessor();
         MockMultipartFile oversized = new MockMultipartFile(
                 "image",
                 "profile.png",
                 "image/png",
-                new byte[5 * 1024 * 1024 + 1]
+                new byte[15 * 1024 * 1024 + 1]
         );
 
         assertThatThrownBy(() -> processor.process(oversized))
                 .isInstanceOfSatisfying(CustomException.class, error ->
                         assertThat(error.getErrorCode()).isEqualTo(StorageErrorCode.TOO_LARGE_FILE_SIZE));
+    }
+
+    @Test
+    void 실제_이미지인_10MB_프로필_사진은_처리한다() throws Exception {
+        BufferedImage source = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        ImageIO.write(source, "png", bytes);
+        byte[] imageBytes = bytes.toByteArray();
+        MultipartFile image = mock(MultipartFile.class);
+        when(image.isEmpty()).thenReturn(false);
+        when(image.getSize()).thenReturn(10L * 1024 * 1024);
+        when(image.getContentType()).thenReturn("image/png");
+        when(image.getOriginalFilename()).thenReturn("profile.png");
+        when(image.getInputStream()).thenAnswer(ignored -> new ByteArrayInputStream(imageBytes));
+
+        ProcessedProfileImage processed = new ProfileImageProcessor().process(image);
+
+        assertThat(processed.bytes()).isNotEmpty();
     }
 
     @Test
