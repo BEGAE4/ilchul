@@ -90,9 +90,10 @@ function toInquiryAnswer(raw: unknown, inquiryId: number): InquiryAnswer | null 
 }
 
 /**
- * 상세 응답 → 화면 상세 객체.
- * 상세 API 는 아직 없다. 추가될 때 목록처럼 inquiryStatus/inquiryType 으로 내려와도,
- * 화면 필드명(status/categoryName) 그대로 내려와도 받도록 양쪽을 모두 읽는다.
+ * 상세 응답(CsInquiryDetailResponseDto, 2026-09-20 백엔드 추가) → 화면 상세 객체.
+ * 서버는 목록과 같은 필드명(inquiryStatus/inquiryType)으로 준다. 화면 필드명(status/categoryName)도
+ * 함께 읽는 것은 API 가 없던 때 양쪽을 대비해 둔 것이다.
+ * 첨부 주소(imageUrl)는 `/api/cs-inquiry/{id}/images/{imageId}` 상대 경로다 — 그대로 둔다.
  * 문의로 볼 수 없는 응답(ID 없음)은 null.
  */
 export function toInquiryDetail(raw: unknown): InquiryDetail | null {
@@ -122,6 +123,16 @@ export function toInquiryDetail(raw: unknown): InquiryDetail | null {
   const authorNickname = asString(raw.authorNickname);
   if (authorNickname) detail.authorNickname = authorNickname;
   return detail;
+}
+
+/** 상세 조회 실패 원인. notFound·forbidden 은 다시 시도해도 소용없어 안내만 한다 */
+export type InquiryDetailErrorKind = 'notFound' | 'forbidden' | 'retryable';
+
+export function inquiryDetailErrorKind(err: unknown): InquiryDetailErrorKind {
+  const status = isRecord(err) && isRecord(err.response) ? err.response.status : undefined;
+  if (status === 404) return 'notFound';
+  if (status === 403) return 'forbidden';
+  return 'retryable';
 }
 
 /** 탭(답변 대기/완료)별로 화면에서 거른다 — 서버에 상태 필터가 없다 */

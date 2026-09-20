@@ -58,7 +58,7 @@ export const updateMyPageProfile = async (
 
 // 프로필 사진 업로드 — multipart, 필드명 image. 200 + 갱신된 프로필. 2026-09-18 백엔드 추가 (2차 요청 §3)
 //  - 400 허용되지 않는 형식(JPG·PNG·WEBP 만) · 413 용량 초과 · 401 미로그인
-//  - 운영 앞단(nginx)의 업로드 제한이 1MB 라 휴대폰 원본은 닿기도 전에 413 이 난다. 올리기 전에 줄인다.
+//  - 서버 한도는 파일 15MB 다 (2026-09-20 반영). 프로필은 작게만 보이므로 올리기 전에 긴 변 1024px 로 줄인다.
 //  - multipart 는 Next 프록시 라우트를 두지 않고 플랜 사진처럼 백엔드로 바로 보낸다.
 export const uploadProfileImage = async (file: File): Promise<UpdateProfileResponse> => {
   const form = new FormData();
