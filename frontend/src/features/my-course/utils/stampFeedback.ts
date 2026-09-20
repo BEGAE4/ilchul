@@ -28,7 +28,7 @@ export function stampErrorKind(err: unknown, accuracyM?: number): StampErrorKind
     return accuracyM !== undefined && accuracyM > STAMP_RADIUS_M ? 'inaccurateLocation' : 'outOfRange';
   }
   if (status === 409) return 'alreadyStamped';
-  // 사진 용량 초과 — 앞단(nginx)이 HTML 413 으로 거절한다. 위치 문제로 안내하면 계속 같은 사진으로 실패한다
+  // 사진 용량 초과(413). 위치 문제로 안내하면 계속 같은 사진으로 실패한다
   if (isImageTooLarge(err)) return 'tooLarge';
   // 업로드 제한 시간 초과 (axios timeout → ECONNABORTED / ETIMEDOUT). 회선이 약한 여행지에서 잦다
   if (isAxiosError(err) && (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT')) return 'timeout';

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 type Params = { params: Promise<{ id: string }> };
 
-/** GET 문의 상세 조회 — 백엔드 프록시. 백엔드에 아직 없는 엔드포인트라 지금은 upstream 오류(404/405)가 그대로 전달된다 */
+/** GET 문의 상세 조회 — 백엔드 프록시 (작성자 또는 관리자. 403·404 는 그대로 전달) */
 export async function GET(request: NextRequest, { params }: Params) {
   const { id } = await params;
   const baseUrl = getServerApiBaseUrl();

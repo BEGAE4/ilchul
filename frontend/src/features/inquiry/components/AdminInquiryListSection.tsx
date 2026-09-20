@@ -7,7 +7,7 @@ import { filterInquiriesByStatus } from '../utils/inquiryMapper';
 import { InquiryCard } from './InquiryCard';
 
 interface AdminInquiryListSectionProps {
-  // 상세 API 가 없어 다음 화면이 목록 정보로 대신 그릴 수 있게 아이템째 넘긴다
+  // 상세 조회가 실패해도 다음 화면이 목록 정보로 대신 그릴 수 있게 아이템째 넘긴다
   onSelectInquiry: (inquiry: InquiryListItem) => void;
   onAnswerInquiry: (inquiry: InquiryListItem) => void;
 }

@@ -18,7 +18,7 @@ export const InquiryPage = () => {
 
   const defaultSection: InquirySection = isAdmin ? 'adminList' : 'list';
   const [section, setSection] = useState<InquirySection>(defaultSection);
-  // 상세 API 가 없는 동안 상세·답변 화면이 목록 정보로 대신 그릴 수 있게 아이템째 들고 있는다
+  // 상세 조회가 실패해도 상세·답변 화면이 목록 정보로 대신 그릴 수 있게 아이템째 들고 있는다
   const [selectedItem, setSelectedItem] = useState<InquiryListItem | null>(null);
   const selectedId = selectedItem?.inquiryId ?? null;
   const [editTarget, setEditTarget] = useState<InquiryDetail | null>(null);

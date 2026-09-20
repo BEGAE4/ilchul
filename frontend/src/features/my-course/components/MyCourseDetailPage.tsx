@@ -156,7 +156,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
 
   const [verifyingStopId, setVerifyingStopId] = useState<number | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  // 기록 중 어느 단계에서 기다리는지 — 위치 확인(최대 15초) → 사진 업로드(최대 45초)
+  // 기록 중 어느 단계에서 기다리는지 — 위치 확인(최대 15초) → 사진 업로드(최대 60초)
   const [verifyStep, setVerifyStep] = useState<'locating' | 'uploading'>('locating');
   // '취소'를 누르면 진행 중인 기록을 끊는다. 위치 조회는 끊을 수 없어 결과를 버린다
   const stampAbortRef = useRef<AbortController | null>(null);
@@ -288,7 +288,7 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
     setIsEditingReview(false);
   };
 
-  // 사진은 한 장씩 올라간다(앞단 1MB 제한이 요청 전체에 걸려서). 중간에 실패하면 올라간 만큼은 화면에 반영하고,
+  // 사진은 5장씩 묶여 올라간다(서버가 한 요청에 5장까지 받는다). 중간 묶음이 실패하면 올라간 만큼은 화면에 반영하고,
   // 용량 문제인지 네트워크 문제인지 구분해 알린다 — 이전에는 전부 "다시 시도해주세요"라 같은 사진으로 계속 실패했다.
   const reportPhotoUploadFailure = (err: unknown, fallback: string) => {
     const partial = err instanceof planApi.PlanImageUploadError ? err : null;
