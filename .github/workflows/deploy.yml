@@ -205,41 +205,6 @@ jobs:
               MC_CONFIG_DIR="$mc_config" mc anonymous set-json "$policy_file" deploy/ilchul >/dev/null
             ' < "$MINIO_POLICY"
 
-            HOST_NGINX_SOURCE="$PROJECT_PATH/nginx/host/ilchul.conf"
-            HOST_NGINX_TARGET="/etc/nginx/conf.d/ilchul.conf"
-            HOST_NGINX_BACKUP=$(mktemp /tmp/ilchul-host-nginx.XXXXXX)
-            HOST_NGINX_EXISTED=false
-
-            if sudo -n test -f "$HOST_NGINX_TARGET"; then
-              sudo -n cp "$HOST_NGINX_TARGET" "$HOST_NGINX_BACKUP"
-              HOST_NGINX_EXISTED=true
-            fi
-
-            restore_host_nginx() {
-              if [ "$HOST_NGINX_EXISTED" = true ]; then
-                sudo -n install -m 0644 "$HOST_NGINX_BACKUP" "$HOST_NGINX_TARGET"
-              else
-                sudo -n rm -f "$HOST_NGINX_TARGET"
-              fi
-              sudo -n nginx -t
-              sudo -n nginx -s reload
-            }
-
-            sudo -n install -m 0644 "$HOST_NGINX_SOURCE" "$HOST_NGINX_TARGET"
-            if ! sudo -n nginx -t; then
-              echo "Host Nginx validation failed; restoring previous configuration"
-              restore_host_nginx
-              rm -f "$HOST_NGINX_BACKUP"
-              exit 1
-            fi
-            if ! sudo -n nginx -s reload; then
-              echo "Host Nginx reload failed; restoring previous configuration"
-              restore_host_nginx
-              rm -f "$HOST_NGINX_BACKUP"
-              exit 1
-            fi
-            rm -f "$HOST_NGINX_BACKUP"
-
             install -d -m 0755 nginx/runtime
             install -m 0644 "nginx/upstreams/${CURRENT_ENV}.conf" nginx/runtime/active.conf.new
             mv nginx/runtime/active.conf.new nginx/runtime/active.conf
