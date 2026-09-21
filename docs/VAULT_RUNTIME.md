@@ -162,3 +162,17 @@ Docker Compose env 선택 근거: [Docker 환경 파일 문서](https://docs.doc
 서버 준비 완료 판정은 `/usr/local/sbin/ilchul-vault-preflight --new-deployment` 실제 성공과
 운영자 검증 기록으로 한다. main 병합, production 승인, 앱 전환, 실로그인/refresh/업로드 인수,
 구 자격증명 폐기는 사용자가 진행할 후속 단계다. 단일 VM root 위험 및 기존 의존성 취약점은 이 전환만으로 해소되지 않는다.
+
+### 2026-09-21 첫 배포 실패와 수정
+
+- main `811e64f`의 배포는 host preflight와 backup 이후 migration 단계에서 실패했다. traffic 전환은 실행되지 않았다.
+- 원인은 Flyway의 `.loggers("none")`였다. `none`은 비활성화 옵션이 아니라 클래스 이름으로 해석되어
+  첫 초기화 시 `ClassNotFoundException` / `ExceptionInInitializerError`가 발생했다. 읽기 전용 진단에서 DB 인증과 migration 검증은 성공했다.
+- 로거 목록을 명시적으로 비워 SDK 출력을 억제한다. 새 JVM에서 production 설정을 사용하되 DB만 임시 H2로 바꾸는
+  회귀 테스트를 추가했다. 실제 migration 성공 및 의도적인 SQL 실패 양쪽에서 stdout/stderr에 SQL·합성 비밀번호가 노출되지 않아야 한다.
+  기존 설정에서 동일한 초기화 실패를 재현한 뒤 수정 설정에서 두 테스트가 통과함을 확인했다.
+- 다음 배포 전에 운영자가 실패 실행의 `vault-acceptance-pending.json`, active color, backup, 잔여 migration 작업을 확인해야 한다.
+  검증 기록을 보관하고 marker를 제거하는 서버 조치는 별도 승인 후 진행한다. 이 코드 수정 자체는 marker를 제거하거나 배포를 재시도하지 않는다.
+- 수정 후 로컬 검증: Java 21 `clean build` 215 tests / 0 failures, frontend production build 성공,
+  Python 14 PASS / Docker CLI 부재로 Compose 렌더링 1 SKIP, Node 계약 3 PASS, shell syntax 및 image cleanup tests PASS.
+  실제 수정 이미지의 운영 migration과 앱 전환은 아직 실행하지 않았다.

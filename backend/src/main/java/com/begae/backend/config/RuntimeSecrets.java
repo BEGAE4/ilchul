@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.configuration.FluentConfiguration;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.MapPropertySource;
@@ -95,9 +96,14 @@ public final class RuntimeSecrets implements ApplicationContextInitializer<Confi
     /** No Spring context, HTTP, Redis, OAuth, storage or profiling agent in this host-only job. */
     public static void migrate() {
         var values = read(ROOT.resolve("ilchul-migration"), MIGRATION_NAMES, 0);
-        Flyway.configure().dataSource("jdbc:mysql://mysql:3306/ilchul_db?serverTimezone=Asia/Seoul",
+        migrationConfiguration(values).load().migrate();
+    }
+
+    static FluentConfiguration migrationConfiguration(Map<String, String> values) {
+        return Flyway.configure().dataSource("jdbc:mysql://mysql:3306/ilchul_db?serverTimezone=Asia/Seoul",
                 values.get("MYSQL_USER"), values.get("MYSQL_PASSWORD"))
                 .locations("classpath:db/migration").cleanDisabled(true).baselineOnMigrate(false)
-                .loggers("none").load().migrate();
+                // "none" is interpreted as a logger class name, not a disable switch.
+                .loggers(new String[0]);
     }
 }

@@ -59,6 +59,7 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	systemProperty 'ilchul.test.classpath', sourceSets.test.runtimeClasspath.asPath
 }
 
 tasks.named('bootJar') {
