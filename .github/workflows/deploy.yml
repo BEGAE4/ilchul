@@ -122,6 +122,7 @@ jobs:
   deploy-target:
     needs: [metadata, build-frontend, build-backend]
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -129,15 +130,14 @@ jobs:
       - name: Test scoped image cleanup
         run: bash scripts/prune-deployment-images.test.sh
 
-      - name: Prepare backend runtime environment
-        env:
-          RUNTIME_ENV_FILE: ${{ secrets.ENV_FILE }}
-          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
-        shell: bash
-        run: |
-          umask 077
-          printf '%s\n' "$RUNTIME_ENV_FILE" > .env.deploy
-          printf 'ANTHROPIC_API_KEY=%s\n' "$ANTHROPIC_API_KEY" >> .env.deploy
+      - name: Check host readiness before copying deployment files
+        uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_KEY }}
+          port: ${{ secrets.ORACLE_PORT }}
+          script: sudo -n /usr/local/sbin/ilchul-vault-preflight --new-deployment
 
       - name: Copy deployment files
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
@@ -146,7 +146,7 @@ jobs:
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_KEY }}
           port: ${{ secrets.ORACLE_PORT }}
-          source: docker-compose.blue.yml,docker-compose.green.yml,docker-compose.nginx.yml,nginx,infrastructure,rollback.sh,scripts/prune-deployment-images.sh,.env.deploy
+          source: docker-compose.blue.yml,docker-compose.green.yml,docker-compose.nginx.yml,nginx,rollback.sh,scripts/prune-deployment-images.sh
           target: /home/begae/ilchul
 
       - name: Deploy inactive environment
@@ -167,11 +167,19 @@ jobs:
             PROJECT_PATH="/home/begae/ilchul"
             cd "$PROJECT_PATH"
 
+            sudo -n /usr/local/sbin/ilchul-vault-preflight --new-deployment
+            # Only allowlisted non-secret values; never source a production .env in the shell.
+            export COMPOSE_ENV_FILES=/etc/ilchul/runtime-public.env
+            export FRONTEND_IMAGE="ghcr.io/${REPO_OWNER}/ilchul-frontend:${GIT_SHA}"
+            export BACKEND_IMAGE="ghcr.io/${REPO_OWNER}/ilchul-backend:${GIT_SHA}"
+
             if [ ! -f current_environment.txt ]; then
-              echo "blue" > current_environment.txt
+              echo 'Active color is unknown; deployment blocked.'
+              exit 1
             fi
 
             CURRENT_ENV=$(tr -d '[:space:]' < current_environment.txt)
+            case "$CURRENT_ENV" in blue|green) ;; *) exit 1 ;; esac
             if [ "$CURRENT_ENV" = "blue" ]; then
               TARGET_ENV="green"
             else
@@ -181,36 +189,13 @@ jobs:
             echo "$TARGET_ENV" > target_environment.txt
             echo "$CURRENT_ENV" > previous_environment.txt
 
-            mv .env.deploy .env
-            cat << ENV_EOF >> .env
-            FRONTEND_IMAGE=ghcr.io/${REPO_OWNER}/ilchul-frontend:${GIT_SHA}
-            BACKEND_IMAGE=ghcr.io/${REPO_OWNER}/ilchul-backend:${GIT_SHA}
-            ENV_EOF
-            chmod 600 .env
-
             printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
 
             docker network inspect shared-infra >/dev/null
 
-            MINIO_POLICY="$PROJECT_PATH/infrastructure/minio/anonymous-read-policy.json"
-            docker inspect minio >/dev/null
-            docker exec -i minio sh -lc '
-              set -eu
-              policy_file=$(mktemp /tmp/ilchul-policy.XXXXXX.json)
-              mc_config=$(mktemp -d /tmp/ilchul-mc.XXXXXX)
-              cleanup() {
-                rm -f "$policy_file"
-                rm -rf "$mc_config"
-              }
-              trap cleanup EXIT
-              cat > "$policy_file"
-              access_key=${MINIO_ROOT_USER:-${MINIO_ACCESS_KEY:-}}
-              secret_key=${MINIO_ROOT_PASSWORD:-${MINIO_SECRET_KEY:-}}
-              test -n "$access_key"
-              test -n "$secret_key"
-              MC_CONFIG_DIR="$mc_config" mc alias set deploy http://127.0.0.1:9000 "$access_key" "$secret_key" >/dev/null
-              MC_CONFIG_DIR="$mc_config" mc anonymous set-json "$policy_file" deploy/ilchul >/dev/null
-            ' < "$MINIO_POLICY"
+            # MinIO policy/account administration is a separately reviewed host operation.
+            # Reload never stops dependent apps; a failed fetch retains the last generation.
+            sudo -n systemctl reload ilchul-secrets.service
 
             install -d -m 0755 nginx/runtime
             install -m 0644 "nginx/upstreams/${CURRENT_ENV}.conf" nginx/runtime/active.conf.new
@@ -225,7 +210,7 @@ jobs:
                 break
               fi
               if [ "$attempt" -eq 30 ]; then
-                docker logs --tail 100 ilchul-nginx || true
+                echo 'Gateway failed health validation; inspect restricted host logs.'
                 exit 1
               fi
               echo "Waiting for Ilchul Nginx gateway: ${GATEWAY_HEALTH} (${attempt}/30)"
@@ -258,6 +243,11 @@ jobs:
 
             docker compose -f "docker-compose.${TARGET_ENV}.yml" config --quiet
             docker compose -f "docker-compose.${TARGET_ENV}.yml" pull
+            # Keep the rollback window open even if target startup or traffic switching fails.
+            # Only an operator closes it after reviewing application checks and rollback state.
+            (umask 077; set -C; printf '{"sha":"%s","previous":"%s","target":"%s"}\n' \
+              "$GIT_SHA" "$CURRENT_ENV" "$TARGET_ENV" > vault-acceptance-pending.json)
+            sudo -n /usr/local/sbin/ilchul-vault-migrate "$BACKEND_IMAGE"
             docker compose -f "docker-compose.${TARGET_ENV}.yml" up -d
 
             BACKEND_CONTAINER="ilchul-backend-${TARGET_ENV}"
@@ -275,13 +265,13 @@ jobs:
             done
 
             docker compose -f "docker-compose.${TARGET_ENV}.yml" ps
-            docker logs --tail 100 "$BACKEND_CONTAINER" || true
-            docker logs --tail 100 "$FRONTEND_CONTAINER" || true
+            echo 'Target failed health validation; inspect restricted host logs.'
             exit 1
 
   switch-traffic:
     needs: [metadata, deploy-target]
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Switch traffic and smoke test
         uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
@@ -298,9 +288,11 @@ jobs:
             PROJECT_PATH="/home/begae/ilchul"
             ILCHUL_NGINX="ilchul-nginx"
             cd "$PROJECT_PATH"
+            sudo -n /usr/local/sbin/ilchul-vault-preflight
 
             TARGET_ENV=$(tr -d '[:space:]' < target_environment.txt)
             CURRENT_ENV=$(tr -d '[:space:]' < previous_environment.txt)
+            case "$TARGET_ENV:$CURRENT_ENV" in blue:green|green:blue) ;; *) exit 1 ;; esac
             ACTIVE_CONFIG="$PROJECT_PATH/nginx/runtime/active.conf"
 
             activate_environment() {
@@ -318,8 +310,8 @@ jobs:
               exit 1
             fi
 
-            FRONTEND_STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/intro)
-            AUTH_STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/api/plan/1)
+            FRONTEND_STATUS=$(curl --max-time 20 --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/intro) || FRONTEND_STATUS=000
+            AUTH_STATUS=$(curl --max-time 20 --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/api/plan/1) || AUTH_STATUS=000
             if [ "$FRONTEND_STATUS" != "200" ] || [ "$AUTH_STATUS" != "401" ]; then
               echo "Smoke test failed: frontend=${FRONTEND_STATUS}, unauthenticated_api=${AUTH_STATUS}"
               activate_environment "$CURRENT_ENV"
@@ -327,7 +319,7 @@ jobs:
             fi
 
             echo "$TARGET_ENV" > current_environment.txt
-            docker compose -f "docker-compose.${CURRENT_ENV}.yml" stop
+            echo 'Previous color retained. Verify login/refresh/upload/delete before operator retirement.'
 
             if [ -f .deploy-image-state.tsv ]; then
               bash scripts/prune-deployment-images.sh cleanup \

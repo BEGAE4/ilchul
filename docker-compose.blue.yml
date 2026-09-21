@@ -2,11 +2,47 @@ services:
   ilchul-backend-blue:
     image: ${BACKEND_IMAGE}
     container_name: ilchul-backend-blue
-    env_file:
-      - .env
     environment:
-      - SERVER_PORT=${BACKEND_SERVER_PORT}
-    restart: unless-stopped
+      ILCHUL_RUNTIME_MODE: vault
+      SERVER_PORT: ${BACKEND_SERVER_PORT:?public configuration required}
+      MYSQL_DRIVER: ${MYSQL_DRIVER:?public configuration required}
+      MYSQL_URL: ${MYSQL_URL:?public configuration required}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?public configuration required}
+      REDIS_DB: ${REDIS_DB:?public configuration required}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-ilchul-admin}
+      OAUTH_GOOGLE_CLIENT_ID: ${OAUTH_GOOGLE_CLIENT_ID:?public configuration required}
+      OAUTH_GOOGLE_REDIRECT_URI: ${OAUTH_GOOGLE_REDIRECT_URI:?public configuration required}
+      OAUTH_KAKAO_REDIRECT_URI: ${OAUTH_KAKAO_REDIRECT_URI:?public configuration required}
+      OAUTH_NAVER_CLIENT_ID: ${OAUTH_NAVER_CLIENT_ID:?public configuration required}
+      OAUTH_NAVER_REDIRECT_URI: ${OAUTH_NAVER_REDIRECT_URI:?public configuration required}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?public configuration required}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:?public configuration required}
+      STORAGE_BUCKET_NAME: ${STORAGE_BUCKET_NAME:?public configuration required}
+      STORAGE_REGION: ${STORAGE_REGION:?public configuration required}
+      STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:?public configuration required}
+      AWS_EC2_METADATA_DISABLED: "true"
+    group_add:
+      - ${ILCHUL_SECRET_GID:?dedicated secret group required}
+    volumes:
+      - type: bind
+        source: /run/oci-service-secrets/ilchul-backend
+        target: /run/oci-service-secrets/ilchul-backend
+        read_only: true
+        bind:
+          create_host_path: false
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 512
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=256m,mode=1777
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Host systemd starts this color only after tmpfs secrets have been published.
+    restart: "no"
     networks:
       - ilchul-network
       - shared-infra
@@ -40,7 +76,7 @@ services:
       - BACKEND_INTERNAL_URL=http://ilchul-backend-blue:${BACKEND_SERVER_PORT}
     depends_on:
       - ilchul-backend-blue
-    restart: unless-stopped
+    restart: "no"
     networks:
       - ilchul-network
     healthcheck:
