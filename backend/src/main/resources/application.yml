@@ -111,7 +111,8 @@ spring:
 logging:
   level:
     root: INFO
-    org.springframework.cache: trace
+    # Logging is configured before ApplicationContextInitializer runs.
+    org.springframework.cache: INFO
   pattern:
     level: "%5p [requestId:%X{requestId:-}]"
 
@@ -150,7 +151,7 @@ management:
 
 # 이미지 저장소(S3 호환, 운영은 MinIO)
 # - 아래 STORAGE_* 대신 CLOUD_AWS_S3_ENDPOINT / CLOUD_AWS_S3_BUCKET / CLOUD_AWS_S3_REGION 을 넣어도 같은 값으로 쓰인다(운영 ENV_FILE 형식).
-# - 접근 키는 AWS SDK 기본 체인(AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)으로 읽는다.
+# - Vault 운영 모드는 파일에서 읽은 명시적 provider를 사용한다. 로컬만 AWS SDK 기본 체인을 사용한다.
 cloud:
   aws:
     s3:
