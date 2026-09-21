@@ -2,7 +2,7 @@
 
 ## 현재 변경의 범위
 
-이 PR은 **배포 준비 코드**다. 초안 상태에서 검토하며, merge가 운영 배포를 자동으로 시작하므로
+이 PR은 **배포 준비 코드**다. merge가 운영 배포를 자동으로 시작하므로
 아래 서버 준비와 사용자 확인 전에는 merge하지 않는다. 이 문서의 명령은 실행 기록이 아니다.
 기존 OCI 단일 VM과 blue/green, shared-infra 네트워크를 유지한다. 전체 VM/Docker 재시작은 필요하지 않다.
 
@@ -39,7 +39,8 @@ DB 대상은 private Docker DNS `mysql:3306/ilchul_db`다. 다른 값이 실제 
 
 ## 병합 전 서버 준비 체크리스트
 
-아래는 **미실행**이며 별도 운영 작업에서 증거를 확보한다.
+아래는 준비 당시 체크리스트다. 2026-09-21 서버 실행 결과는 문서 마지막의 별도 기록을 참조한다.
+전환 후 앱 인수 검증과 구 계정 폐기는 서버 준비와 별개다.
 
 - [ ] 공통 host runtime(Project Management 저장소)에 ilchul-backend/ilchul-migration profile 추가·테스트·main 반영·승인된 host release 설치.
 - [ ] 기존 DEFAULT Vault/키 재사용, 서비스 Secret과 정확한 버전 manifest 생성. VM IAM은 정확한 Secret 조회만 허용.
@@ -141,3 +142,23 @@ Docker Compose env 선택 근거: [Docker 환경 파일 문서](https://docs.doc
 - 로컬 Docker CLI가 없어 실제 Compose 렌더링과 Docker build/run은 로컬 미검증. PR CI에 해당 검증을 추가했다.
 - 읽기 전용 검토에서 나온 rollback 보존, stopped Vault 세대 혼동, cache TRACE 초기화 문제를 수정하고 재검토했다.
 - 운영 계정/Secret/IAM/파일 변경, 서비스 재시작, main merge/push, 배포는 실행하지 않았다.
+
+### 2026-09-21 서버 준비 실행 기록
+
+- 기존 Vault에 backend / migration / root-only Redis 관리자 Secret v1 등록. 정확한 Secret ID와 기존 VM egress 조건으로 bundle 조회 IAM 추가.
+- 공통 host runtime의 Ilchul profiles, publisher, active-color supervisor, Redis ACL 복원 unit을 PM main에 반영하고 서버에 설치했다. PM 웹앱은 재배포하지 않았다.
+- 전용 GID 983, root manifest, 0750/0640 tmpfs generation, 공개 설정과 root 소유 preflight/migration 명령 설치.
+- 새 MySQL runtime CRUD / migration DDL·backup 계정 생성. 실제 인증, runtime DDL 거부, 양쪽 시스템 사용자 테이블 조회 거부 확인. 기존 계정 불변.
+- 마이그레이션 계정으로 backup 후 네트워크 없는 tmpfs 임시 MySQL에 restore: 18개 테이블, Flyway 260920120100 확인. 임시 컨테이너 제거.
+- Redis 앱 계정의 hash/index/draft/list/sorted-set 동작과 다른 prefix·관리 명령 거부 확인. YouTube ACL 복원은 named host administrator로 변경했다.
+- **Redis default nopass는 아직 유지한다.** 구 Ilchul/rollback이 사용하므로 앱 전환·인수 검증 뒤 모든 consumer를 확인하고 별도 폐쇄해야 한다. 기존 key 삭제·공유 Redis 재시작 없음.
+- MinIO ilchul 전용 계정의 put/get/list/delete, 관리자 API 거부, 다른 버킷 미노출 검증. 기존 root·공개 읽기 정책 불변. 합성 probe 삭제.
+- 잘못된 실제 Vault 버전 조회 실패 시 current generation 보존 검증. 앱 GID로 다른 서비스·migration·admin 파일 읽기 거부 확인.
+- 별도 mount namespace의 빈 tmpfs에서 실제 Instance Principal로 재발행 성공. publisher 실패 시 재생성 금지·후속 재시도 및 Docker bind 재생성 동작은 분리 검증했다. **실제 VM 재부팅과 실제 Ilchul 앱 복구는 실행하지 않았다.**
+- 기존 blue backend/frontend/nginx는 시작 시각과 이미지 변경 없이 healthy 유지. `.env`·Compose·nginx 설정·container inspect는 root-only rollback backup으로 보존했다.
+- GitHub production 환경: main만, required reviewer guite95 확인. begae에는 preflight·publisher reload·검증된 migration wrapper만 sudo 허용; 임의 shell/서비스 중지 불허.
+- RedisConfig가 username/password를 무시하던 누락을 수정했다. backend 213 tests 및 PR backend/frontend CI 통과.
+
+서버 준비 완료 판정은 `/usr/local/sbin/ilchul-vault-preflight --new-deployment` 실제 성공과
+운영자 검증 기록으로 한다. main 병합, production 승인, 앱 전환, 실로그인/refresh/업로드 인수,
+구 자격증명 폐기는 사용자가 진행할 후속 단계다. 단일 VM root 위험 및 기존 의존성 취약점은 이 전환만으로 해소되지 않는다.
