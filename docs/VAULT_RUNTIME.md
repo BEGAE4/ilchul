@@ -176,3 +176,24 @@ Docker Compose env 선택 근거: [Docker 환경 파일 문서](https://docs.doc
 - 수정 후 로컬 검증: Java 21 `clean build` 215 tests / 0 failures, frontend production build 성공,
   Python 14 PASS / Docker CLI 부재로 Compose 렌더링 1 SKIP, Node 계약 3 PASS, shell syntax 및 image cleanup tests PASS.
   실제 수정 이미지의 운영 migration과 앱 전환은 아직 실행하지 않았다.
+
+### 2026-09-21 Pyroscope 초기화 실패와 수정
+
+- 후속 main `1b80930` 배포에서는 host migration이 성공했지만 green backend가 Java agent 초기화 중 exit 139로 종료됐다.
+  `/tmp`의 Docker tmpfs 기본 실행 제한 때문에 Pyroscope가 추출한 native library를 로딩하지 못했다.
+  기존 blue는 healthy이며 traffic 전환 단계는 실행되지 않았다.
+- backend 두 색상 모두 `/tmp`를 명시적 `noexec`로 유지하고, `/tmp/spring-pyroscope`만 별도의
+  `exec,nosuid,nodev` tmpfs로 둔다. 16MiB, UID/GID 1001, mode 0700으로 앱 사용자만 접근하게 한다.
+  frontend, Secret mount, read-only root filesystem, capability 제거, metadata 차단은 변경하지 않는다.
+- 이 디렉터리는 native library 로딩을 위한 제한된 실행 허용 예외다. 앱 사용자 자체가 장악되면 해당 경로에
+  실행 파일을 쓸 수 있으므로 완전한 실행 방지나 추가 사용자 격리를 뜻하지 않는다. `/tmp` 전체를 exec로 변경하지 않는다.
+  Pyroscope/user 변경 시 경로도 함께 재검증한다. 소유자는 Ilchul 운영자이며 에이전트 변경 때마다 예외 필요성을 재검토한다.
+  [현재 agent의 추출 경로 구현](https://github.com/grafana/pyroscope-java/blob/v0.12.0/async-profiler-context/src/main/java/io/pyroscope/labels/io/pyroscope/PyroscopeAsyncProfiler.java)을 기준으로 했다.
+- `python3 scripts/test_profiler_image.py IMAGE`는 Compose에서 읽은 보안 설정으로 실제 image entrypoint를 실행한다.
+  운영 network/Secret/bind mount/포트 없이 profiler 초기화 뒤 `RUNTIME_SECRET_UNAVAILABLE`로 fail-closed하는지 확인하고,
+  `/tmp`의 실제 실행 거부와 전용 디렉터리의 실행 허용·권한을 각각 검증한다. 생성한 임시 컨테이너는 정리한다.
+  기존 설정의 exit 139 실패 및 수정 설정의 blue/green 통과를 OCI ARM64에서 확인했다.
+- PR CI는 ARM64 image를 빌드하고 QEMU에서 위 테스트와 기존 migration entrypoint 테스트를 실행한다.
+  이는 profiler 초기화 및 비밀값 누락 시 차단 검증이며, 실제 DB/Redis/MinIO 연결과 전체 앱 인수 검증을 대신하지 않는다.
+- 이번 실패의 `vault-acceptance-pending.json`은 수정 코드만으로 해제하지 않는다. 다음 병합 전 운영 상태와
+  성공한 migration 이력/backup을 재확인하고, 별도 승인으로 실패 기록을 보관·정리해야 한다.

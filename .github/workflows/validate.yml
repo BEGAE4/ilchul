@@ -24,11 +24,16 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -p 'test_vault*.py'
           bash -n rollback.sh
           bash scripts/prune-deployment-images.test.sh
-      - name: Build image and verify isolated migration entrypoint
+      - name: Set up ARM64 emulation for production image validation
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+        with:
+          platforms: arm64
+      - name: Build ARM64 image and verify profiler and migration entrypoints
         run: |
-          docker build --tag ilchul-vault-pr-validation backend
+          docker build --platform linux/arm64 --tag ilchul-vault-pr-validation backend
+          PYTHONDONTWRITEBYTECODE=1 python3 scripts/test_profiler_image.py ilchul-vault-pr-validation
           status=0
-          output=$(docker run --rm --network none --read-only --cap-drop=ALL \
+          output=$(docker run --rm --platform linux/arm64 --network none --read-only --cap-drop=ALL \
             --security-opt=no-new-privileges --user=0:0 --entrypoint java \
             ilchul-vault-pr-validation -jar /app/app.jar --ilchul-migrate 2>&1) || status=$?
           test "$status" -eq 1

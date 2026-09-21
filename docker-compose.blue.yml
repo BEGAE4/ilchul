@@ -35,7 +35,9 @@ services:
     security_opt: ["no-new-privileges:true"]
     pids_limit: 512
     tmpfs:
-      - /tmp:rw,nosuid,nodev,size=256m,mode=1777
+      - /tmp:rw,noexec,nosuid,nodev,size=256m,mode=1777
+      # Pyroscope 0.12 extracts its native library here; keep the rest of /tmp noexec.
+      - /tmp/spring-pyroscope:rw,exec,nosuid,nodev,size=16m,uid=1001,gid=1001,mode=0700
     logging:
       driver: json-file
       options:
