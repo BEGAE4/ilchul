@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
+import { isAuthError } from '@/shared/lib/api/isAuthError';
 import * as commentApi from '../api/comment.api';
 import type { ReplyItem, DeleteTarget } from '../types/comment.types';
 
@@ -24,8 +25,9 @@ export function useComments(planId: string) {
         const res = await commentApi.fetchComments(planId, lastReplyId);
         setComments((prev) => (append ? [...prev, ...res.replies] : res.replies));
         setHasNext(res.hasNext);
-      } catch {
-        toast.error('댓글을 불러오지 못했어요.');
+      } catch (err) {
+        // 비로그인 401 은 오류가 아니라 "아직 볼 수 없음" — 토스트 대신 빈 목록으로 둔다
+        if (!isAuthError(err)) toast.error('댓글을 불러오지 못했어요.');
       } finally {
         setIsLoading(false);
         setIsFetchingMore(false);

@@ -19,6 +19,8 @@ export function parseUserId(raw: string | null | undefined): number | null {
 export function classifyUserProfileError(status: number | null | undefined): UserProfileErrorKind {
   if (status === 404) return 'not-found';
   if (status === 410) return 'withdrawn';
+  // 비로그인(또는 권한 없음) — 화면이 로그인 안내를 띄운다
+  if (status === 401 || status === 403) return 'auth';
   return 'error';
 }
 

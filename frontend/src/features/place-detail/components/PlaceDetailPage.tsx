@@ -30,6 +30,7 @@ import { Map as KakaoMap, MapMarker } from 'react-kakao-maps-sdk';
 import { useKakaoMapLoader } from '@/shared/lib/kakao';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { isMine } from '@/shared/lib/auth/isMine';
+import { useLoginGate } from '@/features/authentication/hooks';
 
 interface PlaceDetailPageProps {
   placeId: string;
@@ -77,11 +78,15 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
     initialScrapCount: serverPlace?.bookmarkCount,
   });
 
+  // 비로그인이면 좋아요·스크랩·후기·담기 대신 로그인 유도 모달을 띄운다
+  const { requireLogin, promptLogin } = useLoginGate();
+
   const bookmarked = placeActions.isScrapped;
   const liked = placeActions.isLiked;
   const displayLikeCount = placeActions.likeCount;
-  const handleLike = placeActions.toggleLike;
-  const handleBookmark = placeActions.toggleScrap;
+  const handleLike = () => requireLogin(placeActions.toggleLike, '좋아요를 누르려면 로그인해주세요.');
+  const handleBookmark = () => requireLogin(placeActions.toggleScrap, '장소를 북마크하려면 로그인해주세요.');
+  const openAddSheet = () => requireLogin(() => setIsAddSheetOpen(true), '장소를 내 플랜에 담으려면 로그인해주세요.');
 
   if (isServerLoading) {
     return <PlaceDetailSkeleton />;
@@ -94,7 +99,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
         message={serverError}
         requiresAuth={requiresAuth}
         onBack={() => router.back()}
-        onLogin={() => router.push('/login')}
+        onLogin={() => promptLogin('장소 정보를 보려면 먼저 로그인해주세요.')}
       />
     );
   }
@@ -291,10 +296,12 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
           <div className="flex items-center justify-between mt-1.5">
             <span className="text-[11px] text-gray-400">{reviewInput.length}/1000</span>
             <button
-              onClick={async () => {
-                const ok = await submitReview(reviewInput);
-                if (ok) setReviewInput('');
-              }}
+              onClick={() =>
+                requireLogin(async () => {
+                  const ok = await submitReview(reviewInput);
+                  if (ok) setReviewInput('');
+                }, '후기를 남기려면 로그인해주세요.')
+              }
               disabled={isSubmittingReview || !reviewInput.trim()}
               className="px-4 py-2 bg-primary-500 text-white text-sm font-bold rounded-lg shadow-sm shadow-primary-200 active:scale-[0.98] transition-transform disabled:opacity-40"
             >
@@ -488,7 +495,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
         ]}
         primaryLabel="내 플랜에 담기"
         primaryIcon={Plus}
-        onPrimaryClick={() => setIsAddSheetOpen(true)}
+        onPrimaryClick={openAddSheet}
       />
 
       <PlaceAddSheet
