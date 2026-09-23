@@ -35,6 +35,7 @@ import type { CurrentUser, ReportTarget } from '@/features/report';
 import { usePlanDetail, usePlanActions, planApi, pickPlanCover } from '@/features/plan';
 import { HALF_HOURS, addMinutesToTime, todayLocalDate } from '@/features/plan/utils/schedule';
 import { useComments } from '../hooks/useComments';
+import { useLoginGate } from '@/features/authentication/hooks';
 
 interface CourseViewPageProps {
   courseId: string;
@@ -48,6 +49,8 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
   const planActions = usePlanActions(plan);
 
   const { user, userId: myUserId, isLoggedIn, updateProfile } = useUserStore();
+  // 비로그인이면 좋아요·스크랩·댓글·담기 대신 로그인 유도 모달을 띄운다
+  const { requireLogin, promptLogin } = useLoginGate();
 
   // 소유자 판별은 닉네임으로 하므로, 상세에 바로 진입해 스토어가 비어 있으면 프로필을 채운다
   useEffect(() => {
@@ -121,9 +124,11 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         <p className="text-gray-900 font-bold mb-1">
           {planError ?? '플랜 정보를 불러오지 못했어요.'}
         </p>
-        {planErrorKind !== 'not_found' && (
+        {planErrorKind === 'auth' ? (
+          <p className="text-sm text-gray-500 mb-6">로그인하면 플랜을 볼 수 있어요.</p>
+        ) : planErrorKind !== 'not_found' ? (
           <p className="text-sm text-gray-500 mb-6">잠시 후 다시 시도해주세요.</p>
-        )}
+        ) : null}
         <div className={`flex gap-2 w-full max-w-xs ${planErrorKind === 'not_found' ? 'mt-6' : ''}`}>
           <button
             onClick={() => router.back()}
@@ -131,7 +136,14 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           >
             돌아가기
           </button>
-          {planErrorKind !== 'not_found' && (
+          {planErrorKind === 'auth' ? (
+            <button
+              onClick={() => promptLogin('플랜을 보려면 먼저 로그인해주세요.')}
+              className="flex-1 py-3 bg-primary-500 text-white font-bold rounded-xl text-sm shadow-md shadow-primary-200"
+            >
+              로그인하러 가기
+            </button>
+          ) : planErrorKind !== 'not_found' && (
             <button
               onClick={refetch}
               className="flex-1 py-3 bg-primary-500 text-white font-bold rounded-xl text-sm shadow-md shadow-primary-200"
@@ -173,8 +185,24 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
     contextUrl: `/course/${courseId}`,
   };
 
+  const LOGIN_MSG = {
+    like: '좋아요를 누르려면 로그인해주세요.',
+    scrap: '플랜을 저장하려면 로그인해주세요.',
+    save: '플랜을 내 일정에 담으려면 로그인해주세요.',
+    comment: '댓글을 남기려면 로그인해주세요.',
+    commentLike: '댓글에 공감하려면 로그인해주세요.',
+  } as const;
+
+  const handleToggleLike = () => requireLogin(planActions.toggleLike, LOGIN_MSG.like);
+  const handleToggleScrap = () => requireLogin(planActions.toggleScrap, LOGIN_MSG.scrap);
+  const handleSubmitComment = () => requireLogin(submitComment, LOGIN_MSG.comment);
+  const handleToggleCommentLike = (replyId: number, isLiked: boolean, parentId: number | null) =>
+    requireLogin(() => toggleCommentLike(replyId, isLiked, parentId), LOGIN_MSG.commentLike);
+  const handleReply = (target: { replyId: number; username: string; userId: number }) =>
+    requireLogin(() => setReplyTarget(target), LOGIN_MSG.comment);
+
   const handleSaveCourse = () => {
-    setShowSaveModal(true);
+    requireLogin(() => setShowSaveModal(true), LOGIN_MSG.save);
   };
 
   // 종료 시간은 플랜 소요시간으로 자동 계산한다(사용자가 두 번 고르지 않게).
@@ -274,7 +302,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         </div>
         <motion.button
           whileTap={{ scale: 0.95 }}
-          onClick={planActions.toggleLike}
+          onClick={handleToggleLike}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-full border-2 font-bold text-sm transition-all ${
             liked
               ? 'bg-red-50 border-red-400 text-red-500'
@@ -369,7 +397,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
             maxLength={500}
           />
           <button
-            onClick={submitComment}
+            onClick={handleSubmitComment}
             className="mt-2 w-full bg-primary-500 text-white font-bold py-3 rounded-xl shadow-lg shadow-primary-200 active:scale-[0.98] transition-transform"
           >
             {replyTarget ? '답글 작성' : '댓글 작성'}
@@ -407,7 +435,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                     {!comment.isDeleted && (
                     <div className="flex items-center gap-3 mt-1.5">
                       <button
-                        onClick={() => toggleCommentLike(comment.replyId, comment.isLiked, null)}
+                        onClick={() => handleToggleCommentLike(comment.replyId, comment.isLiked, null)}
                         className={`flex items-center gap-1 text-sm ${comment.isLiked ? 'text-primary-500' : 'text-gray-400'}`}
                       >
                         <ThumbsUp size={14} />
@@ -415,7 +443,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                       </button>
                       <button
                         onClick={() =>
-                          setReplyTarget({
+                          handleReply({
                             replyId: comment.replyId,
                             username: comment.user,
                             userId: comment.userId,
@@ -478,7 +506,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
                           {!reply.isDeleted && (
                           <div className="flex items-center gap-3 mt-1">
                             <button
-                              onClick={() => toggleCommentLike(reply.replyId, reply.isLiked, comment.replyId)}
+                              onClick={() => handleToggleCommentLike(reply.replyId, reply.isLiked, comment.replyId)}
                               className={`flex items-center gap-1 text-xs ${reply.isLiked ? 'text-primary-500' : 'text-gray-400'}`}
                             >
                               <ThumbsUp size={12} />
@@ -560,7 +588,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
               active: liked,
               activeTone: 'like',
               filled: true,
-              onClick: planActions.toggleLike,
+              onClick: handleToggleLike,
             },
             {
               id: 'bookmark',
@@ -569,7 +597,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
               active: bookmarked,
               activeTone: 'bookmark',
               filled: true,
-              onClick: planActions.toggleScrap,
+              onClick: handleToggleScrap,
             },
           ]}
           primaryLabel="이 플랜으로 일정 담기"
@@ -719,8 +747,8 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
             {!isMyPlan && (
               <button
                 onClick={() => {
-                  planActions.toggleScrap();
                   setIsMenuOpen(false);
+                  handleToggleScrap();
                 }}
                 className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl active:bg-gray-50"
               >

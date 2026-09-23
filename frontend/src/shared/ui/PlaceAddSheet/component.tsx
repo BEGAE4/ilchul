@@ -12,6 +12,7 @@ import type { MyPlan } from '@/features/my-page/types/plan.types';
 import { fetchPlanDetail, updatePlanPlaces } from '@/features/plan/api/plan.api';
 import { toNumericPlaceId } from '@/features/place/utils/placeId';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
+import { useLoginPromptStore } from '@/shared/lib/stores/useLoginPromptStore';
 
 const NEW_PLAN_ID = '__new__';
 
@@ -36,8 +37,15 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
   const [addedPlanTitle, setAddedPlanTitle] = useState('');
   const authChecked = useUserStore((s) => s.authChecked);
   const isLoggedIn = useUserStore((s) => s.isLoggedIn);
-  // 비로그인이면 내 플랜 조회(401) 대신 로그인 안내를 보여준다 (QA A #9)
+  const showLoginPrompt = useLoginPromptStore((s) => s.show);
+  // 비로그인이면 내 플랜 조회(401) 대신 공용 로그인 유도 모달을 띄우고 시트는 닫는다 (QA A #9)
   const needsLogin = authChecked && !isLoggedIn;
+
+  useEffect(() => {
+    if (!open || !needsLogin) return;
+    onClose();
+    showLoginPrompt({ message: '장소를 내 플랜에 담으려면 로그인해주세요.' });
+  }, [open, needsLogin, onClose, showLoginPrompt]);
 
   // 시트가 열릴 때마다 내 플랜 목록을 새로 조회한다
   useEffect(() => {
@@ -164,24 +172,7 @@ export function PlaceAddSheet({ open, onClose, place }: PlaceAddSheetProps) {
                 </button>
               </div>
 
-              {needsLogin ? (
-                <div className="flex flex-col items-center py-6 text-center">
-                  <p className="text-sm font-bold text-gray-900 mb-1">로그인이 필요해요</p>
-                  <p className="text-xs text-gray-500 mb-6">
-                    장소를 내 플랜에 담으려면 먼저 로그인해주세요.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleClose();
-                      router.push('/login');
-                    }}
-                    className="w-full py-3 bg-primary-500 text-white font-bold rounded-xl active:scale-[0.98] transition-transform"
-                  >
-                    로그인하러 가기
-                  </button>
-                </div>
-              ) : addedSuccess ? (
+              {addedSuccess ? (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}

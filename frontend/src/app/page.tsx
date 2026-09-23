@@ -13,7 +13,7 @@ import {
   Navigation,
 } from 'lucide-react';
 import PageLayout from '@/shared/ui/PageLayout';
-import { getNavItems } from '@/shared/lib/constants/navItems';
+import { useBottomNavItems } from '@/shared/hooks/useBottomNavItems';
 import { ScrollCarousel } from '@/shared/ui/ScrollCarousel';
 import { HomePageSkeleton, Skeleton, SkeletonCard } from '@/shared/ui/Skeleton';
 import { PlaceAddSheet } from '@/shared/ui/PlaceAddSheet';
@@ -52,7 +52,7 @@ const SectionEmpty = ({ message }: { message: string }) => (
 
 export default function Home() {
   const router = useRouter();
-  const navItems = getNavItems('home', path => router.push(path));
+  const navItems = useBottomNavItems('home');
   const [selectedPlace, setSelectedPlace] = useState<PopularPlace | null>(null);
   // 지역 선택 시트 — 지역 바와 히어로 빈 상태 양쪽에서 열 수 있어 페이지가 들고 있는다
   const [regionSheetOpen, setRegionSheetOpen] = useState(false);
