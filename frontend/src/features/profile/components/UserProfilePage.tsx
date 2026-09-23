@@ -7,7 +7,7 @@ import { ArrowLeft, MapPin, MoreVertical, UserX } from 'lucide-react';
 import Avatar from '@/shared/ui/Avatar';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
-import { useRequireAuth } from '@/features/authentication/hooks';
+import { useLoginGate } from '@/features/authentication/hooks';
 import { useReport, ReportDialog, ReportMenuItem } from '@/features/report';
 import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStorage';
 import type { CurrentUser, ReportTarget } from '@/features/report';
@@ -48,8 +48,9 @@ const errorStatus = (err: unknown): number | null =>
  */
 export function UserProfilePage({ userId }: UserProfilePageProps) {
   const router = useRouter();
-  // 백엔드 /api/profile/* 는 로그인이 필요하다(비로그인 401). 마이페이지와 같은 가드를 쓴다.
-  const { ready } = useRequireAuth();
+  // 다른 사용자의 공개 프로필은 비로그인도 볼 수 있게 둔다. 서버가 401 을 주면 로그인 안내를 띄운다.
+  // 로그인 확인이 끝난 뒤에 조회해야 로그인 사용자가 초기값(미로그인)으로 잘못 판단되지 않는다.
+  const { authChecked: ready, promptLogin } = useLoginGate();
   const numericUserId = parseUserId(userId);
 
   const { user, userId: myUserId, isLoggedIn, updateProfile } = useUserStore();
@@ -57,7 +58,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
   // 본인 여부는 닉네임으로 판별하는데, 스토어의 닉네임은 마이페이지/플랜 상세를 거쳐야 채워진다.
   // 이 화면에 바로 들어오면 비어 있으므로 한 번 채운다 (CourseViewPage 와 같은 방식).
   useEffect(() => {
-    if (!ready || user.name) return;
+    if (!ready || !isLoggedIn || user.name) return;
     let alive = true;
     fetchMyPageProfile()
       .then((data) => {
@@ -73,7 +74,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
     return () => {
       alive = false;
     };
-  }, [ready, user.name, updateProfile]);
+  }, [ready, isLoggedIn, user.name, updateProfile]);
 
   const currentUser: CurrentUser = {
     id: user?.id ?? '',
@@ -219,6 +220,17 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
             <>
               <p className="text-gray-500 font-medium mb-1">찾을 수 없는 사용자예요</p>
               <p className="text-xs text-gray-400">주소가 잘못됐거나 사라진 계정일 수 있어요</p>
+            </>
+          ) : profileState.kind === 'auth' ? (
+            <>
+              <p className="text-gray-500 font-medium mb-1">로그인이 필요해요</p>
+              <p className="text-xs text-gray-400 mb-4">프로필을 보려면 먼저 로그인해주세요</p>
+              <button
+                onClick={() => promptLogin('프로필을 보려면 먼저 로그인해주세요.')}
+                className="px-4 py-2 rounded-full bg-primary-500 text-white text-sm font-bold"
+              >
+                로그인하러 가기
+              </button>
             </>
           ) : (
             <>

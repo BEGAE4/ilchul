@@ -35,4 +35,4 @@ export interface UserPlansResponse {
 }
 
 /** 프로필 조회가 실패했을 때 화면이 갈라지는 종류 */
-export type UserProfileErrorKind = 'not-found' | 'withdrawn' | 'error';
+export type UserProfileErrorKind = 'not-found' | 'withdrawn' | 'auth' | 'error';
