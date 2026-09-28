@@ -25,9 +25,9 @@ class PlanServiceImplPopularRegionTest {
     @Test
     void 지역의_주소_접두어로_플랜을_조회한다() {
         PlanRepository repository = mock(PlanRepository.class);
-        when(repository.findPopularPlanIdsByRegion("강원", "강원", 5, 0))
+        when(repository.findPopularPlanIdsByRegion("강원", List.of(""), true, 5, 0))
                 .thenReturn(List.of());
-        when(repository.countPopularPlansByRegion("강원", "강원"))
+        when(repository.countPopularPlansByRegion("강원", List.of(""), true))
                 .thenReturn(2);
         PlanServiceImpl service = new PlanServiceImpl(
                 repository,
@@ -42,7 +42,7 @@ class PlanServiceImplPopularRegionTest {
                 mock(ImageFileCleaner.class));
 
         PopularPlanResponseDto response = service.getPopularPlansByRegion(
-                PopularRegion.GANGWON, 5, 1);
+                PopularRegion.GANGWON, null, 5, 1);
 
         assertThat(response.getTotalCount()).isEqualTo(2);
         assertThat(response.getData()).isEmpty();

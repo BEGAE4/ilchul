@@ -5,10 +5,24 @@ import com.begae.backend.plan.enums.ScrappedStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
 
 public interface ScrappedPlanRepository extends JpaRepository<ScrappedPlan, Integer> {
+    @Query(value = """
+            select sp from ScrappedPlan sp join fetch sp.plan p
+            where sp.user.userId = :userId and sp.scrappedStatus = Y
+              and (p.user.userId = :userId or (p.isPlanVisible = true and p.isBlinded = false))
+            order by sp.scrappedAt desc, sp.scrapId desc
+            """, countQuery = """
+            select count(sp) from ScrappedPlan sp
+            where sp.user.userId = :userId and sp.scrappedStatus = Y
+              and (sp.plan.user.userId = :userId or (sp.plan.isPlanVisible = true and sp.plan.isBlinded = false))
+            """)
+    Page<ScrappedPlan> findVisibleScrapsPage(Integer userId, Pageable pageable);
+
     Integer countByPlan_PlanIdIn(List<Integer> planIds);
 
     Integer countByUser_UserId(int userId);

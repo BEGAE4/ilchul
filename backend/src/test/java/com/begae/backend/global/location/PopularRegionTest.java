@@ -1,10 +1,8 @@
 package com.begae.backend.global.location;
 
-import com.begae.backend.global.exception.CustomException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PopularRegionTest {
 
@@ -25,8 +23,22 @@ class PopularRegionTest {
     }
 
     @Test
-    void 지원하지_않는_지역은_잘못된_입력으로_거절한다() {
-        assertThatThrownBy(() -> PopularRegion.from("서울숲"))
-                .isInstanceOf(CustomException.class);
+    void 지원하지_않는_지역은_빈_결과용_코드로_해석한다() {
+        assertThat(PopularRegion.from("서울숲")).isEqualTo(PopularRegion.UNKNOWN);
+    }
+    @Test
+    void 광주와_전남_별칭은_같은_그룹이다() {
+        for (String alias : java.util.List.of("광주", "광주광역시", "전남", "전라남도", "전남광주", "전남광주통합특별시")) {
+            assertThat(PopularRegion.from(alias)).isEqualTo(PopularRegion.JEONNAM);
+        }
+        assertThat(PlaceRegion.resolve(null, null, "전남광주통합특별시 동구 금남로", null))
+                .isEqualTo(new PlaceRegion("전남", "동구"));
+        assertThat(PlaceRegion.resolve(null, null, "  경기   수원시 영통구 매탄동", null))
+                .isEqualTo(new PlaceRegion("경기", "수원시 영통구"));
+        assertThat(PlaceRegion.resolve("강원특별자치도", "강릉시", "서울 중구", null))
+                .isEqualTo(new PlaceRegion("강원", "강릉시"));
+        assertThat(PlaceRegion.resolve(null, null, "", "전라남도 순천시"))
+                .isEqualTo(new PlaceRegion("전남", "순천시"));
+        assertThat(PlaceRegion.resolve(null, null, "알수없음 동구", null).sido()).isNull();
     }
 }

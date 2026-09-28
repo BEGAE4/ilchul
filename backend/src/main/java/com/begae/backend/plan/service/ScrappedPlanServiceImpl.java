@@ -1,5 +1,6 @@
 package com.begae.backend.plan.service;
 
+import com.begae.backend.global.dto.ListPageRequest;
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.domain.ScrappedPlan;
@@ -16,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -60,9 +60,9 @@ public class ScrappedPlanServiceImpl implements ScrappedPlanService {
 
     @Override
     @Transactional(readOnly = true)
-    public ScrappedPlanResponseDto findUserScrappedPlan(Integer userId) {
+    public ScrappedPlanResponseDto findUserScrappedPlan(Integer userId, Integer page, Integer limit) {
         return ScrappedPlanResponseDto.fromScraps(
-                scrappedPlanRepository.findVisibleScrapsByUserId(userId)
+                scrappedPlanRepository.findVisibleScrapsPage(userId, ListPageRequest.of(page, limit))
         );
     }
 

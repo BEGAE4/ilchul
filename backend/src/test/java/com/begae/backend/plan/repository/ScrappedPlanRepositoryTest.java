@@ -71,6 +71,28 @@ class ScrappedPlanRepositoryTest {
                 .allSatisfy(scrap -> assertThat(scrap.getScrappedAt()).isNotNull());
     }
 
+    @Test
+    void 저장_시각_동률도_ID로_정렬하고_재저장하면_맨_앞으로_온다() {
+        var scraps = scrappedPlanRepository.findVisibleScrapsByUserId(viewer.getUserId());
+        var oldTime = java.time.LocalDateTime.of(2020, 1, 1, 0, 0);
+        scraps.forEach(scrap -> org.springframework.test.util.ReflectionTestUtils.setField(scrap, "scrappedAt", oldTime));
+        entityManager.flush();
+        var request = org.springframework.data.domain.PageRequest.of(0, 1);
+        var first = scrappedPlanRepository.findVisibleScrapsPage(viewer.getUserId(), request);
+        var second = scrappedPlanRepository.findVisibleScrapsPage(viewer.getUserId(), request.next());
+        assertThat(first.getTotalElements()).isEqualTo(2);
+        assertThat(first.hasNext()).isTrue();
+        assertThat(first.getContent().getFirst().getScrapId()).isGreaterThan(second.getContent().getFirst().getScrapId());
+        Integer rescrappedId = second.getContent().getFirst().getScrapId();
+        second.getContent().getFirst().toggle();
+        second.getContent().getFirst().toggle();
+        entityManager.flush();
+        entityManager.clear();
+        var refreshed = scrappedPlanRepository.findVisibleScrapsPage(viewer.getUserId(), request);
+        assertThat(refreshed.getContent().getFirst().getScrapId()).isEqualTo(rescrappedId);
+        assertThat(refreshed.getContent().getFirst().getScrappedAt()).isAfter(oldTime);
+    }
+
     private Plan persistPlan(User user, boolean visible, boolean blinded) {
         return entityManager.persist(Plan.builder()
                 .user(user).planTitle("플랜").isVerified(false)

@@ -18,6 +18,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
@@ -60,9 +61,17 @@ public class SecurityConfig {
                                 "/actuator/health",
                                 "/api/sign/**",
                                 "/oauth2/**",
-                                "/login/oauth2/**",
-                                "/api/place/popular/**",
-                                "/api/plan/popular/**"
+                                "/login/oauth2/**"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/place/popular/**", "/api/plan/popular/**",
+                                "/api/search", "/api/search/popular", "/api/search/autocomplete",
+                                "/api/place/search", "/api/place/{placeId:[0-9]+}",
+                                "/api/place/{placeId:[0-9]+}/review", "/api/place/{placeId:[0-9]+}/plan",
+                                "/api/plan/{planId:[0-9]+}",
+                                "/api/reply/{planId:[0-9]+}", "/api/reply/{replyId:[0-9]+}/children",
+                                "/api/profile/{userId:[0-9]+}", "/api/profile/{userId:[0-9]+}/summary",
+                                "/api/profile/{userId:[0-9]+}/plans", "/api/region"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

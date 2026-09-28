@@ -21,7 +21,7 @@ public interface PlaceService {
     PlaceDetailResponseDto getPlaceDetail(Integer placeId, Integer userId);
     PopularPlaceResponseDto getPopularPlaces(Double lat, Double lng, Integer limit, Integer page);
 
-    PopularPlaceResponseDto getPopularPlacesByRegion(PopularRegion region, Integer limit, Integer page);
+    PopularPlaceResponseDto getPopularPlacesByRegion(PopularRegion region, List<String> sigungu, Integer limit, Integer page);
 
     PopularPlaceResponseDto getNationwidePopularPlaces(Integer limit, Integer page);
 
