@@ -44,6 +44,8 @@ import {
 } from '@/shared/lib/kakao';
 import type { Place } from '@/shared/types';
 import { mapRecommendedPlaces } from '../utils/recommendedPlaces';
+import { extractRecommendReasoning } from '../utils/recommendReason';
+import { RecommendReasonLine } from './RecommendReasonLine';
 import { buildCreatePlanPlaces, parseStayMinutes } from '../utils/planPlaces';
 import { characterSrc, findMindState, isCustomMindState } from '../utils/mindStates';
 import { MAX_TRIP_MINUTES, OVERNIGHT_END_LIMIT } from '../utils/schedule';
@@ -151,6 +153,7 @@ export const CourseCreationFlow: React.FC = () => {
     previousStep,
     surveyData,
     recommendedPlaces,
+    recommendReasoning,
     selectedPlaceIds,
     finalStops,
     viewingPlaceId,
@@ -160,6 +163,7 @@ export const CourseCreationFlow: React.FC = () => {
     setPreviousStep,
     updateSurvey,
     setRecommendedPlaces,
+    setRecommendReasoning,
     togglePlaceSelection,
     clearPlaceSelection,
     setFinalStops,
@@ -274,16 +278,20 @@ export const CourseCreationFlow: React.FC = () => {
         const mapped = mapRecommendedPlaces(result);
         if (mapped.length > 0) {
           setRecommendedPlaces(mapped);
+          // 플랜 전체를 왜 이렇게 골랐는지(plan.reasoning) — 없으면 빈 값이라 줄이 안 뜬다
+          setRecommendReasoning(extractRecommendReasoning(result));
           setRecommendError(null);
         } else {
           // 비어 있다는 것은 응답 모양이 또 달라졌다는 뜻이다. 원본을 남겨 다음 조정의 근거로 삼는다.
           console.warn('추천 응답을 장소 목록으로 변환하지 못했습니다:', result);
           setRecommendedPlaces([]);
+          setRecommendReasoning('');
           setRecommendError('조건에 맞는 장소를 찾지 못했어요.');
         }
       } catch (err) {
         console.error('장소 추천 실패:', err);
         setRecommendedPlaces([]);
+        setRecommendReasoning('');
         setRecommendError('추천 장소를 불러오지 못했어요.');
         await minDelay;
       } finally {
@@ -1138,7 +1146,7 @@ export const CourseCreationFlow: React.FC = () => {
           />
         </div>
 
-        <div className="bg-white p-4 pb-2 border-b border-gray-100">
+        <div className="bg-white p-4 pb-3 border-b border-gray-100">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 className="text-lg font-bold text-gray-900">추천 결과입니다</h2>
@@ -1154,6 +1162,8 @@ export const CourseCreationFlow: React.FC = () => {
               다시 추천받기
             </button>
           </div>
+          {/* AI 가 플랜 전체를 이렇게 고른 이유 (plan.reasoning). 기본 펼침, 누르면 한 줄로 접힘 */}
+          {!recommendError && <RecommendReasonLine reasoning={recommendReasoning} />}
         </div>
 
         <div className="flex-1 p-4 overflow-y-auto space-y-3">
