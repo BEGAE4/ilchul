@@ -8,18 +8,17 @@ import { Settings, Plus, Bookmark, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
+import { pageTitle } from '@/shared/lib/constants/siteMeta';
 import { useRequireAuth } from '@/features/authentication/hooks';
 import {
-  fetchMyPlans,
-  fetchScrappedPlans,
   fetchMyPageProfile,
   fetchMyPageSummary,
   setMyPlanVisibility,
 } from '@/features/my-page/api';
+import { useMyPlansList, useScrappedPlansList } from '@/features/my-page/hooks';
+import { useInfiniteScroll } from '@/features/main/hooks/useInfiniteScroll';
 import { PlanVisibilityToggle } from './PlanVisibilityToggle';
-import { sortMyPlansNewest, sortScrappedPlansNewest } from '@/features/my-page/utils/sortPlans';
 import { formatIsoDate, formatRequiredTime, formatTripPeriod } from '@/features/my-page/utils/formatPlan';
-import type { MyPlan, ScrappedPlan } from '@/features/my-page/types/plan.types';
 import type { MyPageSummary } from '@/features/my-page/types/summary.types';
 
 type MainTab = 'plans' | 'bookmarks';
@@ -30,13 +29,28 @@ export const ProfilePage: React.FC = () => {
 
   // 클라이언트 페이지라 metadata 를 export 할 수 없어 문서 제목을 직접 지정한다 (P-13)
   useEffect(() => {
-    document.title = '마이페이지 · 일출';
+    document.title = pageTitle('마이페이지');
   }, []);
   const { user, email, updateProfile } = useUserStore();
   const [mainTab, setMainTab] = useState<MainTab>('plans');
-  const [plansLoading, setPlansLoading] = useState(true);
-  const [plans, setPlans] = useState<MyPlan[]>([]);
-  const [plansError, setPlansError] = useState<string | null>(null);
+  // 내 플랜·저장 플랜 목록 — 홈 인기 목록과 같은 page/limit 무한 스크롤 (usePaginatedList)
+  const myPlans = useMyPlansList({ enabled: ready });
+  const scrapped = useScrappedPlansList({ enabled: ready });
+  const plans = myPlans.items;
+  const plansLoading = myPlans.isLoading;
+  const plansError = myPlans.error ? '플랜 목록을 불러오지 못했어요.' : null;
+  const scrappedPlans = scrapped.items;
+  const scrappedLoading = scrapped.isLoading;
+  const scrappedError = scrapped.error ? '저장한 플랜을 불러오지 못했어요.' : null;
+  // 활성 탭의 목록만 더 불러온다
+  const plansSentinelRef = useInfiniteScroll({
+    enabled: mainTab === 'plans' && myPlans.hasNext && !myPlans.isLoadingMore && !myPlans.error,
+    onIntersect: myPlans.loadMore,
+  });
+  const scrappedSentinelRef = useInfiniteScroll({
+    enabled: mainTab === 'bookmarks' && scrapped.hasNext && !scrapped.isLoadingMore && !scrapped.error,
+    onIntersect: scrapped.loadMore,
+  });
   const [planVisibility, setPlanVisibility] = useState<Record<number, boolean>>(
     {}
   );
@@ -48,44 +62,19 @@ export const ProfilePage: React.FC = () => {
   const [summary, setSummary] = useState<MyPageSummary | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
-  const [scrappedLoading, setScrappedLoading] = useState(true);
-  const [scrappedPlans, setScrappedPlans] = useState<ScrappedPlan[]>([]);
-  const [scrappedError, setScrappedError] = useState<string | null>(null);
-
+  // 새로 받아온 페이지의 공개 여부를 토글 상태에 합친다 (토글로 바꾼 값은 유지)
   useEffect(() => {
-    let isMounted = true;
-
-    const loadPlans = async () => {
-      try {
-        setPlansLoading(true);
-        setPlansError(null);
-        const data = await fetchMyPlans();
-        if (isMounted) {
-          // 서버 순서가 정해져 있지 않아 생성 최신순으로 맞춘다
-          setPlans(sortMyPlansNewest(data));
-          setPlanVisibility(prev => {
-            const next = { ...prev };
-            data.forEach((plan) => {
-              if (typeof plan.isPlanVisible === 'boolean') {
-                next[plan.planId] = plan.isPlanVisible;
-              }
-            });
-            return next;
-          });
+    if (plans.length === 0) return;
+    setPlanVisibility(prev => {
+      const next = { ...prev };
+      plans.forEach((plan) => {
+        if (next[plan.planId] === undefined && typeof plan.isPlanVisible === 'boolean') {
+          next[plan.planId] = plan.isPlanVisible;
         }
-      } catch (err) {
-        console.error('플랜 목록 로드 실패:', err);
-        if (isMounted) setPlansError('플랜 목록을 불러오지 못했어요.');
-      } finally {
-        if (isMounted) setPlansLoading(false);
-      }
-    };
-
-    loadPlans();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+      });
+      return next;
+    });
+  }, [plans]);
 
   // 통계 요약 로드. 공개/비공개 전환 후에도 다시 호출해 타일을 최신화한다 (P-05).
   const loadSummary = useCallback(async () => {
@@ -106,28 +95,6 @@ export const ProfilePage: React.FC = () => {
     void loadSummary();
   }, [loadSummary]);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadScrappedPlans = async () => {
-      try {
-        setScrappedLoading(true);
-        setScrappedError(null);
-        const data = await fetchScrappedPlans();
-        if (isMounted) setScrappedPlans(sortScrappedPlansNewest(data));
-      } catch (err) {
-        console.error('저장한 플랜 로드 실패:', err);
-        if (isMounted) setScrappedError('저장한 플랜을 불러오지 못했어요.');
-      } finally {
-        if (isMounted) setScrappedLoading(false);
-      }
-    };
-
-    loadScrappedPlans();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -219,8 +186,8 @@ export const ProfilePage: React.FC = () => {
   // 이전에는 zustand 목데이터(useCourseStore.myCourses) 탭이 같은 '내 플랜' 이름으로 하나 더 있었다.
   // 서버 플랜 탭이 생긴 뒤에도 남아 가짜 플랜 2건이 실제 사용자에게 노출되고 있었다.
   const TABS: { key: MainTab; label: string; count: number }[] = [
-    { key: 'plans', label: '내 플랜', count: plans.length },
-    { key: 'bookmarks', label: '저장 플랜', count: scrappedPlans.length },
+    { key: 'plans', label: '내 플랜', count: myPlans.totalCount },
+    { key: 'bookmarks', label: '저장 플랜', count: scrapped.totalCount },
   ];
 
   // 로그인 확인 전 / 미로그인(리다이렉트 대기) 시 보호 콘텐츠 노출 방지
@@ -325,7 +292,16 @@ export const ProfilePage: React.FC = () => {
               )}
 
               {!scrappedLoading && scrappedError && (
-                <div className="py-10 text-center text-red-500">{scrappedError}</div>
+                <div className="py-10 flex flex-col items-center text-center">
+                  <p className="text-sm text-red-500 mb-3">{scrappedError}</p>
+                  <button
+                    type="button"
+                    onClick={scrapped.retry}
+                    className="px-3 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-600"
+                  >
+                    다시 시도
+                  </button>
+                </div>
               )}
 
               {!scrappedLoading && !scrappedError && scrappedPlans.length > 0 && (
@@ -363,6 +339,14 @@ export const ProfilePage: React.FC = () => {
                       </div>
                     </div>
                   ))}
+                  {/* 무한 스크롤 — 홈 인기 목록과 같은 센티널·상태 문구 */}
+                  <div ref={scrappedSentinelRef} className="h-px w-full" />
+                  {scrapped.isLoadingMore && (
+                    <p className="text-center py-3 text-xs text-gray-400">더 불러오는 중...</p>
+                  )}
+                  {!scrapped.hasNext && !scrapped.isLoadingMore && scrappedPlans.length >= 20 && (
+                    <p className="text-center py-3 text-xs text-gray-300">마지막 플랜이에요.</p>
+                  )}
                 </div>
               )}
 
@@ -381,7 +365,16 @@ export const ProfilePage: React.FC = () => {
               {plansLoading && <div className="py-10 text-center text-gray-500">플랜을 불러오는 중...</div>}
 
               {!plansLoading && plansError && (
-                <div className="py-10 text-center text-red-500">{plansError}</div>
+                <div className="py-10 flex flex-col items-center text-center">
+                  <p className="text-sm text-red-500 mb-3">{plansError}</p>
+                  <button
+                    type="button"
+                    onClick={myPlans.retry}
+                    className="px-3 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-600"
+                  >
+                    다시 시도
+                  </button>
+                </div>
               )}
 
               {!plansLoading && !plansError && plans.length > 0 && (
@@ -439,6 +432,14 @@ export const ProfilePage: React.FC = () => {
                       </div>
                     );
                   })}
+                  {/* 무한 스크롤 — 홈 인기 목록과 같은 센티널·상태 문구 */}
+                  <div ref={plansSentinelRef} className="h-px w-full" />
+                  {myPlans.isLoadingMore && (
+                    <p className="text-center py-3 text-xs text-gray-400">더 불러오는 중...</p>
+                  )}
+                  {!myPlans.hasNext && !myPlans.isLoadingMore && plans.length >= 20 && (
+                    <p className="text-center py-3 text-xs text-gray-300">마지막 플랜이에요.</p>
+                  )}
                 </div>
               )}
 

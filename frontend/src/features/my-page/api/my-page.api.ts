@@ -13,11 +13,40 @@ import {
   UpdateProfileResponse,
 } from '../types/profile.types';
 import { MyPageSummary } from '../types/summary.types';
+import type { PaginatedResponse, PaginationParams } from '@/features/main/types/pagination.types';
+import { normalizePagedList } from '@/shared/lib/api/normalizePagedList';
+import { sortMyPlansNewest, sortScrappedPlansNewest } from '../utils/sortPlans';
 
 // 내 플랜 목록 조회 API
 export const fetchMyPlans = async (): Promise<MyPlan[]> => {
   const response = await axios.get<MyPlansResponse>('/api/mypage/plans');
   return response.data.plans ?? [];
+};
+
+// usePaginatedList 가 id 로 중복을 걸러내므로 planId 를 id 로도 노출한다
+export type MyPlanListItem = MyPlan & { id: number };
+export type ScrappedPlanListItem = ScrappedPlan & { id: number };
+
+// 내 플랜 목록 한 페이지 — 홈 인기 목록과 같은 page/limit 조회 (무한 스크롤)
+// 백엔드가 아직 페이징을 지원하지 않으면 전체가 한 번에 오고 hasNext=false 로 정규화된다.
+export const fetchMyPlansPage = async (
+  params: PaginationParams
+): Promise<PaginatedResponse<MyPlanListItem>> => {
+  const response = await axios.get<MyPlansResponse>('/api/mypage/plans', { params });
+  const body = response.data;
+  // 서버 순서가 정해져 있지 않아 생성 최신순으로 맞춘다
+  const plans = sortMyPlansNewest(body?.plans ?? []).map((plan) => ({ ...plan, id: plan.planId }));
+  return normalizePagedList(plans, body, params);
+};
+
+// 저장(스크랩)한 플랜 목록 한 페이지 — 위와 같은 규칙
+export const fetchScrappedPlansPage = async (
+  params: PaginationParams
+): Promise<PaginatedResponse<ScrappedPlanListItem>> => {
+  const response = await axios.get<ScrappedPlansResponse>('/api/mypage/scrapped', { params });
+  const body = response.data;
+  const plans = sortScrappedPlansNewest(body?.scrappedPlans ?? []).map((plan) => ({ ...plan, id: plan.planId }));
+  return normalizePagedList(plans, body, params);
 };
 
 // 내 플랜 공개 여부 토글 API (v5: POST /api/mypage/plan/visibility/{planId}, 본문 없음)

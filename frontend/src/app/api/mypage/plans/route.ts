@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
   }
 
   const cookie = request.headers.get('cookie') ?? '';
-  const res = await fetch(`${baseUrl}/api/mypage/plans`, {
+  // page/limit 등 목록 조회 조건은 그대로 넘긴다 (무한 스크롤, 백엔드가 페이징을 열면 바로 적용)
+  const res = await fetch(`${baseUrl}/api/mypage/plans${request.nextUrl.search}`, {
     method: 'GET',
     headers: cookie ? { cookie } : undefined,
     cache: 'no-store',
