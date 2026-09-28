@@ -46,7 +46,7 @@ public class PlanController {
             @Parameter(description = "플랜 ID", example = "1") @PathVariable Integer planId
     ) {
         return ResponseEntity.status(HttpStatus.OK)
-                .body(planService.getPlanDetail(planId, userDetails.getUserId()));
+                .body(planService.getPlanDetail(planId, userDetails == null ? null : userDetails.getUserId()));
     }
 
     @Operation(summary = "플랜 복제", description = "특정 플랜을 복제하여 내 플랜으로 새로 생성합니다.")
@@ -66,6 +66,7 @@ public class PlanController {
     @GetMapping("/popular")
     public ResponseEntity<PopularPlanResponseDto> getPopularPlans(
             @Parameter(description = "지역", example = "서울") @RequestParam(required = false) String region,
+            @RequestParam(required = false) List<String> sigungu,
             @Parameter(description = "위도", example = "37.5665") @RequestParam(required = false) Double lat,
             @Parameter(description = "경도", example = "126.9780") @RequestParam(required = false) Double lng,
             @Parameter(description = "페이지당 조회 개수", example = "5") @RequestParam(defaultValue = "5") Integer limit,
@@ -73,7 +74,10 @@ public class PlanController {
     ) {
         if (StringUtils.hasText(region)) {
             return ResponseEntity.ok(planService.getPopularPlansByRegion(
-                    PopularRegion.from(region), limit, page));
+                    PopularRegion.from(region), sigungu, limit, page));
+        }
+        if (sigungu != null && !sigungu.isEmpty()) {
+            throw new CustomException(GlobalErrorCode.INVALID_INPUT_VALUE);
         }
         if (lat == null && lng == null) {
             return ResponseEntity.ok(planService.getNationwidePopularPlans(limit, page));

@@ -46,6 +46,12 @@ public class PlanPlace extends BaseEntity {
     @Column(name = "snapshot_road_address_name")
     private String snapshotRoadAddressName;
 
+    @Column(name = "snapshot_sido", length = 30)
+    private String snapshotSido;
+
+    @Column(name = "snapshot_sigungu", length = 100)
+    private String snapshotSigungu;
+
     @Column(name = "snapshot_category_name")
     private String snapshotCategoryName;
 
@@ -76,6 +82,8 @@ public class PlanPlace extends BaseEntity {
                 .snapshotAddressName(source.getSnapshotAddressName())
                 .snapshotRoadAddressName(source.getSnapshotRoadAddressName())
                 .snapshotCategoryName(source.getSnapshotCategoryName())
+                .snapshotSido(source.getSnapshotSido())
+                .snapshotSigungu(source.getSnapshotSigungu())
                 .snapshotPlaceName(source.getSnapshotPlaceName())
                 .snapshotX(source.getSnapshotX())
                 .snapshotY(source.getSnapshotY())
@@ -85,6 +93,17 @@ public class PlanPlace extends BaseEntity {
                 .build();
 
         return newPlanPlace;
+    }
+
+    @PrePersist
+    void normalizeRegion() {
+        if (snapshotSido != null) return;
+        var region = com.begae.backend.global.location.PlaceRegion.resolve(
+                null, null, snapshotAddressName, snapshotRoadAddressName);
+        boolean hasSnapshotAddress = (snapshotAddressName != null && !snapshotAddressName.isBlank())
+                || (snapshotRoadAddressName != null && !snapshotRoadAddressName.isBlank());
+        snapshotSido = hasSnapshotAddress || place == null ? region.sido() : place.getSido();
+        snapshotSigungu = hasSnapshotAddress || place == null ? region.sigungu() : place.getSigungu();
     }
 
     public void moveTo(int orderIndex, int travelTime) {

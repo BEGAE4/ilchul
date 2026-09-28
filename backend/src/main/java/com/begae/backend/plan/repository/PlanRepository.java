@@ -8,11 +8,19 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.Optional;
 
 
 public interface PlanRepository extends JpaRepository<Plan, Integer> {
+
+    @Query("select p from Plan p where p.user.userId = :userId order by p.createAt desc, p.planId desc")
+    Page<Plan> findMyPlansPage(Integer userId, Pageable pageable);
+
+    @Query("select p from Plan p where p.user.userId = :userId and p.isPlanVisible = true and p.isBlinded = false order by p.createAt desc, p.planId desc")
+    Page<Plan> findPublicPlansPage(Integer userId, Pageable pageable);
 
     int countByUserUserIdAndIsPlanVisibleTrue(Integer userId);
     int countByUserUserIdAndIsVerifiedTrue(Integer userId);
@@ -138,45 +146,31 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
 
     @Query(value = """
             SELECT p.plan_id
-            FROM plan p
-            JOIN plan_place pp ON pp.plan_id = p.plan_id
-            JOIN place pl ON pl.place_id = pp.place_id
-            WHERE p.is_plan_visible = true
-              AND p.is_blinded = false
-              AND (
-                COALESCE(NULLIF(pp.snapshot_address_name, ''), NULLIF(pp.snapshot_road_address_name, ''),
-                         NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:primaryPrefix, '%')
-                OR COALESCE(NULLIF(pp.snapshot_address_name, ''), NULLIF(pp.snapshot_road_address_name, ''),
-                            NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:legacyPrefix, '%')
-              )
+            FROM plan p JOIN plan_place pp ON pp.plan_id = p.plan_id JOIN place pl ON pl.place_id = pp.place_id
+            WHERE p.is_plan_visible = true AND p.is_blinded = false
+              AND pp.snapshot_sido = :sido AND (:allDistricts = true OR pp.snapshot_sigungu IN (:districts))
             GROUP BY p.plan_id
-            ORDER BY (MAX(p.like_count) + MAX(p.scrap_count)) DESC
+            ORDER BY (MAX(p.like_count) + MAX(p.scrap_count)) DESC, p.plan_id ASC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     List<Integer> findPopularPlanIdsByRegion(
-            @Param("primaryPrefix") String primaryPrefix,
-            @Param("legacyPrefix") String legacyPrefix,
+            @Param("sido") String sido,
+            @Param("districts") List<String> districts,
+            @Param("allDistricts") boolean allDistricts,
             @Param("limit") int limit,
             @Param("offset") int offset
     );
 
     @Query(value = """
             SELECT COUNT(DISTINCT p.plan_id)
-            FROM plan p
-            JOIN plan_place pp ON pp.plan_id = p.plan_id
-            JOIN place pl ON pl.place_id = pp.place_id
-            WHERE p.is_plan_visible = true
-              AND p.is_blinded = false
-              AND (
-                COALESCE(NULLIF(pp.snapshot_address_name, ''), NULLIF(pp.snapshot_road_address_name, ''),
-                         NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:primaryPrefix, '%')
-                OR COALESCE(NULLIF(pp.snapshot_address_name, ''), NULLIF(pp.snapshot_road_address_name, ''),
-                            NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:legacyPrefix, '%')
-              )
+            FROM plan p JOIN plan_place pp ON pp.plan_id = p.plan_id JOIN place pl ON pl.place_id = pp.place_id
+            WHERE p.is_plan_visible = true AND p.is_blinded = false
+              AND pp.snapshot_sido = :sido AND (:allDistricts = true OR pp.snapshot_sigungu IN (:districts))
             """, nativeQuery = true)
     int countPopularPlansByRegion(
-            @Param("primaryPrefix") String primaryPrefix,
-            @Param("legacyPrefix") String legacyPrefix
+            @Param("sido") String sido,
+            @Param("districts") List<String> districts,
+            @Param("allDistricts") boolean allDistricts
     );
 
     @Query(value = """

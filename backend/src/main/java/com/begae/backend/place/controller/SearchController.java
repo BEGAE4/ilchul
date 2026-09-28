@@ -108,7 +108,7 @@ public class SearchController {
             @Parameter(description = "자동완성 기준 키워드", example = "카페") @RequestParam String keyword,
             @Parameter(description = "조회 개수", example = "5") @RequestParam(required = false, defaultValue = "5") Integer limit
     ) {
-        return searchAutocompleteService.autocomplete(user.getUserId(), keyword, limit);
+        return searchAutocompleteService.autocomplete(user == null ? null : user.getUserId(), keyword, limit);
     }
 
     @GetMapping

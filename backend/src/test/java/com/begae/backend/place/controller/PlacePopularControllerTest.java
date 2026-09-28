@@ -42,7 +42,7 @@ class PlacePopularControllerTest {
 
     @Test
     void region만으로_지역_인기_장소를_조회한다() throws Exception {
-        when(placeService.getPopularPlacesByRegion(PopularRegion.JEONBUK, 5, 1))
+        when(placeService.getPopularPlacesByRegion(PopularRegion.JEONBUK, null, 5, 1))
                 .thenReturn(PopularPlaceResponseDto.of(List.of(), 1, 5, 7));
 
         mockMvc.perform(get("/api/place/popular")
@@ -69,9 +69,27 @@ class PlacePopularControllerTest {
     }
 
     @Test
-    void 지원하지_않는_region은_400이다() throws Exception {
+    void 지원하지_않는_region은_빈_목록이다() throws Exception {
+        when(placeService.getPopularPlacesByRegion(PopularRegion.UNKNOWN, null, 5, 1))
+                .thenReturn(PopularPlaceResponseDto.of(List.of(), 1, 5, 0));
         mockMvc.perform(get("/api/place/popular").param("region", "서울숲"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("잘못된 입력값입니다."));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isEmpty())
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.totalCount").value(0));
+    }
+    @Test
+    void 시군구_목록과_광주_별칭을_전달한다() throws Exception {
+        when(placeService.getPopularPlacesByRegion(PopularRegion.JEONNAM, List.of("동구", "북구"), 5, 1))
+                .thenReturn(PopularPlaceResponseDto.of(List.of(), 1, 5, 0));
+        mockMvc.perform(get("/api/place/popular").param("region", "광주").param("sigungu", "동구,북구"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalCount").value(0));
+        org.mockito.Mockito.verify(placeService).getPopularPlacesByRegion(PopularRegion.JEONNAM, List.of("동구", "북구"), 5, 1);
+    }
+
+    @Test
+    void 시군구만_지정하면_지역_누락을_알린다() throws Exception {
+        mockMvc.perform(get("/api/place/popular").param("sigungu", "동구"))
+                .andExpect(status().isBadRequest());
     }
 }

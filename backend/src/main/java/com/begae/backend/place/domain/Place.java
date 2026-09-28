@@ -33,6 +33,12 @@ public class Place extends BaseEntity {
     @Column(name = "address_name", length = 300)
     private String addressName;
 
+    @Column(length = 30)
+    private String sido;
+
+    @Column(length = 100)
+    private String sigungu;
+
     @Column(name = "road_address_name", length = 300)
     private String roadAddressName;
 
@@ -82,7 +88,7 @@ public class Place extends BaseEntity {
     @Builder
     public Place(String source, String sourceId, String addressName, String roadAddressName, String categoryName,
                  String phone, String placeName, String placeUrl, String placeImageUrl, String wellnessContentId,
-                 Double x, Double y,
+                 Double x, Double y, String sido, String sigungu,
                  LocalDateTime lastFetchedAt, LocalDateTime lastSeenAt) {
         this.source = source;
         this.sourceId = sourceId;
@@ -100,6 +106,7 @@ public class Place extends BaseEntity {
         this.lastSeenAt = lastSeenAt;
         this.likeCount = 0;
         this.scrapCount = 0;
+        updateRegion(sido, sigungu);
     }
 
     public void mergeFrom(PlaceUpsertCommand cmd) {
@@ -116,7 +123,16 @@ public class Place extends BaseEntity {
         // 한 번 붙은 웰니스 식별자는 지우지 않는다. 이번 조회에서 안 걸렸을 뿐일 수 있다.
         if (hasText(cmd.getWellnessContentId())) this.wellnessContentId = cmd.getWellnessContentId();
 
+        if (hasText(cmd.getAddressName()) || hasText(cmd.getRoadAddressName()) || hasText(cmd.getSido())) {
+            updateRegion(cmd.getSido(), cmd.getSigungu());
+        }
         this.lastFetchedAt = LocalDateTime.now();
+    }
+
+    private void updateRegion(String sido, String sigungu) {
+        var region = com.begae.backend.global.location.PlaceRegion.resolve(sido, sigungu, addressName, roadAddressName);
+        this.sido = region.sido();
+        this.sigungu = region.sigungu();
     }
 
     public void markSeen() {

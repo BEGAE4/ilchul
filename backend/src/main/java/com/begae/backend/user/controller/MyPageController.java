@@ -52,9 +52,11 @@ public class MyPageController {
     @ApiResponse(responseCode = "204", description = "조회된 플랜이 없습니다.")
     @GetMapping("plans")
     public ResponseEntity<MyPlansResponse> getMyPlans(
-            @AuthenticationPrincipal OauthUserDetails userDetails
+            @AuthenticationPrincipal OauthUserDetails userDetails,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer limit
     ) {
-        MyPlansResponse myPlansResponse = myPageService.findMyPlans(userDetails.getUserId());
+        MyPlansResponse myPlansResponse = myPageService.findMyPlans(userDetails.getUserId(), page, limit);
         if(myPlansResponse.getPlans().isEmpty()) {
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         }
@@ -66,7 +68,7 @@ public class MyPageController {
     @ApiResponse(responseCode = "304", description = "플랜 공개 여부가 변경되지 않았습니다.")
     @PostMapping("/plan/visibility/{planId}")
     public ResponseEntity<Void> setUserMyPlanVisibility(
-                @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails userDetails,
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails userDetails,
                 @Parameter(description = "플랜 ID", example = "1") @PathVariable(name = "planId") @Positive Integer planId
                 ) {
         if(!myPageService.updateMyPlanVisibility(planId, userDetails.getUserId())) {
@@ -80,7 +82,7 @@ public class MyPageController {
     @GetMapping("/profile")
     public ResponseEntity<UserProfileResponseDto> getMypageProfile(
                 @AuthenticationPrincipal OauthUserDetails userDetails
-                ) {
+    ) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(myPageService.findMypageProfile(userDetails.getUserId()));
     }
@@ -117,7 +119,7 @@ public class MyPageController {
     @GetMapping("/summary")
     public ResponseEntity<UserProfileSummaryResponseDto> getMyPageSummary(
                 @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails userDetails
-                ) {
+    ) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(myPageService.findMyPageSummary(userDetails.getUserId()));
     }
@@ -126,9 +128,11 @@ public class MyPageController {
     @ApiResponse(responseCode = "200", description = "스크랩한 플랜 목록을 성공적으로 조회했습니다.")
     @GetMapping("/scrapped")
     public ResponseEntity<ScrappedPlanResponseDto> getScrappedPlan(
-                @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails userDetails
-                ) {
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails userDetails,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer limit
+    ) {
         return ResponseEntity.status(HttpStatus.OK)
-                .body(scrappedPlanService.findUserScrappedPlan(userDetails.getUserId()));
+                .body(scrappedPlanService.findUserScrappedPlan(userDetails.getUserId(), page, limit));
     }
 }

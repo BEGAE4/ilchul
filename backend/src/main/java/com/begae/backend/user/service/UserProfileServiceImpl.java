@@ -1,5 +1,6 @@
 package com.begae.backend.user.service;
 
+import com.begae.backend.global.dto.ListPageRequest;
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.plan.domain.Plan;
 import com.begae.backend.plan.enums.ScrappedStatus;
@@ -15,9 +16,9 @@ import com.begae.backend.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 
 @Slf4j
 @Service
@@ -50,10 +51,10 @@ public class UserProfileServiceImpl implements UserProfileService {
 
     @Transactional
     @Override
-    public UserPlansResponse findUserPlans(Integer userId) {
+    public UserPlansResponse findUserPlans(Integer userId, Integer page, Integer limit) {
         getActiveUserOrThrow(userId);
 
-        List<Plan> plans = planRepository.findVisibleByUserUserId(userId);
+        Page<Plan> plans = planRepository.findPublicPlansPage(userId, ListPageRequest.of(page, limit));
         return UserPlansResponse.from(plans);
     }
 

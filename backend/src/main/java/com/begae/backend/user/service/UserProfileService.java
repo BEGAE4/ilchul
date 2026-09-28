@@ -10,5 +10,5 @@ public interface UserProfileService {
 
     PublicUserProfileSummaryResponseDto findUserProfileSummary(Integer userId);
 
-    UserPlansResponse findUserPlans(Integer userId);
+    UserPlansResponse findUserPlans(Integer userId, Integer page, Integer limit);
 }

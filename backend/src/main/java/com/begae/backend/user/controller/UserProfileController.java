@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "유저프로필", description = "유저프로필 관련 API")
 @Validated
@@ -58,9 +59,11 @@ public class UserProfileController {
     @ApiResponse(responseCode = "410", description = "탈퇴한 사용자입니다.")
     @GetMapping("/{userId}/plans")
     public ResponseEntity<UserPlansResponse> getUserPlans(
-            @Parameter(description = "사용자 ID", example = "1") @PathVariable @Positive Integer userId
+            @Parameter(description = "사용자 ID", example = "1") @PathVariable @Positive Integer userId,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer limit
     ) {
-        UserPlansResponse userPlansResponse = userProfileService.findUserPlans(userId);
+        UserPlansResponse userPlansResponse = userProfileService.findUserPlans(userId, page, limit);
         if (userPlansResponse.getPlans().isEmpty()) {
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         }

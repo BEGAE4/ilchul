@@ -26,6 +26,12 @@ public class KakaoPlaceResponseDto {
         @JsonProperty("category_name")
         private String categoryName;
 
+        @JsonProperty("region_1depth_name")
+        private String region1DepthName;
+
+        @JsonProperty("region_2depth_name")
+        private String region2DepthName;
+
         private String distance;
 
         private String phone;

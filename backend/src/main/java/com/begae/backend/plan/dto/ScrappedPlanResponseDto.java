@@ -18,6 +18,15 @@ import java.util.List;
 public class ScrappedPlanResponseDto {
 
     private List<ScrappedPlanSummary> scrappedPlans;
+    private int page;
+    private int limit;
+    private boolean hasNext;
+    private long totalCount;
+
+    public static ScrappedPlanResponseDto fromScraps(org.springframework.data.domain.Page<ScrappedPlan> scraps) {
+        return new ScrappedPlanResponseDto(scraps.getContent().stream().map(ScrappedPlanSummary::from).toList(),
+                scraps.getNumber() + 1, scraps.getSize(), scraps.hasNext(), scraps.getTotalElements());
+    }
 
     public static ScrappedPlanResponseDto from(List<Plan> plans) {
         List<ScrappedPlanSummary> summaries = plans.stream()

@@ -100,6 +100,66 @@ class PlanServiceImplAccessTest {
         verify(planRepository, never()).save(any(Plan.class));
     }
 
+    @Test
+    void 비로그인_공개_플랜은_반응_여부가_false다() {
+        givenPlan(true, false);
+        var response = service.getPlanDetail(PLAN_ID, null);
+        assertThat(response.getIsLiked()).isFalse();
+        assertThat(response.getIsBookmarked()).isFalse();
+    }
+
+    @Test
+    void 비로그인_비공개_플랜은_차단한다() {
+        givenPlan(false, false);
+        assertThatThrownBy(() -> service.getPlanDetail(PLAN_ID, null))
+                .isInstanceOf(CustomException.class).extracting("errorCode").isEqualTo(PlanErrorCode.PLAN_PRIVATE);
+    }
+
+    @Test
+    void 복제와_일정_저장이_한번에_이뤄진다() throws Exception {
+        Plan source = givenPlan(true, false);
+        when(planRepository.findByIdWithLock(PLAN_ID)).thenReturn(Optional.of(source));
+        var mapper = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
+        var request = mapper.readValue("""
+                {"tripStartDate":"2026-10-01 09:30","tripEndDate":"2026-10-02 11:00"}
+                """, com.begae.backend.plan.dto.PlanCopyRequestDto.class);
+        var response = service.copyPlan(PLAN_ID, request, OTHER_USER_ID);
+        var captor = org.mockito.ArgumentCaptor.forClass(Plan.class);
+        verify(planRepository).save(captor.capture());
+        assertThat(captor.getValue().getTripStartDate()).isEqualTo(request.getTripStartDate());
+        assertThat(captor.getValue().getTripEndDate()).isEqualTo(request.getTripEndDate());
+        assertThat(response.getTripStartDate()).isEqualTo(request.getTripStartDate());
+        assertThat(response.getTripEndDate()).isEqualTo(request.getTripEndDate());
+        assertThat(captor.getValue().getIsPlanVisible()).isFalse();
+        assertThat(source.getTripStartDate()).isNull();
+    }
+
+    @Test
+    void 복제_일정이_역전되거나_한쪽만_있으면_저장하지_않는다() {
+        Plan source = givenPlan(true, false);
+        when(planRepository.findByIdWithLock(PLAN_ID)).thenReturn(Optional.of(source));
+        var start = java.time.LocalDateTime.of(2026, 10, 1, 9, 30);
+        for (var request : List.of(
+                new com.begae.backend.plan.dto.PlanCopyRequestDto(null, start, start.minusMinutes(1)),
+                new com.begae.backend.plan.dto.PlanCopyRequestDto(null, start, null))) {
+            assertThatThrownBy(() -> service.copyPlan(PLAN_ID, request, OTHER_USER_ID))
+                    .isInstanceOf(CustomException.class);
+        }
+        verify(planRepository, never()).save(any());
+    }
+
+    @Test
+    void 기존_날짜만_보내는_복제도_소요시간을_반영한다() {
+        Plan source = givenPlan(true, false);
+        ReflectionTestUtils.setField(source, "requiredTime", 90);
+        when(planRepository.findByIdWithLock(PLAN_ID)).thenReturn(Optional.of(source));
+        var date = java.time.LocalDate.of(2026, 10, 1);
+        var response = service.copyPlan(PLAN_ID,
+                new com.begae.backend.plan.dto.PlanCopyRequestDto(date, null, null), OTHER_USER_ID);
+        assertThat(response.getTripStartDate()).isEqualTo(date.atStartOfDay());
+        assertThat(response.getTripEndDate()).isEqualTo(date.atTime(1, 30));
+    }
+
     private Plan givenPlan(boolean visible, boolean blinded) {
         Plan plan = Plan.builder()
                 .planId(PLAN_ID)

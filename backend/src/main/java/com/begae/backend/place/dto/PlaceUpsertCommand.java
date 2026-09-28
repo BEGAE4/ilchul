@@ -19,6 +19,8 @@ public class PlaceUpsertCommand {
     private final String sourceId;
     private final String placeName;
     private final String addressName;
+    private final String sido;
+    private final String sigungu;
     private final String roadAddressName;
     private final String categoryName;
     private final String phone;
@@ -37,6 +39,8 @@ public class PlaceUpsertCommand {
                 .sourceId(doc.getId())
                 .placeName(doc.getPlaceName())
                 .addressName(doc.getAddressName())
+                .sido(doc.getRegion1DepthName())
+                .sigungu(doc.getRegion2DepthName())
                 .roadAddressName(doc.getRoadAddressName())
                 .categoryName(summary != null && summary.getCategoryName() != null
                         ? summary.getCategoryName() : doc.getCategoryName())

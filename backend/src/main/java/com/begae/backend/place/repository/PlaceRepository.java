@@ -67,40 +67,47 @@ public interface PlaceRepository extends JpaRepository<Place, Integer> {
 
     @Query(value = """
             SELECT pl.place_id
-            FROM place pl
-            JOIN plan_place pp ON pp.place_id = pl.place_id
-            JOIN plan p ON p.plan_id = pp.plan_id
-            WHERE p.is_plan_visible = true
-              AND (
-                COALESCE(NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:primaryPrefix, '%')
-                OR COALESCE(NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:legacyPrefix, '%')
-              )
+            FROM place pl JOIN plan_place pp ON pp.place_id = pl.place_id JOIN plan p ON p.plan_id = pp.plan_id
+            WHERE p.is_plan_visible = true AND p.is_blinded = false
+              AND pl.sido = :sido AND (:allDistricts = true OR pl.sigungu IN (:districts))
             GROUP BY pl.place_id
-            ORDER BY pl.like_count DESC, pl.place_id ASC
+            ORDER BY MAX(pl.like_count) DESC, pl.place_id ASC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     List<Integer> findPopularPlaceIdsByRegion(
-            @Param("primaryPrefix") String primaryPrefix,
-            @Param("legacyPrefix") String legacyPrefix,
+            @Param("sido") String sido,
+            @Param("districts") List<String> districts,
+            @Param("allDistricts") boolean allDistricts,
             @Param("limit") int limit,
             @Param("offset") int offset
     );
 
     @Query(value = """
             SELECT COUNT(DISTINCT pl.place_id)
-            FROM place pl
-            JOIN plan_place pp ON pp.place_id = pl.place_id
-            JOIN plan p ON p.plan_id = pp.plan_id
-            WHERE p.is_plan_visible = true
-              AND (
-                COALESCE(NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:primaryPrefix, '%')
-                OR COALESCE(NULLIF(pl.address_name, ''), pl.road_address_name) LIKE CONCAT(:legacyPrefix, '%')
-              )
+            FROM place pl JOIN plan_place pp ON pp.place_id = pl.place_id JOIN plan p ON p.plan_id = pp.plan_id
+            WHERE p.is_plan_visible = true AND p.is_blinded = false
+              AND pl.sido = :sido AND (:allDistricts = true OR pl.sigungu IN (:districts))
             """, nativeQuery = true)
     int countPopularPlacesByRegion(
-            @Param("primaryPrefix") String primaryPrefix,
-            @Param("legacyPrefix") String legacyPrefix
+            @Param("sido") String sido,
+            @Param("districts") List<String> districts,
+            @Param("allDistricts") boolean allDistricts
     );
+
+    interface RegionCount {
+        String getSido();
+        String getSigungu();
+        long getPlaceCount();
+    }
+
+    @Query(value = """
+            SELECT pl.sido AS sido, pl.sigungu AS sigungu,
+                   COUNT(DISTINCT CASE WHEN p.is_plan_visible = true AND p.is_blinded = false THEN pl.place_id END) AS placeCount
+            FROM place pl LEFT JOIN plan_place pp ON pp.place_id = pl.place_id LEFT JOIN plan p ON p.plan_id = pp.plan_id
+            WHERE pl.sido IS NOT NULL
+            GROUP BY pl.sido, pl.sigungu ORDER BY pl.sido, pl.sigungu
+            """, nativeQuery = true)
+    List<RegionCount> countPlacesByRegion();
 
     List<Place> findByPlaceIdIn(List<Integer> placeIds);
 

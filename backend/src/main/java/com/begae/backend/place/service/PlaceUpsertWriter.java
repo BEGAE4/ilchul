@@ -45,6 +45,8 @@ public class PlaceUpsertWriter {
                 .source(command.getSource())
                 .sourceId(command.getSourceId())
                 .addressName(command.getAddressName())
+                .sido(command.getSido())
+                .sigungu(command.getSigungu())
                 .roadAddressName(command.getRoadAddressName())
                 .categoryName(command.getCategoryName())
                 .phone(command.getPhone())
@@ -71,7 +73,7 @@ public class PlaceUpsertWriter {
         boolean needsWellnessLink = command.getWellnessContentId() != null
                 && place.getWellnessContentId() == null;
 
-        if (stale || needsWellnessLink) {
+        if (stale || needsWellnessLink || place.getSido() == null) {
             place.mergeFrom(command);
         }
         return place.getPlaceId();
