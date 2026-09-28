@@ -7,17 +7,18 @@ import { ArrowLeft, MapPin, MoreVertical, UserX } from 'lucide-react';
 import Avatar from '@/shared/ui/Avatar';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
+import { pageTitle } from '@/shared/lib/constants/siteMeta';
 import { useLoginGate } from '@/features/authentication/hooks';
 import { useReport, ReportDialog, ReportMenuItem } from '@/features/report';
 import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStorage';
 import type { CurrentUser, ReportTarget } from '@/features/report';
-import { sortMyPlansNewest } from '@/features/my-page/utils/sortPlans';
 import { fetchMyPageProfile } from '@/features/my-page/api';
-import { fetchUserPlans, fetchUserProfile, fetchUserProfileSummary } from '../api/user-profile.api';
+import { fetchUserProfile, fetchUserProfileSummary } from '../api/user-profile.api';
+import { useUserPlansList } from '../hooks/useUserPlansList';
+import { useInfiniteScroll } from '@/features/main/hooks/useInfiniteScroll';
 import { classifyUserProfileError, isOwnProfile, parseUserId } from '../utils/userProfile';
 import { PublicPlanCard } from './PublicPlanCard';
 import type {
-  PublicUserPlan,
   PublicUserProfile,
   PublicUserProfileSummary,
   UserProfileErrorKind,
@@ -85,7 +86,12 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
 
   const [profileState, setProfileState] = useState<ProfileState>({ status: 'loading' });
   const [summaryState, setSummaryState] = useState<SectionState<PublicUserProfileSummary>>({ status: 'loading' });
-  const [plansState, setPlansState] = useState<SectionState<PublicUserPlan[]>>({ status: 'loading' });
+  // 공개 플랜 목록 — 마이페이지와 같은 page/limit 무한 스크롤 (usePaginatedList)
+  const userPlans = useUserPlansList(numericUserId, { enabled: ready });
+  const plansSentinelRef = useInfiniteScroll({
+    enabled: userPlans.hasNext && !userPlans.isLoadingMore && !userPlans.error,
+    onIntersect: userPlans.loadMore,
+  });
 
   const loadProfile = useCallback(async () => {
     if (!ready) return;
@@ -114,27 +120,14 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
     }
   }, [numericUserId, ready]);
 
-  const loadPlans = useCallback(async () => {
-    if (!ready || numericUserId === null) return;
-    setPlansState({ status: 'loading' });
-    try {
-      // 서버 순서가 정해져 있지 않아 마이페이지와 같이 생성 최신순으로 맞춘다
-      setPlansState({ status: 'ready', data: sortMyPlansNewest(await fetchUserPlans(numericUserId)) });
-    } catch (err) {
-      console.error('사용자 공개 플랜 로드 실패:', err);
-      setPlansState({ status: 'failed' });
-    }
-  }, [numericUserId, ready]);
-
   useEffect(() => {
     void loadProfile();
     void loadSummary();
-    void loadPlans();
-  }, [loadProfile, loadSummary, loadPlans]);
+  }, [loadProfile, loadSummary]);
 
   useEffect(() => {
     const nickname = profileState.status === 'ready' ? profileState.profile.userNickname : '';
-    document.title = nickname ? `${nickname} · 일출` : '프로필 · 일출';
+    document.title = pageTitle(nickname || '프로필');
   }, [profileState]);
 
   // ─── 신고 (⋮) ───
@@ -168,7 +161,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
     ];
   })();
 
-  const planCount = plansState.status === 'ready' ? plansState.data.length : null;
+  const planCount = userPlans.isLoading || userPlans.error ? null : userPlans.totalCount;
 
   // 로그인 확인 전 / 미로그인(리다이렉트 대기) 시 보호 콘텐츠 노출 방지 (ProfilePage 와 동일)
   if (!ready) {
@@ -240,7 +233,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
                 onClick={() => {
                   void loadProfile();
                   void loadSummary();
-                  void loadPlans();
+                  userPlans.retry();
                 }}
                 className="px-4 py-2 rounded-full bg-primary-500 text-white text-sm font-bold"
               >
@@ -308,7 +301,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
 
           {/* ─── 공개 플랜 목록 ─── */}
           <div className="p-4">
-            {plansState.status === 'loading' && (
+            {userPlans.isLoading && (
               <div className="space-y-4">
                 {[0, 1].map((i) => (
                   <Skeleton key={i} variant="image" height={128} className="rounded-xl" />
@@ -316,11 +309,11 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
               </div>
             )}
 
-            {plansState.status === 'failed' && (
+            {!userPlans.isLoading && userPlans.error && (
               <div className="py-10 flex flex-col items-center text-center">
                 <p className="text-sm text-gray-500 mb-3">공개 플랜을 불러오지 못했어요</p>
                 <button
-                  onClick={() => void loadPlans()}
+                  onClick={userPlans.retry}
                   className="px-3 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-600"
                 >
                   다시 시도
@@ -328,19 +321,27 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
               </div>
             )}
 
-            {plansState.status === 'ready' && plansState.data.length > 0 && (
+            {!userPlans.isLoading && !userPlans.error && userPlans.items.length > 0 && (
               <div className="space-y-4">
-                {plansState.data.map((plan) => (
+                {userPlans.items.map((plan) => (
                   <PublicPlanCard
                     key={plan.planId}
                     plan={plan}
                     onClick={() => router.push(`/course/${plan.planId}`)}
                   />
                 ))}
+                {/* 무한 스크롤 — 홈 인기 목록과 같은 센티널·상태 문구 */}
+                <div ref={plansSentinelRef} className="h-px w-full" />
+                {userPlans.isLoadingMore && (
+                  <p className="text-center py-3 text-xs text-gray-400">더 불러오는 중...</p>
+                )}
+                {!userPlans.hasNext && !userPlans.isLoadingMore && userPlans.items.length >= 20 && (
+                  <p className="text-center py-3 text-xs text-gray-300">마지막 플랜이에요.</p>
+                )}
               </div>
             )}
 
-            {plansState.status === 'ready' && plansState.data.length === 0 && (
+            {!userPlans.isLoading && !userPlans.error && userPlans.items.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-300">
                   <MapPin size={32} />

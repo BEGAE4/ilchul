@@ -32,6 +32,11 @@ export interface PublicUserPlan {
 
 export interface UserPlansResponse {
   plans: PublicUserPlan[];
+  // 목록 페이징 필드 — 백엔드가 page/limit 를 받기 시작하면 함께 온다
+  page?: number;
+  limit?: number;
+  hasNext?: boolean;
+  totalCount?: number;
 }
 
 /** 프로필 조회가 실패했을 때 화면이 갈라지는 종류 */

@@ -12,7 +12,15 @@ export interface MyPlan {
   planImages: string[];
 }
 
-export interface MyPlansResponse {
+// 목록 페이징 필드 — 백엔드가 page/limit 를 받기 시작하면 함께 온다 (없으면 전체 목록 한 번에)
+export interface ListPagingFields {
+  page?: number;
+  limit?: number;
+  hasNext?: boolean;
+  totalCount?: number;
+}
+
+export interface MyPlansResponse extends ListPagingFields {
   plans: MyPlan[];
 }
 
@@ -31,7 +39,7 @@ export interface ScrappedPlan {
   scrappedAt: string | null;
 }
 
-export interface ScrappedPlansResponse {
+export interface ScrappedPlansResponse extends ListPagingFields {
   scrappedPlans: ScrappedPlan[];
 }
 
