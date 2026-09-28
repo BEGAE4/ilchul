@@ -25,9 +25,9 @@ with tempfile.TemporaryDirectory(prefix='ilchul-region-', dir='/tmp') as tempora
     server = subprocess.Popen(['mysqld', '--no-defaults', f'--datadir={data}', f'--socket={socket}',
                                '--skip-networking', '--mysqlx=OFF', f'--pid-file={directory / "mysql.pid"}',
                                f'--log-error={log}'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    def query(sql):
+    def query(sql, user="root"):
         return subprocess.run(['mysql', '--no-defaults', '--protocol=SOCKET', f'--socket={socket}',
-                               '-uroot', '--batch', '--skip-column-names', '--default-character-set=utf8mb4'],
+                               f'--user={user}', '--batch', '--skip-column-names', '--default-character-set=utf8mb4'],
                               input=sql, text=True, capture_output=True, check=True).stdout.strip()
     try:
         for attempt in range(100):
@@ -60,7 +60,16 @@ INSERT INTO plan_place VALUES
 (2,2,1,NULL,NULL),
 (3,3,1,'','전남광주통합특별시 남구 봉선동');
 """
-        query(fixture + migration.read_text())
+        query(fixture)
+        query("CREATE USER 'migration_test'@'localhost'; GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,ALTER,DROP,INDEX ON region_test.* TO 'migration_test'@'localhost';")
+        try:
+            query('USE region_test; ' + migration.read_text(), user='migration_test')
+            raise AssertionError('migration unexpectedly worked without CREATE TEMPORARY TABLES')
+        except subprocess.CalledProcessError as error:
+            assert 'ERROR 1044' in error.stderr, error.stderr
+        query("USE region_test; ALTER TABLE place DROP COLUMN sido, DROP COLUMN sigungu; ALTER TABLE plan_place DROP COLUMN snapshot_sido, DROP COLUMN snapshot_sigungu;")
+        query("GRANT CREATE TEMPORARY TABLES ON region_test.* TO 'migration_test'@'localhost';")
+        query('USE region_test; ' + migration.read_text(), user='migration_test')
         places = query('USE region_test; SELECT place_id,sido,sigungu FROM place ORDER BY place_id;')
         expected = '1\t전남\t동구\n2\t전남\t북구\n3\t전남\t순천시\n4\t경기\t수원시 영통구\n5\t강원\t강릉시\n6\tNULL\tNULL\n7\t전북\t전주시 완산구'
         assert places == expected, (places, expected)
@@ -70,12 +79,12 @@ INSERT INTO plan_place VALUES
         query("USE region_test; INSERT INTO place(place_id,address_name) VALUES(8,'서울 중구');")
         query("USE region_test; INSERT INTO plan_place(plan_place_id,place_id,plan_id,snapshot_address_name) VALUES(4,8,1,'전남 목포시 상동');")
         repair = runpy.run_path(str(backend / 'scripts/render-region-backfill.py'))['render_backfill']()
-        query('USE region_test; ' + repair)
-        query('USE region_test; ' + repair)  # 반복 실행은 기존 정규화 값을 바꾸지 않는다.
+        query('USE region_test; ' + repair, user='migration_test')
+        query('USE region_test; ' + repair, user='migration_test')  # 반복 실행은 기존 정규화 값을 바꾸지 않는다.
         assert query('USE region_test; SELECT sido,sigungu FROM place WHERE place_id=8;') == '서울\t중구'
         assert query('USE region_test; SELECT snapshot_sido,snapshot_sigungu FROM plan_place WHERE plan_place_id=4;') == '전남\t목포시'
         assert query('USE region_test; SELECT sido,sigungu FROM place WHERE place_id=1;') == '전남\t동구'
-        print('PASS: MySQL ' + query('SELECT VERSION();') + ' migration, aliases, districts, snapshot precedence, nullable compatibility, repeatable late-write repair')
+        print('PASS: MySQL ' + query('SELECT VERSION();') + ' migration, aliases, districts, snapshot precedence, nullable compatibility, repeatable late-write repair, restricted migration grants')
     finally:
         server.terminate()
         try:

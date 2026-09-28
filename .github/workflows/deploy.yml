@@ -128,7 +128,9 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Test scoped image cleanup
-        run: bash scripts/prune-deployment-images.test.sh
+        run: |
+          bash scripts/prune-deployment-images.test.sh
+          bash scripts/smoke-deployment.test.sh
 
       - name: Check host readiness before copying deployment files
         uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
@@ -146,7 +148,7 @@ jobs:
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_KEY }}
           port: ${{ secrets.ORACLE_PORT }}
-          source: docker-compose.blue.yml,docker-compose.green.yml,docker-compose.nginx.yml,nginx,rollback.sh,scripts/prune-deployment-images.sh
+          source: docker-compose.blue.yml,docker-compose.green.yml,docker-compose.nginx.yml,nginx,rollback.sh,scripts/prune-deployment-images.sh,scripts/smoke-deployment.sh
           target: /home/begae/ilchul
 
       - name: Deploy inactive environment
@@ -310,10 +312,8 @@ jobs:
               exit 1
             fi
 
-            FRONTEND_STATUS=$(curl --max-time 20 --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/intro) || FRONTEND_STATUS=000
-            AUTH_STATUS=$(curl --max-time 20 --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/api/plan/1) || AUTH_STATUS=000
-            if [ "$FRONTEND_STATUS" != "200" ] || [ "$AUTH_STATUS" != "401" ]; then
-              echo "Smoke test failed: frontend=${FRONTEND_STATUS}, unauthenticated_api=${AUTH_STATUS}"
+            if ! bash scripts/smoke-deployment.sh https://il-chul.com; then
+              echo "Smoke test failed; restoring ${CURRENT_ENV}"
               activate_environment "$CURRENT_ENV"
               exit 1
             fi
