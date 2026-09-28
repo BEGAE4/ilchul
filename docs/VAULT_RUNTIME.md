@@ -197,3 +197,7 @@ Docker Compose env 선택 근거: [Docker 환경 파일 문서](https://docs.doc
   이는 profiler 초기화 및 비밀값 누락 시 차단 검증이며, 실제 DB/Redis/MinIO 연결과 전체 앱 인수 검증을 대신하지 않는다.
 - 이번 실패의 `vault-acceptance-pending.json`은 수정 코드만으로 해제하지 않는다. 다음 병합 전 운영 상태와
   성공한 migration 이력/backup을 재확인하고, 별도 승인으로 실패 기록을 보관·정리해야 한다.
+
+### 지역 백필 마이그레이션 권한
+
+`V260928120000`과 추가 지역 백필은 임시 테이블을 사용하므로 migration 계정에 `ilchul_db.*` 범위의 `CREATE TEMPORARY TABLES` 권한이 필요하다. runtime CRUD 계정에는 추가하지 않는다. 배포 스모크 검사는 `/intro` 200, `/api/mypage/plans` 비로그인 401, `/api/region` 비로그인 200을 확인한다.
