@@ -7,5 +7,5 @@ public interface ScrappedPlanService {
 
     ScrappedPlanCreateResponseDto createPlanScrapped(Integer userId, Integer planId);
 
-    ScrappedPlanResponseDto findUserScrappedPlan(Integer userId);
+    ScrappedPlanResponseDto findUserScrappedPlan(Integer userId, Integer page, Integer limit);
 }

@@ -13,8 +13,10 @@ import com.begae.backend.plan_place.domain.PlanPlaceImage;
 import com.begae.backend.plan_place.repository.PlanPlaceImageRepository;
 import com.begae.backend.plan_place.repository.PlanPlaceRepository;
 import com.begae.backend.storage.dto.StoredImage;
+import com.begae.backend.storage.exception.StorageErrorCode;
 import com.begae.backend.storage.service.ImageFileCleaner;
 import com.begae.backend.storage.service.ImageStorageService;
+import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.user.domain.User;
 import com.begae.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -148,6 +150,19 @@ class PlanServiceImplImageFileTest {
         rollback();
 
         verify(imageStorageService).delete("plan/10/image/new.png");
+    }
+
+    @Test
+    void 플랜_사진은_한_요청에_최대_5장까지만_업로드한다() {
+        MultipartFile image = new MockMultipartFile("images", "a.png", "image/png", new byte[]{1});
+
+        assertThatThrownBy(() -> service.uploadImages(1, 10, List.of(
+                image, image, image, image, image, image
+        ))).isInstanceOfSatisfying(CustomException.class, error ->
+                org.assertj.core.api.Assertions.assertThat(error.getErrorCode())
+                        .isEqualTo(StorageErrorCode.TOO_MANY_FILES));
+
+        verify(imageStorageService, never()).upload(any(), anyString());
     }
 
     private void rollback() {

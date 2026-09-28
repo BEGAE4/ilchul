@@ -12,7 +12,7 @@ RUN addgroup -g 1001 -S spring && \
 
 WORKDIR /app
 
-COPY build/libs/*.jar app.jar
+COPY build/libs/app.jar app.jar
 
 RUN chown spring:spring app.jar /app/pyroscope.jar
 

@@ -95,6 +95,7 @@ public class PlaceController {
     @GetMapping("/popular")
     public ResponseEntity<PopularPlaceResponseDto> getPopularPlaces(
             @RequestParam(required = false) String region,
+            @RequestParam(required = false) List<String> sigungu,
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
             @RequestParam(defaultValue = "5") Integer limit,
@@ -102,7 +103,10 @@ public class PlaceController {
     ) {
         if (StringUtils.hasText(region)) {
             return ResponseEntity.ok(placeService.getPopularPlacesByRegion(
-                    PopularRegion.from(region), limit, page));
+                    PopularRegion.from(region), sigungu, limit, page));
+        }
+        if (sigungu != null && !sigungu.isEmpty()) {
+            throw new CustomException(GlobalErrorCode.INVALID_INPUT_VALUE);
         }
         if (lat == null && lng == null) {
             return ResponseEntity.ok(placeService.getNationwidePopularPlaces(limit, page));

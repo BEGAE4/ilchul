@@ -22,8 +22,11 @@ public interface CsInquiryService {
     UserCsInquiryListResponseDto getUserCsInquiry(Integer userId, int size, Integer lastInquiryId);
 
     void closeCsInquiry(Integer userId, Integer inquiryId);
-}
 
+    CsInquiryDetailResponseDto getCsInquiryDetail(Integer userId, boolean admin, Integer inquiryId);
+
+    CsInquiryImageContent getCsInquiryImage(Integer userId, boolean admin, Integer inquiryId, Integer imageId);
+}
 
 
 

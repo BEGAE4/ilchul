@@ -16,8 +16,13 @@ public class PlanCopyResponseDto {
     private Integer planId;
     private Integer originalPlanId;
     private LocalDateTime createAt;
+    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd HH:mm")
+    private LocalDateTime tripStartDate;
+    @com.fasterxml.jackson.annotation.JsonFormat(pattern = "yyyy-MM-dd HH:mm")
+    private LocalDateTime tripEndDate;
 
     public static PlanCopyResponseDto of(Plan plan, Integer originalPlanId) {
-        return new PlanCopyResponseDto(plan.getPlanId(), originalPlanId, plan.getCreateAt());
+        return new PlanCopyResponseDto(plan.getPlanId(), originalPlanId, plan.getCreateAt(),
+                plan.getTripStartDate(), plan.getTripEndDate());
     }
 }
