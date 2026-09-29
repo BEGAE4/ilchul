@@ -25,6 +25,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -52,10 +55,27 @@ public class MyPageServiceImpl implements MyPageService {
 
     @Transactional
     @Override
-    public MyPlansResponse findMyPlans(Integer userId) {
-        List<Plan> plans = planRepository.findByUserUserId(userId);
+    public MyPlansResponse findMyPlans(Integer userId, Integer limit, Integer page) {
+        int safeLimit = Math.min(limit, 50);
+        int offset = (page - 1) * safeLimit;
 
-        return MyPlansResponse.from(plans);
+        List<Integer> planIds = planRepository.findMyPlanIds(userId, safeLimit, offset);
+        int totalCount = planRepository.countByUserUserId(userId);
+
+        if (planIds.isEmpty()) {
+            return MyPlansResponse.of(List.of(), page, safeLimit, totalCount);
+        }
+
+        Map<Integer, Plan> planMap = planRepository.findByPlanIdIn(planIds)
+                .stream()
+                .collect(Collectors.toMap(Plan::getPlanId, p -> p));
+
+        List<Plan> plans = planIds.stream()
+                .map(planMap::get)
+                .filter(Objects::nonNull)
+                .toList();
+
+        return MyPlansResponse.of(plans, page, safeLimit, totalCount);
     }
 
     @Transactional
