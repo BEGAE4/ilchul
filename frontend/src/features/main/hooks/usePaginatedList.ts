@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PaginatedResponse } from '../types';
 import { readListState, saveListState } from '@/shared/lib/listStateCache';
+import { mergeFreshItems } from '../utils/mergeFreshItems';
 
 type FetchParams<P> = P & { page: number; limit: number };
 
@@ -93,6 +94,28 @@ export function usePaginatedList<
     [fetchFn, baseParamsKey, limit]
   );
 
+  // 복원한 목록은 저장 당시 값이라 좋아요 수 등이 옛 값일 수 있다(상세에서 좋아요 후 돌아온 경우 등).
+  // 화면은 복원본으로 바로 보여 주고, 같은 페이지들을 조용히 다시 받아 같은 항목의 값만 갱신한다.
+  // 실패하면 복원본을 그대로 둔다.
+  const revalidate = useCallback(
+    async (upToPage: number) => {
+      const paramsKey = baseParamsKey;
+      const pages = Array.from({ length: Math.max(upToPage, 1) }, (_, i) => i + 1);
+      const results = await Promise.allSettled(
+        pages.map((targetPage) => fetchFn({ ...baseParams, page: targetPage, limit }))
+      );
+      // 그사이 조회 조건(지역 등)이 바뀌었으면 반영하지 않는다.
+      if (itemsParamsKeyRef.current !== paramsKey) return;
+      const fresh = results.flatMap((r) => (r.status === 'fulfilled' ? r.value.data : []));
+      if (fresh.length === 0) return;
+      setItems((prev) => mergeFreshItems(prev, fresh));
+      const first = results[0];
+      if (first.status === 'fulfilled') setTotalCount(first.value.totalCount);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fetchFn, baseParamsKey, limit]
+  );
+
   useEffect(() => {
     if (!enabled) return;
     // 뒤로가기 등으로 돌아온 경우: 세션에 저장된 누적 목록이 있으면 복원하고 재요청하지 않는다.
@@ -108,6 +131,7 @@ export function usePaginatedList<
         setHasNext(cached.hasNext);
         setTotalCount(cached.totalCount);
         setIsLoading(false);
+        void revalidate(cached.page);
         return;
       }
     }
