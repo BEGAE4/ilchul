@@ -10,7 +10,7 @@ public interface MyPageService {
 
     UserProfileResponseDto updateUserProfile(UpdateUserProfileRequest updateUserProfileRequest, Integer userId);
 
-    MyPlansResponse findMyPlans(Integer userId, Integer page, Integer limit);
+    MyPlansResponse findMyPlans(Integer userId, Integer limit, Integer page);
 
     Boolean updateMyPlanVisibility(Integer planId, Integer userId);
 

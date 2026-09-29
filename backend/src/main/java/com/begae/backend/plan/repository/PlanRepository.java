@@ -26,13 +26,20 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
     int countByUserUserIdAndIsVerifiedTrue(Integer userId);
     boolean existsByPlanIdAndUserUserId(Integer planId, Integer userId);
 
-    @Query("""
-    select distinct p from Plan p
-    left join fetch p.planPlaces
-    where p.user.userId = :userId
-    """
-    )
-    List<Plan> findByUserUserId(Integer userId);
+    int countByUserUserId(Integer userId);
+
+    @Query(value = """
+            SELECT plan_id
+            FROM plan
+            WHERE user_id = :userId
+            ORDER BY create_at DESC, plan_id DESC
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<Integer> findMyPlanIds(
+            @Param("userId") Integer userId,
+            @Param("limit") int limit,
+            @Param("offset") int offset
+    );
 
     @Query("""
     select distinct p from Plan p
@@ -113,7 +120,7 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
                     + sin(radians(:lat)) * sin(radians(pp.snapshot_y))
                   ))) <= :radiusKm
             GROUP BY p.plan_id
-            ORDER BY (MAX(p.like_count) + MAX(p.scrap_count)) DESC
+            ORDER BY MAX(p.like_count) DESC, p.plan_id ASC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     List<Integer> findPopularPlanIds(
@@ -178,7 +185,7 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
             FROM plan
             WHERE is_plan_visible = true
               AND is_blinded = false
-            ORDER BY (like_count + scrap_count) DESC
+            ORDER BY like_count DESC, plan_id ASC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     List<Integer> findNationwidePopularPlanIds(
