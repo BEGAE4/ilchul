@@ -17,13 +17,31 @@ describe('clonePlanWithSchedule', () => {
     patch.mockReset();
   });
 
-  it('복제 후 수정 API 로 여행 일시를 채운다 (서버 복제 API 는 scheduledDate 를 반영하지 않음)', async () => {
+  const cloneBody = {
+    scheduledDate: '2026-09-13',
+    tripStartDate: '2026-09-13 10:00',
+    tripEndDate: '2026-09-13 12:30',
+  };
+
+  it('서버가 복제와 함께 일시를 저장해 돌려주면 수정 API 를 부르지 않는다 (2026-09-29 백엔드 반영)', async () => {
+    post.mockResolvedValue({
+      data: { planId: 56, originalPlanId: 11, createAt: '', tripStartDate: '2026-09-13T10:00:00', tripEndDate: '2026-09-13T12:30:00' },
+    });
+
+    const res = await clonePlanWithSchedule(11, schedule);
+
+    expect(post).toHaveBeenCalledWith('/api/plan/11/clone', cloneBody);
+    expect(patch).not.toHaveBeenCalled();
+    expect(res).toEqual({ planId: 56, scheduleSaved: true });
+  });
+
+  it('응답에 일시가 없으면(예전 서버) 수정 API 로 여행 일시를 채운다', async () => {
     post.mockResolvedValue({ data: { planId: 56, originalPlanId: 11, createAt: '' } });
     patch.mockResolvedValue({ data: { planId: 56 } });
 
     const res = await clonePlanWithSchedule(11, schedule);
 
-    expect(post).toHaveBeenCalledWith('/api/plan/11/clone', { scheduledDate: '2026-09-13' });
+    expect(post).toHaveBeenCalledWith('/api/plan/11/clone', cloneBody);
     expect(patch).toHaveBeenCalledWith('/api/plan/56', {
       tripStartDate: '2026-09-13 10:00',
       tripEndDate: '2026-09-13 12:30',
@@ -32,7 +50,7 @@ describe('clonePlanWithSchedule', () => {
   });
 
   it('일시 저장만 실패하면 복제는 유지하고 scheduleSaved=false 로 알린다', async () => {
-    post.mockResolvedValue({ data: { planId: 57, originalPlanId: 11, createAt: '' } });
+    post.mockResolvedValue({ data: { planId: 57, originalPlanId: 11, createAt: '', tripStartDate: null, tripEndDate: null } });
     patch.mockRejectedValue(new Error('500'));
 
     await expect(clonePlanWithSchedule(11, schedule)).resolves.toEqual({

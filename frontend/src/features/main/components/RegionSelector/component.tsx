@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, LocateFixed, Check, RotateCw } from 'lucide-react';
 import { REGIONS } from '../../constants/regions';
 import type { RegionState } from '../../hooks/useRegion';
+import { useRegionMeta } from '../../hooks/useRegionMeta';
+import { pickSigunguChips } from '../../utils/regionMeta';
 
 interface RegionSelectorProps {
   state: RegionState;
@@ -23,9 +25,15 @@ interface RegionSelectorProps {
  * 때만 사실이라, 기본값 서울을 보여줄 때나 직접 고른 지역에 같은 문구를 쓰면 틀린 정보가 된다.
  */
 export function RegionSelector({ state, open, onOpenChange }: RegionSelectorProps) {
-  const { region, source, isLocating, locateFailure, setRegion, resetToCurrentLocation, retryLocate } =
+  const { region, source, isLocating, locateFailure, setRegion, resetToCurrentLocation, retryLocate, sigungu, setSigungu } =
     state;
   const setOpen = onOpenChange;
+  // 서버 지역 메타(장소 수·시군구). 못 받아도 지역 목록은 그대로 동작한다.
+  const { byName: regionMeta } = useRegionMeta();
+  const currentMeta = regionMeta[region.name];
+  const sigunguChips = pickSigunguChips(currentMeta);
+  const toggleSigungu = (name: string) =>
+    setSigungu(sigungu.includes(name) ? sigungu.filter((s) => s !== name) : [...sigungu, name]);
 
   const question = isLocating
     ? '위치를 확인하는 중이에요'
@@ -120,6 +128,18 @@ export function RegionSelector({ state, open, onOpenChange }: RegionSelectorProp
           )}
           <ChevronDown size={22} className="text-primary-500 shrink-0" strokeWidth={2.5} />
         </button>
+        {/* 고른 시군구 — 지역명 아래 한 줄. 없으면 지역 전체라 아무것도 안 보여준다 */}
+        {!isLocating && sigungu.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="relative mt-1.5 flex items-center gap-1 text-xs text-primary-600 font-semibold active:opacity-70"
+            aria-label={`세부 지역 ${sigungu.join(', ')}. 눌러서 변경`}
+          >
+            <span className="truncate">{sigungu.join(' · ')}</span>
+            <span className="text-gray-400 font-normal shrink-0">만 보는 중</span>
+          </button>
+        )}
       </div>
 
       {open && (
@@ -159,22 +179,34 @@ export function RegionSelector({ state, open, onOpenChange }: RegionSelectorProp
             <div className="grid grid-cols-3 gap-2.5 mt-4">
               {REGIONS.map((r) => {
                 const selected = r.id === region.id;
+                const count = regionMeta[r.name]?.placeCount;
+                const empty = count === 0;
                 return (
                   <button
                     key={r.id}
                     type="button"
                     onClick={() => {
                       setRegion(r.id);
-                      setOpen(false);
+                      // 고른 지역에 시군구가 있으면 시트를 열어 둔 채 아래 칩에서 바로 좁힐 수 있게 한다
+                      const hasChips = pickSigunguChips(regionMeta[r.name]).length > 0;
+                      if (!hasChips) setOpen(false);
                     }}
                     aria-pressed={selected}
                     className={`relative py-3 rounded-[10px] text-sm transition-colors ${
                       selected
                         ? 'bg-primary-500 text-white font-bold'
-                        : 'bg-gray-50 border border-gray-100 text-gray-700 font-medium active:bg-gray-100'
+                        : empty
+                          ? 'bg-gray-50 border border-gray-100 text-gray-300 font-medium'
+                          : 'bg-gray-50 border border-gray-100 text-gray-700 font-medium active:bg-gray-100'
                     }`}
                   >
                     {r.name}
+                    {/* 서버 메타가 오면 장소 수를 함께 보여준다 — 0곳은 회색 */}
+                    {typeof count === 'number' && (
+                      <span className={`ml-1 text-[10px] font-normal ${selected ? 'text-white/80' : 'text-gray-400'}`}>
+                        {count}
+                      </span>
+                    )}
                     {selected && (
                       <Check size={12} strokeWidth={3} className="absolute top-1.5 right-1.5" />
                     )}
@@ -182,6 +214,51 @@ export function RegionSelector({ state, open, onOpenChange }: RegionSelectorProp
                 );
               })}
             </div>
+
+            {/* 세부 지역(시군구) — 서버 메타에 장소가 있는 곳만. 여러 개 고를 수 있고 즉시 반영된다 */}
+            {sigunguChips.length > 0 && (
+              <div className="mt-5">
+                <div className="flex items-baseline justify-between">
+                  <h4 className="text-sm font-bold text-gray-900">{region.name} 세부 지역</h4>
+                  <span className="text-[11px] text-gray-400">여러 곳을 고를 수 있어요</span>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setSigungu([])}
+                    aria-pressed={sigungu.length === 0}
+                    className={`px-3 py-1.5 rounded-full text-[13px] transition-colors ${
+                      sigungu.length === 0
+                        ? 'bg-gray-900 text-white font-bold'
+                        : 'bg-gray-50 border border-gray-100 text-gray-700 font-medium active:bg-gray-100'
+                    }`}
+                  >
+                    전체
+                  </button>
+                  {sigunguChips.map((s) => {
+                    const on = sigungu.includes(s.sigungu);
+                    return (
+                      <button
+                        key={s.sigungu}
+                        type="button"
+                        onClick={() => toggleSigungu(s.sigungu)}
+                        aria-pressed={on}
+                        className={`px-3 py-1.5 rounded-full text-[13px] transition-colors ${
+                          on
+                            ? 'bg-primary-500 text-white font-bold'
+                            : 'bg-gray-50 border border-gray-100 text-gray-700 font-medium active:bg-gray-100'
+                        }`}
+                      >
+                        {s.sigungu}
+                        <span className={`ml-1 text-[10px] font-normal ${on ? 'text-white/80' : 'text-gray-400'}`}>
+                          {s.placeCount}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <button
               type="button"
