@@ -22,6 +22,7 @@ import { useInfiniteScroll } from '@/features/main/hooks';
 import { useScrollRestoration } from '@/shared/hooks/useScrollRestoration';
 import { useSearchResults } from '@/features/search/hooks/useSearchResults';
 import { useLoginGate } from '@/features/authentication/hooks';
+import { goBackOrHome } from '@/shared/lib/navigation/inAppHistory';
 import type { SearchPlaceResult, SearchPlanResult } from '@/features/search/types/search.types';
 
 function mapSearchPlaceToBestPlace(item: SearchPlaceResult): BestPlace {
@@ -127,14 +128,8 @@ export const SearchResultsPage: React.FC = () => {
       <div className="sticky top-0 bg-white z-10 border-b border-gray-100">
         <div className="flex items-center justify-between p-4">
           <button
-            onClick={() => {
-              // 히스토리가 있으면 pop 해서 브라우저 뒤로가기와 일관되게, 없으면 /search 로.
-              if (typeof window !== 'undefined' && window.history.length > 1) {
-                router.back();
-              } else {
-                router.push('/search');
-              }
-            }}
+            // 돌아갈 앱 화면이 있으면 pop 해서 브라우저 뒤로가기와 일관되게, 없으면 /search 로.
+            onClick={() => goBackOrHome(router, '/search')}
             className="p-2 -ml-2 text-gray-700 active:bg-gray-100 rounded-full"
           >
             <ArrowLeft size={24} />

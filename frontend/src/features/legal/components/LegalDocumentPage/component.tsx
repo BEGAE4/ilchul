@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { SERVICE_ROUTES } from '@/shared/lib/constants/service';
+import { goBackOrHome } from '@/shared/lib/navigation/inAppHistory';
 import type { LegalBlock, LegalDocument } from '../../types/legalDocument';
 
 interface LegalDocumentPageProps {
@@ -65,10 +66,7 @@ const LegalBlockView = ({ block }: { block: LegalBlock }) => {
 export const LegalDocumentPage = ({ document }: LegalDocumentPageProps) => {
   const router = useRouter();
 
-  const handleBack = () => {
-    if (window.history.length > 1) router.back();
-    else router.push('/');
-  };
+  const handleBack = () => goBackOrHome(router);
 
   return (
     <div className="flex flex-col min-h-dvh bg-white">

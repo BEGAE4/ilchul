@@ -8,6 +8,7 @@ import Avatar from '@/shared/ui/Avatar';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { pageTitle } from '@/shared/lib/constants/siteMeta';
+import { goBackOrHome } from '@/shared/lib/navigation/inAppHistory';
 import { useLoginGate } from '@/features/authentication/hooks';
 import { useReport, ReportDialog, ReportMenuItem } from '@/features/report';
 import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStorage';
@@ -177,7 +178,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
       {/* ─── 헤더 ─── */}
       <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
         <button
-          onClick={() => router.back()}
+          onClick={() => goBackOrHome(router)}
           className="p-2 -ml-2 text-gray-700 rounded-full"
           aria-label="뒤로가기"
         >

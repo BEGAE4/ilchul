@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { markInAppNavigation } from '@/shared/lib/navigation/inAppHistory';
 import styles from './styles.module.scss';
 
 interface AppShellProps {
@@ -19,6 +21,13 @@ const UNFRAMED_PREFIXES = ['/admin'];
  */
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
+
+  // 처음 들어온 화면 이후로 경로가 바뀌면 "앱 안에서 이동한 기록이 있다"고 남긴다 (goBackOrHome 참고)
+  const firstPathnameRef = useRef(pathname);
+  useEffect(() => {
+    if (pathname !== firstPathnameRef.current) markInAppNavigation();
+  }, [pathname]);
+
   const isUnframed = UNFRAMED_PREFIXES.some((prefix) => pathname?.startsWith(prefix));
 
   if (isUnframed) {

@@ -3,6 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/shared/ui/Header';
+import { goBackOrHome } from '@/shared/lib/navigation/inAppHistory';
 import styles from './my-page.module.scss';
 
 // Header 컴포넌트 (헤더만 담당)
@@ -31,13 +32,7 @@ export default function MyPageLayout({
 }) {
   const router = useRouter();
 
-  const handleBackClick = () => {
-    if (window.history.length > 1) {
-      router.back();
-    } else {
-      window.location.href = '/';
-    }
-  };
+  const handleBackClick = () => goBackOrHome(router);
 
   // 현재 이 레이아웃은 신고 상세(/my-page/reports/[reportId])에서만 쓰인다.
   // (구버전 /my-page, /my-page/course-plan, /my-page/sanctions 라우트는 제거됨 — QA P-03)

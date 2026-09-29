@@ -31,6 +31,7 @@ import { useKakaoMapLoader } from '@/shared/lib/kakao';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { isMine } from '@/shared/lib/auth/isMine';
 import { useLoginGate } from '@/features/authentication/hooks';
+import { goBackOrHome } from '@/shared/lib/navigation/inAppHistory';
 
 interface PlaceDetailPageProps {
   placeId: string;
@@ -98,7 +99,7 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
       <PlaceDetailError
         message={serverError}
         requiresAuth={requiresAuth}
-        onBack={() => router.back()}
+        onBack={() => goBackOrHome(router)}
         onLogin={() => promptLogin('장소 정보를 보려면 먼저 로그인해주세요.')}
       />
     );
@@ -147,7 +148,8 @@ export function PlaceDetailPage({ placeId }: PlaceDetailPageProps) {
         {/* 상단 버튼 */}
         <div className="absolute top-0 left-0 right-0 flex justify-between items-center p-4">
           <button
-            onClick={() => router.back()}
+            onClick={() => goBackOrHome(router)}
+            aria-label="뒤로가기"
             className="p-2 bg-black/30 backdrop-blur-sm rounded-full text-white active:bg-black/50"
           >
             <ArrowLeft size={20} />

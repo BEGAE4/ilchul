@@ -1,8 +1,9 @@
 'use client';
 
 import { photoUploadErrorMessage } from '@/shared/lib/image';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { toast } from 'sonner';
 import Image from '@/shared/ui/SafeImage';
 import CoverImage from '@/shared/ui/CoverImage';
@@ -138,6 +139,14 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   // 내 플랜에서도 좋아요는 가능하다 (스크랩은 소유자에게 의미가 없어 제공하지 않는다)
   const { isLiked, likeCount, toggleLike } = usePlanActions(plan);
 
+  // 작성자 전용 화면이다. 남의 플랜 id 로 들어오면(주소 직접 입력·옛 링크) 누구나 보는 상세로 보낸다.
+  // 양쪽 숫자 id 를 모두 알 때만 판별한다 — 닉네임 폴백은 스토어가 비어 있을 때 작성자를 잘못 내보낼 수 있다.
+  const myUserId = useUserStore((s) => s.userId);
+  const isOthersPlan = plan != null && myUserId != null && plan.userId != null && plan.userId !== myUserId;
+  useEffect(() => {
+    if (isOthersPlan) router.replace(`/course/${courseId}`);
+  }, [isOthersPlan, courseId, router]);
+
   const reviewRef = useRef<HTMLDivElement>(null);
   const stampInputRef = useRef<HTMLInputElement>(null);
   // capture 없는 입력 — 앨범 선택용. capture 는 브라우저 힌트라 한 입력으로 두 동선을 낼 수 없다.
@@ -194,7 +203,8 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
 
-  if (isLoading) {
+  // 남의 플랜이면 이동하는 동안 작성자 화면이 비치지 않게 로딩 화면을 유지한다
+  if (isLoading || isOthersPlan) {
     return (
       <div className="bg-white min-h-dvh">
         <div className="h-60 w-full bg-gray-200 animate-pulse" />
