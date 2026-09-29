@@ -6,6 +6,8 @@ import { resolveRegionByCoord } from '../utils/resolveRegion';
 import { useGeolocation } from './useGeolocation';
 
 const STORAGE_KEY = 'ilchul_region';
+// 지역별로 고른 시군구 — { [regionId]: string[] }. 지역을 바꾸면 그 지역에 저장된 선택이 돌아온다.
+const SIGUNGU_KEY = 'ilchul_region_sigungu';
 
 /** manual: 사용자가 직접 고름 / gps: 위치로 자동 인식 / default: 둘 다 없어 기본값(서울) */
 export type RegionSource = 'manual' | 'gps' | 'default';
@@ -25,6 +27,10 @@ export interface RegionState {
   locateFailure: 'denied' | 'failed' | 'unsupported' | null;
   /** 위치를 다시 묻는다 */
   retryLocate: () => void;
+  /** 현재 지역 안에서 고른 시군구. 비어 있으면 지역 전체 */
+  sigungu: string[];
+  /** 시군구 선택을 바꾼다 (현재 지역 기준으로 저장) */
+  setSigungu: (names: string[]) => void;
 }
 
 function readStored(): string | null {
@@ -32,6 +38,31 @@ function readStored(): string | null {
     return localStorage.getItem(STORAGE_KEY);
   } catch {
     return null;
+  }
+}
+
+type SigunguMap = Record<string, string[]>;
+
+export function readSigunguMap(): SigunguMap {
+  try {
+    const raw = localStorage.getItem(SIGUNGU_KEY);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    const out: SigunguMap = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      if (Array.isArray(v)) out[k] = v.filter((x): x is string => typeof x === 'string');
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function writeSigunguMap(map: SigunguMap): void {
+  try {
+    localStorage.setItem(SIGUNGU_KEY, JSON.stringify(map));
+  } catch {
+    /* 저장 불가 환경에서도 이번 세션 동안은 동작한다 */
   }
 }
 
@@ -44,9 +75,11 @@ function readStored(): string | null {
 export function useRegion(enabled = true): RegionState {
   const [manualId, setManualId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [sigunguMap, setSigunguMap] = useState<SigunguMap>({});
 
   useEffect(() => {
     setManualId(readStored());
+    setSigunguMap(readSigunguMap());
     setHydrated(true);
   }, []);
 
@@ -78,6 +111,24 @@ export function useRegion(enabled = true): RegionState {
     retry();
   }, [retry]);
 
+  const detected = resolveRegionByCoord(geo.coords);
+  const currentRegion = manualRegion ?? detected ?? DEFAULT_REGION;
+  const sigungu = sigunguMap[currentRegion.id] ?? [];
+  const currentRegionId = currentRegion.id;
+  const setSigungu = useCallback(
+    (names: string[]) => {
+      setSigunguMap((prev) => {
+        const next = { ...prev };
+        const cleaned = Array.from(new Set(names.map((n) => n.trim()).filter(Boolean)));
+        if (cleaned.length === 0) delete next[currentRegionId];
+        else next[currentRegionId] = cleaned;
+        writeSigunguMap(next);
+        return next;
+      });
+    },
+    [currentRegionId]
+  );
+
   if (manualRegion) {
     return {
       region: manualRegion,
@@ -87,10 +138,11 @@ export function useRegion(enabled = true): RegionState {
       resetToCurrentLocation,
       locateFailure: null,
       retryLocate: retry,
+      sigungu,
+      setSigungu,
     };
   }
 
-  const detected = resolveRegionByCoord(geo.coords);
   const isLocating = !hydrated || (enabled && (geo.status === 'idle' || geo.status === 'loading'));
 
   const locateFailure =
@@ -106,5 +158,7 @@ export function useRegion(enabled = true): RegionState {
     resetToCurrentLocation,
     locateFailure,
     retryLocate: retry,
+    sigungu,
+    setSigungu,
   };
 }
