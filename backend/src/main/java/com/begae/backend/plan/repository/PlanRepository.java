@@ -113,7 +113,7 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
                     + sin(radians(:lat)) * sin(radians(pp.snapshot_y))
                   ))) <= :radiusKm
             GROUP BY p.plan_id
-            ORDER BY (MAX(p.like_count) + MAX(p.scrap_count)) DESC
+            ORDER BY MAX(p.like_count) DESC, p.plan_id ASC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     List<Integer> findPopularPlanIds(
@@ -122,7 +122,7 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
             @Param("radiusKm") double radiusKm,
             @Param("limit") int limit,
             @Param("offset") int offset
-            );
+    );
 
     @Query(value = """
             SELECT COUNT(DISTINCT p.plan_id)
@@ -150,7 +150,7 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
             WHERE p.is_plan_visible = true AND p.is_blinded = false
               AND pp.snapshot_sido = :sido AND (:allDistricts = true OR pp.snapshot_sigungu IN (:districts))
             GROUP BY p.plan_id
-            ORDER BY (MAX(p.like_count) + MAX(p.scrap_count)) DESC, p.plan_id ASC
+            ORDER BY MAX(p.like_count) DESC, p.plan_id ASC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     List<Integer> findPopularPlanIdsByRegion(
@@ -178,7 +178,7 @@ public interface PlanRepository extends JpaRepository<Plan, Integer> {
             FROM plan
             WHERE is_plan_visible = true
               AND is_blinded = false
-            ORDER BY (like_count + scrap_count) DESC
+            ORDER BY like_count DESC, plan_id ASC
             LIMIT :limit OFFSET :offset
             """, nativeQuery = true)
     List<Integer> findNationwidePopularPlanIds(
