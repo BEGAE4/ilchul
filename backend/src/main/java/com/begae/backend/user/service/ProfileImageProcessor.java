@@ -2,6 +2,7 @@ package com.begae.backend.user.service;
 
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.storage.exception.StorageErrorCode;
+import com.begae.backend.storage.service.ImageFileValidator;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,7 +19,6 @@ import java.util.Map;
 public class ProfileImageProcessor {
 
     private static final int MAX_DIMENSION = 512;
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024;
     private static final Map<String, String> OUTPUT_FORMATS = Map.of(
             "image/jpeg", "jpg",
             "image/png", "png",
@@ -71,15 +71,7 @@ public class ProfileImageProcessor {
     }
 
     private void validate(MultipartFile image) {
-        if (image == null || image.isEmpty()) {
-            throw new CustomException(StorageErrorCode.EMPTY_FILE);
-        }
-        if (image.getSize() > MAX_FILE_SIZE) {
-            throw new CustomException(StorageErrorCode.TOO_LARGE_FILE_SIZE);
-        }
-        if (!StringUtils.hasText(image.getContentType()) || !OUTPUT_FORMATS.containsKey(image.getContentType())) {
-            throw new CustomException(StorageErrorCode.NOT_ALLOWED_CONTENT_TYPE);
-        }
+        ImageFileValidator.validate(image);
     }
 
     private String baseName(String filename) {

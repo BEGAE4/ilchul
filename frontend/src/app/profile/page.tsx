@@ -1,14 +1,12 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { ProfilePage } from '@/features/profile/components/ProfilePage';
 import { RequireAuth } from '@/features/authentication/components/RequireAuth';
 import PageLayout from '@/shared/ui/PageLayout';
-import { getNavItems } from '@/shared/lib/constants/navItems';
+import { useBottomNavItems } from '@/shared/hooks/useBottomNavItems';
 
 export default function ProfileRoute() {
-  const router = useRouter();
-  const navItems = getNavItems('profile', (path) => router.push(path));
+  const navItems = useBottomNavItems('profile');
 
   return (
     <RequireAuth>

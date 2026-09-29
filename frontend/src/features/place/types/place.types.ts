@@ -89,7 +89,8 @@ export interface PlaceReview {
   reviewId: number;
   userId: number;
   userNickname: string;
-  userImg: string;
+  // 프로필 사진이 없는 작성자는 null 로 온다 (운영 확인)
+  userImg: string | null;
   content: string;
   createAt: string;
 }
@@ -99,6 +100,8 @@ export interface PlaceReviewListResponse {
   message: string;
   data: PlaceReview[];
   hasNext: boolean;
+  // 이 장소의 전체 후기 수. 2026-09-18 백엔드 추가 (2차 요청 8-4) — 그 전에는 불러온 개수만 알 수 있었다
+  totalCount: number;
 }
 
 export interface WritePlaceReviewBody {

@@ -5,24 +5,29 @@ import Image from '@/shared/ui/SafeImage';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchInquiryDetail, deleteInquiry } from '../api/inquiry.api';
-import type { InquiryDetail } from '../types/inquiry.types';
+import type { InquiryDetail, InquiryListItem } from '../types/inquiry.types';
 import { INQUIRY_STATUS_LABELS } from '../types/inquiry.types';
+import {
+  formatInquiryDate,
+  inquiryDetailErrorKind,
+  type InquiryDetailErrorKind,
+} from '../utils/inquiryMapper';
 
 interface InquiryDetailSectionProps {
   inquiryId: number;
+  /** 목록에서 넘어온 요약 — 상세 조회가 실패하면 이것으로 대신 그린다 */
+  fallbackItem?: InquiryListItem | null;
   isAdmin?: boolean;
   onBack: () => void;
   onEdit: (inquiry: InquiryDetail) => void;
   onDeleted: () => void;
 }
 
-const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-};
+const formatDate = (iso: string) => formatInquiryDate(iso, true);
 
 export const InquiryDetailSection = ({
   inquiryId,
+  fallbackItem = null,
   isAdmin = false,
   onBack,
   onEdit,
@@ -30,20 +35,37 @@ export const InquiryDetailSection = ({
 }: InquiryDetailSectionProps) => {
   const [inquiry, setInquiry] = useState<InquiryDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // 상세를 못 받은 이유. null 이면 실패하지 않은 것
+  const [loadError, setLoadError] = useState<InquiryDetailErrorKind | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // 상세를 못 받으면 목록에서 아는 정보(제목·분류·상태·작성일)로 대신 그리고 이유를 알린다.
   useEffect(() => {
+    let alive = true;
+    setIsLoading(true);
+    setLoadError(null);
     fetchInquiryDetail(inquiryId)
-      .then(setInquiry)
-      .finally(() => setIsLoading(false));
-  }, [inquiryId]);
+      .then((detail) => {
+        if (alive) setInquiry(detail);
+      })
+      .catch((err) => {
+        if (alive) setLoadError(inquiryDetailErrorKind(err));
+      })
+      .finally(() => {
+        if (alive) setIsLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [inquiryId, reloadKey]);
 
   const handleDelete = async () => {
-    if (!inquiry) return;
     setIsDeleting(true);
     try {
-      await deleteInquiry(inquiry.inquiryId);
+      // 삭제는 ID 만 있으면 되므로 상세를 못 받아도 할 수 있다
+      await deleteInquiry(inquiryId);
       toast.success('문의가 삭제되었어요.');
       onDeleted();
     } catch {
@@ -54,8 +76,11 @@ export const InquiryDetailSection = ({
     }
   };
 
-  const isPending = inquiry?.status === 'PENDING';
-  const canEdit = !isAdmin && isPending;
+  const summary = inquiry ?? (loadError ? fallbackItem : null);
+  const isPending = summary?.status === 'PENDING';
+  const canDelete = !isAdmin && isPending;
+  // 수정 폼은 본문·첨부 이미지가 있어야 채울 수 있다 — 상세를 받았을 때만 연다
+  const canEdit = canDelete && inquiry !== null;
 
   return (
     <div className="flex flex-col min-h-dvh bg-white">
@@ -67,14 +92,16 @@ export const InquiryDetailSection = ({
             </button>
             <span className="font-bold text-lg ml-2">문의 상세</span>
           </div>
-          {canEdit && inquiry && (
+          {canDelete && (
             <div className="flex gap-1">
-              <button
-                onClick={() => onEdit(inquiry)}
-                className="p-2 text-gray-500 rounded-full active:bg-gray-100"
-              >
-                <Pencil size={18} />
-              </button>
+              {canEdit && inquiry && (
+                <button
+                  onClick={() => onEdit(inquiry)}
+                  className="p-2 text-gray-500 rounded-full active:bg-gray-100"
+                >
+                  <Pencil size={18} />
+                </button>
+              )}
               <button
                 onClick={() => setShowDeleteModal(true)}
                 className="p-2 text-red-400 rounded-full active:bg-red-50"
@@ -87,7 +114,7 @@ export const InquiryDetailSection = ({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {isLoading || !inquiry ? (
+        {isLoading ? (
           <div className="p-5 space-y-4">
             <div className="flex gap-2">
               <div className="h-5 w-14 bg-gray-100 rounded-full animate-pulse" />
@@ -98,6 +125,48 @@ export const InquiryDetailSection = ({
               <div className="h-4 bg-gray-100 rounded animate-pulse" />
               <div className="h-4 bg-gray-100 rounded animate-pulse" />
               <div className="h-4 w-3/4 bg-gray-100 rounded animate-pulse" />
+            </div>
+          </div>
+        ) : !inquiry ? (
+          <div className="p-5">
+            {summary && (
+              <>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xs font-medium bg-primary-50 text-primary-600 rounded-full px-2 py-0.5">
+                    {summary.categoryName}
+                  </span>
+                  <span
+                    className={`text-xs font-medium rounded-full px-2 py-0.5 ${
+                      isPending ? 'bg-accent-50 text-accent-500' : 'bg-primary-50 text-primary-600'
+                    }`}
+                  >
+                    {INQUIRY_STATUS_LABELS[summary.status]}
+                  </span>
+                </div>
+                <h2 className="font-bold text-base text-gray-900 mb-1">{summary.title}</h2>
+                {isAdmin && summary.authorNickname && (
+                  <p className="text-xs text-gray-400 mb-1">작성자: {summary.authorNickname}</p>
+                )}
+                <p className="text-xs text-gray-400 mb-4">{formatDate(summary.createdAt)}</p>
+              </>
+            )}
+            <div className="bg-gray-50 rounded-xl p-4 text-center">
+              <p className="text-sm text-gray-600 font-medium">
+                {loadError === 'notFound'
+                  ? '삭제되었거나 없는 문의예요'
+                  : loadError === 'forbidden'
+                    ? '이 문의는 볼 수 없어요'
+                    : '문의 내용을 불러오지 못했어요'}
+              </p>
+              {loadError === 'retryable' && (
+                <button
+                  type="button"
+                  onClick={() => setReloadKey((k) => k + 1)}
+                  className="mt-3 px-3 py-1.5 text-xs font-bold text-primary-600 bg-primary-50 rounded-full active:scale-95 transition-transform"
+                >
+                  다시 시도
+                </button>
+              )}
             </div>
           </div>
         ) : (

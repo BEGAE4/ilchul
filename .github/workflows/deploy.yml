@@ -8,6 +8,10 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: ilchul-production
+  cancel-in-progress: false
+
 jobs:
   metadata:
     runs-on: ubuntu-latest
@@ -118,19 +122,30 @@ jobs:
   deploy-target:
     needs: [metadata, build-frontend, build-backend]
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: Prepare backend runtime environment
-        env:
-          RUNTIME_ENV_FILE: ${{ secrets.ENV_FILE }}
-          ANTHROPIC_API_KEY: ${{ secrets.CLAUDE_API_KEY }}
-        shell: bash
+      - name: Test scoped image cleanup
         run: |
-          umask 077
-          printf '%s\n' "$RUNTIME_ENV_FILE" > .env.deploy
-          printf 'ANTHROPIC_API_KEY=%s\n' "$ANTHROPIC_API_KEY" >> .env.deploy
+          bash scripts/prune-deployment-images.test.sh
+          bash scripts/smoke-deployment.test.sh
+
+      - name: Prepare deployment attempt before copying deployment files
+        uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
+        env:
+          GIT_SHA: ${{ needs.metadata.outputs.git_sha }}
+          DEPLOY_RUN_ID: ${{ github.run_id }}
+        with:
+          host: ${{ secrets.ORACLE_HOST }}
+          username: ${{ secrets.ORACLE_USER }}
+          key: ${{ secrets.ORACLE_KEY }}
+          port: ${{ secrets.ORACLE_PORT }}
+          envs: GIT_SHA,DEPLOY_RUN_ID
+          script: |
+            sudo -n /usr/local/sbin/ilchul-vault-preflight
+            sudo -n /usr/local/sbin/ilchul-vault-deployment prepare "$GIT_SHA" "$DEPLOY_RUN_ID"
 
       - name: Copy deployment files
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
@@ -139,7 +154,7 @@ jobs:
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_KEY }}
           port: ${{ secrets.ORACLE_PORT }}
-          source: docker-compose.blue.yml,docker-compose.green.yml,docker-compose.nginx.yml,nginx,rollback.sh,.env.deploy
+          source: docker-compose.blue.yml,docker-compose.green.yml,docker-compose.nginx.yml,nginx,rollback.sh,scripts/prune-deployment-images.sh,scripts/smoke-deployment.sh
           target: /home/begae/ilchul
 
       - name: Deploy inactive environment
@@ -160,11 +175,19 @@ jobs:
             PROJECT_PATH="/home/begae/ilchul"
             cd "$PROJECT_PATH"
 
+            sudo -n /usr/local/sbin/ilchul-vault-preflight
+            # Only allowlisted non-secret values; never source a production .env in the shell.
+            export COMPOSE_ENV_FILES=/etc/ilchul/runtime-public.env
+            export FRONTEND_IMAGE="ghcr.io/${REPO_OWNER}/ilchul-frontend:${GIT_SHA}"
+            export BACKEND_IMAGE="ghcr.io/${REPO_OWNER}/ilchul-backend:${GIT_SHA}"
+
             if [ ! -f current_environment.txt ]; then
-              echo "blue" > current_environment.txt
+              echo 'Active color is unknown; deployment blocked.'
+              exit 1
             fi
 
             CURRENT_ENV=$(tr -d '[:space:]' < current_environment.txt)
+            case "$CURRENT_ENV" in blue|green) ;; *) exit 1 ;; esac
             if [ "$CURRENT_ENV" = "blue" ]; then
               TARGET_ENV="green"
             else
@@ -174,16 +197,13 @@ jobs:
             echo "$TARGET_ENV" > target_environment.txt
             echo "$CURRENT_ENV" > previous_environment.txt
 
-            mv .env.deploy .env
-            cat << ENV_EOF >> .env
-            FRONTEND_IMAGE=ghcr.io/${REPO_OWNER}/ilchul-frontend:${GIT_SHA}
-            BACKEND_IMAGE=ghcr.io/${REPO_OWNER}/ilchul-backend:${GIT_SHA}
-            ENV_EOF
-            chmod 600 .env
-
             printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
 
             docker network inspect shared-infra >/dev/null
+
+            # MinIO policy/account administration is a separately reviewed host operation.
+            # Reload never stops dependent apps; a failed fetch retains the last generation.
+            sudo -n systemctl reload ilchul-secrets.service
 
             install -d -m 0755 nginx/runtime
             install -m 0644 "nginx/upstreams/${CURRENT_ENV}.conf" nginx/runtime/active.conf.new
@@ -198,7 +218,7 @@ jobs:
                 break
               fi
               if [ "$attempt" -eq 30 ]; then
-                docker logs --tail 100 ilchul-nginx || true
+                echo 'Gateway failed health validation; inspect restricted host logs.'
                 exit 1
               fi
               echo "Waiting for Ilchul Nginx gateway: ${GATEWAY_HEALTH} (${attempt}/30)"
@@ -217,8 +237,21 @@ jobs:
               -H "X-Forwarded-Proto: https" \
               http://127.0.0.1:18090/intro >/dev/null
 
+            CURRENT_BACKEND_CONTAINER="ilchul-backend-${CURRENT_ENV}"
+            CURRENT_FRONTEND_CONTAINER="ilchul-frontend-${CURRENT_ENV}"
+            if docker inspect "$CURRENT_BACKEND_CONTAINER" "$CURRENT_FRONTEND_CONTAINER" >/dev/null 2>&1; then
+              bash scripts/prune-deployment-images.sh snapshot \
+                .deploy-image-state.tsv \
+                "ghcr.io/${REPO_OWNER}/ilchul-backend=$CURRENT_BACKEND_CONTAINER" \
+                "ghcr.io/${REPO_OWNER}/ilchul-frontend=$CURRENT_FRONTEND_CONTAINER"
+            else
+              rm -f .deploy-image-state.tsv
+              echo 'One or more previous color containers are absent; image cleanup state was not created.'
+            fi
+
             docker compose -f "docker-compose.${TARGET_ENV}.yml" config --quiet
             docker compose -f "docker-compose.${TARGET_ENV}.yml" pull
+            sudo -n /usr/local/sbin/ilchul-vault-migrate "$BACKEND_IMAGE"
             docker compose -f "docker-compose.${TARGET_ENV}.yml" up -d
 
             BACKEND_CONTAINER="ilchul-backend-${TARGET_ENV}"
@@ -236,29 +269,35 @@ jobs:
             done
 
             docker compose -f "docker-compose.${TARGET_ENV}.yml" ps
-            docker logs --tail 100 "$BACKEND_CONTAINER" || true
-            docker logs --tail 100 "$FRONTEND_CONTAINER" || true
+            echo 'Target failed health validation; inspect restricted host logs.'
             exit 1
 
   switch-traffic:
-    needs: deploy-target
+    needs: [metadata, deploy-target]
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Switch traffic and smoke test
         uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
+        env:
+          REPO_OWNER: ${{ needs.metadata.outputs.repo_owner }}
+          GIT_SHA: ${{ needs.metadata.outputs.git_sha }}
         with:
           host: ${{ secrets.ORACLE_HOST }}
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_KEY }}
           port: ${{ secrets.ORACLE_PORT }}
+          envs: REPO_OWNER,GIT_SHA
           script: |
             set -eu
             PROJECT_PATH="/home/begae/ilchul"
             ILCHUL_NGINX="ilchul-nginx"
             cd "$PROJECT_PATH"
+            sudo -n /usr/local/sbin/ilchul-vault-preflight
 
             TARGET_ENV=$(tr -d '[:space:]' < target_environment.txt)
             CURRENT_ENV=$(tr -d '[:space:]' < previous_environment.txt)
+            case "$TARGET_ENV:$CURRENT_ENV" in blue:green|green:blue) ;; *) exit 1 ;; esac
             ACTIVE_CONFIG="$PROJECT_PATH/nginx/runtime/active.conf"
 
             activate_environment() {
@@ -276,13 +315,22 @@ jobs:
               exit 1
             fi
 
-            FRONTEND_STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/intro)
-            AUTH_STATUS=$(curl --silent --output /dev/null --write-out '%{http_code}' https://il-chul.com/api/plan/1)
-            if [ "$FRONTEND_STATUS" != "200" ] || [ "$AUTH_STATUS" != "401" ]; then
-              echo "Smoke test failed: frontend=${FRONTEND_STATUS}, unauthenticated_api=${AUTH_STATUS}"
+            if ! bash scripts/smoke-deployment.sh https://il-chul.com; then
+              echo "Smoke test failed; restoring ${CURRENT_ENV}"
               activate_environment "$CURRENT_ENV"
               exit 1
             fi
 
             echo "$TARGET_ENV" > current_environment.txt
-            docker compose -f "docker-compose.${CURRENT_ENV}.yml" stop
+            echo 'Previous color retained until the next deployment.'
+
+            if [ -f .deploy-image-state.tsv ]; then
+              bash scripts/prune-deployment-images.sh cleanup \
+                .deploy-image-state.tsv \
+                "ghcr.io/${REPO_OWNER}/ilchul-backend=ilchul-backend-${TARGET_ENV}" \
+                "ghcr.io/${REPO_OWNER}/ilchul-frontend=ilchul-frontend-${TARGET_ENV}"
+            else
+              echo 'Image cleanup skipped: no previous deployment state.'
+            fi
+
+            sudo -n /usr/local/sbin/ilchul-vault-deployment accept "$GIT_SHA"

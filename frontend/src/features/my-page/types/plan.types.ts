@@ -12,7 +12,15 @@ export interface MyPlan {
   planImages: string[];
 }
 
-export interface MyPlansResponse {
+// 목록 페이징 필드 — 백엔드가 page/limit 를 받기 시작하면 함께 온다 (없으면 전체 목록 한 번에)
+export interface ListPagingFields {
+  page?: number;
+  limit?: number;
+  hasNext?: boolean;
+  totalCount?: number;
+}
+
+export interface MyPlansResponse extends ListPagingFields {
   plans: MyPlan[];
 }
 
@@ -26,11 +34,12 @@ export interface ScrappedPlan {
   isPlanVisible: boolean; // 원본 플랜 공개 여부
   requiredTime: number; // 소요 시간 (분)
   planImages: string[];
-  // 내가 저장한 시각. v6 명세에는 없어 백엔드에 추가 요청 — 오기 전까지는 서버 순서를 따른다.
-  scrappedAt?: string | null;
+  // 내가 저장한 시각. 2026-09-18 백엔드 추가 (2차 요청 7-5) — 저장 플랜 탭은 이 값으로 최신순 정렬한다.
+  // 단, 저장을 풀었다 다시 저장해도 값이 갱신되지 않는 것을 운영에서 확인했다(백엔드에 전달).
+  scrappedAt: string | null;
 }
 
-export interface ScrappedPlansResponse {
+export interface ScrappedPlansResponse extends ListPagingFields {
   scrappedPlans: ScrappedPlan[];
 }
 

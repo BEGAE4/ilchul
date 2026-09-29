@@ -278,15 +278,20 @@ public class PlaceServiceImpl implements PlaceService {
     }
 
     @Override
-    public PopularPlaceResponseDto getPopularPlacesByRegion(PopularRegion region, Integer limit, Integer page) {
-        int safeLimit = Math.min(limit, 50);
-        int offset = (page - 1) * safeLimit;
-        String primaryPrefix = region.getAddressPrefixes().getFirst();
-        String legacyPrefix = region.getAddressPrefixes().getLast();
+    public PopularPlaceResponseDto getPopularPlacesByRegion(PopularRegion region, List<String> sigungu, Integer limit, Integer page) {
+        var pageable = com.begae.backend.global.dto.ListPageRequest.of(page, limit);
+        int safeLimit = pageable.getPageSize();
+        page = pageable.getPageNumber() + 1;
+        int offset = (int) pageable.getOffset();
+        if (region == PopularRegion.UNKNOWN) {
+            return PopularPlaceResponseDto.of(List.of(), page, safeLimit, 0);
+        }
+        boolean allDistricts = sigungu == null || sigungu.isEmpty();
+        List<String> districts = allDistricts ? List.of("") : sigungu;
 
         List<Integer> placeIds = placeRepository.findPopularPlaceIdsByRegion(
-                primaryPrefix, legacyPrefix, safeLimit, offset);
-        int totalCount = placeRepository.countPopularPlacesByRegion(primaryPrefix, legacyPrefix);
+                region.getSido(), districts, allDistricts, safeLimit, offset);
+        int totalCount = placeRepository.countPopularPlacesByRegion(region.getSido(), districts, allDistricts);
 
         if (placeIds.isEmpty()) {
             return PopularPlaceResponseDto.of(List.of(), page, safeLimit, totalCount);

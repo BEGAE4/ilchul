@@ -21,6 +21,7 @@ import { SearchResultsSkeleton } from '@/shared/ui/Skeleton';
 import { useInfiniteScroll } from '@/features/main/hooks';
 import { useScrollRestoration } from '@/shared/hooks/useScrollRestoration';
 import { useSearchResults } from '@/features/search/hooks/useSearchResults';
+import { useLoginGate } from '@/features/authentication/hooks';
 import type { SearchPlaceResult, SearchPlanResult } from '@/features/search/types/search.types';
 
 function mapSearchPlaceToBestPlace(item: SearchPlaceResult): BestPlace {
@@ -69,9 +70,11 @@ export const SearchResultsPage: React.FC = () => {
     isLoading,
     isLoadingMore,
     isError,
+    requiresAuth,
     loadMore,
     retry,
   } = useSearchResults(query);
+  const { promptLogin, requireLogin } = useLoginGate();
 
   // 탭 전환을 URL(tab=)에 반영해 새로고침·공유·뒤로가기에도 유지되게 한다.
   const changeTab = (tab: ViewTab) => {
@@ -193,8 +196,25 @@ export const SearchResultsPage: React.FC = () => {
           </div>
         )}
 
+        {/* 서버가 로그인을 요구한 경우 — 네트워크 오류와 구분해 로그인 안내 */}
+        {query && isError && requiresAuth && (
+          <div className="text-center py-16 px-5">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search size={24} className="text-gray-300" />
+            </div>
+            <p className="text-sm font-bold text-gray-500 mb-1">로그인이 필요해요</p>
+            <p className="text-xs text-gray-400 mb-4">검색 결과를 보려면 먼저 로그인해주세요</p>
+            <button
+              onClick={() => promptLogin('검색 결과를 보려면 먼저 로그인해주세요.')}
+              className="px-5 py-2.5 bg-primary-500 text-white text-sm font-bold rounded-xl active:scale-[0.98] transition-transform"
+            >
+              로그인하러 가기
+            </button>
+          </div>
+        )}
+
         {/* 검색 실패 — "결과 없음"과 구분 */}
-        {query && isError && (
+        {query && isError && !requiresAuth && (
           <div className="text-center py-16 px-5">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Search size={24} className="text-gray-300" />
@@ -250,7 +270,7 @@ export const SearchResultsPage: React.FC = () => {
                       <PlaceCardSmall
                         key={place.id}
                         place={place}
-                        onAdd={() => setSelectedPlace(place)}
+                        onAdd={() => requireLogin(() => setSelectedPlace(place), '장소를 내 플랜에 담으려면 로그인해주세요.')}
                         onClick={() => router.push(`/place/${place.id}`)}
                       />
                     ))}
@@ -345,7 +365,7 @@ export const SearchResultsPage: React.FC = () => {
                 <PlaceCardGrid
                   key={place.id}
                   place={place}
-                  onAdd={() => setSelectedPlace(place)}
+                  onAdd={() => requireLogin(() => setSelectedPlace(place), '장소를 내 플랜에 담으려면 로그인해주세요.')}
                   onClick={() => router.push(`/place/${place.id}`)}
                 />
               ))}

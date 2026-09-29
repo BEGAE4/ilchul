@@ -29,10 +29,16 @@ export const REASON_LABELS: Record<ReportReasonCode, string> = {
 
 // Discriminated Union (Architect M-4)
 // — 대상별로 필수 컨텍스트가 다르므로 type 단위로 강제
+// ownerId 는 작성자 닉네임(신고 접수·표시용). 본인 여부는 ownerUserId(숫자 id)로 판별하고, 없을 때만 닉네임으로 폴백한다.
+interface ReportTargetOwner {
+  ownerId: string;
+  ownerUserId?: number | null;
+}
+
 export type ReportTarget =
-  | { type: 'course'; id: string; ownerId: string; title: string; contextUrl: string }
-  | { type: 'comment'; id: string; ownerId: string; courseId: string; snippet: string; contextUrl: string }
-  | { type: 'user'; id: string; ownerId: string; nickname: string; contextUrl: string };
+  | ({ type: 'course'; id: string; title: string; contextUrl: string } & ReportTargetOwner)
+  | ({ type: 'comment'; id: string; courseId: string; snippet: string; contextUrl: string } & ReportTargetOwner)
+  | ({ type: 'user'; id: string; nickname: string; contextUrl: string } & ReportTargetOwner);
 
 export interface ReportPayload {
   target: ReportTarget;
@@ -85,6 +91,8 @@ export interface ReportResponse {
 
 export interface CurrentUser {
   id: string;
+  /** 내 숫자 id (userinfo). 아직 못 받았으면 null */
+  userId?: number | null;
   name: string;
   isLoggedIn: boolean;
 }

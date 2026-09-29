@@ -6,3 +6,4 @@ export * from './useNearbyPopularPlans';
 export * from './useNationwidePopularPlaces';
 export * from './useNationwidePopularPlans';
 export * from './useRegion';
+export * from './useRegionMeta';

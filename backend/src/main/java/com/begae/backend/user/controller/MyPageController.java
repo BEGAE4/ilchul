@@ -68,7 +68,7 @@ public class MyPageController {
     @ApiResponse(responseCode = "304", description = "플랜 공개 여부가 변경되지 않았습니다.")
     @PostMapping("/plan/visibility/{planId}")
     public ResponseEntity<Void> setUserMyPlanVisibility(
-                @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails userDetails,
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails userDetails,
                 @Parameter(description = "플랜 ID", example = "1") @PathVariable(name = "planId") @Positive Integer planId
                 ) {
         if(!myPageService.updateMyPlanVisibility(planId, userDetails.getUserId())) {
@@ -82,7 +82,7 @@ public class MyPageController {
     @GetMapping("/profile")
     public ResponseEntity<UserProfileResponseDto> getMypageProfile(
                 @AuthenticationPrincipal OauthUserDetails userDetails
-                ) {
+    ) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(myPageService.findMypageProfile(userDetails.getUserId()));
     }
@@ -93,7 +93,7 @@ public class MyPageController {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "로그인이 필요합니다.",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @ApiResponse(responseCode = "413", description = "파일 크기가 5MB를 초과했습니다.",
+    @ApiResponse(responseCode = "413", description = "파일 크기가 15MB를 초과했습니다.",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping(value = "/profile/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<UserProfileResponseDto> uploadProfileImage(
@@ -119,7 +119,7 @@ public class MyPageController {
     @GetMapping("/summary")
     public ResponseEntity<UserProfileSummaryResponseDto> getMyPageSummary(
                 @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails userDetails
-                ) {
+    ) {
         return ResponseEntity.status(HttpStatus.OK)
                 .body(myPageService.findMyPageSummary(userDetails.getUserId()));
     }
@@ -128,9 +128,11 @@ public class MyPageController {
     @ApiResponse(responseCode = "200", description = "스크랩한 플랜 목록을 성공적으로 조회했습니다.")
     @GetMapping("/scrapped")
     public ResponseEntity<ScrappedPlanResponseDto> getScrappedPlan(
-                @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails userDetails
-                ) {
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails userDetails,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "20") Integer limit
+    ) {
         return ResponseEntity.status(HttpStatus.OK)
-                .body(scrappedPlanService.findUserScrappedPlan(userDetails.getUserId()));
+                .body(scrappedPlanService.findUserScrappedPlan(userDetails.getUserId(), page, limit));
     }
 }

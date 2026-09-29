@@ -1,4 +1,5 @@
 import apiClient from '@/shared/lib/api/apiClient';
+import { fixRoParticle } from '@/shared/lib/format/josa';
 import type {
   PopularSearchKeyword,
   RecentSearch,
@@ -37,7 +38,16 @@ export const searchAll = async (
   const res = await apiClient.get<SearchResultResponse>('/api/search', {
     params: { keyword, ...params },
   });
-  return res.data;
+  const data = res.data;
+  if (!Array.isArray(data?.plans)) return data;
+  // 예전에 생성된 플랜 설명 "도보으로 떠나는…" 이 DB 에 남아 있다 (B-23). 정정 전까지 표시용으로 고친다.
+  return {
+    ...data,
+    plans: data.plans.map((plan) => ({
+      ...plan,
+      planDescription: fixRoParticle(plan.planDescription),
+    })),
+  };
 };
 
 /** 검색어 자동완성 — GET /api/search/autocomplete */

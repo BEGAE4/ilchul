@@ -1,5 +1,6 @@
 package com.begae.backend.user.service;
 
+import com.begae.backend.global.dto.ListPageRequest;
 import com.begae.backend.global.exception.CustomException;
 import com.begae.backend.global.exception.GlobalErrorCode;
 import com.begae.backend.plan.domain.Plan;
@@ -20,6 +21,7 @@ import com.begae.backend.user.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;

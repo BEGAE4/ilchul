@@ -61,6 +61,7 @@ public class PlanPlaceController {
     )
     @Operation(summary = "플랜 장소 인증 스탬프 등록", description = "특정 플랜 장소에 방문 인증 스탬프와 이미지를 등록합니다.")
     @ApiResponse(responseCode = "200", description = "플랜 장소 인증 스탬프가 성공적으로 등록되었습니다.")
+    @ApiResponse(responseCode = "413", description = "이미지 파일 또는 요청 크기가 허용 한도를 초과했습니다.")
     public ResponseEntity<StampPlanPlaceResponseDto> stampPlanPlace(
             @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
             @Parameter(description = "플랜 장소 ID", example = "1") @PathVariable Integer planPlaceId,

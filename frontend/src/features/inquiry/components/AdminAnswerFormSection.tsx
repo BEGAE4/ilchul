@@ -1,13 +1,16 @@
 'use client';
 
+import Image from '@/shared/ui/SafeImage';
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchInquiryDetail, createAnswer } from '../api/inquiry.api';
-import type { InquiryDetail } from '../types/inquiry.types';
+import type { InquiryDetail, InquiryListItem } from '../types/inquiry.types';
 
 interface AdminAnswerFormSectionProps {
   inquiryId: number;
+  /** 목록에서 넘어온 요약 — 상세 조회가 실패하면 이것으로 대신 그린다 */
+  fallbackItem?: InquiryListItem | null;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -16,6 +19,7 @@ const MAX_ANSWER = 1000;
 
 export const AdminAnswerFormSection = ({
   inquiryId,
+  fallbackItem = null,
   onSuccess,
   onCancel,
 }: AdminAnswerFormSectionProps) => {
@@ -23,12 +27,31 @@ export const AdminAnswerFormSection = ({
   const [answerContent, setAnswerContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
+  // 상세를 못 받아도 목록 요약을 보고 답변은 쓸 수 있게 둔다 — 본문 자리에 실패를 알리고 다시 시도를 준다
   useEffect(() => {
+    let alive = true;
+    setIsLoading(true);
+    setLoadFailed(false);
     fetchInquiryDetail(inquiryId)
-      .then(setInquiry)
-      .finally(() => setIsLoading(false));
-  }, [inquiryId]);
+      .then((detail) => {
+        if (alive) setInquiry(detail);
+      })
+      .catch(() => {
+        // 아래에서 fallbackItem 으로 대신 그린다
+        if (alive) setLoadFailed(true);
+      })
+      .finally(() => {
+        if (alive) setIsLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [inquiryId, reloadKey]);
+
+  const summary = inquiry ?? fallbackItem;
 
   const handleSubmit = async () => {
     if (!answerContent.trim() || isSubmitting) return;
@@ -56,27 +79,62 @@ export const AdminAnswerFormSection = ({
       </div>
 
       <div className="flex-1 p-5 space-y-5 overflow-y-auto">
-        {isLoading || !inquiry ? (
+        {isLoading ? (
           <div className="space-y-3">
             <div className="h-5 w-1/3 bg-gray-100 rounded animate-pulse" />
             <div className="h-24 bg-gray-100 rounded-xl animate-pulse" />
           </div>
         ) : (
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-medium bg-primary-50 text-primary-600 rounded-full px-2 py-0.5">
-                {inquiry.categoryName}
-              </span>
-              {inquiry.authorNickname && (
-                <span className="text-xs text-gray-400">{inquiry.authorNickname}</span>
+            {summary && (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium bg-primary-50 text-primary-600 rounded-full px-2 py-0.5">
+                    {summary.categoryName}
+                  </span>
+                  {summary.authorNickname && (
+                    <span className="text-xs text-gray-400">{summary.authorNickname}</span>
+                  )}
+                </div>
+                <h3 className="text-sm font-bold text-gray-800 mb-2">{summary.title}</h3>
+              </>
+            )}
+            <div className="bg-gray-50 rounded-xl p-4">
+              {inquiry ? (
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+                  {inquiry.content}
+                </p>
+              ) : (
+                <div className="text-center">
+                  <p className="text-sm text-gray-400">문의 내용을 불러오지 못했어요</p>
+                  {loadFailed && (
+                    <button
+                      type="button"
+                      onClick={() => setReloadKey((k) => k + 1)}
+                      className="mt-2 px-3 py-1.5 text-xs font-bold text-primary-600 bg-primary-50 rounded-full active:scale-95 transition-transform"
+                    >
+                      다시 시도
+                    </button>
+                  )}
+                </div>
               )}
             </div>
-            <h3 className="text-sm font-bold text-gray-800 mb-2">{inquiry.title}</h3>
-            <div className="bg-gray-50 rounded-xl p-4">
-              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {inquiry.content}
-              </p>
-            </div>
+            {/* 첨부 — 작성자·관리자만 받을 수 있는 API 경로라 같은 출처의 이미지로 그대로 연다 */}
+            {inquiry && inquiry.images.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                {inquiry.images.map((img) => (
+                  <a
+                    key={img.imageId}
+                    href={img.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="relative aspect-square rounded-xl overflow-hidden bg-gray-100"
+                  >
+                    <Image src={img.url} alt="첨부 이미지" fill sizes="33vw" className="object-cover" unoptimized />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

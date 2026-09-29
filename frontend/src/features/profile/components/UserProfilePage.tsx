@@ -7,17 +7,18 @@ import { ArrowLeft, MapPin, MoreVertical, UserX } from 'lucide-react';
 import Avatar from '@/shared/ui/Avatar';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
-import { useRequireAuth } from '@/features/authentication/hooks';
+import { pageTitle } from '@/shared/lib/constants/siteMeta';
+import { useLoginGate } from '@/features/authentication/hooks';
 import { useReport, ReportDialog, ReportMenuItem } from '@/features/report';
 import * as hiddenReportsStorage from '@/features/report/utils/hiddenReportsStorage';
 import type { CurrentUser, ReportTarget } from '@/features/report';
-import { sortMyPlansNewest } from '@/features/my-page/utils/sortPlans';
 import { fetchMyPageProfile } from '@/features/my-page/api';
-import { fetchUserPlans, fetchUserProfile, fetchUserProfileSummary } from '../api/user-profile.api';
+import { fetchUserProfile, fetchUserProfileSummary } from '../api/user-profile.api';
+import { useUserPlansList } from '../hooks/useUserPlansList';
+import { useInfiniteScroll } from '@/features/main/hooks/useInfiniteScroll';
 import { classifyUserProfileError, isOwnProfile, parseUserId } from '../utils/userProfile';
 import { PublicPlanCard } from './PublicPlanCard';
 import type {
-  PublicUserPlan,
   PublicUserProfile,
   PublicUserProfileSummary,
   UserProfileErrorKind,
@@ -48,16 +49,17 @@ const errorStatus = (err: unknown): number | null =>
  */
 export function UserProfilePage({ userId }: UserProfilePageProps) {
   const router = useRouter();
-  // 백엔드 /api/profile/* 는 로그인이 필요하다(비로그인 401). 마이페이지와 같은 가드를 쓴다.
-  const { ready } = useRequireAuth();
+  // 다른 사용자의 공개 프로필은 비로그인도 볼 수 있게 둔다. 서버가 401 을 주면 로그인 안내를 띄운다.
+  // 로그인 확인이 끝난 뒤에 조회해야 로그인 사용자가 초기값(미로그인)으로 잘못 판단되지 않는다.
+  const { authChecked: ready, promptLogin } = useLoginGate();
   const numericUserId = parseUserId(userId);
 
-  const { user, isLoggedIn, updateProfile } = useUserStore();
+  const { user, userId: myUserId, isLoggedIn, updateProfile } = useUserStore();
 
   // 본인 여부는 닉네임으로 판별하는데, 스토어의 닉네임은 마이페이지/플랜 상세를 거쳐야 채워진다.
   // 이 화면에 바로 들어오면 비어 있으므로 한 번 채운다 (CourseViewPage 와 같은 방식).
   useEffect(() => {
-    if (!ready || user.name) return;
+    if (!ready || !isLoggedIn || user.name) return;
     let alive = true;
     fetchMyPageProfile()
       .then((data) => {
@@ -73,17 +75,23 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
     return () => {
       alive = false;
     };
-  }, [ready, user.name, updateProfile]);
+  }, [ready, isLoggedIn, user.name, updateProfile]);
 
   const currentUser: CurrentUser = {
     id: user?.id ?? '',
+    userId: myUserId,
     name: user?.name ?? '',
     isLoggedIn,
   };
 
   const [profileState, setProfileState] = useState<ProfileState>({ status: 'loading' });
   const [summaryState, setSummaryState] = useState<SectionState<PublicUserProfileSummary>>({ status: 'loading' });
-  const [plansState, setPlansState] = useState<SectionState<PublicUserPlan[]>>({ status: 'loading' });
+  // 공개 플랜 목록 — 마이페이지와 같은 page/limit 무한 스크롤 (usePaginatedList)
+  const userPlans = useUserPlansList(numericUserId, { enabled: ready });
+  const plansSentinelRef = useInfiniteScroll({
+    enabled: userPlans.hasNext && !userPlans.isLoadingMore && !userPlans.error,
+    onIntersect: userPlans.loadMore,
+  });
 
   const loadProfile = useCallback(async () => {
     if (!ready) return;
@@ -112,27 +120,14 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
     }
   }, [numericUserId, ready]);
 
-  const loadPlans = useCallback(async () => {
-    if (!ready || numericUserId === null) return;
-    setPlansState({ status: 'loading' });
-    try {
-      // 서버 순서가 정해져 있지 않아 마이페이지와 같이 생성 최신순으로 맞춘다
-      setPlansState({ status: 'ready', data: sortMyPlansNewest(await fetchUserPlans(numericUserId)) });
-    } catch (err) {
-      console.error('사용자 공개 플랜 로드 실패:', err);
-      setPlansState({ status: 'failed' });
-    }
-  }, [numericUserId, ready]);
-
   useEffect(() => {
     void loadProfile();
     void loadSummary();
-    void loadPlans();
-  }, [loadProfile, loadSummary, loadPlans]);
+  }, [loadProfile, loadSummary]);
 
   useEffect(() => {
     const nickname = profileState.status === 'ready' ? profileState.profile.userNickname : '';
-    document.title = nickname ? `${nickname} · 일출` : '프로필 · 일출';
+    document.title = pageTitle(nickname || '프로필');
   }, [profileState]);
 
   // ─── 신고 (⋮) ───
@@ -142,13 +137,14 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
 
   const profile = profileState.status === 'ready' ? profileState.profile : null;
   const nickname = profile?.userNickname || '여행자';
-  const isSelf = isOwnProfile(currentUser, profile?.userNickname);
+  const isSelf = isOwnProfile(currentUser, profile?.userNickname, numericUserId);
 
-  // §9-3: 사용자 신고 대상. ownerId 는 닉네임(A7: 신고 기능이 닉네임으로 본인 여부를 판별)
+  // §9-3: 사용자 신고 대상. 본인 여부는 ownerUserId(숫자 id)로 판별하고 ownerId(닉네임)는 폴백·표시용
   const userTarget: ReportTarget = {
     type: 'user',
     id: userId,
     ownerId: profile?.userNickname ?? '',
+    ownerUserId: numericUserId,
     nickname: profile?.userNickname ?? '',
     contextUrl: `/profile/${userId}`,
   };
@@ -165,7 +161,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
     ];
   })();
 
-  const planCount = plansState.status === 'ready' ? plansState.data.length : null;
+  const planCount = userPlans.isLoading || userPlans.error ? null : userPlans.totalCount;
 
   // 로그인 확인 전 / 미로그인(리다이렉트 대기) 시 보호 콘텐츠 노출 방지 (ProfilePage 와 동일)
   if (!ready) {
@@ -218,6 +214,17 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
               <p className="text-gray-500 font-medium mb-1">찾을 수 없는 사용자예요</p>
               <p className="text-xs text-gray-400">주소가 잘못됐거나 사라진 계정일 수 있어요</p>
             </>
+          ) : profileState.kind === 'auth' ? (
+            <>
+              <p className="text-gray-500 font-medium mb-1">로그인이 필요해요</p>
+              <p className="text-xs text-gray-400 mb-4">프로필을 보려면 먼저 로그인해주세요</p>
+              <button
+                onClick={() => promptLogin('프로필을 보려면 먼저 로그인해주세요.')}
+                className="px-4 py-2 rounded-full bg-primary-500 text-white text-sm font-bold"
+              >
+                로그인하러 가기
+              </button>
+            </>
           ) : (
             <>
               <p className="text-gray-500 font-medium mb-1">프로필을 불러오지 못했어요</p>
@@ -226,7 +233,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
                 onClick={() => {
                   void loadProfile();
                   void loadSummary();
-                  void loadPlans();
+                  userPlans.retry();
                 }}
                 className="px-4 py-2 rounded-full bg-primary-500 text-white text-sm font-bold"
               >
@@ -294,7 +301,7 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
 
           {/* ─── 공개 플랜 목록 ─── */}
           <div className="p-4">
-            {plansState.status === 'loading' && (
+            {userPlans.isLoading && (
               <div className="space-y-4">
                 {[0, 1].map((i) => (
                   <Skeleton key={i} variant="image" height={128} className="rounded-xl" />
@@ -302,11 +309,11 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
               </div>
             )}
 
-            {plansState.status === 'failed' && (
+            {!userPlans.isLoading && userPlans.error && (
               <div className="py-10 flex flex-col items-center text-center">
                 <p className="text-sm text-gray-500 mb-3">공개 플랜을 불러오지 못했어요</p>
                 <button
-                  onClick={() => void loadPlans()}
+                  onClick={userPlans.retry}
                   className="px-3 py-1.5 rounded-full border border-gray-200 text-xs font-bold text-gray-600"
                 >
                   다시 시도
@@ -314,19 +321,27 @@ export function UserProfilePage({ userId }: UserProfilePageProps) {
               </div>
             )}
 
-            {plansState.status === 'ready' && plansState.data.length > 0 && (
+            {!userPlans.isLoading && !userPlans.error && userPlans.items.length > 0 && (
               <div className="space-y-4">
-                {plansState.data.map((plan) => (
+                {userPlans.items.map((plan) => (
                   <PublicPlanCard
                     key={plan.planId}
                     plan={plan}
                     onClick={() => router.push(`/course/${plan.planId}`)}
                   />
                 ))}
+                {/* 무한 스크롤 — 홈 인기 목록과 같은 센티널·상태 문구 */}
+                <div ref={plansSentinelRef} className="h-px w-full" />
+                {userPlans.isLoadingMore && (
+                  <p className="text-center py-3 text-xs text-gray-400">더 불러오는 중...</p>
+                )}
+                {!userPlans.hasNext && !userPlans.isLoadingMore && userPlans.items.length >= 20 && (
+                  <p className="text-center py-3 text-xs text-gray-300">마지막 플랜이에요.</p>
+                )}
               </div>
             )}
 
-            {plansState.status === 'ready' && plansState.data.length === 0 && (
+            {!userPlans.isLoading && !userPlans.error && userPlans.items.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-300">
                   <MapPin size={32} />

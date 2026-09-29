@@ -1,4 +1,5 @@
 import type { PlanDetail, PlanPlaceDetail } from '../types/plan.types';
+import { fixRoParticle } from '@/shared/lib/format/josa';
 
 // 서버 PlanDetailDto 를 화면이 바로 쓸 수 있는 모양으로 정규화한다. API 레이어에서 한 번만 거친다.
 //
@@ -27,6 +28,8 @@ export function normalizePlanDetail(raw: PlanDetail): PlanDetail {
 
   return {
     ...raw,
+    // 4) 조사 오류 (B-23): 예전에 생성된 플랜 설명 "도보으로 떠나는…" 이 DB 에 남아 있다. 정정 전까지 표시용으로 고친다.
+    planDescription: fixRoParticle(raw.planDescription),
     tags: Array.isArray(raw.tags) ? raw.tags : [],
     planImageUrls: Array.isArray(raw.planImageUrls) ? raw.planImageUrls : [],
     planImages: Array.isArray(raw.planImages) ? raw.planImages : [],

@@ -46,6 +46,9 @@ export function usePaginatedList<
 
   const requestIdRef = useRef(0);
   const baseParamsKey = JSON.stringify(baseParams);
+  // 지금 items 가 어떤 조회 조건으로 받아온 것인지. 조건이 바뀐 직후에는 이전 조건의 목록이
+  // 잠시 남아 있으므로, 캐시에는 항상 이 값으로 저장해 다른 조건의 목록으로 덮어쓰지 않는다.
+  const itemsParamsKeyRef = useRef<string | null>(null);
 
   const loadPage = useCallback(
     async (targetPage: number, mode: 'initial' | 'more') => {
@@ -62,6 +65,7 @@ export function usePaginatedList<
         });
         if (reqId !== requestIdRef.current) return;
 
+        itemsParamsKeyRef.current = baseParamsKey;
         setItems((prev) => {
           if (mode === 'initial') return res.data;
           const seen = new Set(prev.map((item) => item.id));
@@ -95,8 +99,10 @@ export function usePaginatedList<
     // StrictMode(dev)에서 effect가 두 번 실행돼도 항상 캐시를 재확인하므로(가드 ref 미사용)
     // 두 번째 실행이 loadPage 로 새로 받아와 캐시를 덮어쓰지 않는다.
     if (cacheKey) {
-      const cached = readListState<T>(cacheKey);
+      // 조회 조건(지역 등)이 같은 캐시만 복원한다 — 다른 지역에서 본 목록이 그대로 뜨던 문제.
+      const cached = readListState<T>(cacheKey, { paramsKey: baseParamsKey });
       if (cached && cached.items.length > 0) {
+        itemsParamsKeyRef.current = baseParamsKey;
         setItems(cached.items);
         setPage(cached.page);
         setHasNext(cached.hasNext);
@@ -112,8 +118,8 @@ export function usePaginatedList<
 
   // 누적 상태를 세션에 저장 (무한 스크롤/복원 후에도 최신 상태 유지)
   useEffect(() => {
-    if (!cacheKey || items.length === 0) return;
-    saveListState(cacheKey, { items, page, hasNext, totalCount });
+    if (!cacheKey || items.length === 0 || itemsParamsKeyRef.current === null) return;
+    saveListState(cacheKey, { items, page, hasNext, totalCount }, itemsParamsKeyRef.current);
   }, [cacheKey, items, page, hasNext, totalCount]);
 
   const loadMore = useCallback(() => {

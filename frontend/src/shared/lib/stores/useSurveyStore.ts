@@ -13,6 +13,8 @@ interface SurveyState {
   // 설문 기반 장소 추천 결과 (POST /api/place/recommend). 새로고침 후에도 장소 선택 단계를
   // 그대로 복원할 수 있도록 컴포넌트 state 가 아니라 스토어에 둔다 (QA C-05).
   recommendedPlaces: Place[];
+  // 추천 응답 plan.reasoning — 결과 화면 헤더의 "AI 가 이렇게 골랐어요" 줄. 새로고침 후에도 유지한다.
+  recommendReasoning: string;
   selectedPlaceIds: string[];
   finalStops: Place[];
   viewingPlaceId: string | null;
@@ -23,6 +25,7 @@ interface SurveyState {
   setPreviousStep: (step: SurveyStep) => void;
   updateSurvey: (key: keyof SurveyData, value: string) => void;
   setRecommendedPlaces: (places: Place[]) => void;
+  setRecommendReasoning: (reasoning: string) => void;
   togglePlaceSelection: (placeId: string) => void;
   clearPlaceSelection: () => void;
   setFinalStops: (stops: Place[]) => void;
@@ -43,6 +46,7 @@ const initialState = {
   previousStep: 'landing' as SurveyStep,
   surveyData: {} as Partial<SurveyData>,
   recommendedPlaces: [] as Place[],
+  recommendReasoning: '',
   selectedPlaceIds: [] as string[],
   finalStops: [] as Place[],
   viewingPlaceId: null,
@@ -65,6 +69,8 @@ export const useSurveyStore = create<SurveyState>()(
         })),
 
       setRecommendedPlaces: (recommendedPlaces) => set({ recommendedPlaces }),
+
+      setRecommendReasoning: (recommendReasoning) => set({ recommendReasoning }),
 
       togglePlaceSelection: (placeId) =>
         set((state) => {
@@ -103,6 +109,7 @@ export const useSurveyStore = create<SurveyState>()(
         surveyData: state.surveyData,
         startingPoint: state.startingPoint,
         recommendedPlaces: state.recommendedPlaces,
+        recommendReasoning: state.recommendReasoning,
         selectedPlaceIds: state.selectedPlaceIds,
         finalStops: state.finalStops,
       }),

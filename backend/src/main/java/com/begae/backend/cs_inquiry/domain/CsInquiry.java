@@ -106,6 +106,9 @@ public class CsInquiry extends BaseEntity {
         this.images.remove(image);
         image.setCsInquiry(null);
     }
-}
 
+    public void clearImages() {
+        new ArrayList<>(images).forEach(this::removeImage);
+    }
+}
 

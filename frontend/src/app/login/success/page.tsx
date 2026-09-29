@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { consumeLoginReturnTo } from '@/shared/lib/auth/loginReturnTo';
 
 const INTRO_SEEN_KEY = 'ilchul_intro_seen';
 
@@ -18,8 +19,10 @@ export default function LoginSuccessPage() {
       /* localStorage 사용 불가 환경은 무시 */
     }
 
+    // 로그인 유도 모달에서 넘어온 경우 보던 화면으로 돌려보낸다 (loginReturnTo 참고)
+    const returnTo = consumeLoginReturnTo();
     const timer = setTimeout(() => {
-      router.replace('/');
+      router.replace(returnTo ?? '/');
     }, 1500);
 
     return () => clearTimeout(timer);

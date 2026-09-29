@@ -20,6 +20,8 @@ describe('classifyUserProfileError', () => {
   it('404 는 없는 사용자, 410 은 탈퇴한 사용자', () => {
     expect(classifyUserProfileError(404)).toBe('not-found');
     expect(classifyUserProfileError(410)).toBe('withdrawn');
+    expect(classifyUserProfileError(401)).toBe('auth');
+    expect(classifyUserProfileError(403)).toBe('auth');
   });
 
   it('그 밖(500·네트워크 오류)은 일반 오류', () => {
@@ -39,5 +41,11 @@ describe('isOwnProfile', () => {
     expect(isOwnProfile({ isLoggedIn: true, name: '새벽여행자' }, '조용한바다')).toBe(false);
     expect(isOwnProfile({ isLoggedIn: true, name: '' }, '')).toBe(false);
     expect(isOwnProfile({ isLoggedIn: true, name: '새벽여행자' }, null)).toBe(false);
+  });
+
+  it('내 id 와 프로필 id 를 알면 id 로만 판별한다 — 닉네임이 같은 다른 사람은 본인이 아니다', () => {
+    expect(isOwnProfile({ isLoggedIn: true, userId: 10, name: '새벽여행자' }, '새벽여행자', 10)).toBe(true);
+    expect(isOwnProfile({ isLoggedIn: true, userId: 10, name: '새벽여행자' }, '새벽여행자', 3)).toBe(false);
+    expect(isOwnProfile({ isLoggedIn: true, userId: 10, name: '바뀐이름' }, '옛이름', 10)).toBe(true);
   });
 });

@@ -21,7 +21,7 @@ public interface PlanService {
 
     PopularPlanResponseDto getPopularPlans(Double lat, Double lng, Integer limit, Integer page);
 
-    PopularPlanResponseDto getPopularPlansByRegion(PopularRegion region, Integer limit, Integer page);
+    PopularPlanResponseDto getPopularPlansByRegion(PopularRegion region, List<String> sigungu, Integer limit, Integer page);
 
     PopularPlanResponseDto getNationwidePopularPlans(Integer limit, Integer page);
 

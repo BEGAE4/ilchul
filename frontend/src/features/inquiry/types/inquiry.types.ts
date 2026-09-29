@@ -1,4 +1,8 @@
+/** 화면 탭 기준 상태 — 서버 inquiryStatus + hasAnswer 를 접은 값 */
 export type InquiryStatus = 'PENDING' | 'ANSWERED';
+
+/** 서버가 내려주는 문의 상태 */
+export type ServerInquiryStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
 
 export type InquiryType = 'GENERAL' | 'BUG' | 'SUGGESTION' | 'OTHER';
 
@@ -33,6 +37,24 @@ export const INQUIRY_STATUS_LABELS: Record<InquiryStatus, string> = {
 export interface InquiryImage {
   imageId: number;
   url: string;
+}
+
+/** 서버 목록 아이템(UserCsInquiryItemDto / AdminCsInquiryItemDto) — 빠진 필드가 와도 버티도록 전부 선택값 */
+export interface ServerInquiryListItem {
+  inquiryId?: number | null;
+  title?: string | null;
+  inquiryType?: InquiryType | null;
+  inquiryStatus?: ServerInquiryStatus | null;
+  hasAnswer?: boolean | null;
+  authorNickname?: string | null; // 관리자 전체 목록에서만 내려옴
+  createdAt?: string | null;
+}
+
+export interface ServerInquiryListResponse {
+  items?: ServerInquiryListItem[] | null;
+  nextCursorId?: number | null;
+  hasNext?: boolean | null;
+  totalCount?: number | null;
 }
 
 /** 목록(내 문의 / 전체 문의)용 경량 아이템 */
@@ -70,6 +92,25 @@ export interface InquiryDetail {
   answer: InquiryAnswer | null;
 }
 
+/** 작성 응답(CreateCsInquiryResponseDto) — 본문·이미지·답변은 내려오지 않는다 */
+export interface CreateInquiryResult {
+  inquiryId: number;
+  title: string;
+  inquiryType: InquiryType;
+  inquiryStatus: ServerInquiryStatus;
+  createdAt: string;
+}
+
+/** 수정 응답(UpdateCsInquiryResponseDto) — 이미지·답변은 내려오지 않는다 */
+export interface UpdateInquiryResult {
+  inquiryId: number;
+  title: string;
+  content: string;
+  inquiryType: InquiryType;
+  inquiryStatus: ServerInquiryStatus;
+  updatedAt: string;
+}
+
 export interface CreateInquiryInput {
   title: string;
   content: string;
@@ -83,7 +124,7 @@ export interface UpdateInquiryInput {
   content?: string;
   categoryId?: number;
   inquiryType?: InquiryType;
-  images?: File[];
+  newImages?: File[]; // 명세 필드명이 newImages 다 (작성은 images)
   deleteImageIds?: number[];
 }
 
@@ -107,9 +148,10 @@ export interface InquiryCategoriesResponse {
   categories: InquiryCategory[];
 }
 
+// 서버에 상태 필터가 없다 — 답변 대기/완료는 받아온 목록을 화면에서 나눈다
 export interface FetchAllInquiriesParams {
-  category?: string;
+  category?: InquiryType;
   search?: string;
-  status?: InquiryStatus;
+  size?: number;
   lastInquiryId?: number;
 }

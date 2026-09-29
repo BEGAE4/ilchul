@@ -86,7 +86,7 @@ Custom SVG icons live in `src/shared/assets/icons/` and are registered in `src/s
 
 ### Navigation
 
-Bottom nav tabs are defined in `src/shared/lib/constants/navItems.ts`. The active tab is passed as a string (`'home' | 'search' | 'create' | 'profile'`). Pages use `getNavItems(activeTab, onNavigate)` and pass the result to `PageLayout`.
+Bottom nav tabs are defined in `src/shared/lib/constants/navItems.ts`. The active tab is passed as a string (`'home' | 'search' | 'create' | 'profile'`). Pages use `useBottomNavItems(activeTab)` (`src/shared/hooks/useBottomNavItems.ts`) and pass the result to `PageLayout`. 플랜생성·마이페이지 탭은 비로그인 시 이동 대신 로그인 유도 모달(`useLoginGate` / `LoginPromptModal`)을 띄운다.
 
 ### Path aliases
 

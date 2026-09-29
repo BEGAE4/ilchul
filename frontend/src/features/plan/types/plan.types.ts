@@ -124,14 +124,20 @@ export interface UpdatePlanPlacesResponse {
 
 // 플랜 복제 (POST /api/plan/{planId}/clone)
 export interface ClonePlanBody {
-  // 명세 format: date — 'yyyy-MM-dd'
+  // 명세 format: date — 'yyyy-MM-dd' (예전 필드, 호환용으로 함께 보낸다)
   scheduledDate?: string;
+  // 2026-09-29 백엔드 반영 — 복제와 동시에 여행 일시를 저장한다 ('yyyy-MM-dd HH:mm')
+  tripStartDate?: string;
+  tripEndDate?: string;
 }
 
 export interface ClonePlanResponse {
   planId: number;
   originalPlanId: number;
   createAt: string;
+  // 복제 본문의 일시를 서버가 저장했으면 함께 돌려준다 (없거나 null 이면 프론트가 수정 API 로 채운다)
+  tripStartDate?: string | null;
+  tripEndDate?: string | null;
 }
 
 // 플랜 좋아요 (POST/DELETE /api/like/{planId})

@@ -17,7 +17,7 @@ export interface PublicUserProfileSummary {
 }
 
 /** GET /api/profile/{userId}/plans 의 항목 (PlanSummary). 공개 플랜만 내려오므로 isPlanVisible 없음.
- *  planVerified·bookmarkCount 는 카드 배지용으로 백엔드에 추가 요청한 상태 — 오기 전까지는 optional. */
+ *  planVerified·bookmarkCount 는 카드 배지용. 2026-09-18 백엔드 추가 (2차 요청 7-2), 운영 응답 확인. */
 export interface PublicUserPlan {
   planId: number;
   planTitle: string;
@@ -26,13 +26,18 @@ export interface PublicUserPlan {
   tripEndDate: string | null;
   requiredTime: number;
   planImages: string[];
-  planVerified?: boolean;
-  bookmarkCount?: number;
+  planVerified: boolean;
+  bookmarkCount: number;
 }
 
 export interface UserPlansResponse {
   plans: PublicUserPlan[];
+  // 목록 페이징 필드 — 백엔드가 page/limit 를 받기 시작하면 함께 온다
+  page?: number;
+  limit?: number;
+  hasNext?: boolean;
+  totalCount?: number;
 }
 
 /** 프로필 조회가 실패했을 때 화면이 갈라지는 종류 */
-export type UserProfileErrorKind = 'not-found' | 'withdrawn' | 'error';
+export type UserProfileErrorKind = 'not-found' | 'withdrawn' | 'auth' | 'error';

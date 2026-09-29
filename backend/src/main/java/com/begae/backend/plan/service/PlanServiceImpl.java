@@ -23,6 +23,7 @@ import com.begae.backend.plan_place.domain.PlanPlaceImage;
 import com.begae.backend.plan_place.repository.PlanPlaceImageRepository;
 import com.begae.backend.plan_place.repository.PlanPlaceRepository;
 import com.begae.backend.storage.dto.StoredImage;
+import com.begae.backend.storage.exception.StorageErrorCode;
 import com.begae.backend.storage.service.ImageFileCleaner;
 import com.begae.backend.storage.service.ImageStorageService;
 import com.begae.backend.user.domain.User;
@@ -45,6 +46,8 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 public class PlanServiceImpl implements PlanService{
+
+    private static final int MAX_IMAGES_PER_REQUEST = 5;
 
     private final PlanRepository planRepository;
     private final RestTemplate restTemplate = new RestTemplate();
@@ -234,15 +237,20 @@ public class PlanServiceImpl implements PlanService{
 
     @Transactional(readOnly = true)
     @Override
-    public PopularPlanResponseDto getPopularPlansByRegion(PopularRegion region, Integer limit, Integer page) {
-        int safeLimit = Math.min(limit, 50);
-        int offset = (page - 1) * safeLimit;
-        String primaryPrefix = region.getAddressPrefixes().getFirst();
-        String legacyPrefix = region.getAddressPrefixes().getLast();
+    public PopularPlanResponseDto getPopularPlansByRegion(PopularRegion region, List<String> sigungu, Integer limit, Integer page) {
+        var pageable = com.begae.backend.global.dto.ListPageRequest.of(page, limit);
+        int safeLimit = pageable.getPageSize();
+        page = pageable.getPageNumber() + 1;
+        int offset = (int) pageable.getOffset();
+        if (region == PopularRegion.UNKNOWN) {
+            return PopularPlanResponseDto.of(List.of(), page, safeLimit, 0);
+        }
+        boolean allDistricts = sigungu == null || sigungu.isEmpty();
+        List<String> districts = allDistricts ? List.of("") : sigungu;
 
         List<Integer> planIds = planRepository.findPopularPlanIdsByRegion(
-                primaryPrefix, legacyPrefix, safeLimit, offset);
-        int totalCount = planRepository.countPopularPlansByRegion(primaryPrefix, legacyPrefix);
+                region.getSido(), districts, allDistricts, safeLimit, offset);
+        int totalCount = planRepository.countPopularPlansByRegion(region.getSido(), districts, allDistricts);
 
         if (planIds.isEmpty()) {
             return PopularPlanResponseDto.of(List.of(), page, safeLimit, totalCount);
@@ -314,6 +322,21 @@ public class PlanServiceImpl implements PlanService{
         originPlan.validateReadableBy(userId);
 
         Plan newPlan = Plan.copyOf(originPlan, user);
+        if (planCopyRequestDto != null) {
+            var start = planCopyRequestDto.getTripStartDate();
+            var end = planCopyRequestDto.getTripEndDate();
+            if ((start == null) != (end == null)) {
+                throw new CustomException(com.begae.backend.global.exception.GlobalErrorCode.INVALID_INPUT_VALUE);
+            }
+            if (start != null && start.isAfter(end)) {
+                throw new CustomException(PlanErrorCode.INVALID_TRIP_DATE_RANGE);
+            }
+            if (start == null && planCopyRequestDto.getScheduledDate() != null) {
+                start = planCopyRequestDto.getScheduledDate().atStartOfDay();
+                end = start.plusMinutes(Math.max(0, originPlan.getRequiredTime() == null ? 0 : originPlan.getRequiredTime()));
+            }
+            newPlan.updateUnverifiedOnlyInfo(start, end);
+        }
         planRepository.save(newPlan);
 
         return PlanCopyResponseDto.of(newPlan, originPlan.getPlanId());
@@ -376,6 +399,9 @@ public class PlanServiceImpl implements PlanService{
     @Transactional
     @Override
     public PlanDetailDto uploadImages(Integer userId, Integer planId, List<MultipartFile> images) {
+        if (images != null && images.size() > MAX_IMAGES_PER_REQUEST) {
+            throw new CustomException(StorageErrorCode.TOO_MANY_FILES);
+        }
         Plan plan = planRepository.findById(planId)
                 .orElseThrow(() -> new CustomException(PlanErrorCode.PLAN_NOT_FOUND));
 

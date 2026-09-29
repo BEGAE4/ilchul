@@ -16,7 +16,7 @@ import type {
 } from '../types/plan.types';
 import { normalizePlanDetail } from '../utils/normalizePlanDetail';
 import { toServerDateTime } from '@/shared/lib/format/serverDateTime';
-import { stripImageMetadata, stripImagesMetadata } from '@/shared/lib/image';
+import { chunkForUpload, prepareImageForUpload } from '@/shared/lib/image';
 
 // 플랜 생성 — 출발지/일정/장소까지 일괄 등록
 export async function createPlan(body: CreatePlanBody): Promise<CreatePlanResponse> {
@@ -88,14 +88,21 @@ export async function createPlanPreview(body: {
 // 이전에는 location 을 application/json Blob 파트로 보내 운영에서 항상 400 "잘못된 입력값입니다." 였다
 // (2026-09-08 운영 확인: JSON 파트·{lat,lng}·request 파트 전부 400/500, 폼 필드만 200/422).
 // 좌표가 없으면 서버가 500 을 내므로 호출부(MyCourseDetailPage)가 위치 없이 보내지 않게 막는다.
+// 업로드 제한 시간. 기본값(무제한)이면 회선이 끊겼을 때 '기록하는 중' 화면이 끝나지 않는다.
+// 사진은 긴 변 2048px JPEG(보통 1~1.5MB, 최대 3MB)로 줄여 보낸다 — prepareImageForUpload 참고.
+// 약한 LTE(0.3Mbps)에서 1.5MB 가 40초쯤 걸리므로 여유를 두어 60초.
+export const STAMP_UPLOAD_TIMEOUT_MS = 60000;
+
 export async function stampPlanPlace(
   planPlaceId: number,
   image: File,
-  location: { x: number; y: number } | null
+  location: { x: number; y: number } | null,
+  options: { signal?: AbortSignal } = {}
 ): Promise<StampPlanPlaceResponse> {
   const form = new FormData();
-  // 인증 판정은 폼 필드 좌표로 하므로, 사진 속 촬영 위치(EXIF)는 지워서 보낸다
-  form.append('image', await stripImageMetadata(image));
+  // 인증 판정은 폼 필드 좌표로 하므로, 사진 속 촬영 위치(EXIF)는 지워서 보낸다.
+  // 야외의 약한 통신망에서도 끝나도록 함께 줄인다 — prepareImageForUpload 참고
+  form.append('image', await prepareImageForUpload(image));
   if (location) {
     form.append('location.x', String(location.x));
     form.append('location.y', String(location.y));
@@ -103,19 +110,50 @@ export async function stampPlanPlace(
   const { data } = await apiClient.post<StampPlanPlaceResponse>(
     `/api/plan-place/${planPlaceId}/stamp`,
     form,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: STAMP_UPLOAD_TIMEOUT_MS,
+      signal: options.signal,
+    }
   );
   return data;
 }
 
 // 플랜 이미지 업로드 (multipart)
+// 서버는 한 요청에 5장까지 받는다 (파일 15MB · 요청 80MB, 2026-09-20 반영). 5장씩 묶어 보낸다.
+// 이전에는 앞단이 요청 전체를 1MB 로 막아 한 장씩 따로 보냈다.
+// 중간 묶음이 실패하면 그때까지 올라간 장수를 실어 던진다 —
+// 호출부가 "7장 중 5장만 올렸어요"처럼 알리고 화면을 새로 불러올 수 있다.
+export class PlanImageUploadError extends Error {
+  constructor(
+    readonly uploaded: number,
+    readonly total: number,
+    readonly cause: unknown
+  ) {
+    super('plan_image_upload_failed');
+    this.name = 'PlanImageUploadError';
+  }
+}
+
 export async function uploadPlanImages(planId: number, images: File[]): Promise<PlanDetail> {
-  const form = new FormData();
-  (await stripImagesMetadata(images)).forEach((img) => form.append('images', img));
-  const { data } = await apiClient.post<PlanDetail>(`/api/plan/${planId}/images`, form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-  return normalizePlanDetail(data);
+  let last: PlanDetail | null = null;
+  let uploaded = 0;
+  for (const batch of chunkForUpload(images)) {
+    try {
+      const form = new FormData();
+      // 메모리 때문에 한 장씩 차례로 줄인다
+      for (const image of batch) form.append('images', await prepareImageForUpload(image));
+      const { data } = await apiClient.post<PlanDetail>(`/api/plan/${planId}/images`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      last = data;
+      uploaded += batch.length;
+    } catch (err) {
+      throw new PlanImageUploadError(uploaded, images.length, err);
+    }
+  }
+  if (!last) throw new PlanImageUploadError(0, 0, new Error('no_images'));
+  return normalizePlanDetail(last);
 }
 
 // 플랜 이미지 삭제 — 명세 query int[]. 반복 파라미터(imageIds=1&imageIds=2)로 직렬화.
@@ -147,20 +185,21 @@ export interface PlanSchedule {
 }
 
 // 플랜 복제 + 여행 일시 설정.
-// 운영 복제 API 는 scheduledDate 를 받아도 반영하지 않고 tripStartDate/tripEndDate 를 null 로 둔다
-// (2026-09-11 확인, 백엔드 요청 중). 그래서 복제 직후 수정 API 로 일시를 채운다.
+// 2026-09-29 부터 복제 API 가 본문의 tripStartDate/tripEndDate 를 함께 저장한다(백엔드 요청 4-2 반영).
+// 응답에 저장된 일시가 오면 그대로 끝내고, 예전 서버처럼 null 로 오면 수정 API 로 채우는 우회를 남긴다.
 // 복제는 성공하고 일시 저장만 실패할 수 있으므로 결과를 나눠 돌려준다 — 호출부가 사용자에게 알린다.
-// 이전에는 수정 실패를 조용히 삼켜 '담았어요' 토스트 뒤에 일정이 빈 플랜이 남았다.
 export async function clonePlanWithSchedule(
   planId: number,
   schedule: PlanSchedule
 ): Promise<{ planId: number; scheduleSaved: boolean }> {
-  const res = await clonePlan(planId, { scheduledDate: schedule.date });
+  const tripStartDate = toServerDateTime(schedule.date, schedule.startTime);
+  const tripEndDate = toServerDateTime(schedule.date, schedule.endTime);
+  const res = await clonePlan(planId, { scheduledDate: schedule.date, tripStartDate, tripEndDate });
+  if (res.tripStartDate && res.tripEndDate) {
+    return { planId: res.planId, scheduleSaved: true };
+  }
   try {
-    await updatePlan(res.planId, {
-      tripStartDate: toServerDateTime(schedule.date, schedule.startTime),
-      tripEndDate: toServerDateTime(schedule.date, schedule.endTime),
-    });
+    await updatePlan(res.planId, { tripStartDate, tripEndDate });
     return { planId: res.planId, scheduleSaved: true };
   } catch (err) {
     console.error('복제한 플랜의 일정 저장 실패:', err);

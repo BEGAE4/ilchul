@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { isAuthError } from '@/shared/lib/api/isAuthError';
 import { searchAll } from '../api/search.api';
 import type { SearchPlaceResult, SearchPlanResult } from '../types/search.types';
 
@@ -59,6 +60,8 @@ interface UseSearchResultsResult {
   isLoading: boolean;
   isLoadingMore: boolean;
   isError: boolean;
+  // 401/403 — 서버가 로그인을 요구한 경우. 네트워크 오류와 구분해 로그인 안내를 띄운다.
+  requiresAuth: boolean;
   loadMore: () => void;
   retry: () => void;
 }
@@ -77,6 +80,7 @@ export function useSearchResults(keyword: string): UseSearchResultsResult {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [requiresAuth, setRequiresAuth] = useState(false);
 
   const requestIdRef = useRef(0);
 
@@ -91,6 +95,7 @@ export function useSearchResults(keyword: string): UseSearchResultsResult {
         setHasNextPlan(false);
         setIsLoading(false);
         setIsError(false);
+        setRequiresAuth(false);
         return;
       }
 
@@ -98,6 +103,7 @@ export function useSearchResults(keyword: string): UseSearchResultsResult {
       if (mode === 'initial') setIsLoading(true);
       else setIsLoadingMore(true);
       setIsError(false);
+      setRequiresAuth(false);
 
       try {
         const data = await searchAll(keyword, { page: targetPage, limit: SEARCH_LIMIT });
@@ -122,6 +128,7 @@ export function useSearchResults(keyword: string): UseSearchResultsResult {
         if (reqId !== requestIdRef.current) return;
         console.error('통합 검색 실패:', err);
         setIsError(true);
+        setRequiresAuth(isAuthError(err));
       } finally {
         if (reqId === requestIdRef.current) {
           if (mode === 'initial') setIsLoading(false);
@@ -146,6 +153,7 @@ export function useSearchResults(keyword: string): UseSearchResultsResult {
         setPage(cached.page);
         setIsLoading(false);
         setIsError(false);
+        setRequiresAuth(false);
         return;
       }
     }
@@ -200,6 +208,7 @@ export function useSearchResults(keyword: string): UseSearchResultsResult {
     isLoading,
     isLoadingMore,
     isError,
+    requiresAuth,
     loadMore,
     retry,
   };

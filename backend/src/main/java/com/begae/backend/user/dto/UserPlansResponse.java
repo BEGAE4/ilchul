@@ -19,13 +19,22 @@ import java.util.List;
 public class UserPlansResponse {
 
     private List<PlanSummary> plans;
+    private int page;
+    private int limit;
+    private boolean hasNext;
+    private long totalCount;
+
+    public static UserPlansResponse from(org.springframework.data.domain.Page<Plan> plans) {
+        return new UserPlansResponse(plans.getContent().stream().map(PlanSummary::from).toList(),
+                plans.getNumber() + 1, plans.getSize(), plans.hasNext(), plans.getTotalElements());
+    }
 
     public static UserPlansResponse from(List<Plan> plans) {
         List<PlanSummary> summaries = plans.stream()
                 .map(PlanSummary::from)
                 .toList();
 
-        return new UserPlansResponse(summaries);
+        return new UserPlansResponse(summaries, 1, plans.size(), false, plans.size());
     }
 
     @Getter

@@ -4,6 +4,7 @@ import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import type { InquiryListItem } from '../types/inquiry.types';
 import { INQUIRY_STATUS_LABELS } from '../types/inquiry.types';
+import { formatInquiryDate } from '../utils/inquiryMapper';
 
 interface InquiryCardProps {
   inquiry: InquiryListItem;
@@ -11,11 +12,6 @@ interface InquiryCardProps {
   onClick: () => void;
   onAnswer?: () => void;
 }
-
-const formatDate = (iso: string) => {
-  const d = new Date(iso);
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
-};
 
 export const InquiryCard = ({ inquiry, showUser = false, onClick, onAnswer }: InquiryCardProps) => {
   const isPending = inquiry.status === 'PENDING';
@@ -41,7 +37,7 @@ export const InquiryCard = ({ inquiry, showUser = false, onClick, onAnswer }: In
             {showUser && inquiry.authorNickname && (
               <p className="text-xs text-gray-400 mt-0.5">{inquiry.authorNickname}</p>
             )}
-            <p className="text-xs text-gray-400 mt-1">{formatDate(inquiry.createdAt)}</p>
+            <p className="text-xs text-gray-400 mt-1">{formatInquiryDate(inquiry.createdAt)}</p>
           </div>
           <ChevronRight size={16} className="text-gray-300 flex-shrink-0 mt-1" />
         </div>

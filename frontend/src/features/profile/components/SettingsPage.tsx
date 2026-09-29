@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Avatar from '@/shared/ui/Avatar';
@@ -13,11 +13,19 @@ import {
   HelpCircle,
   Camera,
   X,
+  Loader2,
 } from 'lucide-react';
 import { useUserStore } from '@/shared/lib/stores/useUserStore';
 import { SERVICE_ROUTES } from '@/shared/lib/constants/service';
 import ServiceFooter from '@/shared/ui/ServiceFooter';
-import { fetchMyPageProfile, updateMyPageProfile } from '@/features/my-page/api';
+import {
+  deleteProfileImage,
+  fetchMyPageProfile,
+  updateMyPageProfile,
+  uploadProfileImage,
+} from '@/features/my-page/api';
+import { profileImageErrorMessage } from '@/features/my-page/utils/profileImageError';
+import { canLoadImage } from '@/shared/lib/image';
 import { logout, deleteUser } from '@/features/authentication/api';
 
 // 알림 설정·개인정보 및 보안(비공개 프로필) 화면은 뺐다. 토글이 스토어 메모리만 바꾸고 서버에 저장하지 않아
@@ -75,7 +83,6 @@ export function SettingsPage() {
       const updated = await updateMyPageProfile({
         newUserNickname: editName,
         newUserIntro: editTitle,
-        newUserProfileImg: user.avatar,
       });
 
       // 응답 데이터로 로컬 스토어 갱신 (null → '' 정규화, P-01)
@@ -93,6 +100,58 @@ export function SettingsPage() {
       toast.error('프로필 수정에 실패했어요. 다시 시도해 주세요.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // ── 프로필 사진 (2026-09-18 백엔드 추가: POST/DELETE /api/mypage/profile/image) ──
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imageBusy, setImageBusy] = useState<'upload' | 'delete' | null>(null);
+
+  const handlePickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // 같은 사진을 다시 골라도 onChange 가 터지도록 비운다
+    e.target.value = '';
+    if (!file || imageBusy) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('사진 파일만 올릴 수 있어요.');
+      return;
+    }
+    setImageBusy('upload');
+    try {
+      const updated = await uploadProfileImage(file);
+      // 닉네임·소개는 수정 중일 수 있으므로 사진만 갱신한다
+      updateProfile({ avatar: updated.userImg ?? '' });
+      // 서버가 200 을 줘도 돌려준 주소가 안 열릴 수 있다 — 조용히 기본 아바타로 떨어지지 않게 확인한다
+      if (updated.userImg && (await canLoadImage(updated.userImg))) {
+        toast.success('프로필 사진을 바꿨어요.');
+      } else {
+        toast.warning('사진은 저장됐지만 아직 표시할 수 없어요.', {
+          description: '잠시 후 다시 확인해주세요. 계속되면 고객센터로 알려주세요.',
+        });
+      }
+    } catch (err) {
+      console.error('프로필 사진 업로드 실패:', err);
+      const decodeFailed = err instanceof Error && err.message === 'image_decode_failed';
+      toast.error(
+        decodeFailed ? '이 사진은 열 수 없어요. 다른 사진을 골라주세요.' : profileImageErrorMessage(err)
+      );
+    } finally {
+      setImageBusy(null);
+    }
+  };
+
+  const handleResetImage = async () => {
+    if (imageBusy) return;
+    setImageBusy('delete');
+    try {
+      const updated = await deleteProfileImage();
+      updateProfile({ avatar: updated.userImg ?? '' });
+      toast.success('기본 이미지로 바꿨어요.');
+    } catch (err) {
+      console.error('프로필 사진 삭제 실패:', err);
+      toast.error('기본 이미지로 바꾸지 못했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+      setImageBusy(null);
     }
   };
 
@@ -176,23 +235,48 @@ export function SettingsPage() {
               <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200">
                 <Avatar src={user.avatar} alt="프로필" size={92} />
               </div>
-              {/* 프로필 사진 변경은 서버에 이미지 업로드 엔드포인트가 없어 아직 지원하지 않는다.
-                  (프로필 수정 API 는 이미지 URL 문자열만 받는다 — BE 요청 문서 참고)
-                  누르면 아무 일도 안 일어나던 버튼이라 비활성 상태와 안내를 명시한다. */}
+              {imageBusy && (
+                <div className="absolute inset-0 rounded-full bg-white/70 flex items-center justify-center">
+                  <Loader2 size={22} className="animate-spin text-primary-500" />
+                </div>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handlePickImage}
+                className="hidden"
+                aria-hidden
+                tabIndex={-1}
+              />
               <button
                 type="button"
-                disabled
-                aria-label="프로필 사진 변경 (준비 중)"
-                title="프로필 사진 변경은 준비 중이에요"
-                className="absolute bottom-0 right-0 w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white cursor-not-allowed"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={imageBusy !== null}
+                aria-label="프로필 사진 변경"
+                className="absolute bottom-0 right-0 w-8 h-8 bg-primary-500 rounded-full flex items-center justify-center text-white shadow-md border-2 border-white active:scale-95 transition-transform disabled:bg-gray-300"
               >
                 <Camera size={14} />
               </button>
             </div>
           </div>
-          <p className="text-center text-[11px] text-gray-400 -mt-6 mb-6">
-            프로필 사진 변경은 준비 중이에요. 소셜 계정 사진이 표시돼요.
-          </p>
+          <div className="text-center -mt-5 mb-6 space-y-1">
+            <p className="text-[11px] text-gray-400">
+              {imageBusy === 'upload'
+                ? '사진을 올리는 중이에요...'
+                : 'JPG · PNG · WEBP 사진을 올릴 수 있어요.'}
+            </p>
+            {user.avatar && (
+              <button
+                type="button"
+                onClick={handleResetImage}
+                disabled={imageBusy !== null}
+                className="text-xs font-bold text-gray-500 underline underline-offset-2 disabled:text-gray-300"
+              >
+                {imageBusy === 'delete' ? '바꾸는 중...' : '기본 이미지로 변경'}
+              </button>
+            )}
+          </div>
           <div className="space-y-5">
             <div>
               <label className="block text-sm font-bold text-gray-500 mb-2">닉네임</label>

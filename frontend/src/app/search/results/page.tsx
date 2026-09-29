@@ -1,18 +1,16 @@
 'use client';
 
 import { Suspense } from 'react';
-import { useRouter } from 'next/navigation';
 import { SearchResultsPage } from '@/features/search/components/SearchResultsPage';
 import PageLayout from '@/shared/ui/PageLayout';
-import { getNavItems } from '@/shared/lib/constants/navItems';
+import { useBottomNavItems } from '@/shared/hooks/useBottomNavItems';
 
 function SearchResultsContent() {
   return <SearchResultsPage />;
 }
 
 export default function SearchResultsRoute() {
-  const router = useRouter();
-  const navItems = getNavItems('search', (path) => router.push(path));
+  const navItems = useBottomNavItems('search');
 
   return (
     <PageLayout bottomNavItems={navItems}>
