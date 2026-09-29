@@ -19,13 +19,23 @@ import java.util.List;
 public class MyPlansResponse {
 
     private List<PlanSummary> plans;
+    private int page;
+    private int limit;
+    private boolean hasNext;
+    private int totalCount;
 
-    public static MyPlansResponse from(List<Plan> plans) {
+    public static MyPlansResponse of(List<Plan> plans, int page, int limit, int totalCount) {
         List<PlanSummary> summaries = plans.stream()
                 .map(PlanSummary::from)
                 .toList();
 
-        return new MyPlansResponse(summaries);
+        return MyPlansResponse.builder()
+                .plans(summaries)
+                .page(page)
+                .limit(limit)
+                .hasNext((long) page * limit < totalCount)
+                .totalCount(totalCount)
+                .build();
     }
 
     @Getter
