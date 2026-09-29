@@ -22,19 +22,20 @@ public class MyPlansResponse {
     private int page;
     private int limit;
     private boolean hasNext;
-    private long totalCount;
+    private int totalCount;
 
-    public static MyPlansResponse from(org.springframework.data.domain.Page<Plan> plans) {
-        return new MyPlansResponse(plans.getContent().stream().map(PlanSummary::from).toList(),
-                plans.getNumber() + 1, plans.getSize(), plans.hasNext(), plans.getTotalElements());
-    }
-
-    public static MyPlansResponse from(List<Plan> plans) {
+    public static MyPlansResponse of(List<Plan> plans, int page, int limit, int totalCount) {
         List<PlanSummary> summaries = plans.stream()
                 .map(PlanSummary::from)
                 .toList();
 
-        return new MyPlansResponse(summaries, 1, plans.size(), false, plans.size());
+        return MyPlansResponse.builder()
+                .plans(summaries)
+                .page(page)
+                .limit(limit)
+                .hasNext((long) page * limit < totalCount)
+                .totalCount(totalCount)
+                .build();
     }
 
     @Getter

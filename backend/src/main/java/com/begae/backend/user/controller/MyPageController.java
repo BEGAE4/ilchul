@@ -47,16 +47,16 @@ public class MyPageController {
                 .body(myPageService.updateUserProfile(updateUserProfileRequest, userDetails.getUserId()));
     }
 
-    @Operation(summary = "내 플랜 목록 조회", description = "내가 작성한 플랜 목록을 조회합니다.")
+    @Operation(summary = "내 플랜 목록 조회", description = "내가 작성한 플랜 목록을 최신순으로 페이지 단위 조회합니다.")
     @ApiResponse(responseCode = "200", description = "내 플랜 목록을 성공적으로 조회했습니다.")
     @ApiResponse(responseCode = "204", description = "조회된 플랜이 없습니다.")
     @GetMapping("plans")
     public ResponseEntity<MyPlansResponse> getMyPlans(
-            @AuthenticationPrincipal OauthUserDetails userDetails,
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "20") Integer limit
+            @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails userDetails,
+            @Parameter(description = "페이지당 조회 개수", example = "10") @RequestParam(defaultValue = "10") @Positive Integer limit,
+            @Parameter(description = "페이지 번호", example = "1") @RequestParam(defaultValue = "1") @Positive Integer page
     ) {
-        MyPlansResponse myPlansResponse = myPageService.findMyPlans(userDetails.getUserId(), page, limit);
+        MyPlansResponse myPlansResponse = myPageService.findMyPlans(userDetails.getUserId(), limit, page);
         if(myPlansResponse.getPlans().isEmpty()) {
             return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
         }
