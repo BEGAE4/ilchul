@@ -3,10 +3,24 @@ import pathlib
 import tempfile
 import unittest
 
-from vault_preflight import validate_public_env, validate_readiness, secure_file, require_closed_rollback_window
+from vault_preflight import (validate_public_env, validate_readiness, secure_file,
+                             require_closed_rollback_window, validate_executables)
 
 
 class PreflightTest(unittest.TestCase):
+    def test_host_requires_the_fixed_deployment_lifecycle_command(self):
+        import os
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            for name in ('ilchul-vault-migrate', 'ilchul-vault-preflight', 'ilchul-vault-deployment'):
+                path = root / name
+                path.write_text('test-only')
+                path.chmod(0o750)
+            validate_executables(root, owner=os.getuid())
+            (root / 'ilchul-vault-deployment').unlink()
+            with self.assertRaises((ValueError, FileNotFoundError)):
+                validate_executables(root, owner=os.getuid())
+
     def test_next_deployment_is_blocked_until_operator_acceptance(self):
         with tempfile.TemporaryDirectory() as directory:
             marker = pathlib.Path(directory) / 'pending.json'

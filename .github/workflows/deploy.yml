@@ -132,14 +132,20 @@ jobs:
           bash scripts/prune-deployment-images.test.sh
           bash scripts/smoke-deployment.test.sh
 
-      - name: Check host readiness before copying deployment files
+      - name: Prepare deployment attempt before copying deployment files
         uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
+        env:
+          GIT_SHA: ${{ needs.metadata.outputs.git_sha }}
+          DEPLOY_RUN_ID: ${{ github.run_id }}
         with:
           host: ${{ secrets.ORACLE_HOST }}
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_KEY }}
           port: ${{ secrets.ORACLE_PORT }}
-          script: sudo -n /usr/local/sbin/ilchul-vault-preflight --new-deployment
+          envs: GIT_SHA,DEPLOY_RUN_ID
+          script: |
+            sudo -n /usr/local/sbin/ilchul-vault-preflight
+            sudo -n /usr/local/sbin/ilchul-vault-deployment prepare "$GIT_SHA" "$DEPLOY_RUN_ID"
 
       - name: Copy deployment files
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
@@ -169,7 +175,7 @@ jobs:
             PROJECT_PATH="/home/begae/ilchul"
             cd "$PROJECT_PATH"
 
-            sudo -n /usr/local/sbin/ilchul-vault-preflight --new-deployment
+            sudo -n /usr/local/sbin/ilchul-vault-preflight
             # Only allowlisted non-secret values; never source a production .env in the shell.
             export COMPOSE_ENV_FILES=/etc/ilchul/runtime-public.env
             export FRONTEND_IMAGE="ghcr.io/${REPO_OWNER}/ilchul-frontend:${GIT_SHA}"
@@ -245,10 +251,6 @@ jobs:
 
             docker compose -f "docker-compose.${TARGET_ENV}.yml" config --quiet
             docker compose -f "docker-compose.${TARGET_ENV}.yml" pull
-            # Keep the rollback window open even if target startup or traffic switching fails.
-            # Only an operator closes it after reviewing application checks and rollback state.
-            (umask 077; set -C; printf '{"sha":"%s","previous":"%s","target":"%s"}\n' \
-              "$GIT_SHA" "$CURRENT_ENV" "$TARGET_ENV" > vault-acceptance-pending.json)
             sudo -n /usr/local/sbin/ilchul-vault-migrate "$BACKEND_IMAGE"
             docker compose -f "docker-compose.${TARGET_ENV}.yml" up -d
 
@@ -279,12 +281,13 @@ jobs:
         uses: appleboy/ssh-action@823bd89e131d8d508129f9443cad5855e9ba96f0 # v1.2.4
         env:
           REPO_OWNER: ${{ needs.metadata.outputs.repo_owner }}
+          GIT_SHA: ${{ needs.metadata.outputs.git_sha }}
         with:
           host: ${{ secrets.ORACLE_HOST }}
           username: ${{ secrets.ORACLE_USER }}
           key: ${{ secrets.ORACLE_KEY }}
           port: ${{ secrets.ORACLE_PORT }}
-          envs: REPO_OWNER
+          envs: REPO_OWNER,GIT_SHA
           script: |
             set -eu
             PROJECT_PATH="/home/begae/ilchul"
@@ -319,7 +322,7 @@ jobs:
             fi
 
             echo "$TARGET_ENV" > current_environment.txt
-            echo 'Previous color retained. Verify login/refresh/upload/delete before operator retirement.'
+            echo 'Previous color retained until the next deployment.'
 
             if [ -f .deploy-image-state.tsv ]; then
               bash scripts/prune-deployment-images.sh cleanup \
@@ -329,3 +332,5 @@ jobs:
             else
               echo 'Image cleanup skipped: no previous deployment state.'
             fi
+
+            sudo -n /usr/local/sbin/ilchul-vault-deployment accept "$GIT_SHA"

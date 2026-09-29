@@ -52,7 +52,7 @@ DB 대상은 private Docker DNS `mysql:3306/ilchul_db`다. 다른 값이 실제 
 - [ ] root 소유 publisher service `ilchul-secrets.service` 설치. 공통 runtime의 `--ilchul-backend`로 ExecStart/ExecReload, RemainAfterExit=yes. 정상 배포는 reload, restart 금지.
 - [ ] `ilchul-runtime.service` 설치·enable. Docker restart=no인 active color를 publisher 성공 이후에만 복구해야 한다. Docker daemon 재시작에도 종속 서비스가 재시작하도록 관계와 실제 복구를 검증.
 - [ ] boot 복구는 현재 이미지의 고정 SHA와 public config로 재생성 가능해야 한다. tmpfs 재생성 실패 시 앱을 시작하지 않으며 다른 서비스를 중단하지 않는다.
-- [ ] 본 PR의 `scripts/vault_preflight.py`를 `/usr/local/sbin/ilchul-vault-preflight`, `infrastructure/vault/ilchul-vault-migrate.py`를 `/usr/local/sbin/ilchul-vault-migrate`에 root:root 0750으로 검토 후 설치. 워크플로우는 sudo로 이 고정 경로만 호출한다.
+- [ ] 본 PR의 `scripts/vault_preflight.py`를 `/usr/local/sbin/ilchul-vault-preflight`, `infrastructure/vault/ilchul-vault-migrate.py`를 `/usr/local/sbin/ilchul-vault-migrate`, `infrastructure/vault/ilchul-vault-deployment.py`를 `/usr/local/sbin/ilchul-vault-deployment`에 root:root 0750으로 검토 후 설치. 새 deployment 명령을 먼저 설치한 뒤 갱신한 preflight를 설치한다. 워크플로우는 sudo로 이 고정 경로만 호출한다.
 - [ ] 배포 계정의 기존 SSH와 sudo 경로를 검토하고 필요한 명령만 허용. 새 공용 key를 복사하지 않는다.
 - [ ] GitHub `production` environment의 required reviewer/branch 정책 실제 확인. YAML에 environment를 적는 것만으로 reviewer 보호가 생겼다고 간주하지 않는다.
 - [ ] Vault 실패 주입 시 기존 current/active container 유지, backend 권한으로 다른 서비스와 migration 파일 읽기 거부, 실제 DB/Redis/MinIO 권한 경계 검증.
@@ -98,10 +98,14 @@ host 명령 때문에 **배포가 중단되는 것이 정상**이다. 먼저 hos
    → gzip CRC/sha256 → 제한된 일회용 migration container. backup은 `/var/backups/ilchul-vault`, root 0700/0600이다.
 5. migration 성공 → inactive color 시작 → backend/frontend health → nginx 설정 검사·전환 → 공개 intro 200 / 비인증 API 401.
    migration 실패 시 traffic은 이전 색상을 유지한다. DB schema는 자동 rollback하지 않는다. 전환 전 호환성 검토가 필수다.
-6. 기존 색상은 실행 상태로 보존한다. OAuth 로그인/refresh/이미지 업로드·조회·삭제/일정/검색 검증 후에만 운영자가 중지한다.
-   `vault-acceptance-pending.json`이 있으면 다음 배포는 파일 복사 전부터 차단된다. target 시작 실패나 rollback 후에도 자동으로 제거하지 않는다.
-   운영자가 검증 결과·이전 색상·백업/계정 상태를 확인하고 기록을 보관한 뒤 marker를 제거해야 다음 배포가 허용된다.
-7. rollback 경계를 닫은 뒤에만 구 계정 폐기, 구 env/Secret 버전 정리를 별도로 승인한다.
+6. 배포 시 `/var/lib/ilchul-vault/vault-acceptance-pending.json`을 root-only로 생성한다. 트래픽 전환과 공개 smoke가 성공하면
+   실제 SHA·active color·Nginx upstream·두 앱 health를 다시 확인하고 `/var/backups/ilchul-vault/deployment-acceptance`에 기록을
+   보관한 뒤 marker를 자동 해제한다. 기존 색상은 다음 배포 전까지 실행 상태로 유지한다.
+7. 실패 marker가 남은 다음 배포는 무조건 막지 않는다. active/current가 모두 이전 색상이고 해당 색상 앱·공개 smoke가 정상이면
+   이전 marker를 `failed-superseded`로 보관하고 새 SHA의 marker로 원자적으로 교체한다. 성공했지만 마지막 marker 해제만 실패한
+   경우에는 live image SHA까지 일치할 때만 `accepted-late`로 보관하고 다음 배포를 연다. 색상 불일치, 잔여 migration 작업,
+   비정상 health 또는 smoke 실패는 계속 fail-closed한다. DB/Flyway 실패는 새 migration 실행에서도 실패하므로 별도 복구가 필요하다.
+8. rollback 경계를 닫은 뒤에만 구 계정 폐기, 구 env/Secret 버전 정리를 별도로 승인한다.
 
 migration wrapper는 자기 작업의 고유 이름 container만 정리한다. Docker 상태 확인이 실패하면 root-only migration 자료를 남기고
 실패한다. 원인을 확인하고 container 제거가 확실해진 뒤 정리한다. 실패한 backup도 임의 삭제하지 않는다.
@@ -114,6 +118,16 @@ Vault backend가 이미 중지된 경우에는 자동 재시작하지 않고 운
 실행 중인 이전 색상은 이미 읽은 비밀값을 메모리에 보유하므로 정상적인 최초 전환 rollback 대상이다.
 재부팅 후에는 `/run`과 메모리가 사라진다. 별도 host systemd 복구가 새 generation 발행과 active image 재생성을 담당한다.
 코드 구현, host 설치, 실패 주입 검증, 실제 VM 재부팅 검증은 서로 다른 완료 항목이다.
+
+## 배포 marker 명령
+
+`ilchul-vault-deployment prepare <40자 SHA> <GitHub run id>`는 파일 복사나 migration 전에 실행한다. 기존 실패 marker가 있어도
+실제 트래픽이 안전한 이전 색상에 남아 있으면 기록을 보존하고 수정 배포를 허용한다. 판단이 모호하면 기존 marker를 변경하지 않는다.
+
+`ilchul-vault-deployment accept <40자 SHA>`는 traffic switch, 공개 smoke, image cleanup까지 성공한 뒤 마지막으로 실행한다.
+성공한 배포만 자동 인수하며 marker를 단순 삭제하지 않고 root-only archive를 먼저 fsync한다. 두 명령은 root lock을 공유하고
+일반 preflight, active/current 일치, 컨테이너 health, 고정 이미지 SHA, 공개 intro/auth/region 응답과 잔여 migration 작업 부재를 검사한다.
+기존 프로젝트 경로의 legacy marker는 첫 `prepare`에서만 제한적으로 읽어 archive한 뒤 root-only state로 이동한다.
 
 ## 로컬/PR 검증
 
@@ -159,8 +173,9 @@ Docker Compose env 선택 근거: [Docker 환경 파일 문서](https://docs.doc
 - GitHub production 환경: main만, required reviewer guite95 확인. begae에는 preflight·publisher reload·검증된 migration wrapper만 sudo 허용; 임의 shell/서비스 중지 불허.
 - RedisConfig가 username/password를 무시하던 누락을 수정했다. backend 213 tests 및 PR backend/frontend CI 통과.
 
-서버 준비 완료 판정은 `/usr/local/sbin/ilchul-vault-preflight --new-deployment` 실제 성공과
-운영자 검증 기록으로 한다. main 병합, production 승인, 앱 전환, 실로그인/refresh/업로드 인수,
+서버 준비 완료 판정은 `/usr/local/sbin/ilchul-vault-preflight` 실제 성공, 세 root 고정 명령의 설치·권한 확인과
+운영자 검증 기록으로 한다. 새 배포 가능 여부와 실패 marker 승계는 `ilchul-vault-deployment prepare`가 실제 상태를 검사한다.
+main 병합, production 승인, 앱 전환, 실로그인/refresh/업로드 인수,
 구 자격증명 폐기는 사용자가 진행할 후속 단계다. 단일 VM root 위험 및 기존 의존성 취약점은 이 전환만으로 해소되지 않는다.
 
 ### 2026-09-21 첫 배포 실패와 수정

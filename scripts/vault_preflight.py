@@ -16,6 +16,7 @@ PUBLIC_FIELDS = frozenset({
     'STORAGE_ENDPOINT', 'STORAGE_BUCKET_NAME', 'STORAGE_REGION', 'STORAGE_PUBLIC_URL'})
 CHECKS = frozenset({'accounts', 'vaultIam', 'publisher', 'bootRecovery', 'metadataBlocked',
                     'backup', 'minioPolicy', 'redisCompatibility', 'rollback', 'productionApproval'})
+REQUIRED_EXECUTABLES = ('ilchul-vault-migrate', 'ilchul-vault-preflight', 'ilchul-vault-deployment')
 
 
 def validate_public_env(text):
@@ -76,17 +77,23 @@ def require_closed_rollback_window(path):
         raise ValueError()
 
 
+def validate_executables(directory, owner=0):
+    for executable in REQUIRED_EXECUTABLES:
+        info = Path(directory, executable).lstat()
+        if (not stat.S_ISREG(info.st_mode) or info.st_uid != owner
+                or stat.S_IMODE(info.st_mode) != 0o750):
+            raise ValueError()
+
+
 def check_host(new_deployment=False):
     if os.geteuid() != 0:
         raise ValueError()
     if new_deployment:
         require_closed_rollback_window('/home/begae/ilchul/vault-acceptance-pending.json')
+        require_closed_rollback_window('/var/lib/ilchul-vault/vault-acceptance-pending.json')
     validate_readiness(json.loads(secure_file('/etc/ilchul/vault-cutover.json')))
     values = validate_public_env(secure_file('/etc/ilchul/runtime-public.env', mode=0o644))
-    for executable in ('ilchul-vault-migrate', 'ilchul-vault-preflight'):
-        info = Path('/usr/local/sbin', executable).lstat()
-        if not stat.S_ISREG(info.st_mode) or info.st_uid != 0 or stat.S_IMODE(info.st_mode) != 0o750:
-            raise ValueError()
+    validate_executables('/usr/local/sbin')
     for args in (['is-active', '--quiet', 'ilchul-secrets.service'], ['is-enabled', '--quiet', 'ilchul-runtime.service']):
         subprocess.run(['systemctl', *args], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if subprocess.check_output(['findmnt', '-n', '-o', 'FSTYPE', '-T', '/run/oci-service-secrets'], text=True).strip() != 'tmpfs':
