@@ -185,20 +185,21 @@ export interface PlanSchedule {
 }
 
 // 플랜 복제 + 여행 일시 설정.
-// 운영 복제 API 는 scheduledDate 를 받아도 반영하지 않고 tripStartDate/tripEndDate 를 null 로 둔다
-// (2026-09-11 확인, 백엔드 요청 중). 그래서 복제 직후 수정 API 로 일시를 채운다.
+// 2026-09-29 부터 복제 API 가 본문의 tripStartDate/tripEndDate 를 함께 저장한다(백엔드 요청 4-2 반영).
+// 응답에 저장된 일시가 오면 그대로 끝내고, 예전 서버처럼 null 로 오면 수정 API 로 채우는 우회를 남긴다.
 // 복제는 성공하고 일시 저장만 실패할 수 있으므로 결과를 나눠 돌려준다 — 호출부가 사용자에게 알린다.
-// 이전에는 수정 실패를 조용히 삼켜 '담았어요' 토스트 뒤에 일정이 빈 플랜이 남았다.
 export async function clonePlanWithSchedule(
   planId: number,
   schedule: PlanSchedule
 ): Promise<{ planId: number; scheduleSaved: boolean }> {
-  const res = await clonePlan(planId, { scheduledDate: schedule.date });
+  const tripStartDate = toServerDateTime(schedule.date, schedule.startTime);
+  const tripEndDate = toServerDateTime(schedule.date, schedule.endTime);
+  const res = await clonePlan(planId, { scheduledDate: schedule.date, tripStartDate, tripEndDate });
+  if (res.tripStartDate && res.tripEndDate) {
+    return { planId: res.planId, scheduleSaved: true };
+  }
   try {
-    await updatePlan(res.planId, {
-      tripStartDate: toServerDateTime(schedule.date, schedule.startTime),
-      tripEndDate: toServerDateTime(schedule.date, schedule.endTime),
-    });
+    await updatePlan(res.planId, { tripStartDate, tripEndDate });
     return { planId: res.planId, scheduleSaved: true };
   } catch (err) {
     console.error('복제한 플랜의 일정 저장 실패:', err);

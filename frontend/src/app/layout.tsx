@@ -2,11 +2,36 @@ import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import { AuthProvider } from "./providers";
 import { AppShell } from "@/shared/ui/AppShell";
+import {
+  SITE_DESCRIPTION,
+  SITE_KEYWORDS,
+  SITE_NAME,
+  SITE_TAGLINE,
+  SITE_TITLE,
+} from "@/shared/lib/constants/siteMeta";
 import "./globals.css";
 
+// 제목·설명·키워드에 서비스 키워드 "일단 출발" 을 넣는다 (shared/lib/constants/siteMeta)
 export const metadata: Metadata = {
-  title: "일출 - 맞춤형 당일치기 힐링 플래너",
-  description: "맞춤형 당일치기 힐링 플래너",
+  title: {
+    default: SITE_TITLE,
+    template: `%s · ${SITE_NAME} ${SITE_TAGLINE}`,
+  },
+  description: SITE_DESCRIPTION,
+  keywords: SITE_KEYWORDS,
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    locale: "ko_KR",
+  },
+  twitter: {
+    card: "summary",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
   viewport: {
     width: "device-width",
     initialScale: 1,
@@ -22,7 +47,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "일출",
+    title: SITE_NAME,
   },
 };
 

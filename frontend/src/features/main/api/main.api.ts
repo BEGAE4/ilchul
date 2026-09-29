@@ -5,6 +5,8 @@ import type {
   PaginationParams,
   PopularPlace,
   PopularPlan,
+  RegionMeta,
+  RegionMetaResponse,
 } from '../types';
 import { fixRoParticle } from '@/shared/lib/format/josa';
 
@@ -61,4 +63,10 @@ export const fetchNationwidePopularPlaces = async (
     { params }
   );
   return response.data;
+};
+
+// 지역 메타 — 시/도 목록·별칭·장소 수·시군구 (GET /api/region, 2026-09-29)
+export const fetchRegions = async (): Promise<RegionMeta[]> => {
+  const response = await axios.get<RegionMetaResponse>('/api/region');
+  return Array.isArray(response.data?.regions) ? response.data.regions : [];
 };

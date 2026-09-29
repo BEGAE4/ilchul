@@ -1,4 +1,4 @@
-import { buildNearbyQuery } from './nearbyQuery';
+import { buildNearbyQuery, sigunguKey } from './nearbyQuery';
 import { REGIONS } from '../constants/regions';
 
 describe('buildNearbyQuery', () => {
@@ -21,5 +21,16 @@ describe('buildNearbyQuery', () => {
 
   it('서버에 나가는 지역명에 "광주" 단독은 없다', () => {
     expect(REGIONS.map((r) => buildNearbyQuery(r).region)).not.toContain('광주');
+  });
+
+  it('시군구를 고르면 쉼표로 이어 sigungu 로 보낸다 — 빈 값은 걸러낸다', () => {
+    const jeonnam = REGIONS.find((r) => r.id === 'jeonnam')!;
+    expect(buildNearbyQuery(jeonnam, ['동구', ' 남구 ', ''])).toEqual({ region: '전남', sigungu: '동구,남구' });
+    expect(buildNearbyQuery(jeonnam, [])).toEqual({ region: '전남' });
+  });
+
+  it('sigunguKey 는 순서와 무관하게 같은 선택이면 같은 키', () => {
+    expect(sigunguKey(['남구', '동구'])).toBe(sigunguKey(['동구', '남구']));
+    expect(sigunguKey([])).toBe('');
   });
 });

@@ -65,13 +65,20 @@ export default function Home() {
   // 지역 — 직접 고른 지역 > 위치로 인식한 지역 > 기본값(서울).
   // 주변 섹션은 이 지역의 이름으로 조회한다.
   const regionState = useRegion(introChecked);
-  const { region, source: regionSource, isLocating } = regionState;
+  const { region, source: regionSource, isLocating, sigungu } = regionState;
 
   // 지역 주변에 등록된 장소가 없으면 기본 지역(서울)으로 되돌린다.
   const [fallbackToDefault, setFallbackToDefault] = useState(false);
   const canFallback = regionSource === 'gps' && !fallbackToDefault;
-  const nearbyQuery = buildNearbyQuery(fallbackToDefault ? DEFAULT_REGION : region);
-  const shownRegionName = fallbackToDefault ? DEFAULT_REGION.name : region.name;
+  // 시군구를 골랐으면 그 안에서만 조회한다. 기본 지역으로 폴백할 때는 시군구 없이 전체.
+  const nearbyQuery = fallbackToDefault
+    ? buildNearbyQuery(DEFAULT_REGION)
+    : buildNearbyQuery(region, sigungu);
+  const shownRegionName = fallbackToDefault
+    ? DEFAULT_REGION.name
+    : sigungu.length > 0
+      ? sigungu.join('·')
+      : region.name;
 
   // API 훅
   const nearbyPlaces = useNearbyPopularPlaces({
