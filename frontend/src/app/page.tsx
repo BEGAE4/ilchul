@@ -146,9 +146,10 @@ export default function Home() {
     (nationwidePlans.isLoading && nationwidePlans.items.length === 0);
 
   // 지역을 자동으로 못 잡았거나, 잡은 지역에 데이터가 없어 기본 지역으로 보여줄 때 안내 (QA A #8)
+  // 기본 지역 안에서 시군구를 직접 골랐으면 사용자가 고른 것이므로 "위치를 확인하지 못해" 안내를 띄우지 않는다.
   const locationNotice = fallbackToDefault
     ? `${region.name} 주변에 등록된 장소가 없어 ${DEFAULT_REGION.name} 기준으로 보여드려요`
-    : regionSource === 'default' && !isLocating
+    : regionSource === 'default' && !isLocating && sigungu.length === 0
       ? `위치를 확인하지 못해 ${DEFAULT_REGION.name} 기준으로 보여드려요. 위 지역명을 눌러 직접 고를 수 있어요`
       : null;
 

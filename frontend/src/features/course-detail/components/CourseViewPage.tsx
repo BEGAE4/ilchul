@@ -36,6 +36,7 @@ import { usePlanDetail, usePlanActions, planApi, pickPlanCover } from '@/feature
 import { HALF_HOURS, addMinutesToTime, todayLocalDate } from '@/features/plan/utils/schedule';
 import { useComments } from '../hooks/useComments';
 import { useLoginGate } from '@/features/authentication/hooks';
+import { goBackOrHome } from '@/shared/lib/navigation/inAppHistory';
 
 interface CourseViewPageProps {
   courseId: string;
@@ -131,7 +132,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         ) : null}
         <div className={`flex gap-2 w-full max-w-xs ${planErrorKind === 'not_found' ? 'mt-6' : ''}`}>
           <button
-            onClick={() => router.back()}
+            onClick={() => goBackOrHome(router)}
             className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm"
           >
             돌아가기
@@ -251,7 +252,8 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
         <CoverImage src={heroImage} alt={plan.planTitle} seed={plan.planId} size="lg" priority />
         <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start bg-gradient-to-b from-black/40 to-transparent">
           <button
-            onClick={() => router.back()}
+            onClick={() => goBackOrHome(router)}
+            aria-label="뒤로가기"
             className="p-2 bg-white/20 backdrop-blur-md rounded-full text-white active:bg-white/30"
           >
             <ArrowLeft size={24} />
@@ -803,7 +805,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
           } else {
             // 플랜 신고 후 숨기기: 로컬 스토리지 기록 + 페이지 이탈
             hiddenReportsStorage.add(t);
-            router.back();
+            goBackOrHome(router);
           }
         }}
       />

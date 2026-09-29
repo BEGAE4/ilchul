@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import Header from '@/shared/ui/Header';
 import PageLayout from '@/shared/ui/PageLayout';
+import { goBackOrHome } from '@/shared/lib/navigation/inAppHistory';
 import type { ListPageShellProps } from './types';
 import styles from './styles.module.scss';
 
@@ -25,7 +26,7 @@ export function ListPageShell({
       <Header
         variant="backArrow"
         title={title}
-        onBackClick={() => router.back()}
+        onBackClick={() => goBackOrHome(router)}
       />
       <div className={styles.body}>
         {totalCount > 0 && !isLoading && !error && (
