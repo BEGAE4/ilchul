@@ -38,3 +38,23 @@ test('production deploy jobs require the production environment; PR tests get no
   assert.deepEqual(validation.permissions, {contents: 'read'});
   assert.deepEqual(validation.on.pull_request.branches, ['main']);
 });
+
+test('deployment attempts are prepared before mutation and accepted only after the successful switch', () => {
+  const deploy = read('.github/workflows/deploy.yml');
+  const targetSteps = deploy.jobs['deploy-target'].steps;
+  const prepare = targetSteps.find(step => step.with?.script?.includes('ilchul-vault-deployment prepare'));
+  assert.ok(prepare, 'missing guarded deployment preparation');
+  assert.match(prepare.with.envs, /GIT_SHA/);
+  assert.match(prepare.with.envs, /DEPLOY_RUN_ID/);
+
+  const inactive = targetSteps.find(step => step.name === 'Deploy inactive environment');
+  assert.doesNotMatch(inactive.with.script, /vault-acceptance-pending\.json/);
+  assert.doesNotMatch(inactive.with.script, /--new-deployment/);
+
+  const switchStep = deploy.jobs['switch-traffic'].steps.find(
+    step => step.with?.script?.includes('ilchul-vault-deployment accept'));
+  assert.ok(switchStep, 'successful switch does not close the pending deployment');
+  assert.match(switchStep.with.envs, /GIT_SHA/);
+  assert.ok(switchStep.with.script.indexOf('smoke-deployment.sh')
+    < switchStep.with.script.indexOf('ilchul-vault-deployment accept'));
+});
