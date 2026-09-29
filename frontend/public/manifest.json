@@ -1,7 +1,7 @@
 {
-  "name": "일출 - 맞춤형 당일치기 힐링 플래너",
+  "name": "일출 - 일단 출발! 맞춤형 당일치기 힐링 플래너",
   "short_name": "일출",
-  "description": "맞춤형 당일치기 힐링 플래너",
+  "description": "일단 출발! 맞춤형 당일치기 힐링 플래너 일출",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
@@ -23,7 +23,11 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["lifestyle", "weather", "photography"],
+  "categories": [
+    "lifestyle",
+    "weather",
+    "photography"
+  ],
   "screenshots": [
     {
       "src": "/screenshots/mobile-1.png",
