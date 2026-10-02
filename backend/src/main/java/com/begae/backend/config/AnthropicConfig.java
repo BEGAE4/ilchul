@@ -16,6 +16,7 @@ public class AnthropicConfig {
         return AnthropicOkHttpClient.builder()
                 .apiKey(apiKey)
                 .timeout(Duration.ofMinutes(1))
+                .maxRetries(0)
                 .build();
     }
 }

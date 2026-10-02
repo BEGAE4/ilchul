@@ -317,7 +317,7 @@ export function CourseViewPage({ courseId }: CourseViewPageProps) {
       {/* 정보 그리드 */}
       <div className="grid grid-cols-3 gap-1 p-4 text-center">
         <div className="bg-gray-50 p-3 rounded-lg">
-          <div className="text-xs text-gray-500 mb-1">소요시간</div>
+          <div className="text-xs text-gray-500 mb-1">{plan.travelTimeEstimated ? "추정 소요시간" : "소요시간"}</div>
           <div className="font-bold text-gray-900">{durationLabel}</div>
         </div>
         <div className="bg-gray-50 p-3 rounded-lg">

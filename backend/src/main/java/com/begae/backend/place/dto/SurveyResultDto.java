@@ -6,6 +6,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,18 +19,22 @@ import lombok.NoArgsConstructor;
 public class SurveyResultDto {
 
     @NotBlank
+    @Size(max = 100)
     private String emotion;
 
     @NotBlank
+    @Size(max = 16)
     private String startTime;
 
     @NotBlank
+    @Size(max = 16)
     private String endTime;
 
     @NotBlank
     @Pattern(regexp = "도보|대중교통|자가용")
     private String transport;
 
+    @Size(max = 30)
     private String transportTime;
 
     @Valid

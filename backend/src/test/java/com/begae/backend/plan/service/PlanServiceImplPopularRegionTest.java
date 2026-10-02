@@ -39,7 +39,8 @@ class PlanServiceImplPopularRegionTest {
                 mock(PlanImageRepository.class),
                 mock(ImageStorageService.class),
                 mock(PlanPlaceImageRepository.class),
-                mock(ImageFileCleaner.class));
+                mock(ImageFileCleaner.class),
+                mock(com.begae.backend.trip.TripRouteCalculator.class));
 
         PopularPlanResponseDto response = service.getPopularPlansByRegion(
                 PopularRegion.GANGWON, null, 5, 1);

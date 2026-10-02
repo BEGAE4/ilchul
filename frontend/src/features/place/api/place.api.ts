@@ -29,8 +29,10 @@ export async function searchPlaces(keyword: string): Promise<SearchPlaceItem[]> 
 // 인기 장소(내 주변/전국)는 main feature(main.api.ts + BFF popular 라우트)에서 담당한다.
 
 // 장소 추천 (설문 기반) — AI가 순서·체류시간까지 정한 플랜 객체(items)를 반환한다.
-export async function recommendPlaces(body: SurveyResult): Promise<RecommendResponse> {
-  const { data } = await apiClient.post<RecommendResponse>('/api/place/recommend', body);
+export async function recommendPlaces(body: SurveyResult, options: { signal?: AbortSignal } = {}): Promise<RecommendResponse> {
+  const { data } = await apiClient.post<RecommendResponse>('/api/place/recommend', body, {
+    signal: options.signal, timeout: 100_000,
+  });
   return data;
 }
 

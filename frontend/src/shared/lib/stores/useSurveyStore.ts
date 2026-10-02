@@ -66,6 +66,7 @@ export const useSurveyStore = create<SurveyState>()(
       updateSurvey: (key, value) =>
         set((state) => ({
           surveyData: { ...state.surveyData, [key]: value },
+          ...(state.surveyData[key] === value ? {} : { recommendedPlaces: [], recommendReasoning: '', selectedPlaceIds: [], finalStops: [] }),
         })),
 
       setRecommendedPlaces: (recommendedPlaces) => set({ recommendedPlaces }),
@@ -90,7 +91,11 @@ export const useSurveyStore = create<SurveyState>()(
 
       setIsRecalculating: (isRecalculating) => set({ isRecalculating }),
 
-      setStartingPoint: (startingPoint) => set({ startingPoint }),
+      setStartingPoint: (startingPoint) => set((state) => ({ startingPoint,
+        ...(JSON.stringify(state.startingPoint) === JSON.stringify(startingPoint) ? {} : {
+          recommendedPlaces: [], recommendReasoning: '', selectedPlaceIds: [], finalStops: [],
+        }),
+      })),
 
       reset: () => set({ ...initialState, startingPoint: initialStartingPoint }),
     }),

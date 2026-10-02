@@ -7,24 +7,20 @@ export function parseStayMinutes(time: string): number {
   return match ? parseInt(match[1], 10) : 60;
 }
 
-// 플랜 생성 요청의 장소 목록. 프리뷰 응답을 order 기준으로 조인해 명세 필수 필드를 채운다.
-// 운영 프리뷰 응답에는 stayTime 필드가 없어(2026-09-13 확인) 그대로 쓰면 체류시간이 전부 0으로 저장됐다.
-// 프리뷰 값이 없거나 0이면 추천 결과의 체류시간으로 채운다.
-export function buildCreatePlanPlaces(
-  stops: Place[],
-  previewPlaces: PlanPreviewPlace[]
-): CreatePlanPlaceRequest[] {
-  const previewByOrder = new Map(previewPlaces.map((p) => [p.order, p]));
-  return stops
-    .map((stop, i) => {
-      const order = i + 1;
-      const pv = previewByOrder.get(order);
-      return {
-        placeId: Number(stop.id),
-        order,
-        travelTime: pv?.duration ?? 0,
-        stayTime: pv?.stayTime || parseStayMinutes(stop.time),
-      };
-    })
-    .filter((p) => Number.isInteger(p.placeId));
+// Both identity and order must match; absent route data is never silently saved as zero.
+export function buildCreatePlanPlaces(stops: Place[], previewPlaces: PlanPreviewPlace[]): CreatePlanPlaceRequest[] {
+  if (stops.length === 0 || stops.length !== previewPlaces.length) throw new Error('preview_mismatch');
+  const previewByKey = new Map(previewPlaces.map((p) => [`${p.placeId}:${p.order}`, p]));
+  const ids = new Set<number>();
+  return stops.map((stop, i) => {
+    const placeId = Number(stop.id);
+    const order = i + 1;
+    const pv = previewByKey.get(`${placeId}:${order}`);
+    if (!Number.isInteger(placeId) || placeId <= 0 || ids.has(placeId) || !pv
+      || !Number.isInteger(pv.duration) || pv.duration < 0) throw new Error('preview_mismatch');
+    ids.add(placeId);
+    const stayTime = pv.stayTime || parseStayMinutes(stop.time);
+    if (!Number.isInteger(stayTime) || stayTime < 30 || stayTime > 90) throw new Error('invalid_stay_time');
+    return { placeId, order, travelTime: pv.duration, stayTime };
+  });
 }

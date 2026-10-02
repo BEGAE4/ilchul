@@ -43,9 +43,21 @@ public class WellnessMatcher {
                 .min(Comparator.comparingDouble(d -> distanceTo(x, y, d)));
     }
 
+    public Optional<KakaoPlaceResponseDto.Document> nearest(String title, double x, double y,
+            List<KakaoPlaceResponseDto.Document> documents) {
+        String name = normalize(title);
+        if (name.length() < 2 || documents == null) return Optional.empty();
+        return nearest(x, y, documents.stream().filter(d -> name.equals(normalize(d.getPlaceName()))).toList());
+    }
+    private String normalize(String value) {
+        return value == null ? "" : java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFKC)
+                .replaceAll("[^\\p{L}\\p{N}]", "").toLowerCase(java.util.Locale.ROOT);
+    }
     private boolean hasCoordinates(KakaoPlaceResponseDto.Document d) {
-        return d.getX() != null && !d.getX().isBlank()
-                && d.getY() != null && !d.getY().isBlank();
+        try {
+            com.begae.backend.trip.TripTimePolicy.validateCoordinates(Double.parseDouble(d.getX()), Double.parseDouble(d.getY()));
+            return true;
+        } catch (RuntimeException exception) { return false; }
     }
 
     private double distanceTo(double x, double y, KakaoPlaceResponseDto.Document d) {
