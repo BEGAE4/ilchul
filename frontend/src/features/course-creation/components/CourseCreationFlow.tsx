@@ -1,6 +1,9 @@
 'use client';
 
 import Image from 'next/image';
+import { LatestRequestGate } from '../utils/latestRequest';
+import { estimateLegMinutes, estimateRoundTripMinutes } from '../utils/travelEstimate';
+import { courseRequestError } from '../utils/requestError';
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import CoverImage from '@/shared/ui/CoverImage';
@@ -214,7 +217,14 @@ export const CourseCreationFlow: React.FC = () => {
   const [previewFailed, setPreviewFailed] = useState(false);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   // 프리뷰 요청 순번 — 순서 변경·다시 계산·재선택으로 요청이 겹칠 때 마지막 요청의 응답만 반영한다
-  const previewRequestSeq = useRef(0);
+  const previewGate = useRef(new LatestRequestGate());
+  const recommendationGate = useRef(new LatestRequestGate());
+  const previewInputKey = useRef('');
+  const [previewError, setPreviewError] = useState('');
+  useEffect(() => () => {
+    recommendationGate.current.cancel();
+    previewGate.current.cancel();
+  }, []);
   // 추천 API 실패/빈 응답 시 안내 문구 — 목록 대신 재시도 UI를 보여준다
   const [recommendError, setRecommendError] = useState<string | null>(null);
   // 카카오맵 SDK 로드 상태 — 출발지 검색/역지오코딩에 services 라이브러리 사용
@@ -256,9 +266,20 @@ export const CourseCreationFlow: React.FC = () => {
     return () => clearTimeout(timer);
   }, [customAddress, step, isKakaoLoading, kakaoError]);
 
+  const recommendationInputKey = () => {
+    const { surveyData, startingPoint } = useSurveyStore.getState();
+    return JSON.stringify({ surveyData, startingPoint });
+  };
+
   // 설문 조건 그대로 장소 추천을 (재)요청한다. 출발지 단계의 '다음으로'와 결과 화면의 '다시 추천받기'가 공유한다.
   const runRecommendation = () => {
+    const request = recommendationGate.current.begin();
+    const inputKey = recommendationInputKey();
+    const isCurrent = () => request.isCurrent() && inputKey === recommendationInputKey();
     clearPlaceSelection();
+    setRecommendedPlaces([]);
+    setRecommendReasoning('');
+    setRecommendError(null);
     setStep('generating');
     const minDelay = new Promise((resolve) => setTimeout(resolve, 1500));
     void (async () => {
@@ -272,9 +293,10 @@ export const CourseCreationFlow: React.FC = () => {
             transport: surveyData.transport ?? '',
             transportTime: surveyData.transportTime ?? '',
             location: { x: startingPoint.coord.lng, y: startingPoint.coord.lat },
-          }),
+          }, { signal: request.signal }),
           minDelay,
         ]);
+        if (!isCurrent()) return;
         const mapped = mapRecommendedPlaces(result);
         if (mapped.length > 0) {
           setRecommendedPlaces(mapped);
@@ -283,63 +305,73 @@ export const CourseCreationFlow: React.FC = () => {
           setRecommendError(null);
         } else {
           // 비어 있다는 것은 응답 모양이 또 달라졌다는 뜻이다. 원본을 남겨 다음 조정의 근거로 삼는다.
-          console.warn('추천 응답을 장소 목록으로 변환하지 못했습니다:', result);
+          console.warn('추천 응답을 장소 목록으로 변환하지 못했어요.');
           setRecommendedPlaces([]);
           setRecommendReasoning('');
           setRecommendError('조건에 맞는 장소를 찾지 못했어요.');
         }
       } catch (err) {
-        console.error('장소 추천 실패:', err);
+        if (!isCurrent()) return;
         setRecommendedPlaces([]);
         setRecommendReasoning('');
-        setRecommendError('추천 장소를 불러오지 못했어요.');
+        setRecommendError(courseRequestError(err, '추천 장소를 불러오지 못했어요.'));
         await minDelay;
       } finally {
-        setStep('placeSelect');
+        if (isCurrent()) setStep('placeSelect');
       }
     })();
   };
 
   // 출발지/일정은 프리뷰와 생성 요청이 똑같이 쓴다. 두 곳에서 따로 조립하다 어긋나지 않도록 한 곳에서 만든다.
-  const buildPlanContext = () => ({
-    ...(startingPoint.address
-      ? {
-          departurePoint: {
-            name: startingPoint.address,
-            address: startingPoint.address,
-            x: startingPoint.coord.lng,
-            y: startingPoint.coord.lat,
-          },
-        }
-      : {}),
-    ...(surveyData.startDate
-      ? {
-          // 서버는 'yyyy-MM-dd HH:mm' 만 받는다 (ISO 'T' 구분자·초 포함 시 400)
-          tripStartDate: toServerDateTime(surveyData.startDate, surveyData.startTime || '00:00'),
-          tripEndDate: toServerDateTime(
-            surveyData.endDate || surveyData.startDate,
-            surveyData.endTime || '23:59'
-          ),
-        }
-      : {}),
+  const buildPlanContext = () => {
+    // Rehydration can finish between renders; always use the current stored conditions.
+    const { startingPoint, surveyData } = useSurveyStore.getState();
+    return {
+      transport: surveyData.transport,
+      transportTime: surveyData.transportTime,
+      ...(startingPoint.address
+        ? {
+            departurePoint: {
+              name: startingPoint.address,
+              address: startingPoint.address,
+              x: startingPoint.coord.lng,
+              y: startingPoint.coord.lat,
+            },
+          }
+        : {}),
+      ...(surveyData.startDate
+        ? {
+            tripStartDate: toServerDateTime(surveyData.startDate, surveyData.startTime || '00:00'),
+            tripEndDate: toServerDateTime(
+              surveyData.endDate || surveyData.startDate,
+              surveyData.endTime || '23:59'
+            ),
+          }
+        : {}),
+    };
+  };
+
+  const timeInputKey = (stops: Place[]) => JSON.stringify({
+    ...buildPlanContext(), places: stops.map((p, i) => ({ placeId: Number(p.id), order: i + 1, stayTime: parseStayMinutes(p.time) })),
   });
 
   // 이동수단 뒤 조사는 받침에 따라 달라진다 ("도보로", "대중교통으로"). B-23.
   const planDescription = `${withRo(surveyData.transport ?? '')} 떠나는 나만의 힐링 여행`;
 
-  // 프리뷰는 선택이 아니라 생성의 선행 조건이다.
-  // requiredTime/totalDistance/travelTime/stayTime은 전부 서버 계산값이고 명세에 재계산 API가 없어,
-  // 실패한 채로 저장하면 0분·0km짜리 플랜이 복구 경로 없이 영구히 남는다.
-  // 늦게 도착한 이전 요청의 응답은 버린다. 그대로 두면 이전 장소 순서로 계산된 값이 화면과 저장 요청에 섞인다.
+  // 현재 장소·순서·설문과 일치하는 서버 프리뷰로 저장 여부를 안내한다.
+  // 늦게 도착한 이전 요청의 응답은 버리고, 저장 시 서버도 시간을 다시 계산한다.
   const requestPreview = async (stops: Place[]) => {
-    const seq = ++previewRequestSeq.current;
-    const isLatest = () => seq === previewRequestSeq.current;
+    const request = previewGate.current.begin();
+    const isLatest = request.isCurrent;
+    const inputKey = timeInputKey(stops);
+    previewInputKey.current = '';
+    setPreviewError('');
     setServerPreview(null);
     setPreviewFailed(false);
     setIsPreviewLoading(true);
     try {
       const numericPlaces = stops
-        .map((p, i) => ({ placeId: Number(p.id), order: i + 1 }))
+        .map((p, i) => ({ placeId: Number(p.id), order: i + 1, stayTime: parseStayMinutes(p.time) }))
         .filter((p) => Number.isInteger(p.placeId));
       if (numericPlaces.length === 0) {
         setPreviewFailed(true);
@@ -351,11 +383,15 @@ export const CourseCreationFlow: React.FC = () => {
         isPlanVisible,
         ...buildPlanContext(),
         places: numericPlaces,
-      });
-      if (isLatest()) setServerPreview(preview);
+      }, { signal: request.signal });
+      if (isLatest() && inputKey === timeInputKey(stops)) {
+        buildCreatePlanPlaces(stops, preview.places);
+        previewInputKey.current = inputKey;
+        setServerPreview(preview);
+      }
     } catch (err) {
       if (!isLatest()) return;
-      console.error('플랜 생성 프리뷰 실패:', err);
+      setPreviewError(courseRequestError(err, '경로를 계산하지 못해 지금은 저장할 수 없어요.'));
       setPreviewFailed(true);
     } finally {
       if (isLatest()) setIsPreviewLoading(false);
@@ -363,14 +399,14 @@ export const CourseCreationFlow: React.FC = () => {
   };
 
   const savePlan = async () => {
-    // 프리뷰 없이 저장하면 0값이 그대로 들어간다. CTA도 막아두지만 마지막 방어선을 둔다.
-    if (!serverPreview) {
+    // 현재 입력과 일치하는 프리뷰가 끝난 뒤 저장한다.
+    if (!serverPreview || isPreviewLoading || previewInputKey.current !== timeInputKey(finalStops)) {
       toast.error('경로 계산이 끝난 뒤 저장할 수 있어요.');
       return;
     }
     setIsSaving(true);
     try {
-      // 프리뷰 응답(장소별 duration)을 order 기준으로 조인하고, 체류시간이 없으면 추천값으로 채운다.
+      // 장소 ID와 순서를 함께 확인하고 이동·체류 시간을 채운다.
       const numericPlaces = buildCreatePlanPlaces(finalStops, serverPreview.places);
       const created = await planApi.createPlan({
         planTitle: planTitle.trim() || buildDefaultPlanTitle(surveyData.mindState, user.name),
@@ -389,10 +425,7 @@ export const CourseCreationFlow: React.FC = () => {
       markPlanJustCreated(created.planId);
       router.replace(`/my-course/${created.planId}`);
     } catch (err) {
-      console.error('플랜 생성 실패:', err);
-      toast.error('플랜 저장에 실패했어요.', {
-        description: '네트워크 상태를 확인한 뒤 다시 시도해주세요.',
-      });
+      toast.error(courseRequestError(err, '플랜 저장에 실패했어요. 네트워크 상태를 확인한 뒤 다시 시도해주세요.'));
     } finally {
       setIsSaving(false);
     }
@@ -422,6 +455,9 @@ export const CourseCreationFlow: React.FC = () => {
   const hasUnsavedData = surveyData.mindState || surveyData.transport || surveyData.transportTime;
 
   const handleBack = () => {
+    recommendationGate.current.cancel();
+    previewGate.current.cancel();
+    setIsPreviewLoading(false);
     if (step === 'landing') {
       if (hasUnsavedData) {
         setShowExitModal(true);
@@ -447,6 +483,9 @@ export const CourseCreationFlow: React.FC = () => {
   };
 
   const handleRetry = () => {
+    recommendationGate.current.cancel();
+    previewGate.current.cancel();
+    setServerPreview(null);
     reset();
     // 설문을 처음부터 다시 하므로 이전 감정에서 만들어진 플랜 이름도 함께 비운다
     setPlanTitle('');
@@ -514,9 +553,10 @@ export const CourseCreationFlow: React.FC = () => {
   const estimatedTotalMin = useMemo(() => {
     const selected = recommendedPlaces.filter((p) => selectedPlaceIds.includes(p.id));
     const stayTotal = selected.reduce((sum, p) => sum + parseStayMinutes(p.time), 0);
-    const travelTotal = Math.max(0, selected.length - 1) * 15;
-    return stayTotal + travelTotal;
-  }, [selectedPlaceIds, recommendedPlaces]);
+    const coords = selected.map(getStopCoord);
+    if (coords.some((c) => c === null)) return null;
+    return stayTotal + estimateRoundTripMinutes(startingPoint.coord, coords as { lat: number; lng: number }[], surveyData.transport);
+  }, [selectedPlaceIds, recommendedPlaces, startingPoint.coord, surveyData.transport]);
 
   const availableMin = useMemo(() => {
     const { startDate, startTime, endDate, endTime } = surveyData;
@@ -527,15 +567,14 @@ export const CourseCreationFlow: React.FC = () => {
     return diffMin > 0 ? diffMin : 0;
   }, [surveyData]);
 
-  const timeDiffMin = availableMin - estimatedTotalMin;
+  const timeDiffMin = availableMin - (estimatedTotalMin ?? 0);
 
   // ── 이동 시간 계산 (finalPlan 용) ──
   const getTravelMinutes = (
     from: { lat: number; lng: number },
     to: { lat: number; lng: number }
   ) => {
-    const dist = Math.sqrt(Math.pow(from.lat - to.lat, 2) + Math.pow(from.lng - to.lng, 2));
-    return Math.round(dist * 500) + 5;
+    return estimateLegMinutes(from, to, surveyData.transport);
   };
 
   // ── 공통 Header 컴포넌트 ──
@@ -803,7 +842,8 @@ export const CourseCreationFlow: React.FC = () => {
           </div>
 
           <div>
-            <h3 className="text-sm font-bold text-gray-500 mb-3">이동 시간</h3>
+            <h3 className="text-sm font-bold text-gray-500 mb-1">코스 전체 이동 시간</h3>
+            <p className="text-xs text-gray-500 mb-3">출발지에서 첫 장소까지, 장소 사이 이동과 출발지로 돌아오는 시간을 모두 합해요.</p>
             <div className="flex flex-col gap-2">
               {TRANSPORT_TIMES.map((time) => (
                 <button
@@ -1163,7 +1203,7 @@ export const CourseCreationFlow: React.FC = () => {
             </button>
           </div>
           {/* AI 가 플랜 전체를 이렇게 고른 이유 (plan.reasoning). 기본 펼침, 누르면 한 줄로 접힘 */}
-          {!recommendError && <RecommendReasonLine reasoning={recommendReasoning} />}
+          {!recommendError && <RecommendReasonLine reasoning={(selectedPlaceIds.length === 0 || selectedPlaceIds.length === recommendedPlaces.length) ? recommendReasoning : ""} />}
         </div>
 
         <div className="flex-1 p-4 overflow-y-auto space-y-3">
@@ -1264,7 +1304,7 @@ export const CourseCreationFlow: React.FC = () => {
               >
                 <div className="flex items-center gap-1.5">
                   <Timer size={14} />
-                  <span className="font-bold">예상 {formatMinutes(estimatedTotalMin)}</span>
+                  <span className="font-bold">{estimatedTotalMin === null ? '이동 시간 계산이 필요해요' : `귀환 포함 예상 ${formatMinutes(estimatedTotalMin)}`}</span>
                   <span className="text-xs opacity-70">/ 여행 {formatMinutes(availableMin)}</span>
                 </div>
                 <span
@@ -1403,10 +1443,10 @@ export const CourseCreationFlow: React.FC = () => {
   if (step === 'finalPlan') {
     const firstStopCoord = finalStops.length > 0 ? getStopCoord(finalStops[0]) : null;
     // 저장 요청과 같은 기준(order)으로 프리뷰를 조인한다 — 화면 값과 저장 값이 항상 같아진다.
-    const previewStopByOrder = new Map((serverPreview?.places ?? []).map((p) => [p.order, p]));
+    const previewStopByOrder = new Map((serverPreview?.places ?? []).map((p) => [`${p.placeId}:${p.order}`, p]));
     // 출발지에서 첫 장소까지 걸리는 시간. 프리뷰가 없으면 좌표 기반 추정치로 대체한다.
     const departTravelMin =
-      previewStopByOrder.get(1)?.duration ??
+      previewStopByOrder.get(`${finalStops[0]?.id}:1`)?.duration ??
       (firstStopCoord ? getTravelMinutes(startingPoint.coord, firstStopCoord) : null);
     return (
       <div className="flex flex-col min-h-dvh bg-gray-50 relative">
@@ -1455,6 +1495,12 @@ export const CourseCreationFlow: React.FC = () => {
               <span>총 이동 {serverPreview.totalDistance}km</span>
             </div>
           )}
+          {serverPreview?.timeSummary && (
+            <p className="mt-2 text-xs text-gray-500">
+              총 이동 {serverPreview.timeSummary.travelMinutes}분 (귀환 {serverPreview.timeSummary.returnMinutes}분 포함) · 체류 {serverPreview.timeSummary.stayMinutes}분
+              {serverPreview.timeSummary.estimated && ' · 이동 시간은 추정치예요. 실제 경로와 운행 상황에 따라 달라질 수 있어요.'}
+            </p>
+          )}
           {isPreviewLoading && (
             <div className="mt-2 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
               <Loader2 size={12} className="animate-spin" />
@@ -1468,7 +1514,7 @@ export const CourseCreationFlow: React.FC = () => {
               <AlertCircle size={14} className="text-accent-400 mt-0.5 shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs text-accent-700">
-                  경로를 계산하지 못해 지금은 저장할 수 없어요.
+                  {previewError || '경로를 계산하지 못해 지금은 저장할 수 없어요.'}
                 </p>
                 <button
                   type="button"
@@ -1582,8 +1628,8 @@ export const CourseCreationFlow: React.FC = () => {
                 index < finalStops.length - 1 ? getStopCoord(finalStops[index + 1]) : null;
               // 화면에 보이는 값과 저장되는 값이 어긋나지 않도록 서버 프리뷰를 우선 쓰고,
               // 프리뷰가 아직 없을 때만 좌표 기반 추정치로 대체한다.
-              const pv = previewStopByOrder.get(index + 1);
-              const pvNext = previewStopByOrder.get(index + 2);
+              const pv = previewStopByOrder.get(`${stop.id}:${index + 1}`);
+              const pvNext = previewStopByOrder.get(`${finalStops[index + 1]?.id}:${index + 2}`);
               const travelFromPrev =
                 pv?.duration ?? (currCoord ? getTravelMinutes(prevCoord, currCoord) : 15);
               const travelToNext =
@@ -1651,6 +1697,11 @@ export const CourseCreationFlow: React.FC = () => {
                 </div>
               );
             })}
+            {serverPreview?.timeSummary && (
+              <div className="rounded-xl bg-white p-4 text-sm text-gray-600 border border-gray-100">
+                출발지로 돌아와요 · 귀환 이동 {serverPreview.timeSummary.returnMinutes}분
+              </div>
+            )}
           </div>
         </div>
 

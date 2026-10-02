@@ -35,6 +35,10 @@ export interface PlanImageItem {
 
 // 플랜 상세 조회 응답 (PlanDetailDto) — 래핑 없이 직접 반환
 export interface PlanDetail {
+  transport?: string | null;
+  travelLimitMinutes?: number | null;
+  returnTime?: number | null;
+  travelTimeEstimated?: boolean | null;
   planId: number;
   planTitle: string;
   tripStartDate: string;
@@ -72,6 +76,8 @@ export interface CreatePlanPlaceRequest {
 }
 
 export interface CreatePlanBody {
+  transport?: string;
+  transportTime?: string;
   planTitle: string;
   isPlanVisible?: boolean;
   planDescription?: string;
@@ -170,6 +176,7 @@ export interface PlanPreviewPlace {
 }
 
 export interface PlanPreviewResponse {
+  timeSummary?: import("@/shared/types/trip").TripTimeSummary;
   // UpdatePlanPreviewResponseDto 에만 존재(CreatePlanPreviewResponseDto 에는 없음)
   planId?: number;
   planTitle: string;

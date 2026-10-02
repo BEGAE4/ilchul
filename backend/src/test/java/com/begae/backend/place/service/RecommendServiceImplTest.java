@@ -22,6 +22,38 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class RecommendServiceImplTest {
+    @Test void 잘못된_JSON_응답은_한번만_교정한다() {
+        when(wellnessApiClient.findNearby(anyDouble(), anyDouble(), anyInt())).thenReturn(List.of());
+        aiResponse.setSelections(List.of(sel(0, 1)));
+        doThrow(new CustomException(com.begae.backend.place.exception.PlaceErrorCode.RECOMMENDATION_INVALID_RESPONSE))
+                .doReturn(aiResponse).when(service).callAi(anyString(), anyString(), any(Duration.class));
+        assertThat(service.recommend(survey()).getItems()).hasSize(1);
+        var timeouts = org.mockito.ArgumentCaptor.forClass(Duration.class);
+        verify(service, times(2)).callAi(anyString(), anyString(), timeouts.capture());
+        assertThat(timeouts.getAllValues().get(1)).isLessThanOrEqualTo(timeouts.getAllValues().getFirst());
+    }
+    @Test void 귀환을_포함해_이동한도를_넘으면_한번_교정하고_코스를_줄인다() {
+        when(wellnessApiClient.findNearby(anyDouble(), anyDouble(), anyInt())).thenReturn(List.of());
+        when(placeService.searchRawByKeyword(anyString(), anyDouble(), anyDouble(), anyInt()))
+                .thenReturn(List.of(kakaoDoc("A", "카페 A", "127.004", "37.5"), kakaoDoc("B", "카페 B", "126.996", "37.5")));
+        stubAi(List.of(sel(0, 1), sel(1, 2)));
+        var input = survey(); input.setTransportTime("20분");
+        var result = service.recommend(input);
+        assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getTimeSummary().travelMinutes()).isLessThanOrEqualTo(20);
+        assertThat(result.getTimeSummary().returnMinutes()).isPositive();
+        assertThat(result.getPlan().getReasoning()).contains("돌아오는").endsWith("요.");
+        verify(service, times(2)).callAi(anyString(), anyString(), any(Duration.class));
+    }
+
+    @Test void 가까운_다른_상호에_웰니스_인증을_붙이지_않는다() {
+        when(wellnessApiClient.findNearby(anyDouble(), anyDouble(), anyInt()))
+                .thenReturn(List.of(new WellnessPlaceDto("123", "공식온천", 127.0, 37.5)));
+        when(placeService.searchRawByKeyword(eq("공식온천"), anyDouble(), anyDouble(), anyInt()))
+                .thenReturn(List.of(kakaoDoc("NEIGHBOR", "옆집카페", "127.0", "37.5")));
+        stubAi(List.of(sel(0, 1)));
+        assertThat(service.recommend(survey()).getItems()).allSatisfy(i -> assertThat(i.isWellnessCertified()).isFalse());
+    }
 
     private WellnessApiClient wellnessApiClient;
     private PlaceService placeService;
@@ -59,7 +91,7 @@ class RecommendServiceImplTest {
         AiSelectionDto.TravelPlan plan = new AiSelectionDto.TravelPlan();
         plan.setTotalHours(7);
         plan.setEstimatedPlaceCount(2);
-        plan.setReasoning("몸을 데운 뒤 조용히 마무리하는 흐름");
+        plan.setReasoning("시간에 맞춰 카페에 들러 잠시 쉬어가보세요.");
         aiResponse.setTravelPlan(plan);
 
         service = spy(new RecommendServiceImpl(
@@ -70,7 +102,8 @@ class RecommendServiceImplTest {
                 new AiSelectionValidator(),
                 placeService,
                 new ObjectMapper(),
-                mock(AnthropicRecommendationClient.class)));
+                mock(AnthropicRecommendationClient.class),
+                new com.begae.backend.trip.TripRouteCalculator(mock(org.springframework.web.reactive.function.client.WebClient.class))));
 
         when(placeService.searchRawByKeyword(anyString(), anyDouble(), anyDouble(), anyInt()))
                 .thenReturn(List.of(kakaoDoc("K1", "카페", "127.0", "37.5")));
@@ -90,7 +123,7 @@ class RecommendServiceImplTest {
         s.setIndex(index);
         s.setOrder(order);
         s.setStayMinutes(60);
-        s.setReason("이유");
+        s.setReason("잠시 쉬어가고 싶을 때 카페에 들러보세요.");
         s.setTags(List.of("#태그"));
         return s;
     }
@@ -281,8 +314,8 @@ class RecommendServiceImplTest {
     @Test
     void 웰니스_중복_매칭에도_후보수는_음수가_되지_않는다() {
         when(wellnessApiClient.findNearby(anyDouble(), anyDouble(), anyInt())).thenReturn(List.of(
-                new WellnessPlaceDto("W1", "웰니스1", 127.0, 37.5),
-                new WellnessPlaceDto("W2", "웰니스2", 127.0, 37.5)));
+                new WellnessPlaceDto("W1", "같은 장소", 127.0, 37.5),
+                new WellnessPlaceDto("W2", "같은 장소", 127.0, 37.5)));
         when(placeService.searchRawByKeyword(anyString(), anyDouble(), anyDouble(), anyInt()))
                 .thenReturn(List.of(kakaoDoc("SAME", "같은 장소", "127.0", "37.5")));
         stubAi(List.of(sel(0, 1)));

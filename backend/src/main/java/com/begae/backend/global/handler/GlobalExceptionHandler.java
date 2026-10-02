@@ -52,12 +52,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleCustomException(CustomException ex) {
         log.error("handleCustomException", ex);
         ErrorCode errorCode = ex.getErrorCode();
-        return ResponseEntity.status(errorCode.getHttpStatus()).body(
-                ErrorResponse.of(
-                        errorCode.getHttpStatus(),
-                        ex.getMessage()
-                )
-        );
+        ErrorResponse response = ErrorResponse.of(errorCode.getHttpStatus(), ex.getMessage());
+        response.setCode(errorCode.getCode());
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
     }
 
     /**
@@ -66,12 +63,9 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     protected ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
-        log.error("handleMethodArgumentNotValidException", e);
+        log.warn("Request validation failed: fields={}", e.getBindingResult().getFieldErrors().stream().map(org.springframework.validation.FieldError::getField).toList());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                ErrorResponse.of(
-                        HttpStatus.BAD_REQUEST,
-                        GlobalErrorCode.INVALID_INPUT_VALUE.getMessage()
-                )
+                ErrorResponse.of(GlobalErrorCode.INVALID_INPUT_VALUE)
         );
     }
 
@@ -86,12 +80,9 @@ public class GlobalExceptionHandler {
             MissingServletRequestPartException.class
     })
     protected ResponseEntity<ErrorResponse> handleBadRequestException(Exception e) {
-        log.error("handleBadRequestException", e);
+        log.warn("Bad request type={}", e.getClass().getSimpleName());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
-                ErrorResponse.of(
-                        HttpStatus.BAD_REQUEST,
-                        GlobalErrorCode.INVALID_INPUT_VALUE.getMessage()
-                )
+                ErrorResponse.of(GlobalErrorCode.INVALID_INPUT_VALUE)
         );
     }
 

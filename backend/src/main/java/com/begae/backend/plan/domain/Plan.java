@@ -53,6 +53,15 @@ public class Plan extends BaseEntity {
     @Column(name = "total_distance")
     private Integer totalDistance;
 
+    @Column(name = "transport")
+    private String transport;
+    @Column(name = "travel_limit_minutes")
+    private Integer travelLimitMinutes;
+    @Column(name = "return_time")
+    private Integer returnTime;
+    @Column(name = "travel_time_estimated")
+    private Boolean travelTimeEstimated;
+
     @Embedded
     private DeparturePoint departurePoint;
 
@@ -115,6 +124,8 @@ public class Plan extends BaseEntity {
                 .requiredTime(source.getRequiredTime())
                 .totalDistance(source.getTotalDistance())
                 .departurePoint(source.getDeparturePoint())
+                .transport(source.getTransport()).travelLimitMinutes(source.getTravelLimitMinutes())
+                .returnTime(source.getReturnTime()).travelTimeEstimated(source.getTravelTimeEstimated())
                 .user(newOwner)
                 .likeCount(0)
                 .scrapCount(0)
@@ -135,6 +146,12 @@ public class Plan extends BaseEntity {
         this.requiredTime = requiredTime;
         this.totalDistance = totalDistance;
         this.departurePoint = departurePoint;
+    }
+
+    public void updateTripSummary(com.begae.backend.trip.TripTimeSummary summary, DeparturePoint departure) {
+        updateRouteSummary(summary.totalMinutes(), summary.totalDistanceKm(), departure);
+        this.returnTime = summary.returnMinutes();
+        this.travelTimeEstimated = summary.estimated();
     }
 
     public boolean isVerifiedPlan() {

@@ -60,7 +60,7 @@ public class WellnessApiClient {
 
             return parse(root);
         } catch (Exception e) {
-            log.warn("웰니스 API 호출 실패 - 카카오 후보만으로 진행한다", e);
+            log.warn("웰니스 API 호출 실패 type={}", e.getClass().getSimpleName());
             return List.of();
         }
     }
@@ -70,7 +70,7 @@ public class WellnessApiClient {
 
         JsonNode header = root.path("response").path("header");
         if (!OK.equals(header.path("resultCode").asText())) {
-            log.warn("웰니스 API 비정상 응답: {}", root.toString());
+            log.warn("웰니스 API 비정상 응답");
             return List.of();
         }
 
@@ -84,10 +84,11 @@ public class WellnessApiClient {
             String title = item.path("title").asText(null);
             String mapX = item.path("mapX").asText("");
             String mapY = item.path("mapY").asText("");
-            if (contentId == null || title == null || mapX.isBlank() || mapY.isBlank()) continue;
+            if (contentId == null || contentId.length() > 100 || title == null || title.isBlank() || title.length() > 200 || mapX.isBlank() || mapY.isBlank()) continue;
             try {
-                result.add(new WellnessPlaceDto(contentId, title,
-                        Double.parseDouble(mapX), Double.parseDouble(mapY)));
+                double x = Double.parseDouble(mapX), y = Double.parseDouble(mapY);
+                if (!Double.isFinite(x) || !Double.isFinite(y) || x < -180 || x > 180 || y < -90 || y > 90) continue;
+                result.add(new WellnessPlaceDto(contentId, title, x, y));
             } catch (NumberFormatException ignored) {
                 log.debug("웰니스 좌표 파싱 실패 contentId={}", contentId);
             }

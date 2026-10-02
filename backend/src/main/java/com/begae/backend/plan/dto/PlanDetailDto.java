@@ -26,6 +26,10 @@ public class PlanDetailDto {
     private Boolean isPlanVisible;
     private Boolean isBookmarked;
     private Boolean isLiked;
+    private String transport;
+    private Integer travelLimitMinutes;
+    private Integer returnTime;
+    private Boolean travelTimeEstimated;
     private int requiredTime;
     private int totalDistance;
     private String planDescription;
@@ -85,6 +89,8 @@ public class PlanDetailDto {
                 .planImages(planImages)
                 .planImageUrls(planImageUrls)
                 .departurePoint(plan.getDeparturePoint())
+                .transport(plan.getTransport()).travelLimitMinutes(plan.getTravelLimitMinutes())
+                .returnTime(plan.getReturnTime()).travelTimeEstimated(plan.getTravelTimeEstimated())
                 .build();
     }
 

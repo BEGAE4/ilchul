@@ -19,6 +19,7 @@ public class RecommendResponseDto {
     private final String recommendId;
     private final CandidateCount candidateCount;
     private final Plan plan;
+    private final com.begae.backend.trip.TripTimeSummary timeSummary;
     private final List<Item> items;
 
     @Getter

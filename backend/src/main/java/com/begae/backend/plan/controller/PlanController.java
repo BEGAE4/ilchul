@@ -106,7 +106,7 @@ public class PlanController {
     @ApiResponse(responseCode = "201", description = "플랜이 성공적으로 생성되었습니다.")
     public ResponseEntity<CreatePlanResponseDto> createPlan(
             @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
-            @RequestBody CreatePlanRequestDto request
+            @RequestBody @jakarta.validation.Valid CreatePlanRequestDto request
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(planService.CreatePlanWithPlaces(user.getUserId(), request));
     }

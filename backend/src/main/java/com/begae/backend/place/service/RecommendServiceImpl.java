@@ -7,6 +7,9 @@ import com.begae.backend.place.client.WellnessApiClient;
 import com.begae.backend.place.component.*;
 import com.begae.backend.place.dto.*;
 import com.begae.backend.place.exception.PlaceErrorCode;
+import com.begae.backend.trip.*;
+import com.begae.backend.plan.dto.DeparturePointDto;
+import com.begae.backend.plan_place.dto.Point;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +55,7 @@ public class RecommendServiceImpl implements RecommendService {
     private final PlaceService placeService;
     private final ObjectMapper objectMapper;
     private final AnthropicRecommendationClient recommendationClient;
+    private final TripRouteCalculator routeCalculator;
 
     @Override
     public RecommendResponseDto recommend(SurveyResultDto survey) {
@@ -66,21 +70,63 @@ public class RecommendServiceImpl implements RecommendService {
         List<PlaceCandidate> kakaoCandidates = collectKakao(
                 survey.getEmotion(), x, y, radiusM,
                 boundedTimeout(deadlineNanos, KAKAO_STAGE_TIMEOUT));
-        List<PlaceCandidate> candidates = candidateMerger.merge(wellness.candidates(), kakaoCandidates);
+        Integer travelLimit = TripTimePolicy.travelLimit(survey.getTransportTime());
+        List<PlaceCandidate> candidates = candidateMerger.merge(wellness.candidates(), kakaoCandidates).stream()
+                .filter(this::usableCandidate)
+                .filter(c -> TripTimePolicy.fits(routeCalculator.estimate(departure(survey),
+                        List.of(point(c)), List.of(30), survey.getTransport()), window.totalMinutes(), travelLimit))
+                .limit(24).toList();
 
         if (candidates.isEmpty()) {
             throw new CustomException(PlaceErrorCode.RECOMMEND_NO_RESULT);
         }
 
-        AiSelectionDto ai = callAi(
-                toSurveyJson(survey),
-                toCandidateList(candidates),
-                boundedTimeout(deadlineNanos, AI_STAGE_TIMEOUT));
-        List<AiSelectionDto.Selection> selections = selectionValidator.validate(
-                ai, candidates.size(), window.totalMinutes());
-
-        if (selections.isEmpty()) {
-            throw new CustomException(PlaceErrorCode.RECOMMEND_NO_RESULT);
+        String surveyJson = toSurveyJson(survey);
+        String candidateJson = toCandidateList(candidates, survey);
+        long aiDeadline = Math.min(deadlineNanos, System.nanoTime() + AI_STAGE_TIMEOUT.toNanos());
+        AiSelectionDto ai;
+        try { ai = callAi(surveyJson, candidateJson, boundedTimeout(aiDeadline, AI_STAGE_TIMEOUT)); }
+        catch (CustomException exception) {
+            if (exception.getErrorCode() != PlaceErrorCode.RECOMMENDATION_INVALID_RESPONSE) throw exception;
+            ai = null;
+        }
+        boolean needsCorrection = selectionValidator.needsCorrection(ai, candidates.size());
+        List<AiSelectionDto.Selection> selections = selectionValidator.validate(ai, candidates.size(), window.totalMinutes());
+        boolean timeInvalid = selections.isEmpty() || !TripTimePolicy.fits(estimate(survey, candidates, selections), window.totalMinutes(), travelLimit);
+        boolean changed = needsCorrection || timeInvalid;
+        if (changed && aiDeadline - System.nanoTime() > Duration.ofSeconds(2).toNanos()) {
+            recommendationClient.recordQuality("correction");
+            try {
+                var correctionSurvey = objectMapper.readTree(surveyJson).deepCopy();
+                ((com.fasterxml.jackson.databind.node.ObjectNode) correctionSurvey).put("correction",
+                        "Regenerate: valid unique candidate indices, contiguous order, complete friendly ~요 sentences within length limits, and travel + stays including return within both budgets. Fewer stops are allowed.");
+                ai = callAi(objectMapper.writeValueAsString(correctionSurvey), candidateJson,
+                        boundedTimeout(aiDeadline, AI_STAGE_TIMEOUT));
+                changed = selectionValidator.needsCorrection(ai, candidates.size());
+                selections = selectionValidator.validate(ai, candidates.size(), window.totalMinutes());
+            } catch (CustomException | JsonProcessingException exception) {
+                recommendationClient.recordQuality("correction_failed");
+                // The first selection still goes through the same server checks and complete-sentence fallback.
+            }
+        }
+        selections = new ArrayList<>(selections);
+        while (!selections.isEmpty() && !TripTimePolicy.fits(estimate(survey, candidates, selections), window.totalMinutes(), travelLimit)) {
+            selections.removeLast();
+            changed = true;
+            recommendationClient.recordQuality("course_reduced");
+        }
+        if (selections.isEmpty()) throw new CustomException(ai == null
+                ? PlaceErrorCode.RECOMMENDATION_INVALID_RESPONSE : PlaceErrorCode.RECOMMEND_NO_RESULT);
+        TripTimeSummary timeSummary = routeCalculator.calculate(departure(survey),
+                selections.stream().map(s -> point(candidates.get(s.getIndex()))).toList(),
+                selections.stream().map(AiSelectionDto.Selection::getStayMinutes).toList(), survey.getTransport(),
+                boundedTimeout(deadlineNanos, Duration.ofSeconds(10)));
+        if (!TripTimePolicy.fits(timeSummary, window.totalMinutes(), travelLimit)) recommendationClient.recordQuality("time_rejected");
+        TripTimePolicy.enforce(timeSummary, window.totalMinutes(), travelLimit);
+        for (var selection : selections) {
+            selection.setReason(RecommendationTextPolicy.reason(
+                    "여행 중 잠시 들러볼 장소로 추천해 드려요.".equals(selection.getReason()) ? null : selection.getReason(),
+                    candidates.get(selection.getIndex()).getDocument().getCategoryName()));
         }
 
         List<RecommendResponseDto.Item> items = enrichSelections(
@@ -89,13 +135,15 @@ public class RecommendServiceImpl implements RecommendService {
                 .filter(candidate -> !candidate.isWellness())
                 .count());
 
+        recommendationClient.recordQuality(timeSummary.estimated() ? "accepted_estimated" : "accepted_routed");
         return RecommendResponseDto.builder()
                 .recommendId("rc_" + UUID.randomUUID().toString().substring(0, 8))
                 .candidateCount(RecommendResponseDto.CandidateCount.builder()
                         .wellness(wellness.rawCount())
                         .kakao(mergedKakaoCount)
                         .build())
-                .plan(toPlan(ai, window.totalHours(), items.size()))
+                .plan(toPlan(ai, window.totalHours(), items.size(), changed))
+                .timeSummary(timeSummary)
                 .items(items)
                 .build();
     }
@@ -125,11 +173,10 @@ public class RecommendServiceImpl implements RecommendService {
         return Mono.fromCallable(() -> {
                     List<KakaoPlaceResponseDto.Document> found = placeService.searchRawByKeyword(
                             wellness.getTitle(), wellness.getX(), wellness.getY(), WELLNESS_MATCH_RADIUS_M);
-                    return wellnessMatcher.nearest(wellness.getX(), wellness.getY(), found)
+                    return wellnessMatcher.nearest(wellness.getTitle(), wellness.getX(), wellness.getY(), found)
                             .map(document -> new PlaceCandidate(document, wellness.getContentId()))
                             .orElseGet(() -> {
-                                log.info("웰니스 장소를 카카오에서 찾지 못해 제외한다: contentId={}, title={}",
-                                        wellness.getContentId(), wellness.getTitle());
+                                log.debug("웰니스 동일 장소 매칭 결과 없음");
                                 return null;
                             });
                 })
@@ -184,6 +231,8 @@ public class RecommendServiceImpl implements RecommendService {
     private SurveyWindow validateSurvey(SurveyResultDto survey) {
         if (survey == null
                 || isBlank(survey.getEmotion())
+                || survey.getEmotion().length() > 100
+                || (survey.getTransportTime() != null && survey.getTransportTime().length() > 30)
                 || isBlank(survey.getStartTime())
                 || isBlank(survey.getEndTime())
                 || !SUPPORTED_TRANSPORTS.contains(survey.getTransport())
@@ -197,6 +246,8 @@ public class RecommendServiceImpl implements RecommendService {
             throw new CustomException(GlobalErrorCode.INVALID_INPUT_VALUE);
         }
 
+        survey.setEmotion(survey.getEmotion().trim());
+        TripTimePolicy.travelLimit(survey.getTransportTime());
         try {
             LocalDateTime start = LocalDateTime.parse(survey.getStartTime(), SURVEY_TIME);
             LocalDateTime end = LocalDateTime.parse(survey.getEndTime(), SURVEY_TIME);
@@ -212,32 +263,70 @@ public class RecommendServiceImpl implements RecommendService {
         }
     }
 
-    private RecommendResponseDto.Plan toPlan(AiSelectionDto ai, int totalHours, int itemCount) {
+    private RecommendResponseDto.Plan toPlan(AiSelectionDto ai, int totalHours, int itemCount, boolean changed) {
         AiSelectionDto.TravelPlan p = ai != null ? ai.getTravelPlan() : null;
         return RecommendResponseDto.Plan.builder()
                 .totalHours(totalHours)
                 .estimatedPlaceCount(itemCount)
-                .reasoning(p != null ? p.getReasoning() : null)
+                .reasoning(RecommendationTextPolicy.reasoning(p != null ? p.getReasoning() : null, changed))
                 .build();
     }
 
-    private String toCandidateList(List<PlaceCandidate> candidates) {
-        StringBuilder sb = new StringBuilder();
+    private String toCandidateList(List<PlaceCandidate> candidates, SurveyResultDto survey) {
+        var data = objectMapper.createObjectNode();
+        var entries = data.putArray("places");
+        Point origin = new Point("출발지", survey.getLocation().getX(), survey.getLocation().getY());
         for (int i = 0; i < candidates.size(); i++) {
-            PlaceCandidate c = candidates.get(i);
-            sb.append("[").append(i).append("] ");
-            if (c.isWellness()) sb.append("[WELLNESS] ");
-            sb.append(c.getDocument().getPlaceName())
-              .append(" | ").append(c.getDocument().getCategoryName())
-              .append(" | ").append(c.getDocument().getRoadAddressName())
-              .append("\n");
+            var c = candidates.get(i);
+            var d = c.getDocument();
+            var entry = entries.addObject();
+            entry.put("index", i).put("name", boundedText(d.getPlaceName()))
+                    .put("category", boundedText(d.getCategoryName())).put("address", boundedText(d.getRoadAddressName()))
+                    .put("wellness_certified", c.isWellness()).put("x", point(c).x()).put("y", point(c).y())
+                    .put("from_departure_minutes", routeCalculator.estimateLeg(origin, point(c), survey.getTransport()))
+                    .put("return_minutes", routeCalculator.estimateLeg(point(c), origin, survey.getTransport()));
         }
-        return sb.toString();
+        var matrix = data.putArray("between_minutes");
+        for (var from : candidates) {
+            var row = matrix.addArray();
+            for (var to : candidates) row.add(routeCalculator.estimateLeg(point(from), point(to), survey.getTransport()));
+        }
+        data.put("travel_times_estimated", true);
+        return data.toString();
+    }
+
+    private String boundedText(String value) {
+        if (value == null) return "";
+        return value.codePointCount(0, value.length()) <= 120 ? value : value.substring(0, value.offsetByCodePoints(0, 120));
+    }
+    private boolean usableCandidate(PlaceCandidate candidate) {
+        try {
+            var d = candidate.getDocument();
+            TripTimePolicy.validateCoordinates(Double.parseDouble(d.getX()), Double.parseDouble(d.getY()));
+            return d.getPlaceName() != null && !d.getPlaceName().isBlank();
+        } catch (RuntimeException exception) { return false; }
+    }
+    private Point point(PlaceCandidate candidate) {
+        var d = candidate.getDocument();
+        return new Point("후보", Double.parseDouble(d.getX()), Double.parseDouble(d.getY()));
+    }
+    private DeparturePointDto departure(SurveyResultDto survey) {
+        return new DeparturePointDto("출발지", "", survey.getLocation().getX(), survey.getLocation().getY());
+    }
+    private TripTimeSummary estimate(SurveyResultDto survey, List<PlaceCandidate> candidates, List<AiSelectionDto.Selection> selections) {
+        return routeCalculator.estimate(departure(survey), selections.stream().map(s -> point(candidates.get(s.getIndex()))).toList(),
+                selections.stream().map(AiSelectionDto.Selection::getStayMinutes).toList(), survey.getTransport());
     }
 
     String toSurveyJson(SurveyResultDto survey) {
         try {
-            return objectMapper.writeValueAsString(survey);
+            var node = objectMapper.valueToTree(survey);
+            var object = (com.fasterxml.jackson.databind.node.ObjectNode) node;
+            object.put("available_minutes", validateSurvey(survey).totalMinutes());
+            Integer limit = TripTimePolicy.travelLimit(survey.getTransportTime());
+            if (limit != null) object.put("travel_limit_minutes", limit);
+            object.put("return_to_departure", true);
+            return objectMapper.writeValueAsString(object);
         } catch (JsonProcessingException e) {
             log.error("설문 직렬화 실패", e);
             throw new CustomException(GlobalErrorCode.INTERNAL_SERVER_ERROR);

@@ -16,9 +16,6 @@ import com.begae.backend.plan_place.repository.PlanPlaceRepository;
 import com.begae.backend.storage.service.ImageFileCleaner;
 import com.begae.backend.storage.service.ImageStorageService;
 import com.begae.backend.user.domain.User;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,7 +50,7 @@ class PlanPlaceServiceImplUpdateRouteTest {
     @Autowired
     private PlanPlaceImageRepository planPlaceImageRepository;
 
-    private MockWebServer naviServer;
+    private final com.begae.backend.trip.TripRouteCalculator calculator = mock(com.begae.backend.trip.TripRouteCalculator.class);
     private final ImageFileCleaner imageFileCleaner = mock(ImageFileCleaner.class);
     private PlanPlaceServiceImpl service;
 
@@ -65,8 +62,6 @@ class PlanPlaceServiceImplUpdateRouteTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        naviServer = new MockWebServer();
-        naviServer.start();
         service = new PlanPlaceServiceImpl(
                 planPlaceRepository,
                 planRepository,
@@ -75,8 +70,9 @@ class PlanPlaceServiceImplUpdateRouteTest {
                 mock(PlanService.class),
                 mock(ImageStorageService.class),
                 imageFileCleaner,
-                WebClient.builder().baseUrl(naviServer.url("/").toString()).build(),
-                mock(WebClient.class)
+                mock(WebClient.class),
+                mock(WebClient.class),
+                calculator
         );
 
         owner = entityManager.persist(User.builder().userNickname("owner").build());
@@ -94,18 +90,15 @@ class PlanPlaceServiceImplUpdateRouteTest {
         entityManager.flush();
         entityManager.clear();
 
-        naviServer.enqueue(new MockResponse()
-                .setHeader("Content-Type", "application/json")
-                .setBody("""
-                        {"trans_id":"t1","routes":[{"result_code":0,"result_msg":"ok",
-                        "summary":{"distance":2000,"duration":1200},
-                        "sections":[{"distance":1000,"duration":600},{"distance":1000,"duration":600}]}]}
-                        """));
-    }
-
-    @AfterEach
-    void tearDown() throws Exception {
-        naviServer.shutdown();
+        org.mockito.Mockito.when(calculator.calculate(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyList(),
+                org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(invocation -> {
+                    List<com.begae.backend.plan_place.dto.Point> points = invocation.getArgument(1);
+                    List<Integer> stays = invocation.getArgument(2);
+                    int stay = stays.stream().mapToInt(Integer::intValue).sum();
+                    return new com.begae.backend.trip.TripTimeSummary(points.stream().map(p -> 10).toList(), 10,
+                            (points.size() + 1) * 10, stay, (points.size() + 1) * 10 + stay, 2, false);
+                });
     }
 
     @Test

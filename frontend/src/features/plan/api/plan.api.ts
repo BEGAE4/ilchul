@@ -77,9 +77,11 @@ export async function createPlanPreview(body: {
   // 'yyyy-MM-dd HH:mm' (toServerDateTime 으로 생성; ISO 'T' 형식은 400)
   tripStartDate?: string;
   tripEndDate?: string;
-  places: { placeId: number; order: number }[];
-}): Promise<PlanPreviewResponse> {
-  const { data } = await apiClient.post<PlanPreviewResponse>('/api/plan-place/preview', body);
+  transport?: string;
+  transportTime?: string;
+  places: { placeId: number; order: number; stayTime: number }[];
+}, options: { signal?: AbortSignal } = {}): Promise<PlanPreviewResponse> {
+  const { data } = await apiClient.post<PlanPreviewResponse>('/api/plan-place/preview', body, { signal: options.signal, timeout: 15_000 });
   return data;
 }
 

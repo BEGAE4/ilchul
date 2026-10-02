@@ -1,6 +1,10 @@
 package com.begae.backend.plan.service;
 
 import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.trip.*;
+import com.begae.backend.plan_place.dto.Point;
+import java.time.Duration;
+import java.util.Comparator;
 import com.begae.backend.global.location.PopularRegion;
 import com.begae.backend.like.domain.Like;
 import com.begae.backend.like.enums.LikeType;
@@ -60,6 +64,7 @@ public class PlanServiceImpl implements PlanService{
     private final ImageStorageService imageStorageService;
     private final PlanPlaceImageRepository planPlaceImageRepository;
     private final ImageFileCleaner imageFileCleaner;
+    private final TripRouteCalculator routeCalculator;
 
 //    @Value("${tmap.api.key}")
 //    private String tmapApiKey;
@@ -75,29 +80,37 @@ public class PlanServiceImpl implements PlanService{
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(UserErrorCode.USER_NOT_FOUND));
 
+        if (request.getPlaces() == null || request.getPlaces().stream().anyMatch(java.util.Objects::isNull))
+            throw new CustomException(com.begae.backend.global.exception.GlobalErrorCode.INVALID_INPUT_VALUE);
+        var ordered = request.getPlaces().stream().sorted(Comparator.comparing(
+                CreatePlanRequestDto.CreatePlanPlaceRequest::getOrder, Comparator.nullsLast(Integer::compareTo))).toList();
+        var ids = ordered.stream().map(CreatePlanRequestDto.CreatePlanPlaceRequest::getPlaceId).toList();
+        var stays = ordered.stream().map(CreatePlanRequestDto.CreatePlanPlaceRequest::getStayTime).toList();
+        TripTimePolicy.validateStops(ids, ordered.stream().map(CreatePlanRequestDto.CreatePlanPlaceRequest::getOrder).toList(), stays);
+        Map<Integer, Place> placeMap = placeRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Place::getPlaceId, p -> p));
+        var points = ids.stream().map(id -> {
+            var place = placeMap.get(id);
+            if (place == null) throw new CustomException(PlaceErrorCode.PLACE_NOT_FOUND);
+            TripTimePolicy.validateCoordinates(place.getX(), place.getY());
+            return new Point("장소", place.getX(), place.getY());
+        }).toList();
+        TripTimeSummary summary = routeCalculator.calculate(request.getDeparturePoint(), points, stays,
+                request.getTransport(), Duration.ofSeconds(10));
+        Integer travelLimit = TripTimePolicy.travelLimit(request.getTransportTime());
+        TripTimePolicy.enforce(summary, TripTimePolicy.availableMinutes(request.getTripStartDate(), request.getTripEndDate()), travelLimit);
         Plan plan = Plan.builder()
-                .user(user)
-                .planTitle(request.getPlanTitle())
-                .isVerified(false)
-                .isPlanVisible(request.getIsPlanVisible())
-                .planDescription(request.getPlanDescription())
-                .requiredTime(request.getRequiredTime())
-                .totalDistance(request.getTotalDistance())
+                .user(user).planTitle(request.getPlanTitle()).isVerified(false)
+                .isPlanVisible(Boolean.TRUE.equals(request.getIsPlanVisible())).planDescription(request.getPlanDescription())
+                .requiredTime(summary.totalMinutes()).totalDistance(summary.totalDistanceKm())
+                .transport(request.getTransport()).travelLimitMinutes(travelLimit)
+                .returnTime(summary.returnMinutes()).travelTimeEstimated(summary.estimated())
                 .departurePoint(DeparturePoint.of(request.getDeparturePoint()))
-                .tripStartDate(request.getTripStartDate())
-                .tripEndDate(request.getTripEndDate())
-                .likeCount(0)
-                .scrapCount(0)
-                .build();
+                .tripStartDate(request.getTripStartDate()).tripEndDate(request.getTripEndDate())
+                .likeCount(0).scrapCount(0).build();
         Plan savedPlan = planRepository.save(plan);
 
-        List<Integer> placeIds = request.getPlaces().stream()
-                .map(placeRequest -> placeRequest.getPlaceId())
-                .toList();
-        Map<Integer, Place> placeMap = placeRepository.findAllById(placeIds).stream()
-                .collect(Collectors.toMap(Place::getPlaceId, p -> p));
-
-        List<PlanPlace> planPlaces = request.getPlaces().stream()
+        List<PlanPlace> planPlaces = ordered.stream()
                 .map(placeRequest -> {
                     Place place = placeMap.get(placeRequest.getPlaceId());
                     if (place == null) {
@@ -108,7 +121,7 @@ public class PlanServiceImpl implements PlanService{
                             .plan(savedPlan)
                             .place(place)
                             .orderIndex(placeRequest.getOrder())
-                            .travelTime(placeRequest.getTravelTime())
+                            .travelTime(summary.legMinutes().get(placeRequest.getOrder() - 1))
                             .stayTime(placeRequest.getStayTime())
                             .isStamped(false)
                             // 스냅샷 저장
@@ -335,6 +348,9 @@ public class PlanServiceImpl implements PlanService{
                 start = planCopyRequestDto.getScheduledDate().atStartOfDay();
                 end = start.plusMinutes(Math.max(0, originPlan.getRequiredTime() == null ? 0 : originPlan.getRequiredTime()));
             }
+            if (originPlan.getTransport() != null && start != null && end != null
+                    && TripTimePolicy.availableMinutes(start, end) < originPlan.getRequiredTime())
+                throw new CustomException(com.begae.backend.plan_place.exception.PlanPlaceErrorCode.TRIP_TIME_EXCEEDED);
             newPlan.updateUnverifiedOnlyInfo(start, end);
         }
         planRepository.save(newPlan);
@@ -358,6 +374,14 @@ public class PlanServiceImpl implements PlanService{
                 && request.getTripEndDate() != null
                 && request.getTripStartDate().isAfter(request.getTripEndDate())) {
             throw new CustomException(PlanErrorCode.INVALID_TRIP_DATE_RANGE);
+        }
+
+        if (plan.getTransport() != null && (request.getTripStartDate() != null || request.getTripEndDate() != null)) {
+            int available = TripTimePolicy.availableMinutes(
+                    request.getTripStartDate() == null ? plan.getTripStartDate() : request.getTripStartDate(),
+                    request.getTripEndDate() == null ? plan.getTripEndDate() : request.getTripEndDate());
+            if (plan.getRequiredTime() > available)
+                throw new CustomException(com.begae.backend.plan_place.exception.PlanPlaceErrorCode.TRIP_TIME_EXCEEDED);
         }
 
         plan.updateBasicInfo(

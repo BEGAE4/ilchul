@@ -52,7 +52,8 @@ class PlanServiceImplAccessTest {
                 mock(PlanImageRepository.class),
                 mock(ImageStorageService.class),
                 mock(PlanPlaceImageRepository.class),
-                mock(ImageFileCleaner.class)
+                mock(ImageFileCleaner.class),
+                mock(com.begae.backend.trip.TripRouteCalculator.class)
         );
         when(userRepository.findById(OTHER_USER_ID)).thenReturn(Optional.of(user(OTHER_USER_ID)));
     }
