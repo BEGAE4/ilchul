@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRegion } from '../../hooks/useRegion';
 import { buildNearbyQuery, sigunguKey } from '../../utils/nearbyQuery';
@@ -17,13 +16,8 @@ export function PopularPlaceListPage() {
   const router = useRouter();
   const { region, source: regionSource, isLocating, sigungu } = useRegion();
 
-  // 직접 고른 지역이 있으면 그 지역을 보여주고, 위치를 못 잡았을 때만 전국 목록으로 넘긴다.
-  useEffect(() => {
-    if (regionSource === 'default' && !isLocating) {
-      router.replace('/place/popular/nationwide');
-    }
-  }, [regionSource, isLocating, router]);
-
+  // 위치를 못 잡았을 때도 홈과 같은 기본 지역(서울)·시군구로 조회한다.
+  // 예전에는 전국 목록으로 넘겨, 홈에서 "서울(또는 중구·종로구) 인기 장소 더보기"를 누르면 전국이 떴다.
   const {
     items,
     isLoading,
@@ -42,9 +36,9 @@ export function PopularPlaceListPage() {
   const pageTitle =
     sigungu.length > 0
       ? `${sigungu.join('·')} 인기 장소`
-      : regionSource === 'manual'
-        ? `${region.name} 인기 장소`
-        : '내 주변 인기 장소';
+      : regionSource === 'gps'
+        ? '내 주변 인기 장소'
+        : `${region.name} 인기 장소`;
 
   const sentinelRef = useInfiniteScroll({
     enabled: hasNext && !isLoadingMore && !error,
