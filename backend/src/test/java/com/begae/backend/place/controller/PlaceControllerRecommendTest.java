@@ -25,6 +25,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
 class PlaceControllerRecommendTest {
+    @Test void 감정_입력이_너무_길면_모델을_호출하지_않는다() throws Exception {
+        mockMvc.perform(post("/api/place/recommend").contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequest().replace("울적해요", "가".repeat(101))))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("G001"));
+        verifyNoInteractions(recommendService);
+    }
 
     private MockMvc mockMvc;
     private RecommendService recommendService;

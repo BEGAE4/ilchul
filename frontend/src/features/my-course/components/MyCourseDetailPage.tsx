@@ -804,6 +804,12 @@ export function MyCourseDetailPage({ courseId }: MyCourseDetailPageProps) {
             </div>
           )}
         </div>
+        {plan.returnTime != null && (
+          <p className="text-xs text-gray-500 mb-2">
+            출발지로 돌아오는 {plan.returnTime}분이 전체 소요시간에 포함돼요.
+            {plan.travelTimeEstimated && ' 이동 시간은 추정치예요.'}
+          </p>
+        )}
         <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
           <motion.div
             className="h-full bg-primary-500"

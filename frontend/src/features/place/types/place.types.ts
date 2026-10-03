@@ -61,6 +61,7 @@ export interface RecommendPlaceItem {
 }
 
 export interface RecommendResponse {
+  timeSummary?: import("@/shared/types/trip").TripTimeSummary;
   recommendId: string;
   candidateCount: { wellness: number; kakao: number };
   plan: {

@@ -24,6 +24,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 @ActiveProfiles("test")
 class PublicReadSecurityTest {
     @Autowired MockMvc mvc;
+    @MockitoBean com.begae.backend.place.component.RecommendationGuard recommendationGuard;
     @MockitoBean JwtManager jwtManager;
     @MockitoBean CustomUserDetailsService userDetailsService;
     @MockitoBean CustomOauth2SuccessHandler successHandler;

@@ -14,7 +14,9 @@ public enum PlanPlaceErrorCode implements ErrorCode {
     INVALID_ORDER_STATE(HttpStatus.BAD_REQUEST,"PP003", "장소의 순서가 올바르지 않습니다."),
     INVALID_PLAN_PLACE(HttpStatus.BAD_REQUEST, "PP004", "플랜의 장소 목록이 올바르지 않습니다."),
     OUT_OF_STAMP_RANGE(HttpStatus.UNPROCESSABLE_ENTITY, "PP005", "현재 장소가 인증 범위 밖에 있습니다."),
-    ALREADY_VERIFIED(HttpStatus.CONFLICT, "PP006", "이미 인증된 장소입니다");
+    ALREADY_VERIFIED(HttpStatus.CONFLICT, "PP006", "이미 인증된 장소입니다"),
+    TRIP_TIME_EXCEEDED(HttpStatus.UNPROCESSABLE_ENTITY, "PP007", "귀환을 포함한 이동·체류 시간이 설정한 시간을 넘어요. 장소를 줄이거나 시간을 늘려주세요."),
+    ROUTE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "PP008", "이동 경로를 계산하지 못했어요. 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus httpStatus;
     private final String code;

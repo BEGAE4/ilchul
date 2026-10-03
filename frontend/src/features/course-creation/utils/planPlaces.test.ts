@@ -14,9 +14,9 @@ const stop = (id: string, time: string): Place => ({
   tags: [],
 });
 
-const preview = (order: number, duration: number, stayTime?: number): PlanPreviewPlace =>
+const preview = (order: number, duration: number, stayTime?: number, placeId = order === 1 ? 13 : 94): PlanPreviewPlace =>
   ({
-    placeId: 0,
+    placeId,
     placeName: '',
     addressName: '',
     roadAddressName: '',
@@ -52,24 +52,30 @@ describe('buildCreatePlanPlaces', () => {
 
   it('프리뷰에 stayTime 이 없으면 추천 결과의 체류시간으로 채운다 (운영 응답에 stayTime 필드 없음)', () => {
     const result = buildCreatePlanPlaces(
-      [stop('13', '120분'), stop('94', '45분')],
+      [stop('13', '90분'), stop('94', '45분')],
       [preview(1, 13), preview(2, 17)]
     );
-    expect(result.map((p) => p.stayTime)).toEqual([120, 45]);
+    expect(result.map((p) => p.stayTime)).toEqual([90, 45]);
   });
 
   it('프리뷰 stayTime 이 0 이면 비어 있는 값으로 보고 추천 체류시간을 쓴다', () => {
-    const result = buildCreatePlanPlaces([stop('13', '120분')], [preview(1, 13, 0)]);
-    expect(result[0].stayTime).toBe(120);
+    const result = buildCreatePlanPlaces([stop('13', '90분')], [preview(1, 13, 0)]);
+    expect(result[0].stayTime).toBe(90);
   });
 
-  it('해당 order 의 프리뷰가 없으면 이동시간 0, 체류시간은 추천값', () => {
-    const result = buildCreatePlanPlaces([stop('13', '75분')], []);
-    expect(result).toEqual([{ placeId: 13, order: 1, travelTime: 0, stayTime: 75 }]);
+  it('프리뷰가 없으면 저장 요청을 만들지 않는다', () => {
+    expect(() => buildCreatePlanPlaces([stop('13', '75분')], [])).toThrow('preview_mismatch');
   });
 
-  it('숫자가 아닌 id 는 제외한다', () => {
-    const result = buildCreatePlanPlaces([stop('abc', '60분'), stop('13', '60분')], []);
-    expect(result.map((p) => p.placeId)).toEqual([13]);
+  it('placeId가 다르면 같은 order라도 저장을 막는다', () => {
+    expect(() => buildCreatePlanPlaces([stop('13', '60분')], [preview(1, 10, 60, 94)])).toThrow('preview_mismatch');
+  });
+
+  it('숫자가 아닌 id는 저장을 막는다', () => {
+    expect(() => buildCreatePlanPlaces([stop('abc', '60분')], [preview(1, 0)])).toThrow('preview_mismatch');
+  });
+
+  it('출발지와 같은 장소의 실제 0분은 허용한다', () => {
+    expect(buildCreatePlanPlaces([stop('13', '60분')], [preview(1, 0)])[0].travelTime).toBe(0);
   });
 });

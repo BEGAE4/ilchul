@@ -1,6 +1,7 @@
 package com.begae.backend.plan_place.service;
 
 import com.begae.backend.global.exception.CustomException;
+import com.begae.backend.trip.*;
 import com.begae.backend.place.domain.Place;
 import com.begae.backend.place.repository.PlaceRepository;
 import com.begae.backend.plan.domain.DeparturePoint;
@@ -49,6 +50,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
 
     private final WebClient kakaoNaviWebClient;
     private final WebClient kakaoWebClient;
+    private final TripRouteCalculator routeCalculator;
 
     @Override
     @Transactional(readOnly = true)
@@ -72,15 +74,22 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
         List<Point> points = ordered.stream()
                 .map(p -> {
                     Place place = placeById.get(p.getPlaceId());
+                    if (place == null) throw new CustomException(PlanPlaceErrorCode.INVALID_PLAN_PLACE);
+                    TripTimePolicy.validateCoordinates(place.getX(), place.getY());
                     return new Point(place.getPlaceName(), place.getX(), place.getY());
                 })
                 .toList();
 
-        getDurationDto duration = getDuration(request.getDeparturePoint(), points);
+        var stays = ordered.stream().map(CreatePlanPreviewRequestDto.Place::getStayTime).toList();
+        TripTimePolicy.validateStops(ids, ordered.stream().map(CreatePlanPreviewRequestDto.Place::getOrder).toList(), stays);
+        TripTimeSummary summary = routeCalculator.calculate(request.getDeparturePoint(), points, stays,
+                request.getTransport(), Duration.ofSeconds(10));
+        TripTimePolicy.enforce(summary, TripTimePolicy.availableMinutes(request.getTripStartDate(), request.getTripEndDate()),
+                TripTimePolicy.travelLimit(request.getTransportTime()));
 
         List<CreatePlanPreviewResponseDto.PlanPlacePreview> routes = new ArrayList<>();
-        for(int i = 0; i < places.size(); i++) {
-            Place place = places.get(i);
+        for(int i = 0; i < ordered.size(); i++) {
+            Place place = placeById.get(ordered.get(i).getPlaceId());
             routes.add(CreatePlanPreviewResponseDto.PlanPlacePreview.builder()
                     .placeId(place.getPlaceId())
                     .placeName(place.getPlaceName())
@@ -88,7 +97,8 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                     .addressName(place.getAddressName())
                     .roadAddressName(place.getRoadAddressName())
                     .order(i + 1)
-                    .duration(i >= duration.getSectionDuration().size() ? 0 : duration.getSectionDuration().get(i))
+                    .duration(summary.legMinutes().get(i))
+                    .stayTime(stays.get(i))
                     .x(place.getX())
                     .y(place.getY())
                     .build());
@@ -98,8 +108,9 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                 .planTitle(request.getPlanTitle())
                 .planDescription(request.getPlanDescription())
                 .isPlanVisible(request.getIsPlanVisible())
-                .requiredTime(duration.getTotalDuration())
-                .totalDistance(duration.getTotalDistance())
+                .requiredTime(summary.totalMinutes())
+                .totalDistance(summary.totalDistanceKm())
+                .timeSummary(summary)
                 .departurePoint(request.getDeparturePoint())
                 .tripStartDate(request.getTripStartDate())
                 .tripEndDate(request.getTripEndDate())
@@ -149,11 +160,17 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                                 return new Point(planPlace.getSnapshotPlaceName(), planPlace.getSnapshotX(), planPlace.getSnapshotY());
                             }
                             Place place = placeById.get(p.getPlaceId());
-                            return new Point(place.getPlaceName(), place.getX(), place.getY());
+                            if (place == null) throw new CustomException(PlanPlaceErrorCode.INVALID_PLAN_PLACE);
+                            TripTimePolicy.validateCoordinates(place.getX(), place.getY());
+                    return new Point(place.getPlaceName(), place.getX(), place.getY());
                         }
                 ).toList();
 
-        getDurationDto duration = getDuration(request.getDeparturePoint(), points);
+        List<Integer> stays = places.stream().map(p -> existingMap.get(p.getPlanPlaceId()))
+                .map(p -> p == null || p.getStayTime() == null ? 60 : p.getStayTime()).toList();
+        TripTimeSummary summary = updatedSummary(plan, request.getDeparturePoint(), points, stays);
+        getDurationDto duration = getDurationDto.builder().totalDuration(summary.totalMinutes())
+                .totalDistance(summary.totalDistanceKm()).sectionDuration(summary.legMinutes()).build();
 
         List<UpdatePlanPreviewResponseDto.PlanPlacePreview> routes = new ArrayList<>();
         for(int i = 0; i < places.size(); i++) {
@@ -185,7 +202,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                         .duration(i >= duration.getSectionDuration().size() ? 0 : duration.getSectionDuration().get(i))
                         .x(place.getX())
                         .y(place.getY())
-                        .stayTime(null)
+                        .stayTime(60)
                         .isStamped(Boolean.FALSE)
                         .build());
             }
@@ -199,6 +216,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                 .isPlanVisible(plan.getIsPlanVisible())
                 .requiredTime(duration.getTotalDuration())
                 .totalDistance(duration.getTotalDistance())
+                .timeSummary(summary)
                 .departurePoint(request.getDeparturePoint())
                 .tripStartDate(plan.getTripStartDate())
                 .tripEndDate(plan.getTripEndDate())
@@ -249,11 +267,17 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                                 return new Point(planPlace.getSnapshotPlaceName(), planPlace.getSnapshotX(), planPlace.getSnapshotY());
                             }
                             Place place = placeById.get(p.getPlaceId());
-                            return new Point(place.getPlaceName(), place.getX(), place.getY());
+                            if (place == null) throw new CustomException(PlanPlaceErrorCode.INVALID_PLAN_PLACE);
+                            TripTimePolicy.validateCoordinates(place.getX(), place.getY());
+                    return new Point(place.getPlaceName(), place.getX(), place.getY());
                         }
                 ).toList();
 
-        getDurationDto duration = getDuration(request.getDeparturePoint(), points);
+        List<Integer> stays = places.stream().map(p -> existingMap.get(p.getPlanPlaceId()))
+                .map(p -> p == null || p.getStayTime() == null ? 60 : p.getStayTime()).toList();
+        TripTimeSummary summary = updatedSummary(plan, request.getDeparturePoint(), points, stays);
+        getDurationDto duration = getDurationDto.builder().totalDuration(summary.totalMinutes())
+                .totalDistance(summary.totalDistanceKm()).sectionDuration(summary.legMinutes()).build();
 
         // 유지하는 장소는 그 자리에서 순서만 바꿔 planPlaceId 와 스탬프 사진을 보존한다.
         Set<Integer> keptPlanPlaceIds = new HashSet<>();
@@ -272,7 +296,7 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
                         .plan(plan)
                         .orderIndex(i + 1)
                         .travelTime(travelTime)
-                        .stayTime(null)
+                        .stayTime(60)
                         .isStamped(Boolean.FALSE)
                         .snapshotPlaceName(place.getPlaceName())
                         .snapshotCategoryName(place.getCategoryName())
@@ -295,89 +319,40 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
         existPlanPlaces.addAll(addedPlanPlaces);
         imageFileCleaner.deleteAfterCommit(removedImageKeys);
 
-        plan.updateRouteSummary(duration.getTotalDuration(), duration.getTotalDistance(), DeparturePoint.of(request.getDeparturePoint()));
+        plan.updateTripSummary(summary, DeparturePoint.of(request.getDeparturePoint()));
 
         return UpdatePlanPlaceResponseDto.builder().planId(plan.getPlanId()).build();
     }
 
-    private getDurationDto getDuration(DeparturePointDto departurePoint, List<Point> points) {
-        //        KaKaoGeocodingResponseDto departurePoint = kakaoWebClient.get()
-//                .uri(uriBuilder -> uriBuilder
-//                        .path("/v2/local/search/address")
-//                        .queryParam("query", request.getDeparturePoint())
-//                        .build())
-//                .retrieve()
-//                .bodyToMono(KaKaoGeocodingResponseDto.class)
-//                .timeout(Duration.ofSeconds(10))
-//                .block();
-//        KaKaoGeocodingResponseDto.Document document = departurePoint.getDocuments().getFirst();
-//
-//        Point origin = new Point(document.getAddressName(), Double.parseDouble(document.getX()), Double.parseDouble(document.getY()));
-        Point origin = new Point(departurePoint.getName(), departurePoint.getX(), departurePoint.getY());
-        Point destination = points.getLast();
-        List<Point> waypoints = (points.size() > 1) ? points.subList(0, points.size() - 1) : List.of();
-
-        KakaoNaviRequestDto naviRequest = KakaoNaviRequestDto.builder()
-                .origin(origin)
-                .destination(destination)
-                .waypoints(waypoints)
-                .priority("RECOMMEND")
-                .summary(true)
-                .build();
-
-        KakaoNaviResponseDto response = kakaoNaviWebClient.post()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/v1/waypoints/directions")
-                        .build())
-                .bodyValue(naviRequest)
-                .retrieve()
-                .bodyToMono(KakaoNaviResponseDto.class)
-                .timeout(Duration.ofSeconds(10))
-                .block();
-
-        KakaoNaviResponseDto.Route route = response.getRoutes().getFirst();
-        if(route.getResultCode() != 0) {
-            // 경로를 못 찾아도 플랜 작성은 막지 않는다. 호출부는 구간 소요시간이 없으면 0으로 채운다.
-            log.warn("경로 탐색 실패 : {} code : {}", route.getResultMsg(), route.getResultCode());
-            return getDurationDto.builder()
-                    .totalDistance(0)
-                    .totalDuration(0)
-                    .sectionDuration(List.of())
-                    .build();
+    private TripTimeSummary updatedSummary(Plan plan, DeparturePointDto departure, List<Point> points, List<Integer> stays) {
+        String transport = plan.getTransport() == null ? "자가용" : plan.getTransport();
+        TripTimeSummary summary = routeCalculator.calculate(departure, points, stays, transport, Duration.ofSeconds(10));
+        if (plan.getTransport() != null) {
+            if (stays.stream().anyMatch(stay -> stay < 30 || stay > 90))
+                throw new CustomException(PlanPlaceErrorCode.INVALID_PLAN_PLACE);
+            TripTimePolicy.enforce(summary, TripTimePolicy.availableMinutes(plan.getTripStartDate(), plan.getTripEndDate()),
+                    plan.getTravelLimitMinutes());
         }
-        int totalDuration = (int) Math.round(route.getSummary().getDuration() / 60.0);
-        List<Integer> sectionDuration = route.getSections().stream()
-                .map(section -> (int) Math.round(section.getDuration() / 60.0))
-                .toList();
-
-
-        int totalDistance = (int) Math.round(route.getSummary().getDistance() / 1000.0);
-
-        return getDurationDto.builder()
-                        .totalDistance(totalDistance)
-                        .totalDuration(totalDuration)
-                        .sectionDuration(sectionDuration)
-                        .build();
+        return summary;
     }
-
-
 
     @NotNull
     private static List<CreatePlanPreviewRequestDto.Place> getPlaces(CreatePlanPreviewRequestDto request) {
         List<CreatePlanPreviewRequestDto.Place> places = request.getPlaces();
 
 
-        if(places == null || places.isEmpty()) {
+        if(places == null || places.isEmpty() || places.size() > TripTimePolicy.MAX_STOPS) {
             throw new CustomException(PlanPlaceErrorCode.EMPTY_PLAN_PLACE);
         }
 
         Set<Integer> orders = new HashSet<>();
+        Set<Integer> ids = new HashSet<>();
 
         places.forEach(place -> {
-            if (place.getPlaceId() == null) {
+            if (place == null || place.getPlaceId() == null || !ids.add(place.getPlaceId())) {
                 throw new CustomException(PlanPlaceErrorCode.INVALID_PLAN_PLACE);
             }
-            if (place.getOrder() == null || place.getOrder() <= 0 || !orders.add(place.getOrder())) {
+            if (place.getOrder() == null || place.getOrder() <= 0 || place.getOrder() > places.size() || !orders.add(place.getOrder())) {
                 throw new CustomException(PlanPlaceErrorCode.INVALID_ORDER_STATE);
             }
         });
@@ -387,21 +362,23 @@ public class PlanPlaceServiceImpl implements PlanPlaceService {
     @NotNull
     private static List<UpdatePlanPlaceItemDto> getPlaces(List<UpdatePlanPlaceItemDto> places, Map<Integer, PlanPlace> existingMap) {
 
-        if(places == null || places.isEmpty()) {
+        if(places == null || places.isEmpty() || places.size() > TripTimePolicy.MAX_STOPS) {
             throw new CustomException(PlanPlaceErrorCode.EMPTY_PLAN_PLACE);
         }
 
         Set<Integer> orders = new HashSet<>();
         Set<Integer> planPlaceIds = new HashSet<>();
+        Set<Integer> placeIds = new HashSet<>();
 
         places.forEach(place -> {
-           if(place.getPlaceId() == null) {
+           if(place == null || place.getPlaceId() == null || !placeIds.add(place.getPlaceId())) {
                throw new CustomException(PlanPlaceErrorCode.INVALID_PLAN_PLACE);
            }
-           if(place.getOrder() == null || place.getOrder() <= 0 || !orders.add(place.getOrder())) {
+           if(place.getOrder() == null || place.getOrder() <= 0 || place.getOrder() > places.size() || !orders.add(place.getOrder())) {
                throw new CustomException(PlanPlaceErrorCode.INVALID_ORDER_STATE);
            }
-           if(place.getPlanPlaceId() != null && (existingMap.get(place.getPlanPlaceId()) == null || !planPlaceIds.add(place.getPlanPlaceId()))) {
+           if(place.getPlanPlaceId() != null && (existingMap.get(place.getPlanPlaceId()) == null || !planPlaceIds.add(place.getPlanPlaceId())
+                   || !existingMap.get(place.getPlanPlaceId()).getPlace().getPlaceId().equals(place.getPlaceId()))) {
                throw new CustomException(PlanPlaceErrorCode.INVALID_PLAN_PLACE);
            }
         });

@@ -57,7 +57,8 @@ class PlanPlaceServiceImplStampTest {
                 imageStorageService,
                 new ImageFileCleaner(imageStorageService),
                 mock(WebClient.class),
-                mock(WebClient.class)
+                mock(WebClient.class),
+                mock(com.begae.backend.trip.TripRouteCalculator.class)
         );
         planPlace = PlanPlace.builder()
                 .planPlaceId(7)

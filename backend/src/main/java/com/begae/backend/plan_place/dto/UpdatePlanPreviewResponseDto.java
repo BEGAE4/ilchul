@@ -20,6 +20,8 @@ public class UpdatePlanPreviewResponseDto {
 
     private Boolean isPlanVisible;
 
+    private com.begae.backend.trip.TripTimeSummary timeSummary;
+
     private Integer requiredTime;
 
     private Integer totalDistance;

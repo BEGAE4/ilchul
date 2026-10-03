@@ -9,6 +9,11 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AiSelectionValidatorTest {
+    @Test void 누락된_인덱스가_0번_후보로_바뀌지_않는다() {
+        var missing = selection(0, 1);
+        missing.setIndex(null);
+        assertThat(validator.validate(dto(List.of(missing)), 1, 120)).isEmpty();
+    }
 
     private final AiSelectionValidator validator = new AiSelectionValidator();
 
@@ -119,7 +124,8 @@ class AiSelectionValidatorTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getReason().codePointCount(0, result.getFirst().getReason().length()))
-                .isEqualTo(40);
+                .isLessThanOrEqualTo(40);
+        assertThat(result.getFirst().getReason()).endsWith("요.");
         assertThat(result.getFirst().getTags()).containsExactly("#첫째", "#둘째", "#셋째");
     }
 }

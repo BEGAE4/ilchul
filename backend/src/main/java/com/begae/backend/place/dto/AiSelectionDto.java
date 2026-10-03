@@ -21,8 +21,8 @@ public class AiSelectionDto {
     @NoArgsConstructor
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class TravelPlan {
-        private int totalHours;
-        private int estimatedPlaceCount;
+        private Integer totalHours;
+        private Integer estimatedPlaceCount;
         private String reasoning;
     }
 
@@ -31,9 +31,9 @@ public class AiSelectionDto {
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class Selection {
         /** 후보 리스트에서의 0-based 위치. 모델이 범위 밖을 반환할 수 있어 검증 대상이다. */
-        private int index;
-        private int order;
-        private int stayMinutes;
+        private Integer index;
+        private Integer order;
+        private Integer stayMinutes;
         private String reason;
         private List<String> tags;
     }

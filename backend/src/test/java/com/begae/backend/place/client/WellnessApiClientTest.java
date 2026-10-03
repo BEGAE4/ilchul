@@ -1,13 +1,11 @@
 package com.begae.backend.place.client;
 
 import com.begae.backend.place.dto.WellnessPlaceDto;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import okhttp3.mockwebserver.RecordedRequest;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.*;
+import org.springframework.http.HttpStatus;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 
@@ -15,27 +13,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class WellnessApiClientTest {
 
-    private MockWebServer server;
+    private final java.util.Deque<ClientResponse> responses = new java.util.ArrayDeque<>();
+    private final java.util.concurrent.atomic.AtomicReference<ClientRequest> sent = new java.util.concurrent.atomic.AtomicReference<>();
     private WellnessApiClient client;
 
     @BeforeEach
     void setUp() throws Exception {
-        server = new MockWebServer();
-        server.start();
-        WebClient webClient = WebClient.builder().baseUrl(server.url("/").toString()).build();
+        WebClient webClient = WebClient.builder().baseUrl("https://wellness.example.invalid")
+                .exchangeFunction(request -> { sent.set(request); return Mono.just(responses.removeFirst()); }).build();
         client = new WellnessApiClient(webClient, "test-key");
     }
 
-    @AfterEach
-    void tearDown() throws Exception {
-        server.shutdown();
-    }
-
     private void enqueueJson(String body) {
-        server.enqueue(new MockResponse()
-                .setResponseCode(200)
-                .setHeader("Content-Type", "application/json")
-                .setBody(body));
+        responses.add(ClientResponse.create(HttpStatus.OK).header("Content-Type", "application/json").body(body).build());
     }
 
     @Test
@@ -66,8 +56,7 @@ class WellnessApiClientTest {
 
         client.findNearby(126.978, 37.5665, 5000);
 
-        RecordedRequest request = server.takeRequest();
-        String path = request.getPath();
+        String path = sent.get().url().toString();
         assertThat(path).contains("/locationBasedList");
         assertThat(path).contains("langDivCd=KOR");
         assertThat(path).contains("serviceKey=test-key");
@@ -99,9 +88,20 @@ class WellnessApiClientTest {
 
     @Test
     void 서버_오류에도_예외를_던지지_않고_빈_리스트로_degrade한다() {
-        server.enqueue(new MockResponse().setResponseCode(500));
+        responses.add(ClientResponse.create(HttpStatus.INTERNAL_SERVER_ERROR).build());
 
         assertThat(client.findNearby(126.978, 37.5665, 5000)).isEmpty();
+    }
+
+    @Test void 유효하지_않은_좌표와_과도한_제목을_제외한다() {
+        enqueueJson("""
+            {"response":{"header":{"resultCode":"0000"},"body":{"items":{"item":[
+              {"contentId":"1","title":"NaN","mapX":"NaN","mapY":"37.5"},
+              {"contentId":"2","title":"범위밖","mapX":"181","mapY":"37.5"},
+              {"contentId":"3","title":"TITLE","mapX":"127","mapY":"37.5"}
+            ]}}}}
+            """.replace("TITLE", "가".repeat(201)));
+        assertThat(client.findNearby(127, 37.5, 500)).isEmpty();
     }
 
     @Test

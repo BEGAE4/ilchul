@@ -64,7 +64,8 @@ class PlanServiceImplImageFileTest {
                 planImageRepository,
                 imageStorageService,
                 planPlaceImageRepository,
-                new ImageFileCleaner(imageStorageService)
+                new ImageFileCleaner(imageStorageService),
+                mock(com.begae.backend.trip.TripRouteCalculator.class)
         );
         User owner = User.builder().userNickname("owner").build();
         ReflectionTestUtils.setField(owner, "userId", 1);

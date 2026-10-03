@@ -5,5 +5,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
-    // cors 설정 중복으로 삭제
+    private final com.begae.backend.place.component.RecommendationInterceptor recommendationInterceptor;
+    public WebConfig(com.begae.backend.place.component.RecommendationInterceptor recommendationInterceptor) {
+        this.recommendationInterceptor = recommendationInterceptor;
+    }
+    @Override public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
+        registry.addInterceptor(recommendationInterceptor).addPathPatterns("/api/place/recommend");
+    }
 }

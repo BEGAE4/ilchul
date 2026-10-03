@@ -26,7 +26,7 @@ public class PlanPlaceController {
     @ApiResponse(responseCode = "200", description = "플랜 생성 미리보기가 성공적으로 조회되었습니다.")
     public ResponseEntity<CreatePlanPreviewResponseDto> getCreatePlanPreview(
             @Parameter(hidden = true) @AuthenticationPrincipal OauthUserDetails user,
-            @RequestBody CreatePlanPreviewRequestDto request
+            @RequestBody @jakarta.validation.Valid CreatePlanPreviewRequestDto request
     ) {
         return ResponseEntity.ok().body(planPlaceService.createPlanPreview(request));
     }

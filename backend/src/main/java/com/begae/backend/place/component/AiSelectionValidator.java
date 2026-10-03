@@ -25,9 +25,7 @@ public class AiSelectionValidator {
     private static final int MIN_STAY_MINUTES = 30;
     private static final int MAX_STAY_MINUTES = 90;
     private static final int MAX_SELECTIONS = 5;
-    private static final int MAX_REASON_LENGTH = 40;
     private static final int MAX_TAGS = 3;
-    private static final int MAX_TAG_LENGTH = 20;
 
     public List<AiSelectionDto.Selection> validate(
             AiSelectionDto dto, int candidateCount, int availableMinutes) {
@@ -39,7 +37,7 @@ public class AiSelectionValidator {
         List<AiSelectionDto.Selection> sorted = dto.getSelections().stream()
                 .filter(selection -> selection != null)
                 .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
-        sorted.sort(Comparator.comparingInt(AiSelectionDto.Selection::getOrder));
+        sorted.sort(Comparator.comparing(AiSelectionDto.Selection::getOrder, Comparator.nullsLast(Integer::compareTo)));
 
         List<AiSelectionDto.Selection> valid = new ArrayList<>();
         Set<Integer> seen = new HashSet<>();
@@ -48,7 +46,8 @@ public class AiSelectionValidator {
         for (AiSelectionDto.Selection s : sorted) {
             if (valid.size() >= MAX_SELECTIONS) break;
 
-            if (s.getIndex() < 0 || s.getIndex() >= candidateCount) {
+            if (s.getIndex() == null || s.getOrder() == null || s.getOrder() <= 0
+                    || s.getIndex() < 0 || s.getIndex() >= candidateCount) {
                 log.warn("AI가 후보 범위 밖 인덱스를 반환해 버린다: index={}, candidateCount={}",
                         s.getIndex(), candidateCount);
                 continue;
@@ -57,7 +56,7 @@ public class AiSelectionValidator {
                 log.warn("AI가 같은 후보를 중복 선택해 버린다: index={}", s.getIndex());
                 continue;
             }
-            if (s.getStayMinutes() < MIN_STAY_MINUTES || s.getStayMinutes() > MAX_STAY_MINUTES) {
+            if (s.getStayMinutes() == null || s.getStayMinutes() < MIN_STAY_MINUTES || s.getStayMinutes() > MAX_STAY_MINUTES) {
                 s.setStayMinutes(DEFAULT_STAY_MINUTES);
             }
 
@@ -78,8 +77,7 @@ public class AiSelectionValidator {
     }
 
     private String sanitizeReason(String reason) {
-        String value = reason == null || reason.isBlank() ? "추천 장소입니다." : reason.trim();
-        return truncate(value, MAX_REASON_LENGTH);
+        return RecommendationTextPolicy.reason(reason, null);
     }
 
     private List<String> sanitizeTags(List<String> tags) {
@@ -89,15 +87,26 @@ public class AiSelectionValidator {
         for (String tag : tags) {
             if (tag == null) continue;
             String value = tag.trim();
-            if (value.length() <= 1 || !value.startsWith("#")) continue;
-            unique.add(truncate(value, MAX_TAG_LENGTH));
+            if (!RecommendationTextPolicy.validTag(value)) continue;
+            unique.add(value);
             if (unique.size() >= MAX_TAGS) break;
         }
         return List.copyOf(unique);
     }
 
-    private String truncate(String value, int maxCodePoints) {
-        if (value.codePointCount(0, value.length()) <= maxCodePoints) return value;
-        return value.substring(0, value.offsetByCodePoints(0, maxCodePoints));
+    public boolean needsCorrection(AiSelectionDto dto, int candidateCount) {
+        if (dto == null || dto.getTravelPlan() == null || dto.getSelections() == null
+                || dto.getSelections().isEmpty() || dto.getSelections().size() > MAX_SELECTIONS
+                || !RecommendationTextPolicy.valid(dto.getTravelPlan().getReasoning(), 120)) return true;
+        Set<Integer> indices = new HashSet<>();
+        Set<Integer> orders = new HashSet<>();
+        for (var s : dto.getSelections()) {
+            if (s == null || s.getIndex() == null || s.getIndex() < 0 || s.getIndex() >= candidateCount
+                    || !indices.add(s.getIndex()) || s.getOrder() == null || s.getOrder() < 1
+                    || s.getOrder() > dto.getSelections().size() || !orders.add(s.getOrder())
+                    || s.getStayMinutes() == null || s.getStayMinutes() < 30 || s.getStayMinutes() > 90
+                    || !RecommendationTextPolicy.valid(s.getReason(), 40)) return true;
+        }
+        return false;
     }
 }
